@@ -1,0 +1,14 @@
+# Data & Outputs
+data/
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+
+# OS
+.DS_Store
+
+checkpoints/
