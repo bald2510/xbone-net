@@ -1,0 +1,187 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated as
+% required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+\datalist[entry]{nty/global//global/global/global}
+  \entry{BiomedCLIP}{article}{}{}
+    \name{author}{24}{}{%
+      {{hash=ZS}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Sheng},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=XY}{%
+         family={Xu},
+         familyi={X\bibinitperiod},
+         given={Yanbo},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=UN}{%
+         family={Usuyama},
+         familyi={U\bibinitperiod},
+         given={Naoto},
+         giveni={N\bibinitperiod},
+      }}%
+      {{hash=XH}{%
+         family={Xu},
+         familyi={X\bibinitperiod},
+         given={Hanwen},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=BJ}{%
+         family={Bagga},
+         familyi={B\bibinitperiod},
+         given={Jaspreet},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=TR}{%
+         family={Tinn},
+         familyi={T\bibinitperiod},
+         given={Robert},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=PS}{%
+         family={Preston},
+         familyi={P\bibinitperiod},
+         given={Sam},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=RR}{%
+         family={Rao},
+         familyi={R\bibinitperiod},
+         given={Rajesh},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=WM}{%
+         family={Wei},
+         familyi={W\bibinitperiod},
+         given={Mu},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=VN}{%
+         family={Valluri},
+         familyi={V\bibinitperiod},
+         given={Naveen},
+         giveni={N\bibinitperiod},
+      }}%
+      {{hash=WC}{%
+         family={Wong},
+         familyi={W\bibinitperiod},
+         given={Cliff},
+         giveni={C\bibinitperiod},
+      }}%
+      {{hash=TA}{%
+         family={Tupini},
+         familyi={T\bibinitperiod},
+         given={Andrea},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=WY}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Yu},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=MM}{%
+         family={Mazzola},
+         familyi={M\bibinitperiod},
+         given={Matt},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=SS}{%
+         family={Shukla},
+         familyi={S\bibinitperiod},
+         given={Swadheen},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=LL}{%
+         family={Liden},
+         familyi={L\bibinitperiod},
+         given={Lars},
+         giveni={L\bibinitperiod},
+      }}%
+      {{hash=GJ}{%
+         family={Gao},
+         familyi={G\bibinitperiod},
+         given={Jianfeng},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=CA}{%
+         family={Crabtree},
+         familyi={C\bibinitperiod},
+         given={Angela},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=PB}{%
+         family={Piening},
+         familyi={P\bibinitperiod},
+         given={Brian},
+         giveni={B\bibinitperiod},
+      }}%
+      {{hash=BC}{%
+         family={Bifulco},
+         familyi={B\bibinitperiod},
+         given={Carlo},
+         giveni={C\bibinitperiod},
+      }}%
+      {{hash=LMP}{%
+         family={Lungren},
+         familyi={L\bibinitperiod},
+         given={Matthew\bibnamedelima P.},
+         giveni={M\bibinitperiod\bibinitdelim P\bibinitperiod},
+      }}%
+      {{hash=NT}{%
+         family={Naumann},
+         familyi={N\bibinitperiod},
+         given={Tristan},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=WS}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Sheng},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=PH}{%
+         family={Poon},
+         familyi={P\bibinitperiod},
+         given={Hoifung},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{ZS+1}
+    \strng{fullhash}{ZSXYUNXHBJTRPSRRWMVNWCTAWYMMSSLLGJCAPBBCLMPNTWSPH1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{Z}
+    \field{sortinithash}{Z}
+    \verb{doi}
+    \verb 10.1056/AIoa2400640
+    \endverb
+    \field{number}{1}
+    \field{title}{A Multimodal Biomedical Foundation Model Trained from Fifteen
+  Million Image–Text Pairs}
+    \verb{url}
+    \verb https://ai.nejm.org/doi/full/10.1056/AIoa2400640
+    \endverb
+    \field{volume}{2}
+    \field{journaltitle}{NEJM AI}
+    \field{year}{2024}
+  \endentry
+\enddatalist
+\endinput
