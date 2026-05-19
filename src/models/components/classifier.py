@@ -1,30 +1,30 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class MedicalHead(nn.Module):
+class PrototypicalHead(nn.Module):
     """
-    Module Classifier tự làm. 
-    Nhận đầu vào là vector sau khi Fusion (ví dụ: 1024 dim).
+    Phân loại dựa trên khoảng cách Cosine từ vector truy vấn đến các Prototypes
     """
-    def __init__(self, input_dim, num_classes, hidden_dim=512, dropout_rate=0.3):
-        super(MedicalHead, self).__init__()
+    def __init__(self, feature_dim=512, num_classes=10, temperature=10.0):
+        super(PrototypicalHead, self).__init__()
+        self.temperature = temperature
         
-        self.classifier = nn.Sequential(
-            # Layer 1
-            nn.Linear(input_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(p=dropout_rate),
-            
-            # Layer 2
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.BatchNorm1d(hidden_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(p=dropout_rate / 2), # Giảm dần dropout ở các lớp sâu
-            
-            # Output layer
-            nn.Linear(hidden_dim // 2, num_classes)
-        )
-
+        # Khởi tạo Prototypes như một bộ trọng số có thể học được trong lúc Tuning
+        # Ở Giai đoạn Online, bộ trọng số này sẽ được freeze
+        self.prototypes = nn.Parameter(torch.randn(num_classes, feature_dim))
+        
     def forward(self, x):
-        return self.classifier(x)
+        # Chuẩn hóa L2 cho cả vector truy vấn và Prototypes
+        x_norm = F.normalize(x, dim=-1)
+        proto_norm = F.normalize(self.prototypes, dim=-1)
+        
+        # Tính độ tương đồng Cosine (Cosine Similarity)
+        # Kết quả có range [-1, 1]
+        cosine_sim = torch.matmul(x_norm, proto_norm.T)
+        
+        # Scale với nhiệt độ để làm sắc nét phân phối xác suất
+        logits = cosine_sim * self.temperature
+        
+        # Trả về cả logits (để tính CrossEntropy lúc train) và cosine_sim (để tính OOD lúc test)
+        return logits, cosine_sim
