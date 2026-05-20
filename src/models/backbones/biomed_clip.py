@@ -23,11 +23,16 @@ class BiomedCLIPBackbone(nn.Module):
             lora_config = LoraConfig(
                 r=8, 
                 lora_alpha=16,
-                target_modules=["q_proj", "v_proj"],
+                target_modules=["qkv", "proj"],
                 lora_dropout=0.1,
                 bias="none",
                 modules_to_save=[]
             )
+
+            for name, module in self.model.visual.named_modules():
+                if "proj" in name or "qkv" in name:
+                    print(f"Layer tìm thấy: {name}")
+
             self.model.visual = get_peft_model(self.model.visual, lora_config)
             print("Đã tích hợp LoRA vào Image Encoder thành công!")
 

@@ -2,7 +2,7 @@ import torch.nn as nn
 from .backbones.biomed_clip import BiomedCLIPBackbone
 from .components.fusion import FiLMFusion
 from .components.classifier import PrototypicalHead
-from .components.losses import SemanticMatchingLoss
+from .components.losses import SoftTargetSemanticMatchingLoss
 
 class XBoneMultiModalModel(nn.Module):
     def __init__(self, config):
@@ -23,9 +23,9 @@ class XBoneMultiModalModel(nn.Module):
         )
         
         # 4. Khởi tạo Loss cho Giai đoạn 1
-        self.alignment_loss_fn = SemanticMatchingLoss(temperature=0.07)
+        self.alignment_loss_fn = SoftTargetSemanticMatchingLoss(temperature=0.07)
 
-    def forward(self, images, input_ids, phase="tuning"):
+    def forward(self, images, input_ids, labels=None, phase="tuning"):
         """
         phase='alignment': Giai đoạn 1 - Train LoRA bằng Contrastive Loss
         phase='tuning': Giai đoạn 2 - Train FiLM và Prototypes
@@ -35,8 +35,12 @@ class XBoneMultiModalModel(nn.Module):
         img_feats, txt_feats = self.backbone(images, input_ids)
         
         if phase == "alignment":
-            # Giai đoạn 1: Chỉ quan tâm đến việc căn chỉnh 2 không gian
-            loss = self.alignment_loss_fn(img_feats, txt_feats)
+            # Đảm bảo bạn đang gọi hàm SoftTargetSemanticMatchingLoss
+            # Truyền thêm labels vào hàm loss
+            if labels is None:
+                raise ValueError("Giai đoạn Alignment với Soft-target yêu cầu phải có 'labels'.")
+                
+            loss = self.alignment_loss_fn(img_feats, txt_feats, labels)
             return loss
             
         elif phase == "tuning":
