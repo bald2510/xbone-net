@@ -1,0 +1,4 @@
+# Không kết hợp đặc trưng. 
+# Ảnh và Text đi qua module này sẽ giữ nguyên dạng, không bị thay đổi.
+type: 'none'
+params: {}

@@ -1,0 +1,4 @@
+# Không sử dụng bất kỳ kỹ thuật Parameter-Efficient Fine-Tuning nào.
+# Trọng số của Foundation Model sẽ được giữ nguyên (đóng băng).
+type: 'none'
+params: {}

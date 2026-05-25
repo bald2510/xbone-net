@@ -1,99 +1,179 @@
-import json
-
-from urllib.request import urlopen
-from PIL import Image
+import os
 import torch
-from huggingface_hub import hf_hub_download
-from open_clip import create_model_and_transforms, get_tokenizer
-from open_clip.factory import HF_HUB_PREFIX, _MODEL_CONFIGS
+import hydra
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from omegaconf import DictConfig
+from sklearn.metrics import roc_auc_score, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
+from models.builder import build_model
+from datasets.builder import build_dataloader
 
-# Download the model and config files
-hf_hub_download(
-    repo_id="microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-    filename="open_clip_pytorch_model.bin",
-    local_dir="checkpoints"
-)
-hf_hub_download(
-    repo_id="microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-    filename="open_clip_config.json",
-    local_dir="checkpoints"
-)
+def generate_medical_prompts(pathologies):
+    """Tạo câu lệnh tự động dựa vào danh sách bệnh truyền vào (Dùng cho Zero-shot)"""
+    return {
+        path: {
+            "positive": f"Findings consistent with {path.lower()}",
+            "negative": f"No findings consistent with {path.lower()}"
+        } for path in pathologies
+    }
 
-# Load the model and config files
-model_name = "biomedclip_local"
+@hydra.main(version_base=None, config_path="configs", config_name="experiment/eval_baseline")
+def main(cfg: DictConfig):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Bắt đầu đánh giá trên thiết bị: {device}")
+    
+    # =====================================================================
+    # 1. KHỞI TẠO MODEL VÀ TẢI TRỌNG SỐ (LOAD CHECKPOINT)
+    # =====================================================================
+    print("Đang lắp ráp kiến trúc mô hình...")
+    model = build_model(cfg.model).to(device)
+    
+    model.print_parameter_summary()
 
-with open("checkpoints/open_clip_config.json", "r") as f:
-    config = json.load(f)
-    model_cfg = config["model_cfg"]
-    preprocess_cfg = config["preprocess_cfg"]
+    # THÊM MỚI: Tải trọng số nếu có đường dẫn checkpoint trong config
+    checkpoint_path = cfg.get("checkpoint_path", None)
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        print(f"Đang tải trọng số từ: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        
+        # Hỗ trợ cả 2 dạng: file .pth lưu nguyên state_dict hoặc file lưu dạng dict có key 'model_state_dict' (như ta đã cấu hình ở train.py)
+        state_dict = checkpoint.get('model_state_dict', checkpoint)
+        model.load_state_dict(state_dict)
+        print("-> Tải trọng số thành công!\n")
+    else:
+        print("-> [Lưu ý] Không có checkpoint_path. Chạy mô hình gốc (Zero-shot / Khởi tạo ngẫu nhiên).\n")
 
+    model.eval()
+    
+    preprocess = model.backbone.preprocess
+    tokenizer = model.backbone.tokenizer
+    
+    # =====================================================================
+    # 2. KHỞI TẠO DATALOADER
+    # =====================================================================
+    print(f"Đang tải dataset: {cfg.dataset.name}...")
+    test_loader = build_dataloader(
+        cfg=cfg.dataset, 
+        split="test", 
+        transform=preprocess, 
+        tokenizer=tokenizer
+    )
+    pathologies = cfg.dataset.params.pathologies
+    
+    # =====================================================================
+    # 3. CHUẨN BỊ CHO ZERO-SHOT (Nếu mô hình đang chạy chế độ baseline)
+    # =====================================================================
+    text_features_dict = {}
+    is_zero_shot = (cfg.get("phase") == "zero_shot_inference")
+    
+    if is_zero_shot:
+        print("Chế độ Zero-shot: Đang tiền trích xuất đặc trưng Prompts...")
+        prompt_dict = generate_medical_prompts(pathologies)
+        with torch.no_grad():
+            for path, pair in prompt_dict.items():
+                pos_tokens = tokenizer([pair["positive"]]).to(device)
+                neg_tokens = tokenizer([pair["negative"]]).to(device)
+                
+                pos_feat = model.backbone.model.encode_text(pos_tokens)
+                neg_feat = model.backbone.model.encode_text(neg_tokens)
+                
+                pos_feat /= pos_feat.norm(dim=-1, keepdim=True)
+                neg_feat /= neg_feat.norm(dim=-1, keepdim=True)
+                
+                text_features_dict[path] = torch.cat([pos_feat, neg_feat], dim=0)
 
-if (not model_name.startswith(HF_HUB_PREFIX)
-    and model_name not in _MODEL_CONFIGS
-    and config is not None):
-    _MODEL_CONFIGS[model_name] = model_cfg
+    # =====================================================================
+    # 4. CHẠY VÒNG LẶP TEST TRÊN ẢNH THẬT
+    # =====================================================================
+    all_probs = []
+    all_ground_truths = []
+    
+    print("\nĐang quét qua tập Test...")
+    with torch.no_grad():
+        for images, input_ids, labels in tqdm(test_loader):
+            images = images.to(device)
+            # Có model cần input_ids, có model (zero-shot) thì không, nhưng cứ đẩy lên device cho an toàn
+            if isinstance(input_ids, torch.Tensor):
+                input_ids = input_ids.to(device)
+            
+            if is_zero_shot:
+                # LOGIC CHUYÊN CHO ZERO-SHOT (Tính thủ công Cosine Sim)
+                img_feat = model.backbone.model.encode_image(images)
+                img_feat /= img_feat.norm(dim=-1, keepdim=True)
+                
+                batch_probs = []
+                for path in pathologies:
+                    text_weights = text_features_dict[path]
+                    logits = img_feat @ text_weights.T
+                    
+                    # Lấy nhiệt độ từ config, mặc định là 0.07 nếu không truyền
+                    temp = cfg.get("params", {}).get("temperature", 0.07)
+                    probs = torch.softmax(logits / temp, dim=-1)[:, 0].unsqueeze(1)
+                    batch_probs.append(probs)
+                
+                batch_probs = torch.cat(batch_probs, dim=1) # [Batch, 14]
+            
+            else:
+                # LOGIC CHUYÊN CHO MÔ HÌNH ĐÃ TRAIN (FiLM, ProtoHead, v.v.)
+                # Ở train.py chúng ta dùng BCEWithLogitsLoss, nên đầu ra của model là Logits chưa chuẩn hóa
+                logits = model(images, input_ids) # [Batch, 14]
+                
+                # Áp dụng Sigmoid để đưa Logits về dải xác suất [0, 1] cho bài toán Multi-label
+                batch_probs = torch.sigmoid(logits)
 
-tokenizer = get_tokenizer(model_name)
+            all_probs.append(batch_probs.cpu())
+            all_ground_truths.append(labels.cpu())
 
-model, _, preprocess = create_model_and_transforms(
-    model_name=model_name,
-    pretrained="checkpoints/open_clip_pytorch_model.bin",
-    **{f"image_{k}": v for k, v in preprocess_cfg.items()},
-)
+    # Gộp tensor của tất cả các batch lại
+    all_probs = torch.cat(all_probs, dim=0).numpy()
+    all_ground_truths = torch.cat(all_ground_truths, dim=0).numpy()
 
+    # =====================================================================
+    # 5. TÍNH TOÁN METRICS TỰ ĐỘNG
+    # =====================================================================
+    results = []
+    print("\n=== KẾT QUẢ ĐÁNH GIÁ CHI TIẾT ===")
+    for idx, path in enumerate(pathologies):
+        gt_labels = all_ground_truths[:, idx]
+        probs = all_probs[:, idx]
+        
+        if len(np.unique(gt_labels)) < 2:
+            print(f"[Cảnh báo] Bệnh '{path}' bị bỏ qua do chỉ có 1 class trong tập Test.")
+            continue
+            
+        auroc = roc_auc_score(gt_labels, probs)
+        preds = (probs >= 0.5).astype(int)
+        
+        tn, fp, fn, tp = confusion_matrix(gt_labels, preds).ravel()
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        
+        accuracy = accuracy_score(gt_labels, preds)
+        precision = precision_score(gt_labels, preds, zero_division=0)
+        recall = recall_score(gt_labels, preds, zero_division=0) 
+        f1 = f1_score(gt_labels, preds, zero_division=0)
+        
+        results.append({
+            "Pathology": path, 
+            "AUROC": auroc,
+            "Accuracy": accuracy,
+            "F1_Score": f1,
+            "Precision": precision,
+            "Recall_Sens": recall,
+            "Specificity": specificity
+        })
+        
+        print(f"{path:25s} | AUC: {auroc:.3f} | Acc: {accuracy:.3f} | F1: {f1:.3f} | Prec: {precision:.3f} | Rec: {recall:.3f} | Spec: {specificity:.3f}")
 
-# Zero-shot image classification
-template = 'this is a photo of '
-labels = [
-    'adenocarcinoma histopathology',
-    'brain MRI',
-    'covid line chart',
-    'squamous cell carcinoma histopathology',
-    'immunohistochemistry histopathology',
-    'bone X-ray',
-    'chest X-ray',
-    'pie chart',
-    'hematoxylin and eosin histopathology'
-]
+    # =====================================================================
+    # 6. LƯU BÁO CÁO
+    # =====================================================================
+    df_res = pd.DataFrame(results).round(4)
+    save_path = os.path.join("runs", cfg.experiment_name, f"metrics_{cfg.dataset.name}_test.csv")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    df_res.to_csv(save_path, index=False)
+    print(f"\n[Thành công] Đã lưu bảng kết quả chi tiết vào: {save_path}")
 
-dataset_url = 'https://huggingface.co/microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224/resolve/main/example_data/biomed_image_classification_example_data/'
-test_imgs = [
-    'squamous_cell_carcinoma_histopathology.jpeg',
-    'H_and_E_histopathology.jpg',
-    'bone_X-ray.jpg',
-    'adenocarcinoma_histopathology.jpg',
-    'covid_line_chart.png',
-    'IHC_histopathology.jpg',
-    'chest_X-ray.jpg',
-    'brain_MRI.jpg',
-    'pie_chart.png'
-]
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model.to(device)
-model.eval()
-
-context_length = 256
-
-images = torch.stack([preprocess(Image.open(urlopen(dataset_url + img))) for img in test_imgs]).to(device)
-texts = tokenizer([template + l for l in labels], context_length=context_length).to(device)
-with torch.no_grad():
-    image_features, text_features, logit_scale = model(images, texts)
-
-    logits = (logit_scale * image_features @ text_features.t()).detach().softmax(dim=-1)
-    sorted_indices = torch.argsort(logits, dim=-1, descending=True)
-
-    logits = logits.cpu().numpy()
-    sorted_indices = sorted_indices.cpu().numpy()
-
-top_k = -1
-
-for i, img in enumerate(test_imgs):
-    pred = labels[sorted_indices[i][0]]
-
-    top_k = len(labels) if top_k == -1 else top_k
-    print(img.split('/')[-1] + ':')
-    for j in range(top_k):
-        jth_index = sorted_indices[i][j]
-        print(f'{labels[jth_index]}: {logits[i][jth_index]}')
-    print('\n')
+if __name__ == "__main__":
+    main()
