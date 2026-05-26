@@ -143,7 +143,7 @@ Xuất phát từ thực tế đó, khóa luận hướng đến nghiên cứu v
 
 \section{Giới thiệu bài toán}
 
-Bài toán được nghiên cứu trong đề tài là bài toán phân loại ảnh X-quang sử dụng học sâu đa phương thức (multimodal deep learning). Mục tiêu của hệ thống là dự đoán loại bệnh hoặc tổn thương dựa trên đồng thời dữ liệu hình ảnh X-quang và thông tin văn bản lâm sàng liên quan.
+Bài toán được nghiên cứu trong đề tài là bài toán phân loại đa nhãn ảnh X-quang sử dụng học sâu đa phương thức (multimodal deep learning). Mục tiêu của hệ thống là dự đoán các loại bệnh hoặc tổn thương dựa trên đồng thời dữ liệu hình ảnh X-quang và thông tin văn bản lâm sàng liên quan.
 
 \begin{itemize}
   \item \textbf{Đầu vào (Input):} Hệ thống nhận vào các nguồn dữ liệu sau:
@@ -181,15 +181,12 @@ Bài toán được nghiên cứu trong đề tài là bài toán phân loại �
   \item \textbf{Đầu ra (Output):} Hệ thống sinh ra:
 
   \begin{itemize}
-    \item Nhãn dự đoán cuối cùng:
+    \item Các nhãn dự đoán cuối cùng, được sắp xếp theo thứ tự:
     \[
         y^{*} = \arg\max_{k \in \{1,...,K\}} \hat{y}_k
     \]
 
-    \item Bản đồ nhiệt trực quan hóa trên ảnh nhằm giải thích dự đoán của mô hình:
-    \[
-        \mathcal{A}^{img}
-    \]
+    \item Bản đồ nhiệt trực quan hóa trên ảnh nhằm giải thích dự đoán của mô hình
   \end{itemize}
 \end{itemize}
 
