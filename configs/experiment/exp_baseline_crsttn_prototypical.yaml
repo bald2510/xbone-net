@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - /model/peft@model.peft: none
+  - /model/fusion@model.fusion: cross_attention
+  - /model/classifier@model.classifier: prototypical
+  - /dataset@dataset: mimic_cxr
+  - _self_
+
+experiment_name: "experiment_baseline_cross_attention_prototypical"
+phase: "training"
+seed: 42
+
+# =========================================================
+# SIÊU THAM SỐ HUẤN LUYỆN (TRAINING HYPERPARAMETERS)
+# =========================================================
+epochs: 10
+lr: 1e-4
+weight_decay: 1e-2
+checkpoint_path: null
+
+# =========================================================
+# CẤU HÌNH CHI TIẾT CHO MÔ HÌNH (MODEL PARAMS OVERRIDE)
+# =========================================================
+model:
+  name: "xbone_cross_attention_proto"

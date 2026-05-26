@@ -1,0 +1,4 @@
+# Không sử dụng mạng nơ-ron phân loại (Classifier Head).
+# Mô hình sẽ trả về trực tiếp đặc trưng (features) hoặc độ đo Cosine Similarity.
+type: 'none'
+params: {}
