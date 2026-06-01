@@ -1,93 +1,100 @@
 \chapter{Các công trình nghiên cứu liên quan}
 \label{Chapter2}
 
-Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Phần này sẽ cung cấp tổng quan tình hình nghiên cứu từ đó đưa ra các nhận xét về các phương pháp hiện có làm tiền đề cho phương pháp đề xuất.
+Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng, các kỹ thuật để tinh chỉnh mô mình và phương pháp phát hiện dữ liệu ngoài phân phối từ đó đưa ra các nhận xét về các phương pháp hiện có làm tiền đề cho phương pháp đề xuất.
 
-\section{Các mô hình xây dựng từ đầu} là các mô hình đơn giản, khởi điểm trong bài toán học sâu đa phương thức, thiết kế và huấn luyện một hệ thống mới từ đầu, điểm chung của các phương pháp này là chúng tập trung vào việc thiết kế các cơ chế để "trộn" (fusion) đặc trưng từ các bộ mã hóa (encoder) chuyên biệt ở các cấp độ khác nhau để tối ưu hóa hiệu suất cho các tác vụ cụ thể, sử dụng những bộ mã hóa hình ảnh đơn giản như CNN.
+\section{Các mô hình nền tảng}
 
-Khởi điểm vào 2020, X. Mei \cite{XMei} và đồng nghiệp đã đề xuất lấy đặc trưng được tạo ra từ các lớp cuối của mô hình CNN (véc-tơ 512 chiều) và các đặc trưng từ dữ liệu lâm sàng rồi nối lại. Véc-tơ kết hợp này được đưa vào một mạng MLP cuối cùng để đưa ra dự đoán.
+\subsection{Các mô hình xây dựng từ đầu}
 
-Clinical-BERT \cite{yan_2022_clinicalbert} và TGANet \cite{nikhilkumartomar_2022_tganet} tìm cách học biểu diễn đa phương thức bằng cách thúc đẩy mô hình hiểu và liên kết (align) các đặc trưng giữa các vùng trong ảnh và các từ khóa trong văn bản báo cáo thông qua các nhiệm vụ tự giám sát (self-supervised objectives), cho phép mô hình học được các biểu diễn ngữ nghĩa chung. Hay LViT \cite{li_2024_lvit} đề xuất một kiến trúc hybrid CNN-Transformer "Double-U", cấu trúc CNN-Transformer kết hợp mô-đun Pixel-Level Attention Module để giữ lại các đặc trưng cục bộ của ảnh giúp mô hình giữ được khả năng trích xuất đặc trưng cục bộ mạnh mẽ của CNN, đồng thời tận dụng khả năng mô hình hóa ngữ cảnh toàn cục của Transformer.
+Sự kết hợp giữa dữ liệu cận lâm sàng và báo cáo lâm sàng, lịch sử bệnh lý đã tạo ra những bước tiến lớn trong việc cải thiện độ chính xác của các mô hình chẩn đoán chẩn đoán, đặc biệt là thông qua việc sử dụng văn bản để bù đắp những thiếu sót thông tin mà hình ảnh đơn thuần không thể cung cấp. Khởi điểm với các phương pháp sử dụng văn bản để cung cấp bối cảnh lâm sàng thiết yếu. Nghiên cứu của X. Mei \cite{XMei} trong việc chẩn đoán COVID-19 là một minh chứng rõ nét: khi ảnh chụp CT ngực ở giai đoạn sớm có thể chưa biểu hiện bất thường, việc tích hợp thông tin lâm sàng thông qua mạng MLP với đặc trưng ảnh từ CNN đã giúp mô hình nhận diện chính xác 68\% số bệnh nhân dương tính mà các bác sĩ X-quang đã bỏ sót. Điều này khẳng định văn bản có khả năng định hướng chẩn đoán ngay cả khi tín hiệu hình ảnh còn mờ nhạt.
 
-Việc chỉ nối các đặc trưng có điểm yếu về sự khác biệt về giá trị hoặc sự ngữ nghĩa lớn giữa các phương thức dữ liệu, IRENE \cite{IRENE} đã đưa tất cả dữ liệu gốc về dạng token chung và học biểu diễn tổng thể (holistic representation) ngay từ đầu, sử dụng một mô hình Transformer duy nhất học các biểu diễn toàn diện cho cả hai phương thức. IRENE còn sử dụng cơ chế chú ý hai chiều ở cấp độ token để nắm bắt "các kết nối cục bộ".
+Không chỉ là dữ liệu bổ sung, văn bản còn được khai thác như một "tri thức tiên nghiệm" để hướng dẫn mô hình tập trung vào các vùng ảnh quan trọng. Mô hình TieNet \cite{TieNet} đã mã hóa các báo cáo y tế và tích hợp các cơ chế chú ý đa cấp độ để làm nổi bật các từ mang ý nghĩa quan trọng, từ đó gióng hàng chúng với các vùng ảnh tương ứng. Việc sử dụng văn bản làm tri thức dẫn đường này đã giúp TieNet cải thiện đáng kể kết quả phân loại bệnh lý, tăng trung bình 6\% chỉ số AUC so với các mô hình chỉ dùng ảnh.
 
-Nghiên cứu của Dai và cộng sự \cite{TransMed21} đề xuất mô hình TransMed, giải quyết bài toán kết hợp đa phương thức bằng cách tích hợp CNN và Transformer. Bằng việc chuyển đổi đặc trưng ảnh từ CNN thành dạng chuỗi để Transformer xử lý, mô hình này tối ưu hóa việc nắm bắt các đặc điểm toàn cục của hình ảnh y khoa. Cách tiếp cận này mang lại hiệu quả cao hơn các kỹ thuật fusion thông thường nhờ khả năng biểu diễn dữ liệu đa phương thức một cách toàn diện và chính xác.
+Mặc dù các mô hình như TransMed \cite{TransMed} đã chứng minh sức mạnh của kiến trúc lai CNN-Transformer trong việc thiết lập sự phụ thuộc ở khoảng cách xa đối với dữ liệu đa phương thức, các phương pháp nối đặc trưng truyền thống vẫn gặp hạn chế lớn do sự khác biệt về không gian véc-tơ và khoảng cách ngữ nghĩa giữa ảnh và văn bản. 
 
-Những nghiên cứu này đã khai phá và chứng minh về tác động tích cực của các phương thức dữ liệu khác như văn bản đến kết quả của việc chẩn đoán hình ảnh, tuy nhiên độ chính xác của các phương thức này còn chưa quá cao bởi các bộ mã hóa và phương pháp dung hợp dữ liệu còn đơn giản.
+Để giải quyết triệt để vấn đề này, IRENE \cite{IRENE} đã loại bỏ cách tiếp cận trích xuất đặc trưng riêng lẻ. Thay vào đó, IRENE đưa tất cả dữ liệu (hình ảnh, báo cáo lâm sàng không cấu trúc, và dữ liệu cấu trúc) về một dạng token chung và sử dụng một mô hình Transformer duy nhất để học biểu diễn tổng thể. Việc sử dụng cơ chế chú ý đa phương thức hai chiều cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ. Đóng góp của văn bản trong cấu trúc này mang tính quyết định: các thử nghiệm loại bỏ (ablation study) của IRENE chỉ ra rằng, việc thiếu vắng văn bản báo cáo bệnh lý (chief complaints) làm giảm 6\% hiệu suất mô hình , và việc bỏ qua các kết quả xét nghiệm làm giảm thêm 4\%.  
 
-\begin{table}[htpb]
-\centering    
+Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp của văn bản đã tiến hóa từ việc chỉ là một véc-tơ thông tin ghép nối thêm, trở thành một thành phần cốt lõi có khả năng gióng hàng ngữ nghĩa và định hướng sự chú ý, giúp các mô hình học sâu đưa ra chẩn đoán hình ảnh y khoa toàn diện và chính xác hơn.
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table}[H]
+\centering
 \resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|c|l|llll|}
+\begin{tabular}{|c|l|l|}
 \hline
 \multirow{2}{*}{\textbf{STT}} &
   \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tinh chỉnh\end{tabular}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Phương pháp \\ tinh chỉnh\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Kiến trúc mô hình}} \\ \cline{5-8} 
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Nguyên lý}}} \\
  &
   \multicolumn{1}{c|}{} &
-   &
+  \multicolumn{1}{c|}{} \\ \hline
+\textbf{1} &
+  \textbf{TieNet (2018)} &
+  \begin{tabular}[c]{@{}l@{}}Sử dụng các báo cáo y tế như một tri thức tiên nghiệm kết hợp với \\ hình ảnh X-quang để phân loại bệnh lý lồng ngực và tạo báo cáo y \\ khoa tự động. Mô hình tích hợp các cơ chế chú ý đa cấp để làm nổi \\ bật các từ mang ý nghĩa quan trọng và các vùng ảnh tương ứng\end{tabular} \\ \hline
+\textbf{2} &
+  \textbf{X. Mei (2020)} &
+  \begin{tabular}[c]{@{}l@{}}Tích hợp các phát hiện trên ảnh chụp CT ngực với các thông tin lâm sàng \\ nhằm chẩn đoán nhanh bệnh nhân nhiễm COVID-19 ở giai đoạn sớm, khi \\ mà ảnh CT có thể chưa có biểu hiện bất thường\end{tabular} \\ \hline
+\textbf{3} &
+  \textbf{TransMed (2021)} &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp sức mạnh của CNN trong việc trích xuất đặc trưng cục bộ \\ và của Transformer trong việc thiết lập sự phụ thuộc ở khoảng cách xa\\  để tận dụng mối quan hệ giữa các phương thức/chuỗi trên ảnh y khoa.\end{tabular} \\ \hline
+\textbf{4} &
+  \textbf{IRENE (2023)} &
+  \begin{tabular}[c]{@{}l@{}}Thay vì dùng các mô hình riêng biệt cho từng loại dữ liệu, chỉ sử dụng một \\ Transformer duy nhất xử lý đồng thời dữ liệu hình ảnh, văn bản. Nguyên lý \\ mấu chốt là trực tiếp khai thác mối liên kết nội bộ của từng phương thức \\ và giữa các phương thức khác nhau.\end{tabular} \\ \hline
+\end{tabular}
+}
+\caption{Bảng tổng hợp nguyên lý của các mô hình kết hợp ngôn ngữ - ảnh nổi bật}
+\label{tab:scratchPrinciple}
+\end{table}
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|l|llcl|}
+\hline
+\multirow{2}{*}{\textbf{STT}} &
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
+  \multicolumn{4}{c|}{\textbf{Kiến trúc mô hình}} \\ \cline{3-6} 
+ &
   \multicolumn{1}{c|}{} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ ảnh\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
 \textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}X. Mei \cite{XMei}\end{tabular}} &
-  Full Fine-Tuning &
-  \begin{tabular}[c]{@{}l@{}}Pretrain với \\ Cross-Entropy loss\end{tabular} &
-  \multicolumn{1}{l|}{Inception-ResNet-v2} &
-  \multicolumn{1}{l|}{ResNet-18} &
-  \multicolumn{1}{l|}{Decision-level} &
-  N/a \\ \hline
-\textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}Clinical-BERT \cite{yan_2022_clinicalbert}\end{tabular}} &
-  Full Fine-Tuning &
-  \begin{tabular}[c]{@{}l@{}}Cross-modal \\ Repr. Learning\end{tabular} &
-  \multicolumn{1}{l|}{DenseNet121} &
-  \multicolumn{1}{l|}{Uncased BERT-base} &
-  \multicolumn{1}{l|}{Early fusion} &
-  N/a \\ \hline
-\textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}LViT \cite{li_2024_lvit}\end{tabular}} &
-  Full Fine-Tuning &
-  \begin{tabular}[c]{@{}l@{}}Semi-supervised \\ (Pseudo-label)\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Hybrid U-shape \\ (CNN + ViT)\end{tabular}} &
-  \multicolumn{1}{l|}{BERT\_12\_768\_12} &
-  \multicolumn{1}{l|}{Intermediate} &
-  N/a \\ \hline
-\textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}TGANet \cite{nikhilkumartomar_2022_tganet}\end{tabular}} &
-  Train from scratch &
-  \begin{tabular}[c]{@{}l@{}}Exponential Pseudo-\\ label Iteration\end{tabular} &
+  \textbf{TieNet (2018)} &
   \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{Không có} &
-  \multicolumn{1}{l|}{Intermediate} &
-  N/a \\ \hline
-\textbf{5} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}IRENE \cite{IRENE}\end{tabular}} &
-  Train from scratch &
-  \begin{tabular}[c]{@{}l@{}}BCE Loss \& \\ AdamW optimizer\end{tabular} &
+  \multicolumn{1}{l|}{word2vec} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level \\ fusion\end{tabular}} &
+  Fully Connected \\ \hline
+\textbf{2} &
+  \textbf{X. Mei (2020)} &
+  \multicolumn{1}{l|}{Inception-ResNet-v2} &
+  \multicolumn{1}{l|}{MLP} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level\\ fusion\end{tabular}} &
+  MLP \\ \hline
+\textbf{3} &
+  \textbf{TransMed (2021)} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}2D CNN \\ (ResNet18 đến 152)\end{tabular}} &
+  \multicolumn{1}{l|}{N/a} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level\\ fusion\end{tabular}} &
+  Fully Connected \\ \hline
+\textbf{4} &
+  \textbf{IRENE (2023)} &
   \multicolumn{1}{l|}{Convolution layer} &
   \multicolumn{1}{l|}{Pretrained BERT} &
-  \multicolumn{1}{l|}{Simultaneous} &
-  \begin{tabular}[c]{@{}l@{}}Upsampling, FEM,\\ CBAM Attention\end{tabular} \\ \hline
-\textbf{6} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}TransMed \cite{TransMed21}\end{tabular}} &
-  Full Fine-Tuning &
-  \begin{tabular}[c]{@{}l@{}} Supervised \\ (SGD, 100 epochs)\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}} 2D CNN \\ (ResNet18 đến 152)\end{tabular} &
-  \multicolumn{1}{|l|}{N/a} &
-  \multicolumn{1}{l|}{Attention fusion} &
-  \begin{tabular}[c]{@{}l@{}}Lớp kết nối đầy đủ \\ (FC Layer)\end{tabular} \\ \hline
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level \\ fusion\end{tabular}} &
+  MLP \\ \hline
 \end{tabular}
 }
-\caption{Bảng tổng hợp chiến lược, mục tiêu và phương pháp tinh chỉnh của các mô hình kết hợp ngôn ngữ - ảnh}
-\label{tab:VLMFineTuningMethod}
+\caption{Bảng tổng hợp phương pháp của các mô hình kết hợp ngôn ngữ - ảnh nổi bật}
+\label{tab:scratchMethod}
 \end{table}
 
-\section{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)} đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu (thường cố gắng dung hợp dữ liệu thô thành một khối thống nhất), Med-VLMs chú trọng vào việc đối chiếu và liên kết chặt chẽ ngữ nghĩa giữa hình ảnh và ngôn ngữ tự nhiên. Cụ thể, kiến trúc của chúng thường kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này khớp với nhau. Lúc này, bộ phân loại không gán nhãn theo cách truyền thống mà đóng vai trò là một cơ chế đo lường mức độ tương đồng. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
+\subsection{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)} đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu (thường cố gắng dung hợp dữ liệu thô thành một khối thống nhất), Med-VLMs chú trọng vào việc đối chiếu và liên kết chặt chẽ ngữ nghĩa giữa hình ảnh và ngôn ngữ tự nhiên. Cụ thể, kiến trúc của chúng thường kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này khớp với nhau. Lúc này, bộ phân loại không gán nhãn theo cách truyền thống mà đóng vai trò là một cơ chế đo lường mức độ tương đồng. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
 
 Để đạt được khả năng trên, các nghiên cứu tiền huấn luyện Med-VLMs hiện nay đang phát triển chủ yếu theo ba hướng: học tương phản, học có che giấu và tích hợp tri thức y khoa (chi tiết tổng hợp được trình bày tại các Bảng \ref{tab:VLMPretrainingPrinciple}, \ref{tab:VLMPretrainingMethod}, \ref{tab:VLMPretrainingResult}).
 
@@ -96,13 +103,6 @@ Thứ nhất, \textbf{học tương phản (Contrastive Learning)} là chiến l
 Thứ hai, \textbf{học có che giấu (Masked Learning)} là hướng đi tập trung vào mục tiêu tái tạo dữ liệu, với các đại diện nổi bật như MRM \cite{MRM} và MedViLL \cite{MedViLL}. Bằng cách ẩn ngẫu nhiên các vùng ảnh hoặc từ ngữ trong báo cáo y khoa, kiến trúc này buộc mô hình phải dự đoán và khôi phục phần thông tin bị khuyết. Hướng tiếp cận này thể hiện ưu thế rõ rệt trong các môi trường khan hiếm dữ liệu; điển hình là MRM \cite{MRM} đạt mức 92,7\% AUC chỉ với 10\% dữ liệu từ tập RSNA. Tuy nhiên, rào cản chính của phương pháp này nằm ở việc phụ thuộc vào nguồn dữ liệu đã được ghép cặp sẵn từ trước, cộng với độ phức tạp tính toán cao của quá trình khôi phục điểm ảnh/token.
 
 Thứ ba, \textbf{tích hợp tri thức y khoa (Knowledge Integration)} ra đời nhằm giải quyết những đặc thù phức tạp của ngôn ngữ lâm sàng. Các mô hình như MedKLIP \cite{MedKLIP}, BioViL \cite{BioViL}, BioViL-T \cite{BioViL-T} và KAD \cite{KAD} tận dụng đồ thị tri thức (như RadGraph) hoặc dữ liệu chuỗi thời gian để cung cấp tín hiệu giám sát chi tiết về cả loại và vị trí bệnh lý. Cách tiếp cận này giúp giải quyết triệt để sự mơ hồ của các từ vựng diễn tả tiến triển bệnh (ví dụ: "cải thiện", "xấu đi"). Về mặt hiệu năng, KAD \cite{KAD} đạt 0.966 AUC trên tập PadChest ở thiết lập không mẫu (zero-shot), còn BioViL-T \cite{BioViL-T} đạt độ chính xác 67,4\% trong bài toán phân loại tiến triển bệnh. Dù vậy, các phương pháp này chưa loại bỏ hoàn toàn được hiện tượng âm tính giả và rất dễ gặp sai số nếu nhãn chẩn đoán thực tế nằm ngoài cơ sở tri thức đồ thị gốc.
-
-Dựa trên sự phân tích các ưu và nhược điểm từ những khảo sát trên, hướng tiếp cận đề xuất trong nghiên cứu này được thiết kế có chọn lọc nhằm tối ưu hóa hiệu năng và chi phí:
-\begin{itemize}
-    \item \textbf{Kế thừa BiomedCLIP \cite{BiomedCLIP}:} Tận dụng sức mạnh của các bộ mã hóa đã được huấn luyện với chất lượng cao.
-    \item \textbf{Không áp dụng học tương phản \& học có che giấu:} Khó khắc phục rào cản về tài nguyên tính toán lớn và giảm thiểu rủi ro gặp phải hiện tượng âm tính giả.
-    \item \textbf{Tích hợp tri thức từ UMLS (tương tự MedKLIP \cite{MedKLIP}):} Sử dụng để làm giàu thêm tri thức trong các báo cáo lâm sàng.
-\end{itemize}
 
 \begin{table}[htpb]
 \centering
@@ -358,15 +358,132 @@ Dựa trên sự phân tích các ưu và nhược điểm từ những khảo s
 \caption{Bảng tổng hợp kết quả của các phương pháp tiền huấn luyện mô hình ngôn ngữ trực quan}
 \label{tab:VLMPretrainingResult}
 \end{table}
+           
+\subsection{Các mô hình ngôn ngữ lớn y khoa đa phương thức} 
+Trong thời gian gần đây, với sự phát triển của các mô hình ngôn ngữ lớn được huấn luyện trên những tập dữ liệu rất lớn phục vụ cho rất nhiều tác vụ khác nhau, các mô hình này đang thể hiện sự ảnh hưởng và đa dụng trong lĩnh vực y tế với độ chính xác rất tốt khi chỉ học ít mẫu hoặc không mẫu.
 
-Mặc dù các phương pháp tiền huấn luyện Med-VLMs giúp xây dựng nền tảng tri thức đa phương thức khổng lồ, việc áp dụng trực tiếp vào lâm sàng lại vấp phải rào cản lớn về chi phí tính toán và sự khan hiếm dữ liệu y tế ghép cặp. Để giải quyết vấn đề này, các nghiên cứu thường chuyển hướng sang tinh chỉnh mô hình. Tuy nhiên, nếu tinh chỉnh toàn phần trên một tập dữ liệu nhỏ, sự chênh lệch phân phối sẽ dễ dẫn đến hiện tượng chuyển giao tiêu cực hoặc "quên thảm khốc", làm đánh mất tri thức gốc. Do đó, giới nghiên cứu đang tập trung vào các chiến lược tinh chỉnh hiệu quả tham số (PEFT) nhằm đảm bảo tính linh hoạt, tiết kiệm tài nguyên và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các nghiên cứu gần đây được chia thành ba hướng tiếp cận chính:
+Med-Flamingo \cite{moor_2023_medflamingo} là mô hình đầu tiên có khả năng học ít mẫu chuyên dụng cho y tế, thông qua hội thoại tự nhiên để hỗ trợ chẩn đoán. Theo sau đó, LLaVA-Med \cite{li_2023_llavamed} là mô hình chuyển đổi khả năng thực hiện theo chỉ dẫn (instruction-following) từ miền tổng quát sang lĩnh vực y sinh bằng cách sử dụng dữ liệu cặp ảnh-văn bản quy mô lớn với 600.000 cặp, với dữ liệu hội thoại tạo ra từ chú thích ảnh y khoa được tạo ra bằng cách sử dụng GPT-4. Phương pháp này đã đề xuất quy trình huấn luyện 2 bước: (1) Căn chỉnh khái niệm; (2) Tinh chỉnh chỉ dẫn đầy đủ; 2 bước này tương ứng với giai đoạn học và suy luận. Kết quả thể hiện khả năng suy luận vượt trội trên dữ liệu chưa từng thấy. 
 
-\subsection{Tinh chỉnh sử dụng câu nhắc (Prompt Tuning):} Hướng này chèn thêm các tham số có thể học được vào không gian đầu vào của mô hình. Các phương pháp như CITE \cite{CITE}, FPT \cite{FPT} hay PLIP \cite{PLIP} khai thác đặc trưng thị giác kết hợp với tri thức lâm sàng, cho thấy hiệu quả vượt trội ngay cả khi thiếu hụt dữ liệu (ví dụ: PLIP đạt 0.896 AUC chỉ với 5\% dữ liệu PanNuke). Nhằm giải quyết khó khăn khi thiết kế thủ công, MedPrompt \cite{MedPrompt} và UniDCP \cite{UniDCP} tự động sinh câu nhắc động dựa trên ngữ cảnh ảnh để xử lý đa tác vụ. Gần đây hơn, việc tích hợp Mô hình ngôn ngữ Lớn (LLM) qua ViP \cite{ViP}, CILMP \cite{CLIMP} và BiomedCoOp \cite{BiomedCoOp} giúp tạo sinh các câu nhắc ngữ nghĩa sâu sắc, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản, mang lại hiệu năng cao trong các kịch bản ít mẫu hoặc không mẫu.
+Med-Palm M \cite{MED-PALM-M} là mô hình của Google, đánh dấu bước tiến từ các mô hình đơn nhiệm sang đa nhiệm quy mô lớn, có khả năng xử lý đa nhiệm và đa phương thức bằng một bộ tham số duy nhất, thay vì sử dụng các mô hình chuyên biệt cho từng tác vụ. Gần đây hơn, SkinGPT-4 \cite{SkinGPT-4} là hệ thống chẩn đoán da liễu tương tác đầu tiên sử dụng LLM quy mô lớn với độ chính xác cao, đã kết hợp khả năng hiểu hình ảnh y tế chuyên sâu với khả năng suy luận và giao tiếp của các mô hình ngôn ngữ lớn (LLM), tạo ra một hệ thống chẩn đoán da liễu có thể tương tác, giải thích lý do và đưa ra lời khuyên hữu ích cho người dùng.
 
-\subsection{Tinh chỉnh bộ điều hợp (Adapter Tuning):} Thay vì can thiệp ở đầu vào, phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ giữa các lớp của kiến trúc gốc. Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ; FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức. Ở hướng bán giám sát, mô hình MedUnA \cite{MedUnA} dùng LLM tạo nhãn giả và tinh chỉnh không giám sát bộ điều hợp trên ảnh chưa gán nhãn, giúp mô hình thích ứng tốt mà không thay đổi trọng số.
+Dù đưa đến các phương pháp có độ chính xác cao đến rất cao trong nhiều tác vụ cùng việc hỗ trợ trong việc giao tiếp với mô hình, kích cỡ và chi phí huấn luyện (Med-Flamingo có đến 9 tỷ thông số) để vận hành các mô hình ngôn ngữ lớn đa phương thức là một vấn đề lớn, đi kèm với vấn đề ảo giác có thể gặp phải khi đối mặt mới dữ liệu mới hoặc những câu hỏi phức tạp. Ngoài ra nếu yêu cầu một độ chính xác cao - một yêu cầu quan trọng trong lĩnh vực y tế trong một tác vụ cụ thể thì đây không phải một cách tiếp cận tốt cho bài toán này.
 
-\subsection{Tinh chỉnh chọn lọc (Selective Tuning):} Hướng đi này tối ưu hóa kiến trúc bằng cách chỉ cập nhật một lượng nhỏ các trọng số quyết định hiệu năng. TransMed \cite{TransMed} kết hợp LLM để chuyển đổi nhãn bệnh thành mô tả chi tiết, trong khi SH-PEFT \cite{SH-PEFT} chỉ tìm và cập nhật các trọng số quan trọng nhất trên bộ mã hóa thị giác nhằm khai thác tính thưa thớt của mạng. Tương tự, LCBB \cite{LCBB} áp dụng kỹ thuật LoRA để tinh chỉnh tham số hiệu quả cho Med-VLMs, giúp bám sát hiệu năng của tinh chỉnh toàn phần (đạt 93.1\% AUROC trên tập RSNA với 10\% dữ liệu gán nhãn) nhưng giảm thiểu tối đa chi phí tính toán.
-    
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|l|l|}
+\hline
+\multirow{2}{*}{\textbf{STT}} &
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Nguyên lý}}} \\
+ &
+  \multicolumn{1}{c|}{} &
+  \multicolumn{1}{c|}{} \\ \hline
+\textbf{1} &
+  \textbf{Med-Flamingo (2023)} &
+  \begin{tabular}[c]{@{}l@{}}Huấn luyện (từ nền tảng OpenFlamingo-9B) trên các dữ liệu văn bản \\ và hình ảnh y tế. Mô hình có khả năng học theo ngữ cảnh để sinh ra \\ văn bản tạo các báo cáo, giải thích y khoa hoặc trả lời câu hỏi mở.\end{tabular} \\ \hline
+\textbf{2} &
+  \textbf{LLaVA-Med (2023)} &
+  \begin{tabular}[c]{@{}l@{}}Chuyển đổi khả năng theo sát chỉ dẫn (instruction-following) từ \\ miền tổng quát sang miền y sinh bằng cách sử dụng dữ liệu cặp \\ ảnh-văn bản quy mô lớn.\end{tabular} \\ \hline
+\textbf{3} &
+  \textbf{Med-PaLM M (2023)} &
+  \begin{tabular}[c]{@{}l@{}}Xây dựng một hệ thống AI y sinh tổng quát (Generalist Biomedical AI) \\ có khả năng xử lý đa nhiệm và đa phương thức bằng một bộ tham số \\ duy nhất, thay vì các mô hình chuyên biệt cho từng tác vụ\end{tabular} \\ \hline
+\textbf{4} &
+  \textbf{SkinGPT-4 (2024)} &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp khả năng hiểu hình ảnh y tế chuyên sâu với khả năng suy luận \\ và giao tiếp của các mô hình ngôn ngữ lớn (LLM). Mục tiêu là tạo ra \\ một hệ thống chẩn đoán da liễu có thể tương tác, giải thích lý do và \\ đưa ra lời khuyên hữu ích cho người dùng.\end{tabular} \\ \hline
+\end{tabular}
+}
+\caption{Bảng tổng hợp nguyên lý của các mô hình ngôn ngữ lớn đa phương thức}
+\label{tab:MedMLLLMPrinciple}
+\end{table}
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|l|llll|}
+\hline
+\multirow{2}{*}{\textbf{STT}} &
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
+  \multicolumn{4}{c|}{\textbf{Phương pháp}} \\ \cline{3-6} 
+ &
+  \multicolumn{1}{c|}{} &
+  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ ảnh\end{tabular}}} &
+  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
+  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
+  \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
+\textbf{1} &
+  \textbf{Med-Flamingo (2023)} &
+  \multicolumn{1}{l|}{Frozen CLIP ViT} &
+  \multicolumn{1}{l|}{LLaMA-7B} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Intermediate \\ fusion\end{tabular}} &
+  LLaMA Decoder \\ \hline
+\textbf{2} &
+  \textbf{LLaVA-Med (2023)} &
+  \multicolumn{1}{l|}{CLIP ViT-L/14} &
+  \multicolumn{1}{l|}{LLaMA} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Projection \\ Matrix\end{tabular}} &
+  LLM (Vicuna) \\ \hline
+\textbf{3} &
+  \textbf{Med-PaLM M (2023)} &
+  \multicolumn{1}{l|}{ViT (4B - 22B)} &
+  \multicolumn{1}{l|}{PaLM} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Multimodal \\ embedding\end{tabular}} &
+  PaLM \\ \hline
+\textbf{4} &
+  \textbf{SkinGPT-4 (2024)} &
+  \multicolumn{1}{l|}{Vision Transformer} &
+  \multicolumn{1}{l|}{GPT-4} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Linear \\ alignment\end{tabular}} &
+  LLaMA-2-13B \\ \hline
+\end{tabular}
+}
+\caption{Bảng tổng hợp phương pháp của các mô hình ngôn ngữ lớn đa phương thức}
+\label{tab:MedMLLLMMethod}
+\end{table}
+
+Dựa trên sự phân tích các ưu và nhược điểm từ những khảo sát trên, hướng tiếp cận đề xuất trong nghiên cứu này được thiết kế có chọn lọc nhằm tối ưu hóa hiệu năng và chi phí:
+\begin{itemize}
+    \item \textbf{Kế thừa BiomedCLIP \cite{BiomedCLIP}:} Tận dụng sức mạnh của các bộ mã hóa đã được huấn luyện với chất lượng cao.
+    \item \textbf{Không áp dụng học tương phản \& học có che giấu:} Khó khắc phục rào cản về tài nguyên tính toán lớn và giảm thiểu rủi ro gặp phải hiện tượng âm tính giả.
+    \item \textbf{Tích hợp tri thức từ UMLS (tương tự MedKLIP \cite{MedKLIP}):} Sử dụng để làm giàu thêm tri thức trong các báo cáo lâm sàng.
+\end{itemize}
+
+\section{Các kỹ thuật tinh chỉnh mô hình}
+
+Sự xuất hiện của các Mô hình Nền tảng (Foundation Models) nói chung và Mô hình Ngôn ngữ - Thị giác Y sinh (Med-VLMs) nói riêng đã mang lại một nền tảng tri thức đa phương thức khổng lồ. Tuy nhiên, để triển khai hiệu quả các mô hình này vào các bài toán lâm sàng đặc thù — chẳng hạn như phát triển hệ thống phân loại ảnh y khoa chỉnh hình kết hợp dữ liệu lâm sàng — quá trình chuyển giao tri thức là bắt buộc. 
+
+Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần (Full Fine-tuning) và dò tuyến tính (Linear Probing). Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao với miền dữ liệu mới nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ. Hơn nữa, trên các tập dữ liệu y tế ghép cặp thường khan hiếm, phương pháp này rất dễ dẫn đến hiện tượng "quên thảm khốc" (catastrophic forgetting), làm mất đi tri thức tổng quát đã được tiền huấn luyện. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân loại duy nhất ở cuối. Dù tiết kiệm tài nguyên đáng kể, dò tuyến tính lại hạn chế khả năng tinh chỉnh các biểu diễn sâu của mô hình, dẫn đến hiệu suất thường dưới mức tối ưu khi sự chênh lệch phân phối (domain shift) giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
+
+Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, Tinh chỉnh Hiệu quả Tham số (Parameter-Efficient Fine-Tuning - PEFT) đã nổi lên như một giải pháp thay thế lý tưởng. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên, rút ngắn thời gian huấn luyện và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp PEFT được chia thành ba hướng tiếp cận chính:
+
+\subsection{Tinh chỉnh sử dụng câu nhắc (Prompt Tuning)}
+Hướng tiếp cận này chèn thêm các tham số (vector) có thể học được vào không gian đầu vào của mô hình (thị giác hoặc văn bản) mà không thay đổi cấu trúc mạng bên trong. 
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Tiết kiệm tham số tối đa, bảo toàn nguyên vẹn tri thức của mô hình gốc, đặc biệt hiệu quả trong các kịch bản học ít mẫu (few-shot) hoặc không mẫu (zero-shot).
+    \item \textbf{Điểm yếu:} Việc tối ưu hóa khó khăn do không gian biểu diễn bị giới hạn ở đầu vào, nhạy cảm với cách khởi tạo, và chiếm dụng một phần độ dài của chuỗi đầu vào (sequence length context).
+\end{itemize}
+Trong lĩnh vực y tế, các phương pháp như CITE \cite{CITE}, FPT \cite{FPT} hay PLIP \cite{PLIP} khai thác đặc trưng thị giác kết hợp với tri thức lâm sàng, cho thấy hiệu quả vượt trội ngay cả khi thiếu hụt dữ liệu (ví dụ: PLIP đạt 0.896 AUC chỉ với 5\% dữ liệu PanNuke). Nhằm giải quyết khó khăn khi thiết kế thủ công, MedPrompt \cite{MedPrompt} và UniDCP \cite{UniDCP} tự động sinh câu nhắc động dựa trên ngữ cảnh ảnh để xử lý đa tác vụ. Gần đây, việc tích hợp Mô hình ngôn ngữ Lớn (LLM) qua ViP \cite{ViP}, CILMP \cite{CLIMP} và BiomedCoOp \cite{BiomedCoOp} giúp tạo sinh các câu nhắc ngữ nghĩa sâu sắc, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản.
+
+\subsection{Tinh chỉnh bộ điều hợp (Adapter Tuning)}
+Thay vì can thiệp ở không gian đầu vào, phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ (adapters) vào giữa các lớp kiến trúc của mạng học sâu (ví dụ: giữa các lớp Transformer).
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Tính mô-đun hóa cao, dễ dàng thêm/bớt các adapter cho các tác vụ khác nhau mà không can thiệp vào tham số gốc, dễ hội tụ hơn so với Prompt Tuning.
+    \item \textbf{Điểm yếu:} Việc chèn thêm các lớp mạng vật lý làm tăng độ trễ suy luận (inference latency), hạn chế khả năng triển khai trên các hệ thống đòi hỏi thời gian thực.
+\end{itemize}
+Điển hình cho hướng đi này, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức. Ở hướng bán giám sát, mô hình MedUnA \cite{MedUnA} dùng LLM tạo nhãn giả và tinh chỉnh không giám sát bộ điều hợp trên ảnh chưa gán nhãn, giúp mô hình thích ứng tốt mà không thay đổi trọng số.
+
+\subsection{Tinh chỉnh chọn lọc (Selective Tuning)}
+Hướng đi này tối ưu hóa kiến trúc bằng cách không thêm bất kỳ tham số mới nào, mà chỉ chọn lọc ra một lượng nhỏ các tham số (hoặc ma trận trọng số) quan trọng nhất của mô hình gốc để cập nhật.
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Không làm thay đổi kiến trúc mô hình, hoàn toàn không gây tăng độ trễ (zero inference latency) do tham số cập nhật được hợp nhất trực tiếp vào trọng số gốc.
+    \item \textbf{Điểm yếu:} Đòi hỏi phương pháp heuristic phức tạp để xác định chính xác các tham số nào ảnh hưởng lớn nhất đến hiệu năng của tác vụ mục tiêu.
+\end{itemize}
+Về ứng dụng thực tiễn, TransMed \cite{TransMed} kết hợp LLM để chuyển đổi nhãn bệnh thành mô tả chi tiết, trong khi SH-PEFT \cite{SH-PEFT} chỉ tìm và cập nhật các trọng số quan trọng nhất trên bộ mã hóa thị giác. Nổi bật nhất trong nhóm hiệu quả là sự xuất hiện của các cơ chế thích ứng hạng thấp như LoRA (được LCBB \cite{LCBB} áp dụng), giúp bám sát hiệu năng của tinh chỉnh toàn phần (đạt 93.1\% AUROC trên tập RSNA với 10\% dữ liệu gán nhãn) nhưng giảm thiểu tối đa chi phí.
+
 % Please add the following required packages to your document preamble:
 % \usepackage{multirow}
 \begin{table}[htpb]
@@ -387,194 +504,34 @@ Mặc dù các phương pháp tiền huấn luyện Med-VLMs giúp xây dựng n
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-\textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}CITE\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}CLIP ViT-Base, \\ ImageNet-21k ViT-Base, \\ INTERN ViT-Base\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BioLinkBERT-large, \\ BioBERT-large , \\ Kế thừa CLIP\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}UniDCP\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} &
-  \multicolumn{1}{l|}{CLIP ViT} &
-  \multicolumn{1}{l|}{RoBERTa} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}ViP\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}PLIP\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning, Efficient \\ Selective tuning\end{tabular} &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{Concatnate} &
-  N/a \\ \hline
-\textbf{5} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}FPT\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{N/a} &
-  \multicolumn{1}{l|}{Cross Attention} &
-  N/a \\ \hline
-\textbf{6} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedPrompt\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{7} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}CILMP\\ (2025)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Hadamard Product, \\ Concatnate\end{tabular}} &
-  N/a \\ \hline
-\textbf{8} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCoOp\\ (2025)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} &
-  \multicolumn{1}{l|}{Kế thừa BiomedCLIP} &
-  \multicolumn{1}{l|}{Kế thừa BiomedCLIP} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{9} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}CLIPath\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{10} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}FTB\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ResNet autoencoder, \\ DINOv2-small, \\ DINOv2-base\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BERT, \\ BioBERT, \\ ClinicalBERT, \\ CXR-BERT, \\ PubMedBERT\end{tabular}} &
-  \multicolumn{1}{l|}{Cross Attention} &
-  N/a \\ \hline
-\textbf{11} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedUnA\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ViT-Base, \\ MedCLIP-Swin\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa CLIP, \\ MedCLIP\end{tabular}} &
-  \multicolumn{1}{l|}{No Fusion} &
-  N/a \\ \hline
-\textbf{12} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}TransMed\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ViT-Base\end{tabular}} &
-  \multicolumn{1}{l|}{BERT, LLM/GPT-4} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{13} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}SH-PEFT\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{Kế thừa CLIP} &
-  \multicolumn{1}{l|}{No Fusion} &
-  N/a \\ \hline
-\textbf{14} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}LCBB\\ (2024)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Efficient Selective \\ tuning\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} &
-  N/a \\ \hline
+\textbf{1} & \textbf{\begin{tabular}[c]{@{}l@{}}CITE\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}CLIP ViT-Base, \\ ImageNet-21k ViT-Base, \\ INTERN ViT-Base\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BioLinkBERT-large, \\ BioBERT-large , \\ Kế thừa CLIP\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{2} & \textbf{\begin{tabular}[c]{@{}l@{}}UniDCP\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{CLIP ViT} & \multicolumn{1}{l|}{RoBERTa} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{3} & \textbf{\begin{tabular}[c]{@{}l@{}}ViP\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{4} & \textbf{\begin{tabular}[c]{@{}l@{}}PLIP\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning, Efficient \\ Selective tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{Concatnate} & N/a \\ \hline
+\textbf{5} & \textbf{\begin{tabular}[c]{@{}l@{}}FPT\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{N/a} & \multicolumn{1}{l|}{Cross Attention} & N/a \\ \hline
+\textbf{6} & \textbf{\begin{tabular}[c]{@{}l@{}}MedPrompt\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{7} & \textbf{\begin{tabular}[c]{@{}l@{}}CILMP\\ (2025)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Hadamard Product, \\ Concatnate\end{tabular}} & N/a \\ \hline
+\textbf{8} & \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCoOp\\ (2025)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{Kế thừa BiomedCLIP} & \multicolumn{1}{l|}{Kế thừa BiomedCLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{9} & \textbf{\begin{tabular}[c]{@{}l@{}}CLIPath\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{ResNet50} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{10} & \textbf{\begin{tabular}[c]{@{}l@{}}FTB\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ResNet autoencoder, \\ DINOv2-small, \\ DINOv2-base\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BERT, \\ BioBERT, \\ ClinicalBERT, \\ CXR-BERT, \\ PubMedBERT\end{tabular}} & \multicolumn{1}{l|}{Cross Attention} & N/a \\ \hline
+\textbf{11} & \textbf{\begin{tabular}[c]{@{}l@{}}MedUnA\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ViT-Base, \\ MedCLIP-Swin\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa CLIP, \\ MedCLIP\end{tabular}} & \multicolumn{1}{l|}{No Fusion} & N/a \\ \hline
+\textbf{12} & \textbf{\begin{tabular}[c]{@{}l@{}}TransMed\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ViT-Base\end{tabular}} & \multicolumn{1}{l|}{BERT, LLM/GPT-4} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
+\textbf{13} & \textbf{\begin{tabular}[c]{@{}l@{}}SH-PEFT\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{No Fusion} & N/a \\ \hline
+\textbf{14} & \textbf{\begin{tabular}[c]{@{}l@{}}LCBB\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Efficient Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & N/a \\ \hline
 \end{tabular}
 }
 \caption{Bảng tổng hợp chiến lược, mục tiêu và phương pháp học chuyển giao của các mô hình ngôn ngữ trực quan}
 \label{tab:VLMTransferlearningMethod}
 \end{table}
 
-Tóm lại, các phương pháp tinh chỉnh hiệu quả tham số (PEFT) thể hiện ưu điểm vượt trội trong việc tiết kiệm tài nguyên tính toán, ngăn chặn hiện tượng quên tri thức và giúp mô hình thích ứng tốt ngay cả khi đối mặt với các bộ dữ liệu y tế khan hiếm. Tuy nhiên, hướng tiếp cận này vẫn tồn tại một số hạn chế nhất định. Hiệu năng cuối cùng của hệ thống phụ thuộc rất lớn vào chất lượng của mô hình tiền huấn luyện gốc. Đồng thời, quá trình thiết kế câu nhắc mang đậm tính chuyên môn hay xác định vị trí tối ưu để chèn bộ điều hợp thường phức tạp và đòi hỏi nhiều thử nghiệm. Ngoài ra, việc bổ sung các thành phần này ít nhiều làm tăng tính "hộp đen" của mô hình, gây ra những thách thức về tính minh bạch khi cần giải thích các quyết định dự đoán cho bác sĩ trên thực tế lâm sàng.
-            
-\section{Các mô hình ngôn ngữ lớn y khoa đa phương thức} 
-Trong thời gian gần đây, với sự phát triển của các mô hình ngôn ngữ lớn được huấn luyện trên những tập dữ liệu rất lớn phục vụ cho rất nhiều tác vụ khác nhau, các mô hình này đang thể hiện sự ảnh hưởng và đa dụng trong lĩnh vực y tế với độ chính xác rất tốt khi chỉ học ít mẫu hoặc không mẫu.
+\subsection{Cơ sở lựa chọn kỹ thuật LoRA cho hệ thống phân loại y khoa đa phương thức}
+Trong định hướng xây dựng một hệ thống phân loại ảnh y khoa hiệu năng cao kết hợp với dữ liệu lâm sàng, bài toán đặt ra không chỉ là tính chính xác trên các vùng tổn thương đặc thù (như xương khớp), mà còn là tính khả thi khi triển khai các kiến trúc khổng lồ của VLMs. Việc sử dụng toàn bộ mô hình gốc vừa bất khả thi về mặt phần cứng, vừa đối mặt với rủi ro mất đi biểu diễn đặc trưng ngôn ngữ - hình ảnh vốn có. Do đó, kỹ thuật LoRA (Low-Rank Adaptation) được lựa chọn như một phương pháp PEFT cốt lõi với các lý do sau:
 
-Med-Flamingo \cite{moor_2023_medflamingo} là mô hình đầu tiên có khả năng học ít mẫu chuyên dụng cho y tế, thông qua hội thoại tự nhiên để hỗ trợ chẩn đoán. Theo sau đó, LLaVA-Med \cite{li_2023_llavamed} là mô hình chuyển đổi khả năng thực hiện theo chỉ dẫn (instruction-following) từ miền tổng quát sang lĩnh vực y sinh bằng cách sử dụng dữ liệu cặp ảnh-văn bản quy mô lớn với 600.000 cặp, với dữ liệu hội thoại tạo ra từ chú thích ảnh y khoa được tạo ra bằng cách sử dụng GPT-4. Phương pháp này đã đề xuất quy trình huấn luyện 2 bước: (1) Căn chỉnh khái niệm; (2) Tinh chỉnh chỉ dẫn đầy đủ; 2 bước này tương ứng với giai đoạn học và suy luận. Kết quả thể hiện khả năng suy luận vượt trội trên dữ liệu chưa từng thấy. 
-
-Med-Palm M \cite{MED-PALM-M} là mô hình của Google, đánh dấu bước tiến từ các mô hình đơn nhiệm sang đa nhiệm quy mô lớn, có khả năng xử lý đa nhiệm và đa phương thức bằng một bộ tham số duy nhất, thay vì sử dụng các mô hình chuyên biệt cho từng tác vụ. Gần đây hơn, SkinGPT-4 \cite{SkinGPT-4} là hệ thống chẩn đoán da liễu tương tác đầu tiên sử dụng LLM quy mô lớn với độ chính xác cao, đã kết hợp khả năng hiểu hình ảnh y tế chuyên sâu với khả năng suy luận và giao tiếp của các mô hình ngôn ngữ lớn (LLM), tạo ra một hệ thống chẩn đoán da liễu có thể tương tác, giải thích lý do và đưa ra lời khuyên hữu ích cho người dùng.
-
-Dù đưa đến các phương pháp có độ chính xác cao đến rất cao trong nhiều tác vụ cùng việc hỗ trợ trong việc giao tiếp với mô hình, kích cỡ và chi phí huấn luyện (Med-Flamingo có đến 9 tỷ thông số) để vận hành các mô hình ngôn ngữ lớn đa phương thức là một vấn đề lớn, đi kèm với vấn đề ảo giác có thể gặp phải khi đối mặt mới dữ liệu mới hoặc những câu hỏi phức tạp. Ngoài ra nếu yêu cầu một độ chính xác cao - một yêu cầu quan trọng trong lĩnh vực y tế trong một tác vụ cụ thể thì đây không phải một cách tiếp cận tốt cho bài toán này.
-
-\begin{table}[htpb]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-
-\begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{|c|l|c|l|llll|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tinh chỉnh\end{tabular}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Phương pháp \\ tinh chỉnh\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Cấu trúc phương pháp}} \\ \cline{5-8} 
- &
-  \multicolumn{1}{c|}{} &
-   &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ ảnh\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-
-\textbf{1} &
-  \textbf{Med-Flamingo \cite{moor_2023_medflamingo}} &
-  PEFT &
-  \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ + Domain adaptation\end{tabular} &
-  \multicolumn{1}{l|}{Frozen CLIP ViT} &
-  \multicolumn{1}{l|}{LLaMA-7B} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Intermediate \\ fusion\end{tabular}} &
-  LLaMA Decoder \\ \hline
-  
-\textbf{2} &
-  \textbf{LLaVA-Med \cite{li_2023_llavamed}} &
-  Full FT &
-  \begin{tabular}[c]{@{}l@{}}Visual Instruction \\ Tuning (GPT-4 data)\end{tabular} &
-  \multicolumn{1}{l|}{CLIP ViT-L/14} &
-  \multicolumn{1}{l|}{LLaMA} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Projection \\ Matrix\end{tabular}} &
-  LLM (Vicuna) \\ \hline
-  
-\textbf{3} &
-  \textbf{Med-PaLM M \cite{MED-PALM-M}} &
-  Full FT &
-  Instruction Fine-tuning &
-  \multicolumn{1}{l|}{ViT (4B - 22B)} &
-  \multicolumn{1}{l|}{PaLM} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Multimodal \\ embedding\end{tabular}} &
-  PaLM \\ \hline
-  
-\textbf{4} &
-  \textbf{SkinGPT-4 \cite{SkinGPT-4}} &
-  PEFT &
-  LoRA &
-  \multicolumn{1}{l|}{Vision Transformer} &
-  \multicolumn{1}{l|}{GPT-4} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Linear \\ alignment\end{tabular}} &
-  LLaMA-2-13B \\ \hline
-\end{tabular}
-\end{adjustbox}
-\caption{Tổng hợp chiến lược và cấu trúc các mô hình ngôn ngữ lớn đa phương thức}
-\label{tab:MedVLM_Comparison}
-\end{table}
+\begin{enumerate}
+    \item \textbf{Hiệu quả tham số và tài nguyên:} LoRA đóng băng toàn bộ trọng số của mô hình tiền huấn luyện, đồng thời tiêm các ma trận phân rã hạng thấp (low-rank decomposition matrices) vào mạng nơ-ron (chủ yếu là các khối Attention). Điều này giúp giảm số lượng tham số cần huấn luyện xuống hàng vạn lần và tối ưu hóa VRAM yêu cầu, cho phép tinh chỉnh các mô hình VLM kích thước lớn ngay cả khi nguồn lực máy tính bị hạn chế.
+    \item \textbf{Loại bỏ hoàn toàn độ trễ suy luận (Zero Inference Latency):} Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số học được của LoRA có thể được cộng gộp (merge) trực tiếp vào các ma trận trọng số gốc của VLM khi hoàn tất huấn luyện. Đặc tính này mang lại độ trễ tương đương với mô hình gốc, cực kỳ quan trọng đối với các hệ thống hỗ trợ chẩn đoán thời gian thực.
+    \item \textbf{Cân bằng giữa thích ứng và bảo toàn tri thức:} Ảnh y khoa đòi hỏi mô hình phải nhận diện các đặc trưng họa tiết tinh tế mà mô hình miền tự nhiên có thể bỏ qua. LoRA cho phép mô hình bám sát dữ liệu thị giác y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát, tránh hiện tượng quá khớp (overfitting) thường thấy khi full fine-tuning trên các tập dữ liệu nhỏ.
+\end{enumerate}
+Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.
+ 
+\section{Các phương pháp nhận diện dữ liệu ngoài phân phối}
