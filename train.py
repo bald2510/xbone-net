@@ -8,7 +8,7 @@ from torch.optim import AdamW
 
 # Import các builders từ hệ thống Plug-and-Play của bạn
 from models.builder import build_model
-from datasets.builder import build_dataloader
+from local_datasets.builder import build_dataloader
 
 def seed_everything(seed=42):
     """Cố định random seed để đảm bảo tính tái lập."""
@@ -37,8 +37,14 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
         optimizer.zero_grad()
         
         # Luồng forward qua Composer (Ví dụ: FiLM + Prototypical Head trả về logits)
-        logits = model(images, input_ids)
+        outputs = model(images, input_ids)
         
+        # Kiểm tra nếu outputs là tuple thì lấy phần tử đầu tiên
+        if isinstance(outputs, tuple):
+            logits = outputs[0]
+        else:
+            logits = outputs
+
         # Sử dụng BCEWithLogitsLoss cho bài toán phân loại đa nhãn (Multi-label)
         loss = criterion(logits, labels)
         
@@ -67,7 +73,7 @@ def validate(model, dataloader, criterion, device):
             
     return running_loss / len(dataloader)
 
-@hydra.main(version_base=None, config_path="configs", config_name="experiment/exp_baseline_crsttn_prototypical")
+@hydra.main(version_base=None, config_path="configs", config_name="experiment/btxrd_biomedclip_lora_r16.yaml")
 def main(cfg: DictConfig):
     # 1. In cấu hình kiểm tra
     print("=== CẤU HÌNH THÍ NGHIỆM ĐÃ ĐƯỢC GỘP ===")
@@ -103,9 +109,10 @@ def main(cfg: DictConfig):
 
     # 5. Cấu hình các siêu tham số huấn luyện (Hyperparameters)
     # Lấy các tham số từ config, nếu không có sẽ dùng giá trị mặc định phòng hờ
-    epochs = cfg.get("epochs", 10)
-    lr = cfg.get("lr", 1e-4)
-    weight_decay = cfg.get("weight_decay", 1e-2)
+    epochs = cfg.params.get("epochs", 10)
+    lr = cfg.params.get("lr", 1e-4)
+    weight_decay = cfg.params.get("weight_decay", 1e-2)
+    checkpoint_path = cfg.params.get("checkpoint_path", None)
     
     # Định nghĩa Loss function cho bài toán phân loại đa nhãn của MIMIC-CXR
     criterion = nn.BCEWithLogitsLoss()
@@ -116,10 +123,6 @@ def main(cfg: DictConfig):
     
     print(f"Bắt đầu huấn luyện với {len(trainable_params)} tensor tham số được tối ưu.")
     print(f"Tổng số Epochs: {epochs} | Learning Rate: {lr}\n")
-
-    # Thư mục lưu checkpoint mô hình (Tự động tạo theo cấu trúc đầu ra của Hydra)
-    checkpoint_dir = "./checkpoints"
-    os.makedirs(checkpoint_dir, exist_ok=True)
     
     best_val_loss = float('inf')
 
@@ -135,7 +138,6 @@ def main(cfg: DictConfig):
         # Cơ chế lưu checkpoint lưu vết mô hình tốt nhất (Best Model Save)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            checkpoint_path = os.path.join(checkpoint_dir, f"{cfg.experiment_name}.pth")
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),

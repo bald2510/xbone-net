@@ -1,0 +1,28 @@
+# @package _global_
+
+name: 'btxrd'
+batch_size: 32
+num_workers: 4
+
+params:
+  img_dir: "${hydra:runtime.cwd}/data/BTXRD/images"
+  report_dir: "${hydra:runtime.cwd}/data/BTXRD/reports"
+  csv_split_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-split.csv"
+  csv_labels_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-labels.csv"
+
+
+  # Linh hoạt: Dataset khác có thể có danh sách bệnh khác
+  pathologies: [
+    'tumor',                     # Có u (tổng quát)
+    'benign',                    # U lành (tổng quát)
+    'malignant',                 # U ác (tổng quát)
+    'osteochondroma',            # U xương sụn
+    'multiple osteochondromas',  # Đa u xương sụn
+    'simple bone cyst',          # Nang xương đơn thuần
+    'giant cell tumor',          # U tế bào khổng lồ
+    'osteofibroma',              # U xơ xương
+    'synovial osteochondroma',   # U sụn màng hoạt dịch
+    'other bt',                  # U lành tính khác
+    'osteosarcoma',              # Sarcoma xương (ác tính)
+    'other mt'                   # U ác tính khác
+  ]

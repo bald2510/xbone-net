@@ -532,6 +532,6 @@ Trong định hướng xây dựng một hệ thống phân loại ảnh y khoa 
     \item \textbf{Loại bỏ hoàn toàn độ trễ suy luận (Zero Inference Latency):} Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số học được của LoRA có thể được cộng gộp (merge) trực tiếp vào các ma trận trọng số gốc của VLM khi hoàn tất huấn luyện. Đặc tính này mang lại độ trễ tương đương với mô hình gốc, cực kỳ quan trọng đối với các hệ thống hỗ trợ chẩn đoán thời gian thực.
     \item \textbf{Cân bằng giữa thích ứng và bảo toàn tri thức:} Ảnh y khoa đòi hỏi mô hình phải nhận diện các đặc trưng họa tiết tinh tế mà mô hình miền tự nhiên có thể bỏ qua. LoRA cho phép mô hình bám sát dữ liệu thị giác y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát, tránh hiện tượng quá khớp (overfitting) thường thấy khi full fine-tuning trên các tập dữ liệu nhỏ.
 \end{enumerate}
-Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.
+Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.  
  
 \section{Các phương pháp nhận diện dữ liệu ngoài phân phối}

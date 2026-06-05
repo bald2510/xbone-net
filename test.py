@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from omegaconf import DictConfig
-from sklearn.metrics import roc_auc_score, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix
+import evaluate
 
 from models.builder import build_model
-from datasets.builder import build_dataloader
+from local_datasets.builder import build_dataloader
 
 def generate_medical_prompts(pathologies):
     """Tạo câu lệnh tự động dựa vào danh sách bệnh truyền vào (Dùng cho Zero-shot)"""
@@ -19,7 +20,7 @@ def generate_medical_prompts(pathologies):
         } for path in pathologies
     }
 
-@hydra.main(version_base=None, config_path="configs", config_name="experiment/eval_baseline")
+@hydra.main(version_base=None, config_path="configs", config_name="experiment/fracatlas_biomedclip_baseline.yaml")
 def main(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Bắt đầu đánh giá trên thiết bị: {device}")
@@ -131,10 +132,18 @@ def main(cfg: DictConfig):
     all_ground_truths = torch.cat(all_ground_truths, dim=0).numpy()
 
     # =====================================================================
-    # 5. TÍNH TOÁN METRICS TỰ ĐỘNG
+    # 5. TÍNH TOÁN METRICS TỰ ĐỘNG (USING HUGGING FACE EVALUATE LIBRARY)
     # =====================================================================
     results = []
     print("\n=== KẾT QUẢ ĐÁNH GIÁ CHI TIẾT ===")
+    
+    # Load Hugging Face evaluate metrics
+    accuracy_metric = evaluate.load("accuracy")
+    precision_metric = evaluate.load("precision")
+    recall_metric = evaluate.load("recall")
+    f1_metric = evaluate.load("f1")
+    roc_auc_metric = evaluate.load("roc_auc")
+    
     for idx, path in enumerate(pathologies):
         gt_labels = all_ground_truths[:, idx]
         probs = all_probs[:, idx]
@@ -143,16 +152,17 @@ def main(cfg: DictConfig):
             print(f"[Cảnh báo] Bệnh '{path}' bị bỏ qua do chỉ có 1 class trong tập Test.")
             continue
             
-        auroc = roc_auc_score(gt_labels, probs)
         preds = (probs >= 0.5).astype(int)
         
         tn, fp, fn, tp = confusion_matrix(gt_labels, preds).ravel()
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         
-        accuracy = accuracy_score(gt_labels, preds)
-        precision = precision_score(gt_labels, preds, zero_division=0)
-        recall = recall_score(gt_labels, preds, zero_division=0) 
-        f1 = f1_score(gt_labels, preds, zero_division=0)
+        # Compute metrics using Hugging Face evaluate
+        accuracy = accuracy_metric.compute(predictions=preds, references=gt_labels)["accuracy"]
+        precision = precision_metric.compute(predictions=preds, references=gt_labels, zero_division=0)["precision"]
+        recall = recall_metric.compute(predictions=preds, references=gt_labels, zero_division=0)["recall"]
+        f1 = f1_metric.compute(predictions=preds, references=gt_labels, zero_division=0)["f1"]
+        auroc = roc_auc_metric.compute(prediction_scores=probs, references=gt_labels)["roc_auc"]
         
         results.append({
             "Pathology": path, 

@@ -51,3 +51,19 @@ class XBoneMultiModalModel(nn.Module):
                 print(f"   - Tổng      : {mod_total:,}")
                 print(f"   - Trainable : {mod_train:,}")
         print("="*50 + "\n")
+
+    def gradient_checkpointing_enable(self, **kwargs):
+        """
+        Enables gradient checkpointing (activation checkpointing)
+        on both the vision (ViT) and text (PubMedBERT) encoders.
+        """
+        print("[XBone Model] Enabling gradient checkpointing for memory optimization.")
+        # Enable for OpenCLIP visual encoder (uses set_grad_checkpointing)
+        if hasattr(self.backbone.model, "set_grad_checkpointing"):
+            self.backbone.model.set_grad_checkpointing(True)
+        elif hasattr(self.backbone.model.visual, "set_grad_checkpointing"):
+            self.backbone.model.visual.set_grad_checkpointing(True)
+            
+        # Enable for Hugging Face PubMedBERT text encoder (uses gradient_checkpointing_enable)
+        if hasattr(self.backbone.model.text.transformer, "gradient_checkpointing_enable"):
+            self.backbone.model.text.transformer.gradient_checkpointing_enable(**kwargs)

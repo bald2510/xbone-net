@@ -1,0 +1,22 @@
+# @package _global_
+
+defaults:
+  - /model/peft@model.peft: none
+  - /model/fusion@model.fusion: none
+  - /model/classifier@model.classifier: none
+  - /dataset@dataset: ctch 
+  - _self_
+
+# Khóa cứng cấu trúc model (như cũ)
+model:
+  _placeholder_: true
+
+# KHÓA CỨNG CẤU TRÚC DATASET (THÊM VÀO ĐÂY)
+dataset:
+  _placeholder_: true
+
+experiment_name: "eval_baseline_zeroshot"
+
+params:
+  temperature: 0.07 # Tham số nhiệt độ cho softmax khi tính xác suất
+  checkpoint_path: "checkpoints/biomedclip/open_clip_pytorch_model.bin"

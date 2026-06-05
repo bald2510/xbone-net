@@ -1,0 +1,19 @@
+# @package _global_
+
+type: "lora"
+params:
+  r: 16                        # Rank of update matrices (commonly 4, 8, 16, 32)
+  alpha: 32                    # Scaling factor (recommended: lora_alpha = 2 * r)
+  dropout: 0.1                 # Dropout probability for LoRA layers
+  
+  # Target layers to inject LoRA for the Image Encoder (Vision Transformer)
+  visual_target_modules:
+    - "qkv"
+    - "proj"
+    
+  # Target layers to inject LoRA for the Text Encoder (PubMedBERT)
+  text_target_modules:
+    - "query"
+    - "key"
+    - "value"
+    - "dense"

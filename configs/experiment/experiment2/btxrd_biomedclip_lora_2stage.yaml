@@ -1,0 +1,36 @@
+# @package _global_
+
+defaults:
+  - /model/peft@model.peft: lora
+  - /model/fusion@model.fusion: film
+  - /model/classifier@model.classifier: prototypical
+  - /dataset@dataset: btxrd
+  - _self_
+
+# Khóa cứng cấu trúc model
+model:
+  _placeholder_: true
+
+# Khóa cứng cấu trúc dataset
+dataset:
+  _placeholder_: true
+
+experiment_name: "btxrd_biomedclip_lora_2stage"
+
+params:
+  run_phase1: true
+  run_phase2: true
+  
+  phase1:
+    epochs: 10
+    lr: 5e-5
+    weight_decay: 1e-2
+    checkpoint_path: "checkpoints/btxrd_biomedclip_lora_2stage/best_phase1.pth"
+    temperature: 0.07
+    loss_type: "semantic_matching"
+
+  phase2:
+    epochs: 10
+    lr: 1e-4
+    weight_decay: 1e-2
+    checkpoint_path: "checkpoints/btxrd_biomedclip_lora_2stage/best_phase2.pth"

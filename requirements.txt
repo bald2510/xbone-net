@@ -16,3 +16,8 @@ seaborn==0.13.2
 spacy==3.7.5
 torch==2.11.0+cu128
 tqdm==4.67.3
+transformers
+accelerate
+evaluate
+peft
+
