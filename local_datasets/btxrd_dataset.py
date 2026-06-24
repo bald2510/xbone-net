@@ -11,16 +11,21 @@ class BTXRDDataset(Dataset):
         report_dir: str,
         csv_split_path: str,
         csv_labels_path: str,
-        pathologies: list,
+        pathologies: list = None,
+        classes: list = None,
+        task_type: str = "multiclass",
+        num_classes: int = None,
         split: str = "train",
         train_ratio: float = 1.0, 
         transform=None,
         tokenizer=None,
-        max_text_len=256
+        max_text_len=256,
+        **kwargs,  # absorb extra config keys (class_to_parent, etc.)
     ):
         self.img_dir = img_dir
         self.report_dir = report_dir
-        self.pathologies = pathologies
+        self.classes = classes or pathologies or []
+        self.task_type = task_type
         self.transform = transform
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
@@ -49,7 +54,13 @@ class BTXRDDataset(Dataset):
             print(f"[Dataset Warning] Đã kích hoạt chế độ Subsampling! Chỉ sử dụng {train_ratio*100}% tập Train.")
 
         self.df = filtered_df
-        print(f"[Dataset] Khởi tạo thành công tập '{split.upper()}' với {len(self.df)} mẫu.")
+        
+        # Check for dual reports subdirectories (xray and clinical)
+        self.xray_dir = os.path.join(self.report_dir, "xray")
+        self.clinical_dir = os.path.join(self.report_dir, "clinical")
+        self.has_dual_reports = os.path.isdir(self.xray_dir) and os.path.isdir(self.clinical_dir)
+        
+        print(f"[Dataset] Khởi tạo thành công tập '{split.upper()}' với {len(self.df)} mẫu. Dual reports: {self.has_dual_reports}")
 
     def __len__(self):
         return len(self.df)
@@ -61,20 +72,25 @@ class BTXRDDataset(Dataset):
         """
         return text.strip().lower()
 
+    def _load_and_tokenize(self, path, default_text):
+        raw_text = ""
+        if path and os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                raw_text = f.read()
+        cleaned_text = self._clean_report(raw_text) or default_text
+        if self.tokenizer:
+            return self.tokenizer([cleaned_text]).squeeze(0)
+        return cleaned_text
+
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        
-        # 1. XỬ LÝ ĐƯỜNG DẪN DỮ LIỆU
-        # SỬA: Trực tiếp lấy image_id thay vì phân tách subject/study/dicom
         image_id = str(row['image_id'])
-        
         img_path = os.path.join(self.img_dir, image_id)
         
-        # Tạo tên file báo cáo bằng cách bỏ đuôi ảnh (vd: .jpeg) và thay bằng .txt
         file_name_without_ext = os.path.splitext(image_id)[0]
         report_path = os.path.join(self.report_dir, f"{file_name_without_ext}.txt")
         
-        # 2. LOAD VÀ BIẾN ĐỔI ẢNH (IMAGE)
+        # Load and transform image
         try:
             image = Image.open(img_path).convert('RGB')
         except FileNotFoundError:
@@ -83,37 +99,21 @@ class BTXRDDataset(Dataset):
         if self.transform:
             image = self.transform(image)
             
-        # ==========================================
-        # 3. LOAD VÀ TOKENIZE VĂN BẢN (TEXT)
-        # ==========================================
-        raw_text = ""
-        if os.path.exists(report_path):
-            with open(report_path, 'r', encoding='utf-8') as f:
-                raw_text = f.read()
-                
-        cleaned_text = self._clean_report(raw_text)
-        
-        # Nếu chưa có text, điền câu giả định
-        if not cleaned_text:
-            cleaned_text = "no clear bone abnormalities or fracture identified."
-            
-        if self.tokenizer:
-            text_inputs = self.tokenizer([cleaned_text])
-            # Hàm squeeze(0) để loại bỏ chiều batch_size, đưa tensor từ [1, L] về [L]
-            input_ids = text_inputs.squeeze(0)
+        # 1. XỬ LÝ NHÃN (LABELS)
+        if self.task_type == "multiclass":
+            labels = torch.tensor(int(row['class_id']), dtype=torch.long)
         else:
-            input_ids = cleaned_text
+            labels = torch.tensor([float(row.get(path, 0.0)) for path in self.classes], dtype=torch.float32)
+
+        # 2. LOAD VÀ TOKENIZE VĂN BẢN (TEXT)
+        if self.has_dual_reports:
+            xray_path = os.path.join(self.xray_dir, f"{file_name_without_ext}.txt")
+            clinical_path = os.path.join(self.clinical_dir, f"{file_name_without_ext}.txt")
             
-        # 4. XỬ LÝ NHÃN (LABELS)
-        labels = []
-        for path in self.pathologies:
-            val = row[path]
-            # SỬA: Xóa bỏ logic xét nhãn -1.0 của CheXpert, vì BTXRD chỉ có 0 và 1
-            if pd.isna(val):
-                labels.append(0.0)
-            else:
-                labels.append(float(val))
-                
-        labels = torch.tensor(labels, dtype=torch.float32)
-        
-        return image, input_ids, labels
+            xray_ids = self._load_and_tokenize(xray_path, "no clear bone abnormalities or fracture identified.")
+            clinical_ids = self._load_and_tokenize(clinical_path, "no clinical information available.")
+            
+            return image, xray_ids, clinical_ids, labels
+        else:
+            input_ids = self._load_and_tokenize(report_path, "no clear bone abnormalities or fracture identified.")
+            return image, input_ids, labels

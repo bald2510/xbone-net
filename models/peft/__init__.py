@@ -1,38 +1,33 @@
 import torch.nn as nn
-from .LoRA import inject_lora
-# from .kfac_utils import inject_kfac  # Bổ sung module K-FAC sau
+from .QLoRA import inject_qlora, inject_lora
+
 
 def apply_none(module: nn.Module, **kwargs) -> nn.Module:
-    """
-    Dummy PEFT injection.
-    Không làm gì cả, trả về đúng mô hình gốc (thích hợp cho Zero-shot baseline).
-    """
+    """No PEFT injection. Returns the model unchanged (for frozen baselines)."""
     return module
 
-# ==========================================
-# PEFT REGISTRY
-# Lưu trữ các hàm biến đổi mô hình
-# ==========================================
+
+def apply_full_ft(module: nn.Module, **kwargs) -> nn.Module:
+    """Full fine-tuning: unfreezes ALL parameters. No adapters injected."""
+    for param in module.parameters():
+        param.requires_grad = True
+    return module
+
+
 PEFT_REGISTRY = {
     'none': apply_none,
+    'full_ft': apply_full_ft,
     'lora': inject_lora,
-    # 'kfac': inject_kfac
+    'qlora': inject_qlora,
 }
 
+
 def apply_peft(module: nn.Module, cfg: dict) -> nn.Module:
-    """
-    Hàm Factory nhận vào một module (thường là image encoder) 
-    và cấu hình để áp dụng kỹ thuật PEFT tương ứng.
-    """
+    """Factory: apply PEFT technique to a module based on config."""
     peft_type = cfg.get('type', 'none')
     
     if peft_type not in PEFT_REGISTRY:
-        raise ValueError(f"Kỹ thuật PEFT '{peft_type}' chưa được hỗ trợ. Hãy thêm vào PEFT_REGISTRY.")
+        raise ValueError(f"PEFT '{peft_type}' not supported. Choose from {list(PEFT_REGISTRY.keys())}")
         
-    # Lấy hàm tiêm PEFT từ Registry
     inject_fn = PEFT_REGISTRY[peft_type]
-    
-    # Thực thi hàm tiêm với các tham số từ config (r, alpha, dropout...)
-    modified_module = inject_fn(module=module, **cfg.get('params', {}))
-    
-    return modified_module
+    return inject_fn(module=module, **cfg.get('params', {}))

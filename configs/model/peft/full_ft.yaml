@@ -1,0 +1,8 @@
+# @package _global_
+
+# Full fine-tuning: Unfreezes ALL backbone parameters (no PEFT adapters).
+# This serves as the upper-bound baseline — maximum capacity but highest
+# memory/compute cost.  No adapter weights are injected; instead the
+# backbone's requires_grad flags are simply set to True.
+type: "full_ft"
+params: {}

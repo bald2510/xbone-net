@@ -1,0 +1,27 @@
+# @package _global_
+
+name: 'ctch'
+batch_size: 32
+num_workers: 4
+
+params:
+  img_dir: "${hydra:runtime.cwd}/data/CTCH/images"
+  xray_report_dir: "${hydra:runtime.cwd}/data/CTCH/reports/xray"
+  clinical_report_dir: "${hydra:runtime.cwd}/data/CTCH/reports/clinical"
+  csv_split_path: "${hydra:runtime.cwd}/data/CTCH/ctch-split.csv"
+  csv_labels_path: "${hydra:runtime.cwd}/data/CTCH/ctch-labels.csv"
+
+  task_type: "multilabel"
+  pathologies: [
+    'fracture',
+    'dislocation',
+    'bone_tumor',
+    'infection',
+    'undetermined',
+    'upper_limb_fracture',
+    'lower_limb_fracture',
+    'spine_fracture',
+    'other_fracture',
+    'benign_bone_tumor',
+    'malignant_bone_tumor',
+  ]

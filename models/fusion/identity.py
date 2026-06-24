@@ -9,5 +9,7 @@ class IdentityFusion(nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
         
-    def forward(self, img_feats, txt_feats):
-        return img_feats, txt_feats
+    def forward(self, img_feats, txt_feats=None):
+        # Return img_feats only for consistency with other fusion modules
+        # (CrossAttention and FiLM both return a single fused tensor)
+        return img_feats

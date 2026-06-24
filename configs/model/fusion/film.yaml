@@ -1,4 +1,0 @@
-type: "film"
-params:
-  text_dim: 512    # Khớp với chiều ra của BioMedCLIP Text Encoder
-  img_dim: 512     # Khớp với chiều ra của BioMedCLIP Image Encoder

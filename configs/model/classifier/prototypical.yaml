@@ -1,4 +1,4 @@
 type: "prototypical"
 params:
   feature_dim: 512
-  num_classes: 14  # MIMIC-CXR có 14 bệnh lý theo chuẩn CheXpert
+  num_classes: 14  # Default; overridden dynamically by train_2stage.py

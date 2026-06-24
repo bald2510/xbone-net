@@ -1,15 +1,40 @@
 import os
+import sys
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="timm.*")
+warnings.filterwarnings("ignore", message="triton not found")
+
+# Force UTF-8 mode on Windows to prevent UnicodeDecodeError in TRL/Hugging Face library templates
+if os.name == 'nt' and os.environ.get("PYTHONUTF8") != "1":
+    os.environ["PYTHONUTF8"] = "1"
+    try:
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception:
+        pass
+
+import locale
+# Fallback monkey-patch in case re-execution is bypassed
+locale.getpreferredencoding = lambda *args, **kwargs: "utf-8"
+
 import torch
 import torch.nn as nn
+import math
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from torch.optim import AdamW
-from transformers import Trainer, TrainingArguments
+from torch.optim import SGD
+from trl import SFTConfig
+from transformers import EarlyStoppingCallback
+from sklearn.metrics import accuracy_score, f1_score
+import numpy as np
 
 # Import builders from project setup
-from models.builder import build_model
+from models.builder import build_model, setup_phase2_modules
 from local_datasets.builder import build_dataloader
 from utils.losses import build_loss
+from utils.sf_trainer import BioMedCLIPDataCollator, SFTrainer, resolve_pad_token_id
+from utils.logging import TrainingLogger, XBoneTrainerCallback
 
 def seed_everything(seed=42):
     """Cố định random seed để đảm bảo tính tái lập."""
@@ -24,9 +49,50 @@ def seed_everything(seed=42):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
 
+def compute_class_weights(dataset, num_classes, device, weight_type="cb", beta=0.99):
+    """Compute class weights from training labels with different strategies."""
+    if weight_type == "none":
+        return torch.ones(num_classes, device=device)
+
+    raw_dataset = getattr(dataset, "dataset", dataset)
+    if hasattr(raw_dataset, "df") and "class_id" in raw_dataset.df.columns:
+        counts = torch.zeros(num_classes)
+        for val in raw_dataset.df["class_id"].values:
+            counts[int(val)] += 1
+    else:
+        counts = torch.zeros(num_classes)
+        for i in range(len(dataset)):
+            item = dataset[i]
+            label = item["labels"] if isinstance(item, dict) else item[-1]
+            if isinstance(label, torch.Tensor):
+                counts[label.item()] += 1
+            else:
+                counts[int(label)] += 1
+
+    counts = counts.clamp(min=1)
+    if weight_type == "inverse":
+        weights = len(dataset) / (num_classes * counts)
+    elif weight_type == "sqrt":
+        # Reciprocal of square root
+        weights = 1.0 / torch.sqrt(counts)
+        # Normalize so they sum to num_classes (average weight is 1.0)
+        weights = weights * (num_classes / weights.sum())
+    elif weight_type == "cb":
+        # Class-Balanced weights: (1 - beta) / (1 - beta^n)
+        cb_weights = torch.zeros(num_classes)
+        for idx in range(num_classes):
+            n = counts[idx].item()
+            cb_weights[idx] = (1.0 - beta) / (1.0 - math.pow(beta, n))
+        # Normalize so they sum to num_classes
+        weights = cb_weights * (num_classes / cb_weights.sum())
+    else:
+        weights = torch.ones(num_classes)
+
+    return weights.to(device)
+
 class HuggingFaceDatasetWrapper(torch.utils.data.Dataset):
     """
-    Wrapper to convert standard tuple-based PyTorch Datasets
+    Wrapper to convert tuple-based PyTorch Datasets (with dual text)
     into dictionary-based Datasets expected by Hugging Face Trainer.
     """
     def __init__(self, dataset):
@@ -36,72 +102,30 @@ class HuggingFaceDatasetWrapper(torch.utils.data.Dataset):
         return len(self.dataset)
         
     def __getitem__(self, idx):
-        image, input_ids, labels = self.dataset[idx]
-        return {
-            "pixel_values": image,
-            "input_ids": input_ids,
-            "labels": labels
-        }
-
-class XBoneTrainer(Trainer):
-    """
-    Custom Hugging Face Trainer subclass that overrides compute_loss
-    to support two-stage training logic without changing the core model.
-    """
-    def __init__(self, phase, loss_fn, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.phase = phase
-        self.loss_fn = loss_fn
-
-    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        images = inputs["pixel_values"]
-        input_ids = inputs["input_ids"]
-        labels = inputs["labels"]
-        
-        if self.phase == "phase1":
-            # Phase 1: Contrastive semantic matching from backbone features
-            image_features, text_features = model.backbone(images, input_ids)
-            loss = self.loss_fn(image_features, text_features, labels)
-            outputs = {"image_features": image_features, "text_features": text_features}
+        result = self.dataset[idx]
+        if len(result) == 4:
+            # CTCH-style: (image, xray_ids, clinical_ids, labels)
+            image, xray_ids, clinical_ids, labels = result
+            return {
+                "pixel_values": image,
+                "xray_input_ids": xray_ids,
+                "clinical_input_ids": clinical_ids,
+                "labels": labels
+            }
         else:
-            # Phase 2: Classification using fusion & head logits
-            outputs = model(images, input_ids)
-            if isinstance(outputs, tuple):
-                logits = outputs[0]
-            else:
-                logits = outputs
-            loss = self.loss_fn(logits, labels)
-            
-        return (loss, outputs) if return_outputs else loss
-
-    def prediction_step(
-        self,
-        model: nn.Module,
-        inputs: dict,
-        prediction_loss_only: bool,
-        ignore_keys: list = None,
-    ):
-        """
-        Overrides Trainer.prediction_step to compute validation predictions and loss
-        using our custom compute_loss, bypassing model(**inputs).
-        """
-        inputs = self._prepare_inputs(inputs)
-        with torch.no_grad():
-            loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
-            
-        logits = None
-        if not prediction_loss_only:
-            if self.phase == "phase2":
-                logits = outputs[0] if isinstance(outputs, tuple) else outputs
-                
-        labels = inputs.get("labels", None)
-        return (loss, logits, labels)
-
+            # Legacy 3-tuple: (image, input_ids, labels)
+            image, input_ids, labels = result
+            return {
+                "pixel_values": image,
+                "xray_input_ids": input_ids,
+                "clinical_input_ids": input_ids,
+                "labels": labels
+            }
 
 # =====================================================================
 # HÀM CHÍNH (MAIN FUNCTION)
 # =====================================================================
-@hydra.main(version_base=None, config_path="configs", config_name="experiment/experiment2/finetune/fracatlas_biomedclip_lora_r16.yaml")
+@hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(cfg: DictConfig):
     print("=== CẤU HÌNH THÍ NGHIỆM ĐÃ ĐƯỢC GỘP ===")
     print(OmegaConf.to_yaml(cfg))
@@ -115,6 +139,9 @@ def main(cfg: DictConfig):
     print("Đang lắp ráp mô hình...")
     model = build_model(cfg.model).to(device)
     print("Lắp ráp mô hình thành công!\n")
+    
+    # In cấu trúc các layer của Image Encoder và Text Encoder
+    model.print_encoder_layers()
 
     # 2. Khởi tạo DataLoaders
     print("Đang khởi tạo DataLoaders...")
@@ -126,23 +153,19 @@ def main(cfg: DictConfig):
     print("Khởi tạo dữ liệu hoàn tất!\n")
 
     # 2.5 Sanity Check: Kiểm tra dữ liệu đầu vào của dataloader
-    print("=== KIỂM TRA ĐẦU VÀO DATALOADER (SANITY CHECK) ===")
+    print("=== DATALOADER SANITY CHECK ===")
     try:
         sample_batch = next(iter(train_loader))
-        images_check, input_ids_check, labels_check = sample_batch
-        print(f" -> Kích thước Batch: Ảnh {images_check.shape} | Token IDs {input_ids_check.shape} | Nhãn {labels_check.shape}")
-        
-        # Decode và in thử prompt của mẫu đầu tiên
-        if hasattr(tokenizer, 'decode'):
-            decoded_prompt = tokenizer.decode(input_ids_check[0])
-            print(f" -> Mẫu Text đầu tiên (Decoded): '{decoded_prompt}'")
+        if len(sample_batch) == 4:
+            images_check, xray_check, clinical_check, labels_check = sample_batch
+            print(f" -> Batch: Images {images_check.shape} | Xray IDs {xray_check.shape} | Clinical IDs {clinical_check.shape} | Labels {labels_check.shape}")
         else:
-            print(f" -> Mẫu Text đầu tiên (Raw): '{input_ids_check[0]}'")
-            
-        print(f" -> Giá trị nhãn mẫu đầu tiên: {labels_check[0].tolist()}")
+            images_check, input_ids_check, labels_check = sample_batch
+            print(f" -> Batch: Images {images_check.shape} | Text IDs {input_ids_check.shape} | Labels {labels_check.shape}")
+        print(f" -> Label sample: {labels_check[0].tolist()}")
     except Exception as e:
-        print(f" -> [LỖI] Không thể đọc mẫu từ dataloader: {e}")
-    print("==================================================\n")
+        print(f" -> [ERROR] Could not read sample from dataloader: {e}")
+    print("=" * 50 + "\n")
 
     # Lấy các tham số cấu hình của từng Phase (hỗ trợ fallback nếu thiếu)
     params_cfg = cfg.get("params", {}) or {}
@@ -155,12 +178,14 @@ def main(cfg: DictConfig):
     wd_p1 = p1_cfg.get("weight_decay", params_cfg.get("weight_decay", 1e-2))
     cp_p1 = p1_cfg.get("checkpoint_path", "checkpoints/best_phase1.pth")
     temp_p1 = p1_cfg.get("temperature", params_cfg.get("temperature", 0.07))
+    patience_p1 = p1_cfg.get("early_stopping_patience", params_cfg.get("early_stopping_patience", 3))
 
     p2_cfg = params_cfg.get("phase2", {}) or {}
     epochs_p2 = p2_cfg.get("epochs", params_cfg.get("epochs", 10))
     lr_p2 = p2_cfg.get("lr", params_cfg.get("lr", 1e-4))
     wd_p2 = p2_cfg.get("weight_decay", params_cfg.get("weight_decay", 1e-2))
     cp_p2 = p2_cfg.get("checkpoint_path", params_cfg.get("checkpoint_path", "checkpoints/best_phase2.pth"))
+    patience_p2 = p2_cfg.get("early_stopping_patience", params_cfg.get("early_stopping_patience", 3))
 
     # Create checkpoint directories if they do not exist
     os.makedirs(os.path.dirname(cp_p1) if os.path.dirname(cp_p1) else ".", exist_ok=True)
@@ -183,43 +208,113 @@ def main(cfg: DictConfig):
     gradient_checkpointing = params_cfg.get("gradient_checkpointing", True)
     print(f" -> [Config] Gradient Checkpointing: {gradient_checkpointing}\n")
 
-    # Wrap dataset instances for HF Trainer compatibility
+    # =====================================================================
+    # LOGGING SETUP
+    # =====================================================================
+    experiment_name = cfg.get("experiment_name", "default_experiment")
+    log_dir = os.path.join(hydra.utils.get_original_cwd(), "runs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Wrap dataset instances for Hugging Face Trainer compatibility
     train_dataset = HuggingFaceDatasetWrapper(train_loader.dataset)
     val_dataset = HuggingFaceDatasetWrapper(val_loader.dataset)
+    data_collator = BioMedCLIPDataCollator(pad_token_id=resolve_pad_token_id(tokenizer))
 
     # =====================================================================
     # PHASE 1: LO-RA FINE-TUNING (SEMANTIC MATCHING)
     # =====================================================================
+    # Detect backbone type for conditional logic
+    backbone_type = cfg.model.get('backbone_type', 'biomedclip')
+    is_image_only = backbone_type.startswith('resnet50')
+
+    if run_phase1:
+        if is_image_only:
+            print("\n[Skip] Phase 1 (contrastive) is not supported for image-only backbones (ResNet). Skipping.")
+            run_phase1 = False
+
     if run_phase1:
         print("\n" + "="*50)
-        print("🚀 BẮT ĐẦU PHA 1: HUẤN LUYỆN SEMANTIC MATCHING VỚI LoRA (HF TRAINER)")
+        print("🚀 BẮT ĐẦU PHA 1: HUẤN LUYỆN SEMANTIC MATCHING (SF TRAINER)")
         print("="*50)
 
-        # Cấu hình requires_grad: Chỉ cho phép LoRA weights được cập nhật
+        # Determine PEFT strategy to select trainable parameters
+        peft_type = cfg.model.peft.get('type', 'none')
+
         for name, param in model.named_parameters():
-            if "lora" in name:
+            param.requires_grad = False  # Start by freezing everything
+
+        if peft_type in ('lora', 'qlora'):
+            # Train LoRA/QLoRA adapters + CLIP temperature params
+            for name, param in model.named_parameters():
+                if "lora" in name or "logit_scale" in name or "logit_bias" in name:
+                    param.requires_grad = True
+        elif peft_type == 'full_ft':
+            # Full fine-tuning: train all backbone params
+            for param in model.backbone.parameters():
                 param.requires_grad = True
-            else:
-                param.requires_grad = False
+        elif peft_type == 'none':
+            # Frozen backbone: only train logit_scale/logit_bias (linear probe for contrastive)
+            for name, param in model.named_parameters():
+                if "logit_scale" in name or "logit_bias" in name:
+                    param.requires_grad = True
 
         print("Tóm tắt thông số cho Pha 1:")
         model.print_parameter_summary()
 
+        # Initialize Phase 1 logger
+        logger_p1 = TrainingLogger(log_dir=log_dir, experiment_name=experiment_name, phase="phase1")
+        warmup_ratio_p1 = p1_cfg.get("warmup_ratio", 0.1)
+        logger_p1.log_hyperparams({
+            "experiment": experiment_name,
+            "phase": "phase1",
+            "peft_type": cfg.model.peft.get("type", "none"),
+            "lora_r": cfg.model.peft.get("params", {}).get("r", "N/A"),
+            "lora_alpha": cfg.model.peft.get("params", {}).get("alpha", "N/A"),
+            "epochs": epochs_p1,
+            "learning_rate": lr_p1,
+            "weight_decay": wd_p1,
+            "batch_size": cfg.dataset.batch_size,
+            "loss_type": p1_cfg.get("loss_type", "semantic_matching"),
+            "temperature": temp_p1,
+            "optimizer": p1_cfg.get("optimizer", "adamw"),
+            "scheduler": p1_cfg.get("scheduler", "cosine"),
+            "warmup_ratio": warmup_ratio_p1,
+            "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
+            "gradient_checkpointing": gradient_checkpointing,
+            "dataset": cfg.dataset.get("name", "unknown"),
+            "train_samples": len(train_dataset),
+            "val_samples": len(val_dataset),
+        })
+        logger_p1.log_model_summary(model)
+        callback_p1 = XBoneTrainerCallback(logger_p1)
+
         loss_type = p1_cfg.get("loss_type", "semantic_matching")
         print(f"Khởi tạo loss function: {loss_type}")
-        criterion_p1 = build_loss(loss_type, temperature=temp_p1)
-        
-        # Chỉ tối ưu hóa các tham số LoRA (requires_grad=True) + logit_scale & bias của loss (nếu có)
+        criterion_p1 = build_loss(
+            loss_type,
+            clip_model=model.backbone.model,
+            temperature=temp_p1,
+        )
+
         trainable_params_p1 = [p for p in model.parameters() if p.requires_grad]
-        if hasattr(criterion_p1, 'logit_scale') and isinstance(criterion_p1.logit_scale, nn.Parameter):
-            trainable_params_p1.append(criterion_p1.logit_scale)
-        if hasattr(criterion_p1, 'bias') and isinstance(criterion_p1.bias, nn.Parameter):
-            trainable_params_p1.append(criterion_p1.bias)
 
-        optimizer_p1 = AdamW(trainable_params_p1, lr=lr_p1, weight_decay=wd_p1)
+        optimizer_type_p1 = p1_cfg.get("optimizer", "adamw")
+        if optimizer_type_p1 == "sgd":
+            optimizer_p1 = SGD(trainable_params_p1, lr=lr_p1, weight_decay=wd_p1, momentum=0.9)
+        else:
+            optimizer_p1 = AdamW(trainable_params_p1, lr=lr_p1, weight_decay=wd_p1)
+        print(f"  [Phase 1] Optimizer: {optimizer_type_p1}")
 
-        # Configure TrainingArguments for Phase 1
-        p1_args = TrainingArguments(
+        # Compute warmup_steps from ratio (warmup_ratio is deprecated in TRL v5.2+)
+        steps_per_epoch_p1 = math.ceil(len(train_dataset) / cfg.dataset.batch_size)
+        total_steps_p1 = steps_per_epoch_p1 * epochs_p1
+        warmup_steps_p1 = int(warmup_ratio_p1 * total_steps_p1)
+
+        # Set TensorBoard logging dir via env var (logging_dir is deprecated in TRL v5.2+)
+        os.environ["TENSORBOARD_LOGGING_DIR"] = logger_p1.tb_dir
+
+        # Configure SFTConfig (TRL) for Phase 1 — skip_prepare_dataset because samples are pre-tokenized
+        p1_args = SFTConfig(
             output_dir=os.path.dirname(cp_p1) if os.path.dirname(cp_p1) else "./checkpoints",
             num_train_epochs=epochs_p1,
             learning_rate=lr_p1,
@@ -228,39 +323,74 @@ def main(cfg: DictConfig):
             per_device_eval_batch_size=cfg.dataset.batch_size,
             eval_strategy="epoch" if epochs_p1 > 0 else "no",
             save_strategy="epoch" if epochs_p1 > 0 else "no",
-            logging_strategy="epoch" if epochs_p1 > 0 else "no",
+            save_total_limit=2,
+            logging_strategy="steps",
+            logging_steps=10,
             load_best_model_at_end=True if epochs_p1 > 0 else False,
             metric_for_best_model="loss",
             greater_is_better=False,
             remove_unused_columns=False,
             seed=cfg.get("seed", 42),
             dataloader_num_workers=cfg.dataset.num_workers,
-            lr_scheduler_type="constant",
+            lr_scheduler_type=p1_cfg.get("scheduler", "cosine"),
+            warmup_steps=warmup_steps_p1,
             bf16=use_bf16,
             fp16=use_fp16,
             gradient_checkpointing=gradient_checkpointing,
+            dataset_kwargs={"skip_prepare_dataset": True},
+            report_to="tensorboard",
         )
 
-        trainer_p1 = XBoneTrainer(
+        # Read Phase 1 report type config
+        p1_report_type = p1_cfg.get("p1_report_type", "xray")
+        print(f"  [Phase 1] Report type: {p1_report_type}")
+
+        trainer_p1 = SFTrainer(
             phase="phase1",
             loss_fn=criterion_p1,
+            p1_report_type=p1_report_type,
             model=model,
             args=p1_args,
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
-            optimizers=(optimizer_p1, None)
+            data_collator=data_collator,
+            optimizers=(optimizer_p1, None),
+            callbacks=[callback_p1, EarlyStoppingCallback(early_stopping_patience=patience_p1)],
         )
 
         if epochs_p1 > 0:
             trainer_p1.train()
-            
-        # Lưu checkpoint Phase 1 tốt nhất để dùng cho Phase 2 hoặc inference
+
+        # --- Save checkpoints Phase 1 ---
+        model_dir_p1 = os.path.dirname(cp_p1) if os.path.dirname(cp_p1) else "./checkpoints"
+
+        # Best model checkpoint (loaded back by load_best_model_at_end)
+        best_eval_loss_p1 = None
+        if hasattr(trainer_p1, 'state') and trainer_p1.state.best_metric is not None:
+            best_eval_loss_p1 = trainer_p1.state.best_metric
         torch.save({
             'model_state_dict': model.state_dict(),
-            'config': OmegaConf.to_container(cfg, resolve=True)
+            'config': OmegaConf.to_container(cfg, resolve=True),
+            'phase': 'phase1',
+            'type': 'best',
+            'best_eval_loss': best_eval_loss_p1,
+            'epoch': trainer_p1.state.epoch if hasattr(trainer_p1, 'state') else epochs_p1,
         }, cp_p1)
-        print(f" [*] Đã lưu checkpoint Phase 1 tốt nhất tại: {cp_p1}")
-        print("Pha 1 hoàn tất!\n")
+        print(f" [*] Saved best Phase 1 checkpoint: {cp_p1} (eval_loss={best_eval_loss_p1})")
+
+        # Last/current model checkpoint
+        last_cp_p1 = os.path.join(model_dir_p1, "last_phase1.pth")
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'config': OmegaConf.to_container(cfg, resolve=True),
+            'phase': 'phase1',
+            'type': 'last',
+            'epoch': trainer_p1.state.epoch if hasattr(trainer_p1, 'state') else epochs_p1,
+        }, last_cp_p1)
+        print(f" [*] Saved last Phase 1 checkpoint: {last_cp_p1}")
+
+        logger_p1.close()
+        print("Phase 1 complete!\n")
     else:
         print("\n[Bỏ qua] Không chạy Pha 1 huấn luyện LoRA.")
 
@@ -284,17 +414,39 @@ def main(cfg: DictConfig):
     # =====================================================================
     if run_phase2:
         print("\n" + "="*50)
-        print("🚀 BẮT ĐẦU PHA 2: HUẤN LUYỆN CLASSIFIER HEAD & FUSION MODULE (HF TRAINER)")
+        print("BẮT ĐẦU PHA 2: HUẤN LUYỆN FUSION + PROTOTYPICAL HEAD")
         print("="*50)
 
-        # Cấu hình requires_grad: Đóng băng toàn bộ backbone (bao gồm cả LoRA), chỉ unfreeze fusion và head
-        for param in model.backbone.parameters():
-            param.requires_grad = False
-            
+        # ----- Dynamically attach fusion + classifier for Phase 2 -----
+        model, classifier_type, fusion_type, num_classes = setup_phase2_modules(model, cfg, device)
+
+        # Freeze or unfreeze backbone based on configuration
+        freeze_backbone = cfg.model.get("freeze_backbone", True)
+        peft_type = cfg.model.peft.get('type', 'none')
+        
+        if freeze_backbone:
+            for param in model.backbone.parameters():
+                param.requires_grad = False
+            print("  [Phase 2] Backbone is frozen.")
+        else:
+            if peft_type in ('lora', 'qlora'):
+                # Only unfreeze LoRA parameters inside the backbone
+                for name, param in model.backbone.named_parameters():
+                    if "lora" in name:
+                        param.requires_grad = True
+                    else:
+                        param.requires_grad = False
+                print(f"  [Phase 2] Backbone is trainable via PEFT ({peft_type}).")
+            else:
+                # Full fine-tuning: unfreeze all parameters in the backbone
+                for param in model.backbone.parameters():
+                    param.requires_grad = True
+                print("  [Phase 2] Backbone is trainable (Full Fine-Tuning).")
+
         if model.fusion is not None:
             for param in model.fusion.parameters():
                 param.requires_grad = True
-                
+
         if model.head is not None:
             for param in model.head.parameters():
                 param.requires_grad = True
@@ -302,13 +454,92 @@ def main(cfg: DictConfig):
         print("Tóm tắt thông số cho Pha 2 (Chỉ train Classifier & Fusion):")
         model.print_parameter_summary()
 
-        criterion_p2 = nn.BCEWithLogitsLoss()
+        # Initialize Phase 2 logger
+        logger_p2 = TrainingLogger(log_dir=log_dir, experiment_name=experiment_name, phase="phase2")
+        warmup_ratio_p2 = p2_cfg.get("warmup_ratio", 0.1)
+        logger_p2.log_hyperparams({
+            "experiment": experiment_name,
+            "phase": "phase2",
+            "epochs": epochs_p2,
+            "learning_rate": lr_p2,
+            "weight_decay": wd_p2,
+            "batch_size": cfg.dataset.batch_size,
+            "loss_type": "BCEWithLogitsLoss",
+            "optimizer": p2_cfg.get("optimizer", "adamw"),
+            "scheduler": p2_cfg.get("scheduler", "cosine"),
+            "warmup_ratio": warmup_ratio_p2,
+            "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
+            "gradient_checkpointing": gradient_checkpointing,
+            "dataset": cfg.dataset.get("name", "unknown"),
+            "train_samples": len(train_dataset),
+            "val_samples": len(val_dataset),
+        })
+        logger_p2.log_model_summary(model)
+        callback_p2 = XBoneTrainerCallback(logger_p2)
+
+        # Build Phase 2 loss function
+        phase2_loss_type = p2_cfg.get("phase2_loss_type", "asl")
+        task_type = cfg.dataset.params.get("task_type", "multilabel")
+        
+        if task_type == "multiclass":
+            weight_type = p2_cfg.get("class_weight_type", "cb")
+            cb_beta = p2_cfg.get("cb_beta", 0.99)
+            class_weights = compute_class_weights(train_dataset, num_classes, device, weight_type, cb_beta)
+            loss_cfg = p2_cfg.get("loss", {}) or {}
+            if classifier_type == "prototypical" and phase2_loss_type != "ce":
+                from utils.losses import CombinedPhase2LossMulticlass
+                criterion_p2 = CombinedPhase2LossMulticlass(
+                    class_weights=class_weights,
+                    proto_margin=loss_cfg.get("proto_margin", 0.5),
+                    ood_margin=loss_cfg.get("ood_margin", 1.0),
+                    lambda_proto=loss_cfg.get("lambda_proto", 0.5),
+                    lambda_ood=loss_cfg.get("lambda_ood", 0.0),
+                    label_smoothing=loss_cfg.get("label_smoothing", 0.1),
+                )
+                print(f"  [Phase 2] Loss: CombinedPhase2LossMulticlass (CE + λ={loss_cfg.get('lambda_proto', 0.5)}·Proto)")
+            else:
+                criterion_p2 = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
+                print(f"  [Phase 2] Loss: CrossEntropyLoss (weighted)")
+        else:
+            if classifier_type == "prototypical" and phase2_loss_type != "bce":
+                from utils.losses import CombinedPhase2Loss
+                # Read loss hyperparams from config
+                loss_cfg = p2_cfg.get("loss", {}) or {}
+                criterion_p2 = CombinedPhase2Loss(
+                    gamma_pos=loss_cfg.get("gamma_pos", 0.0),
+                    gamma_neg=loss_cfg.get("gamma_neg", 4.0),
+                    asl_clip=loss_cfg.get("asl_clip", 0.05),
+                    proto_margin=loss_cfg.get("proto_margin", 0.5),
+                    ood_margin=loss_cfg.get("ood_margin", 1.0),
+                    lambda_proto=loss_cfg.get("lambda_proto", 0.5),
+                    lambda_ood=loss_cfg.get("lambda_ood", 0.0),  # 0 by default (no OOD data)
+                )
+                print(f"  [Phase 2] Loss: CombinedPhase2Loss (ASL + λ1={loss_cfg.get('lambda_proto', 0.5)}·Proto + λ2={loss_cfg.get('lambda_ood', 0.0)}·OOD)")
+            else:
+                criterion_p2 = nn.BCEWithLogitsLoss()
+                print(f"  [Phase 2] Loss: BCEWithLogitsLoss")
         
         trainable_params_p2 = [p for p in model.parameters() if p.requires_grad]
-        optimizer_p2 = AdamW(trainable_params_p2, lr=lr_p2, weight_decay=wd_p2)
+        optimizer_type_p2 = p2_cfg.get("optimizer", "adamw")
+        if optimizer_type_p2 == "sgd":
+            optimizer_p2 = SGD(trainable_params_p2, lr=lr_p2, weight_decay=wd_p2, momentum=0.9)
+        else:
+            optimizer_p2 = AdamW(trainable_params_p2, lr=lr_p2, weight_decay=wd_p2)
+        print(f"  [Phase 2] Optimizer: {optimizer_type_p2}")
 
-        # Configure TrainingArguments for Phase 2
-        p2_args = TrainingArguments(
+        # Compute warmup_steps from ratio (warmup_ratio is deprecated in TRL v5.2+)
+        steps_per_epoch_p2 = math.ceil(len(train_dataset) / cfg.dataset.batch_size)
+        total_steps_p2 = steps_per_epoch_p2 * epochs_p2
+        warmup_steps_p2 = int(warmup_ratio_p2 * total_steps_p2)
+
+        # Set TensorBoard logging dir via env var (logging_dir is deprecated in TRL v5.2+)
+        os.environ["TENSORBOARD_LOGGING_DIR"] = logger_p2.tb_dir
+
+        metric_for_best_p2 = p2_cfg.get("metric_for_best_model", "f1_macro" if task_type == "multiclass" else "loss")
+        greater_is_better_p2 = True if metric_for_best_p2 in ["f1_macro", "accuracy"] else False
+
+        # Configure SFTConfig (TRL) for Phase 2
+        p2_args = SFTConfig(
             output_dir=os.path.dirname(cp_p2) if os.path.dirname(cp_p2) else "./checkpoints",
             num_train_epochs=epochs_p2,
             learning_rate=lr_p2,
@@ -317,39 +548,88 @@ def main(cfg: DictConfig):
             per_device_eval_batch_size=cfg.dataset.batch_size,
             eval_strategy="epoch" if epochs_p2 > 0 else "no",
             save_strategy="epoch" if epochs_p2 > 0 else "no",
-            logging_strategy="epoch" if epochs_p2 > 0 else "no",
+            save_total_limit=2,
+            logging_strategy="steps",
+            logging_steps=10,
             load_best_model_at_end=True if epochs_p2 > 0 else False,
-            metric_for_best_model="loss",
-            greater_is_better=False,
+            metric_for_best_model=metric_for_best_p2,
+            greater_is_better=greater_is_better_p2,
             remove_unused_columns=False,
             seed=cfg.get("seed", 42),
             dataloader_num_workers=cfg.dataset.num_workers,
-            lr_scheduler_type="constant",
+            lr_scheduler_type=p2_cfg.get("scheduler", "cosine"),
+            warmup_steps=warmup_steps_p2,
             bf16=use_bf16,
             fp16=use_fp16,
             gradient_checkpointing=gradient_checkpointing,
+            dataset_kwargs={"skip_prepare_dataset": True},
+            report_to="tensorboard",
         )
 
-        trainer_p2 = XBoneTrainer(
+        # Read Phase 2 text usage config
+        use_text_in_p2 = p2_cfg.get("use_text", fusion_type != "none")
+        p2_report_type = p2_cfg.get("p2_report_type", "clinical")
+
+        # Define compute_metrics for multiclass evaluation in trainer
+        compute_metrics_fn = None
+        if task_type == "multiclass":
+            def compute_metrics_fn(eval_pred):
+                logits, labels = eval_pred
+                if isinstance(logits, tuple):
+                    logits = logits[0]
+                preds = np.argmax(logits, axis=-1)
+                acc = accuracy_score(labels, preds)
+                f1 = f1_score(labels, preds, average="macro", zero_division=0)
+                return {"f1_macro": f1, "accuracy": acc}
+
+        trainer_p2 = SFTrainer(
             phase="phase2",
             loss_fn=criterion_p2,
+            use_text_in_p2=use_text_in_p2,
+            p2_report_type=p2_report_type,
             model=model,
             args=p2_args,
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
-            optimizers=(optimizer_p2, None)
+            data_collator=data_collator,
+            optimizers=(optimizer_p2, None),
+            callbacks=[callback_p2, EarlyStoppingCallback(early_stopping_patience=patience_p2)],
+            compute_metrics=compute_metrics_fn,
         )
 
         if epochs_p2 > 0:
             trainer_p2.train()
-            
-        # Lưu checkpoint Phase 2 tốt nhất
+
+        # --- Save checkpoints Phase 2 ---
+        model_dir_p2 = os.path.dirname(cp_p2) if os.path.dirname(cp_p2) else "./checkpoints"
+
+        # Best model checkpoint (loaded back by load_best_model_at_end)
+        best_eval_loss_p2 = None
+        if hasattr(trainer_p2, 'state') and trainer_p2.state.best_metric is not None:
+            best_eval_loss_p2 = trainer_p2.state.best_metric
         torch.save({
             'model_state_dict': model.state_dict(),
-            'config': OmegaConf.to_container(cfg, resolve=True)
+            'config': OmegaConf.to_container(cfg, resolve=True),
+            'phase': 'phase2',
+            'type': 'best',
+            'best_eval_loss': best_eval_loss_p2,
+            'epoch': trainer_p2.state.epoch if hasattr(trainer_p2, 'state') else epochs_p2,
         }, cp_p2)
-        print(f" [*] Đã lưu checkpoint Phase 2 tốt nhất tại: {cp_p2}")
-        print("Pha 2 hoàn tất thành công!\n")
+        print(f" [*] Saved best Phase 2 checkpoint: {cp_p2} (eval_loss={best_eval_loss_p2})")
+
+        # Last/current model checkpoint
+        last_cp_p2 = os.path.join(model_dir_p2, "last_phase2.pth")
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'config': OmegaConf.to_container(cfg, resolve=True),
+            'phase': 'phase2',
+            'type': 'last',
+            'epoch': trainer_p2.state.epoch if hasattr(trainer_p2, 'state') else epochs_p2,
+        }, last_cp_p2)
+        print(f" [*] Saved last Phase 2 checkpoint: {last_cp_p2}")
+
+        logger_p2.close()
+        print("Phase 2 complete!\n")
     else:
         print("\n[Bỏ qua] Không chạy Pha 2 huấn luyện Classifier.")
 

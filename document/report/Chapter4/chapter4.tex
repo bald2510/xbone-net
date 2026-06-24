@@ -1,0 +1,229 @@
+\chapter{Thực nghiệm}
+Trong quá trình thực nghiệm, nhóm tập trung vào việc đánh giá hiệu quả của mô hình đề xuất so với các backbone khác (ResNet-50, CLIP, MedCLIP, BiomedCLIP, PubMedCLIP) trên nhiệm vụ phân loại đa lớp u xương. Nhóm đã thiết lập một loạt các thí nghiệm để so sánh hiệu suất của các mô hình này, đồng thời thực hiện các thí nghiệm rời rạc để kiểm tra ảnh hưởng của việc sử dụng thông tin văn bản, các đóng góp của các thành phần đề xuất trong quá trình huấn luyện và đánh giá.
+\section{Mục đích thực nghiệm}
+\subsection{So sánh với các mô hình nền tảng khác}
+\subsection{Ảnh hướng của chất lượng câu nhắc}
+\subsection{Ảnh hưởng của chiến thuật tinh chỉnh}
+\subsection{Ảnh hưởng của chiến thuật dung hợp dữ liệu}
+\subsection{Ảnh hưởng của bộ phân loại}
+\section{Chuẩn bị dữ liệu}
+Để minh chứng hiệu quả của mô hình đề xuất, nhóm đã sử dụng hai tập dữ liệu xương được thu thập từ bệnh viện chấn thương chỉnh hình và bộ dữ liệu BTXRD được công bố \cite{}. Các tập dữ liệu này bao gồm các hình ảnh xương cùng với các nhãn và mô tả bệnh lý tương ứng. Nhóm đã thực hiện các bước tiền xử lý dữ liệu, bao gồm chuẩn hóa hình ảnh và mã hóa nhãn, để đảm bảo tính nhất quán và chất lượng của dữ liệu trước khi đưa vào quá trình huấn luyện và đánh giá mô hình.
+\subsection{Bộ dữ liệu BTXRD}
+Bộ dữ liệu hình ảnh X-quang U xương (Bone Tumor X-ray Radiograph dataset - BTXRD) được xây dựng nhằm hỗ trợ cho các nghiên cứu về phân loại, định vị và phân vùng tự động các khối u xương nguyên phát trên ảnh X-quang. Bộ dữ liệu này bao gồm tổng cộng 3.746 hình ảnh, mỗi hình ảnh trong BTXRD đều được gắn nhãn với các thông tin lâm sàng bao gồm giới tính, độ tuổi, bộ phận cơ thể được chụp và góc chụp. Đặc biệt, mỗi hình ảnh chứa khối u còn được bổ sung thêm các nhãn phân loại lành tính hoặc ác tính, nhãn phân loại phụ, nhãn vị trí giải phẫu, cùng với mặt nạ phân vùng và hộp giới hạn được chú thích thủ công.
+
+Hình ảnh của bộ dữ liệu BTXRD được thu thập từ ba trung tâm lưu trữ hình ảnh y tế khác nhau. Trung tâm 1 bao gồm ba bệnh viện tại Trung Quốc: Bệnh viện trực thuộc số 1 của Đại học Y khoa Quảng Tây, Bệnh viện trực thuộc của Đại học Y khoa Dân tộc Hữu Giang và Bệnh viện Nhân dân Bách Sắc. Trung tâm 2 là nền tảng giáo dục X-quang trực tuyến Radiopaedia.org. Trung tâm 3 là cơ sở dữ liệu công cộng MedPix. 
+
+Tại Trung tâm 1, các hình ảnh X-quang của những bệnh nhân mắc u xương nguyên phát (đã được xác nhận qua mô bệnh học hoặc bởi hai chuyên gia X-quang) được thu thập trong khoảng thời gian từ tháng 7 năm 2013 đến tháng 7 năm 2023. Đối với Trung tâm 2 và 3, hai chuyên gia X-quang đã thu thập hình ảnh bằng cách tìm kiếm các từ khóa cụ thể liên quan đến u xương (như 'bone tumor', 'osteosarcoma', v.v.) và tải trực tiếp hình ảnh từ các trang web chính thức. Tiêu chí đưa vào bộ dữ liệu bắt buộc mỗi hình ảnh phải có thông tin tương ứng về giới tính và độ tuổi. Trong quá trình làm sạch dữ liệu, các mẫu u xương nguyên phát ở vùng đầu, cổ, ngực và bụng đã bị loại bỏ do số lượng ít và có nhiều nhiễu ảnh. Do đó, BTXRD chỉ bao gồm các hình ảnh khối u xương và xương bình thường thuộc các vị trí chi trên, chi dưới và xương chậu. 
+
+Trong giai đoạn gán nhãn, một bác sĩ chuyên khoa u xương với 10 năm kinh nghiệm chẩn đoán đã sử dụng công cụ gán nhãn hình ảnh Labelme \cite{} để phân vùng các khối u và vẽ hộp giới hạn xung quanh chúng. Các chú thích ban đầu này sau đó được đánh giá và xem xét lại bởi một chuyên gia khác có 20 năm kinh nghiệm nhằm đảm bảo tính chính xác. Sau khi hoàn tất, toàn bộ thông tin về mặt nạ phân vùng và hộp giới hạn được lưu dưới định dạng JSON. Các thông tin nhãn lâm sàng khác của mỗi hình ảnh như giới tính, tuổi tác, vị trí giải phẫu và góc chụp được ghi lại trong các tệp định dạng CSV.  
+\subsubsection{Cấu trúc bộ dữ liệu}
+Bộ dữ liệu này bao gồm tổng cộng 3.746 hình ảnh, trong đó phân bổ thành 1.879 ảnh xương bình thường, 1.525 ảnh u xương lành tính và 342 ảnh u xương ác tính. Dữ liệu hình ảnh được lưu dưới định dạng JPEG thang độ xám 8-bit, các dữ liệu về nhãn lâm sàng được lưu dưới định dạng CSV, và các thông tin về mặt nạ phân vùng cũng như hộp giới hạn được lưu dưới định dạng JSON. Cấu trúc thư mục của bộ dữ liệu được tổ chức như sau:
+
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south west,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.parent anchor) |- (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[data/BTXRD/
+  [images/
+    [IMG000001.jpeg]
+  ]
+  [Annotations/
+    [IMG000001.json]
+  ]
+  [reports/
+    [clinical/
+      [IMG000001.txt]
+    ]
+    [xray/
+      [IMG000001.txt]
+    ]
+  ]
+  [dataset.csv]
+  [btxrd-labels.csv]
+  [btxrd-split.csv]
+]
+\end{forest}
+\end{adjustbox}
+\caption{Sơ đồ phân cấp cấu trúc dữ liệu BTXRD}
+\label{fig:btxrd_forest}
+\end{figure}
+
+Trong đó:\begin{itemize}
+    \item \textbf{images/}: Thư mục chứa toàn bộ hình ảnh chụp X-quang gốc của bệnh nhân dưới định dạng ảnh JPEG thang độ xám.
+    \item \textbf{Annotations/}: Chứa các tệp nhãn dạng JSON lưu trữ tọa độ đỉnh đa giác phân vùng của khối u và hộp giới hạn tương ứng được xuất ra từ công cụ LabelMe.
+    \item \textbf{reports/}: Thư mục lưu trữ hai nguồn văn bản phục vụ cho học máy đa phương thức:
+    \begin{itemize}
+        \item \textbf{clinical/}: Chứa các báo cáo mô tả bệnh sử lâm sàng của từng bệnh nhân.
+        \item \textbf{xray/}: Chứa các văn bản mô tả phát hiện chẩn đoán hình ảnh trên phim X-quang.
+    \end{itemize}
+    \item \textbf{dataset.csv}: Tệp bảng chứa siêu dữ liệu thô ban đầu (tuổi, giới tính, vùng xương chụp, góc chụp).
+    \item \textbf{btxrd-labels.csv}: Tệp lưu trữ ánh xạ các lớp bệnh lý của từng ảnh phục vụ cho huấn luyện phân loại (bao gồm cả lớp phân loại đa lớp \texttt{class\_id}).
+    \item \textbf{btxrd-split.csv}: Tập tin chỉ định phân tách phân bổ tập dữ liệu (huấn luyện, đánh giá, kiểm thử).
+\end{itemize}
+
+\subsubsection{Phương pháp xây dựng dữ liệu báo cáo y khoa đa phương thức}
+Do tập dữ liệu gốc BTXRD công bố chỉ bao gồm hình ảnh X-quang, nhãn phân loại và tọa độ vùng khoanh u xương mà không đi kèm các báo cáo văn bản chẩn đoán y khoa, nhóm nghiên cứu đã thiết kế một quy trình xây dựng văn bản báo cáo y khoa đa phương thức bán tự động dựa trên khuôn mẫu và thuộc tính (attribute-template-based generation). Phương pháp này giúp giả lập hai nguồn dữ liệu văn bản quan trọng tương tự như trong thực tế chẩn đoán:
+
+\begin{enumerate}
+    \item \textbf{Báo cáo bệnh sử lâm sàng (Clinical Reports):}
+    Báo cáo này được tạo lập bằng cách kết hợp thông tin nhân khẩu học (độ tuổi, giới tính) và vị trí giải phẫu xương của bệnh nhân với các bệnh lý tương ứng. Nhóm đã xây dựng các ngân hàng khuôn mẫu câu mô tả:
+    \begin{itemize}
+        \item Lý do khám bệnh (ví dụ: xuất hiện khối u sưng nề hoặc đau nhức ở vùng xương tương ứng).
+        \item Thời gian khởi phát triệu chứng (được chọn ngẫu nhiên trong khoảng từ vài tuần đến vài tháng).
+        \item Tiền sử bệnh và ghi nhận khám thực thể.
+    \end{itemize}
+    Đặc biệt, để mô phỏng chính xác bệnh cảnh lâm sàng, quy trình sinh văn bản sẽ phân nhánh dựa trên tính chất u xương. Đối với u lành tính (benign), bệnh sử mô tả các khối u tăng trưởng chậm, không sốt, không sụt cân, không đau đêm. Ngược lại, đối với u ác tính (malignant), văn bản được thêm vào các triệu chứng nguy cấp của ung thư như đau xương tăng dữ dội về đêm, sụt cân không rõ nguyên nhân, sốt nhẹ hoặc đổ mồ hôi trộm. Các thuộc tính cá nhân của bệnh nhân sau đó được thay thế vào các chỗ trống (placeholders) để tạo ra văn bản lâm sàng tự nhiên và đa dạng.
+
+    \item \textbf{Báo cáo mô tả hình ảnh X-quang (X-ray Reports):}
+    Báo cáo cận lâm sàng chẩn đoán hình ảnh được sinh ra dựa trên góc chụp X-quang (frontal, lateral, oblique) và các dấu hiệu hình ảnh đặc trưng lâm sàng của từng phân nhóm u xương xương đã được chuyên gia chẩn đoán:
+    \begin{itemize}
+        \item Đối với u xương sụn (\textit{osteochondroma}): văn bản sinh ra các mô tả đặc trưng như chồi xương có nắp sụn liên tục với vỏ xương và tủy xương (\textit{"cartilage-capped bony outgrowth", "continuity of cortex"}).
+        \item Đối với nang xương đơn thuần (\textit{simple bone cyst}): văn bản mô tả tổn thương tiêu xương giới hạn rõ ở vùng hành xương (\textit{"well-defined lucent lesion in the metaphysis"}).
+        \item Đối với u tế bào khổng lồ (\textit{giant cell tumor}): văn bản chứa mô tả tổn thương tiêu xương dạng bong bóng xà phòng (\textit{"soap-bubble appearance"}).
+    \end{itemize}
+    Các mô tả hình thái học thuật này giúp mô hình học sâu có thể liên kết giữa các đặc trưng thị giác trên phim X-quang gốc với các thuật ngữ y học chuyên ngành tương ứng trong báo cáo cận lâm sàng.
+\end{enumerate}
+
+Bảng \ref{tab:btxrd_examples} trình bày một số mẫu ví dụ cụ thể về hình ảnh X-quang gốc cùng với hai nguồn văn bản báo cáo y khoa lâm sàng và cận lâm sàng tương ứng được xây dựng trong bộ dữ liệu BTXRD.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ví dụ các mẫu dữ liệu đa phương thức trong bộ dữ liệu BTXRD}
+\label{tab:btxrd_examples}
+\begin{tabular}{|C{2.5cm}|L{6.0cm}|L{6.0cm}|}
+\hline
+\textbf{Hình ảnh X-quang} & \textbf{Thông tin lâm sàng (Clinical)} & \textbf{Thông tin cận lâm sàng (X-ray)} \\ \hline
+\adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000849.jpeg}} &
+Patient: 58-year-old male. Chief complaint: swelling and discomfort in the tibia (shin bone) region. The patient noticed the lump 2 months ago. It has been painless and gradually increasing in size. No night pain reported. Physical examination reveals a hard, non-tender bony protuberance. No history of prior bone disease, fracture, or malignancy. Radiographic evaluation: AP view of the tibia (shin bone) was obtained. &
+A musculoskeletal radiograph of the bone in standard projection with evidence of osteochondroma: a pedunculated or sessile bony projection with cartilage cap. Captured at standard radiographic technique. The overall appearance favors a benign process. \\ \hline
+\adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000008.jpeg}} &
+Patient: 6-year-old male. The patient reports a progressively growing swelling over the humerus (upper arm). Rapidly enlarging mass in the humerus (upper arm) over the past a few months. Associated with night pain and unintentional weight loss. Large, firm, tender mass with overlying skin warmth. Regional lymphadenopathy absent. No significant past medical history. Radiographic evaluation: AP view of the humerus (upper arm) was obtained. &
+A musculoskeletal radiograph of the bone in conventional radiographic view with evidence of osteosarcoma: an aggressive osteoblastic lesion with irregular periosteal new bone formation. In a routine clinical radiographic study. The imaging features raise concern for malignancy. \\ \hline
+\adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000001.jpeg}} &
+Patient: 48-year-old female. The patient presents with a palpable mass on the hip bone (pelvis). The patient presents with a painful mass that has been growing rapidly. Significant weight loss of 5 kg over 1 month. Night pain disturbs sleep. Painful, rapidly growing mass with constitutional symptoms. No known chronic diseases. No prior surgeries. Radiographic evaluation: AP view of the hip bone (pelvis) was obtained. &
+A musculoskeletal radiograph of the bone in standard projection with evidence of other mt: a destructive bone lesion with ill-defined borders suggestive of malignancy. In a high-resolution diagnostic acquisition. The imaging features raise concern for malignancy. \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Thống kê số liệu}
+Nhằm cung cấp cái nhìn chi tiết và khách quan về cấu trúc dữ liệu, các bảng thống kê dưới đây trình bày phân bổ số lượng mẫu hình ảnh theo các tập chia dữ liệu (Bảng \ref{tab:btxrd_splits}) và phân bổ theo các lớp u xương bệnh lý (Bảng \ref{tab:btxrd_pathologies}).
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Tập dữ liệu (Split)} & \textbf{Số lượng hình ảnh} & \textbf{Tỷ lệ (\%)} \\ \hline
+Huấn luyện (Train)            & 2.622                       & 70,0\%              \\ \hline
+Đánh giá (Validation)         & 562                         & 15,0\%              \\ \hline
+Kiểm thử (Test)               & 562                         & 15,0\%              \\ \hline
+\textbf{Tổng cộng}            & \textbf{3.746}              & \textbf{100,0\%}    \\ \hline
+\end{tabular}
+\caption{Phân bổ hình ảnh theo các tập dữ liệu trong BTXRD}
+\label{tab:btxrd_splits}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Nhãn bệnh lý (Pathology)} & \textbf{Số lượng} & \textbf{Tỷ lệ (\%)} \\ \hline
+Bình thường (Normal)              & 1.879              & 50,2\%              \\ \hline
+U xương sụn (\textit{osteochondroma}) & 754            & 20,1\%              \\ \hline
+U xương ác tính (\textit{osteosarcoma}) & 297          & 7,9\%               \\ \hline
+Đa u xương sụn (\textit{multiple}) & 263               & 7,0\%               \\ \hline
+Nang xương đơn thuần (\textit{cyst}) & 206             & 5,5\%               \\ \hline
+U xương lành tính khác (\textit{other benign}) & 115   & 3,1\%               \\ \hline
+U tế bào khổng lồ (\textit{giant cell}) & 93           & 2,5\%               \\ \hline
+U màng hoạt dịch (\textit{synovial}) & 51              & 1,4\%               \\ \hline
+U xương ác tính khác (\textit{other malignant}) & 45  & 1,2\%               \\ \hline
+U xơ không tạo xương (\textit{osteofibroma}) & 44     & 1,2\%               \\ \hline
+\end{tabular}
+\caption{Phân bổ các lớp bệnh lý u xương trong bộ dữ liệu BTXRD}
+\label{tab:btxrd_pathologies}
+\end{table}
+
+Về mặt gán nhãn u xương, bộ dữ liệu BTXRD được tổ chức chủ yếu dưới dạng đơn nhãn (single-label), trong đó có 1.879 ảnh bình thường (không có khối u) và 1.866 ảnh có đúng 1 nhãn bệnh lý. Chỉ có duy nhất 1 hình ảnh chứa đồng thời 2 nhãn bệnh lý (u xương sụn và đa u xương sụn). Số lượng nhãn trung bình trên mỗi ảnh là 0,50 và tối đa là 2 nhãn.
+
+Đối với phần báo cáo văn bản cận lâm sàng (X-ray reports), có tổng cộng 3.746 tệp tương ứng với 3.746 hình ảnh. Trong đó, có 1.576 văn bản báo cáo là độc nhất (tỷ lệ độc nhất đạt 42,1\%). Sự trùng lặp văn bản là do quy trình tự động sinh dựa trên các tập thuộc tính và mẫu câu cố định. Tuy nhiên, tính độc nhất này phân bổ cao hơn trên các tập chia nhỏ: tập huấn luyện có 1.333/2.622 báo cáo độc nhất (50,8\%), tập đánh giá có 475/562 báo cáo độc nhất (84,5\%), và tập kiểm thử có 451/562 báo cáo độc nhất (80,2\%). Độ dài trung bình của các báo cáo cận lâm sàng là khoảng 24,6 từ (tối thiểu là 19 từ, tối đa là 36 từ), tương đương trung bình khoảng 172 ký tự (từ 120 đến 266 ký tự).
+
+\subsection{Bộ dữ liệu CTCH}
+\subsubsection{Cấu trúc bộ dữ liệu}
+\subsubsection{Tiền xử lý dữ liệu}
+\section{Độ đo đánh giá}
+\section{Thiết lập thực nghiệm}
+Phần này trình bày các thiết lập thực nghiệm, bao gồm môi trường phần cứng và phần mềm, cũng như các siêu tham số được sử dụng trong quá trình huấn luyện mô hình. Các thiết lập này nhằm đảm bảo tính nhất quán và khả năng tái tạo của các thí nghiệm.
+\subsection{Môi trường thực nghiệm}
+\begin{itemize}
+    \item \textbf{Phần cứng:} NVIDIA RTX 5060ti 16GB, CPU Ultra 7 265KF, RAM 32GB
+    \item \textbf{Phần mềm:} Python 3.11.15, PyTorch 2.11.0, CUDA 12.8, HuggingFace Transformers
+\end{itemize}
+\subsection{Tham số thực nghiệm}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Siêu tham số}        & \textbf{Pha 1 (Tương phản)}  \\ \hline
+Độ phân giải ảnh đầu vào     & $224 \times 224$ pixels      \\ \hline
+Bộ tối ưu hóa                & AdamW                        \\ \hline
+Tốc độ học                   & $2 \times 10^{-4}$           \\ \hline
+Suy giảm trọng số            & $1 \times 10^{-2}$           \\ \hline
+Bộ điều chỉnh tốc độ học     & Cosine Annealing             \\ \hline
+Tỷ lệ khởi động              & 0.1                          \\ \hline
+Kích thước lô                & 32                           \\ \hline
+Số epoch tối đa              & 50                           \\ \hline
+Số epoch dừng sớm            & 5 epochs                     \\ \hline
+Nhiệt độ tương phản ($\tau$) & 0.07                         \\ \hline
+Trạng thái tham số Backbone  & Tinh chỉnh qua PEFT          \\ \hline
+Hạng QLoRA ($r$)             & 16                           \\ \hline
+Hệ số QLoRA ($\alpha$)       & 32                           \\ \hline
+Tỷ lệ bỏ học QLoRA           & 0.1                          \\ \hline
+\end{tabular}
+\caption{Bảng tổng hợp siêu tham số ở pha 1 và thiết lập của chúng}
+\label{tab:hyperparameters_phase1}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Siêu tham số}        & \textbf{Pha 2 (Phân loại)} \\ \hline
+Độ phân giải ảnh đầu vào     & $224 \times 224$ pixels    \\ \hline
+Bộ tối ưu hóa                & AdamW                      \\ \hline
+Tốc độ học                  & $1 \times 10^{-3}$ (Đề xuất) / $1 \times 10^{-4}$ (Baselines)                                     \\ \hline
+Suy giảm trọng số            & $1 \times 10^{-4}$         \\ \hline
+Bộ điều chỉnh tốc độ học     & Cosine Annealing           \\ \hline
+Tỷ lệ khởi động              & 0.1                        \\ \hline
+Kích thước lô                & 32                         \\ \hline
+Số epoch tối đa              & 50 / 100                   \\ \hline
+Số epoch dừng sớm           & 5 epochs                     \\ \hline
+Nhiệt độ tương phản ($\tau$) & Không áp dụng              \\ \hline
+Trạng thái tham số Backbone & \begin{tabular}[c]{@{}c@{}}Đông băng (Đề xuất) / \\ Tinh chỉnh hoàn toàn (Baselines)\end{tabular} \\ \hline
+Hạng QLoRA ($r$)             & Không áp dụng              \\ \hline
+Hệ số QLoRA ($\alpha$)       & Không áp dụng              \\ \hline
+Tỷ lệ bỏ học QLoRA           & Không áp dụng              \\ \hline
+\end{tabular}
+\caption{Bảng tổng hợp siêu tham số ở pha 2 và thiết lập của chúng}
+\label{tab:hyperparameters_phase2}
+\end{table}

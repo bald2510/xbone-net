@@ -20,4 +20,6 @@ transformers
 accelerate
 evaluate
 peft
-
+trl
+bitsandbytes
+tensorboard

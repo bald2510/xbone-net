@@ -10,19 +10,26 @@ params:
   csv_split_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-labels.csv"
 
+  # Multi-class classification (10 leaf classes, ordered by frequency)
+  task_type: "multiclass"
+  num_classes: 10
+  classes: [
+    'normal',                    # 0: Bình thường (không có u)
+    'osteochondroma',            # 1: U xương sụn
+    'osteosarcoma',              # 2: Sarcoma xương (ác tính)
+    'multiple osteochondromas',  # 3: Đa u xương sụn
+    'simple bone cyst',          # 4: Nang xương đơn thuần
+    'other bt',                  # 5: U lành tính khác
+    'giant cell tumor',          # 6: U tế bào khổng lồ
+    'synovial osteochondroma',   # 7: U sụn màng hoạt dịch
+    'other mt',                  # 8: U ác tính khác
+    'osteofibroma'               # 9: U xơ xương
+  ]
 
-  # Linh hoạt: Dataset khác có thể có danh sách bệnh khác
+  # Legacy: keep pathologies for backward compatibility
   pathologies: [
-    'tumor',                     # Có u (tổng quát)
-    'benign',                    # U lành (tổng quát)
-    'malignant',                 # U ác (tổng quát)
-    'osteochondroma',            # U xương sụn
-    'multiple osteochondromas',  # Đa u xương sụn
-    'simple bone cyst',          # Nang xương đơn thuần
-    'giant cell tumor',          # U tế bào khổng lồ
-    'osteofibroma',              # U xơ xương
-    'synovial osteochondroma',   # U sụn màng hoạt dịch
-    'other bt',                  # U lành tính khác
-    'osteosarcoma',              # Sarcoma xương (ác tính)
-    'other mt'                   # U ác tính khác
+    'normal', 'osteochondroma', 'osteosarcoma',
+    'multiple osteochondromas', 'simple bone cyst', 'other bt',
+    'giant cell tumor', 'synovial osteochondroma', 'other mt',
+    'osteofibroma'
   ]

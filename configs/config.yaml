@@ -1,0 +1,18 @@
+# Root Hydra config — experiment configs override this via +experiment=<name>
+defaults:
+  - _self_
+
+# These will be populated by experiment configs
+model:
+  _placeholder_: true
+dataset:
+  _placeholder_: true
+
+experiment_name: "default"
+
+params:
+  run_phase1: true
+  run_phase2: true
+  gradient_checkpointing: true
+
+seed: 42

@@ -8,16 +8,22 @@ class XBoneMultiModalModel(nn.Module):
         self.fusion = fusion_module
         self.head = head_module
 
-    def forward(self, images, input_ids):
-        # 1. Trích xuất đặc trưng
+    def forward(self, images, input_ids, return_features=False):
+        # 1. Extract features from backbone
         img_feats, txt_feats = self.backbone(images, input_ids)
         
-        # 2. Kết hợp đặc trưng (Nếu config là 'none', nó sẽ chạy IdentityFusion)
-        fused_feats = self.fusion(img_feats, txt_feats)
+        # 2. Fusion (IdentityFusion when config is 'none')
+        if txt_feats is None:
+            fused_feats = img_feats
+        else:
+            fused_feats = self.fusion(img_feats, txt_feats)
         
-        # 3. Phân loại (Nếu là ProtoHead thì trả về logits và cosine_sim)
+        # 3. Classification
+        if return_features and hasattr(self.head, 'prototypes'):
+            logits, features = self.head(fused_feats, return_features=True)
+            return logits, features, self.head.prototypes
+        
         logits = self.head(fused_feats)
-        
         return logits
     
     def print_parameter_summary(self):
@@ -52,18 +58,53 @@ class XBoneMultiModalModel(nn.Module):
                 print(f"   - Trainable : {mod_train:,}")
         print("="*50 + "\n")
 
+    def print_encoder_layers(self):
+        """
+        In ra cấu trúc chi tiết các lớp (layers) của image encoder và text encoder.
+        """
+        print("\n" + "="*50)
+        print("🖼️ CẤU TRÚC LỚP BỘ MÃ HÓA HÌNH ẢNH (IMAGE ENCODER LAYERS)")
+        print("="*50)
+        if hasattr(self.backbone, "model") and hasattr(self.backbone.model, "visual"):
+            print(self.backbone.model.visual)
+        else:
+            print("Không tìm thấy bộ mã hóa hình ảnh trong backbone.model.visual")
+            
+        print("\n" + "="*50)
+        print("📝 CẤU TRÚC LỚP BỘ MÃ HÓA VĂN BẢN (TEXT ENCODER LAYERS)")
+        print("="*50)
+        if hasattr(self.backbone, "model") and hasattr(self.backbone.model, "text"):
+            print(self.backbone.model.text)
+        else:
+            print("Không tìm thấy bộ mã hóa văn bản trong backbone.model.text")
+        print("="*50 + "\n")
+
     def gradient_checkpointing_enable(self, **kwargs):
         """
         Enables gradient checkpointing (activation checkpointing)
-        on both the vision (ViT) and text (PubMedBERT) encoders.
+        on both the vision (ViT) and text encoders.
+        Safely handles models without .text attribute (e.g., OpenCLIP CLIP).
         """
         print("[XBone Model] Enabling gradient checkpointing for memory optimization.")
         # Enable for OpenCLIP visual encoder (uses set_grad_checkpointing)
         if hasattr(self.backbone.model, "set_grad_checkpointing"):
             self.backbone.model.set_grad_checkpointing(True)
-        elif hasattr(self.backbone.model.visual, "set_grad_checkpointing"):
+        elif hasattr(self.backbone.model, "visual") and hasattr(self.backbone.model.visual, "set_grad_checkpointing"):
             self.backbone.model.visual.set_grad_checkpointing(True)
-            
-        # Enable for Hugging Face PubMedBERT text encoder (uses gradient_checkpointing_enable)
-        if hasattr(self.backbone.model.text.transformer, "gradient_checkpointing_enable"):
-            self.backbone.model.text.transformer.gradient_checkpointing_enable(**kwargs)
+
+        # Enable for Hugging Face text encoder (e.g., PubMedBERT in BiomedCLIP)
+        text_module = getattr(self.backbone.model, "text", None)
+        if text_module is not None:
+            text_transformer = getattr(text_module, "transformer", None)
+            if text_transformer is not None and hasattr(text_transformer, "gradient_checkpointing_enable"):
+                text_transformer.gradient_checkpointing_enable(**kwargs)
+
+        # Required for gradient checkpointing with PEFT LoRA adapters
+        if hasattr(self.backbone.model, "visual"):
+            visual = self.backbone.model.visual
+            if hasattr(visual, "enable_input_require_grads"):
+                visual.enable_input_require_grads()
+        if text_module is not None:
+            text_transformer = getattr(text_module, "transformer", None)
+            if text_transformer is not None and hasattr(text_transformer, "enable_input_require_grads"):
+                text_transformer.enable_input_require_grads()

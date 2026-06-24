@@ -1,14 +1,46 @@
-# Data & Outputs
+# Data, Checkpoints & Outputs
 data/
 outputs/
+checkpoints/
+runs/
+multirun/
+results/
+.bin
+*.safetensors
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .ipynb_checkpoints/
 .env
+.venv/
+venv/
+env/
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
 
-checkpoints/
+# LaTeX build artifacts
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.run.xml
+*-blx.bib
+checkpoints/biomedclip/open_clip_pytorch_model.bin

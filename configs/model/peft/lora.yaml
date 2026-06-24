@@ -2,18 +2,22 @@
 
 type: "lora"
 params:
-  r: 16                        # Rank of update matrices (commonly 4, 8, 16, 32)
-  alpha: 32                    # Scaling factor (recommended: lora_alpha = 2 * r)
+  r: 16                        # Rank of LoRA update matrices
+  alpha: 32                    # Scaling factor (recommended: alpha = 2 * r)
   dropout: 0.1                 # Dropout probability for LoRA layers
-  
-  # Target layers to inject LoRA for the Image Encoder (Vision Transformer)
+
+  # Target ALL linear layers in Image Encoder (ViT-B/16) for maximum accuracy
   visual_target_modules:
-    - "qkv"
-    - "proj"
-    
-  # Target layers to inject LoRA for the Text Encoder (PubMedBERT)
+    - "attn.qkv"               # Fused Q/K/V attention projection
+    - "attn.proj"              # Attention output projection
+    - "mlp.fc1"                # MLP first layer (expansion)
+    - "mlp.fc2"                # MLP second layer (contraction)
+
+  # Target ALL linear layers in Text Encoder (PubMedBERT) for maximum accuracy
   text_target_modules:
-    - "query"
-    - "key"
-    - "value"
-    - "dense"
+    - "query"                  # Self-attention query
+    - "key"                    # Self-attention key
+    - "value"                  # Self-attention value
+    - "attention.output.dense" # Attention output projection
+    - "intermediate.dense"     # Feed-forward intermediate (expansion)
+    - "output.dense"           # Feed-forward output (contraction)

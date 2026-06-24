@@ -1,31 +1,41 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 
 class PrototypicalHead(nn.Module):
-    def __init__(self, feature_dim: int = 512, num_classes: int = 14):
+    """
+    Prototypical classifier head with learnable class prototypes.
+
+    Returns logits based on cosine similarity between features and prototypes.
+    When return_features=True, also returns (logits, features) for prototype/OOD losses.
+    """
+
+    def __init__(self, feature_dim: int = 512, num_classes: int = 14, scale: float = 10.0):
         super().__init__()
         self.num_classes = num_classes
-        
-        # Khởi tạo ma trận Prototypes như một nn.Parameter có thể huấn luyện được.
-        # Mỗi class bệnh lý sẽ có một vector đại diện kích thước [feature_dim]
+        self.scale = scale
+
+        # Learnable class prototypes [K, D]
         self.prototypes = nn.Parameter(torch.randn(num_classes, feature_dim))
-        
-        # Khởi tạo trọng số chuẩn Xavier
         nn.init.xavier_uniform_(self.prototypes)
 
-    def forward(self, features):
+    def forward(self, features, return_features: bool = False):
         """
-        features: Đặc trưng sau fusion [Batch_size, feature_dim]
+        Args:
+            features: Fused features [B, D]
+            return_features: If True, returns (logits, features) tuple for loss computation
+        Returns:
+            logits [B, K] or (logits, features) if return_features=True
         """
-        # 1. Chuẩn hóa L2 cho cả features và prototypes để tính Cosine Similarity
-        normed_features = features / features.norm(dim=-1, keepdim=True)
-        normed_prototypes = self.prototypes / self.prototypes.norm(dim=-1, keepdim=True)
-        
-        # 2. Tính Cosine Similarity giữa mỗi mẫu trong batch với 14 mẫu đại diện bệnh lý
-        # Ma trận nhân: [Batch_size, feature_dim] x [feature_dim, num_classes]
-        cosine_sim = normed_features @ normed_prototypes.T # Đầu ra: [Batch_size, num_classes]
-        
-        # 3. Nhân với một hệ số scale (nhiệt độ nghịch đảo) tương tự CLIP để kéo giãn khoảng cách logits
-        logits = cosine_sim * 10.0 
-        
+        # L2 normalize for cosine similarity
+        normed_features = F.normalize(features, dim=-1)
+        normed_prototypes = F.normalize(self.prototypes, dim=-1)
+
+        # Cosine similarity [B, K], scaled
+        cosine_sim = normed_features @ normed_prototypes.T
+        logits = cosine_sim * self.scale
+
+        if return_features:
+            return logits, features
         return logits
