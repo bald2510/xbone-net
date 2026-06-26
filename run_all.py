@@ -28,42 +28,42 @@ import numpy as np
 # Ordered so baselines run first, then ablations (dependencies respected).
 
 EXPERIMENTS = OrderedDict({
-    # ─── Table 1: Baselines ───
+    # ─── 1. Đánh giá đối sánh hiệu năng (Baseline Comparison) ───
     "baseline": [
-        "baseline/B1_resnet50",
-        "baseline/B2_medclip",
-        "baseline/B3_pubmedclip",
-        "baseline/B4_biomedclip",
-        "baseline/B5_clip",
+        # "1_baseline/B1_resnet50",
+        "1_baseline/B2_medclip", 
+        # "1_baseline/B3_pubmedclip",
+        # "1_baseline/B4_biomedclip",
+        # "1_baseline/B5_clip",
+        # "1_baseline/ours_xbone_net",
     ],
-    # ─── Proposed method ───
-    "proposed": [
-        "ablation/FineTune/full_proposed",
+    # ─── 2. Đánh giá nguồn văn bản lâm sàng và rò rỉ nhãn (Modality Ablation) ───
+    # "ablation_modality": [
+    #     "2_ablation_modality/T2_img_only",
+    #     "2_ablation_modality/T2_clinical_only",
+    #     "2_ablation_modality/T2_xray_only",
+    #     "2_ablation_modality/T2_xray_clinical",
+    #     "2_ablation_modality/T2_both"
+    # ],
+    # ─── 3. Đánh giá tinh chỉnh backbone và trôi lệch biểu diễn (PEFT & Drift Ablation) ───
+    "ablation_finetune": [
+        "3_ablation_finetune/T3_no_ft",
+        "3_ablation_finetune/T3_lora_ft",
+        "3_ablation_finetune/T3_full_ft",
+        "3_ablation_finetune/T3_lora_ft_clinical_only",
+        "3_ablation_finetune/T3_full_ft_clinical_only"
     ],
-    # # ─── Table 2: Text Prompt Contribution ───
-    # "ablation_text": [
-    #     "ablation/TextPrompt/T2_xray",
-    #     "ablation/TextPrompt/T2_clinical",
-    #     "ablation/TextPrompt/T2_both",
-    #     "ablation/TextPrompt/T2_imgonly",
-    # ],
-    # # ─── Table 3: Fine-tuning Strategy ───
-    # "ablation_finetune": [
-    #     "ablation/FineTune/T3_no_ft",
-    #     "ablation/FineTune/T3_lora_ft",
-    #     "ablation/FineTune/T3_full_ft",
-    # ],
-    # # ─── Table 4: Fusion & Loss ───
-    # "ablation_fusion_loss": [
-    #     "ablation/Classifier/T4_crossattn_linear",
-    #     "ablation/Loss/T4_infonce",
-    # ],
-    # # ─── Table 5-7: Other ablations ───
-    # "ablation_other": [
-    #     "ablation/Fusion/T1_p1_concat",
-    #     "ablation/Fusion/T1_p1_imgonly",
-    #     "ablation/Classifier/T6_concat_linear",
-    #     "ablation/ClassImbalance/T7_bce_proto",
+    # # ─── 4. So sánh hiệu quả giữa các đầu phân loại (Classifier Ablation) ───
+    "ablation_classifier": [
+        "4_ablation_classifier/T4_crossattn_linear",
+        "4_ablation_classifier/T4_concat_linear",
+        "4_ablation_classifier/T4_crossattn_proto",
+        "4_ablation_classifier/T4_concat_proto"
+    ],
+    # # ─── 6. Đánh giá hàm mất mát và tối ưu (Loss Ablation) ───
+    # "ablation_loss": [
+    #     "6_ablation_loss/T6_bce_proto",
+    #     "6_ablation_loss/T6_infonce",
     # ],
 })
 
@@ -82,8 +82,9 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_experiments(groups: list[str] | None) -> list[str]:
     """Return flat list of experiment config paths for the requested groups."""
     if not groups:
-        # All experiments
-        return [exp for group in EXPERIMENTS.values() for exp in group]
+        # All experiments (preserving order, removing duplicates)
+        seen = set()
+        return [exp for group in EXPERIMENTS.values() for exp in group if not (exp in seen or seen.add(exp))]
     
     result = []
     for g in groups:
@@ -97,7 +98,9 @@ def get_experiments(groups: list[str] | None) -> list[str]:
         else:
             # Treat as a direct experiment path
             result.append(g)
-    return result
+            
+    seen = set()
+    return [exp for exp in result if not (exp in seen or seen.add(exp))]
 
 
 def seed_dir(experiment: str, seed: int) -> str:
@@ -224,9 +227,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--group", "-g", nargs="+", default=None,
-                       help="Experiment groups: baseline, proposed, ablation, "
-                            "ablation_text, ablation_finetune, ablation_fusion_loss, "
-                            "ablation_other. Or a direct config path.")
+                       help="Experiment groups: baseline, ablation_modality, "
+                            "ablation_finetune, ablation_classifier, "
+                            "ablation_fusion, ablation_loss. "
+                            "Or 'ablation' to run all ablation groups. Or a direct config path.")
     parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS,
                        help=f"Seeds to run (default: {DEFAULT_SEEDS})")
     parser.add_argument("--eval-only", action="store_true",

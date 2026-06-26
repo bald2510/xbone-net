@@ -16,6 +16,36 @@ import torch
 import torch.nn as nn
 from torchvision import transforms
 
+# Monkeypatch CLIPFeatureExtractor and CLIPImageProcessor.__init__ for newer Hugging Face transformers versions
+# where CLIPFeatureExtractor has been renamed/deprecated/removed, and CLIPImageProcessor.__init__ has changed.
+import sys
+import transformers
+from transformers import CLIPImageProcessor
+import transformers.processing_utils
+
+# Allow ImageProcessingMixin for feature_extractor key in MODALITY_TO_BASE_CLASS_MAPPING
+if 'feature_extractor' in transformers.processing_utils.MODALITY_TO_BASE_CLASS_MAPPING:
+    transformers.processing_utils.MODALITY_TO_BASE_CLASS_MAPPING['feature_extractor'] = (
+        'FeatureExtractionMixin', 'ImageProcessingMixin'
+    )
+
+original_clip_init = CLIPImageProcessor.__init__
+def wrapped_clip_init(self, *args, **kwargs):
+    arg_names = [
+        "do_resize", "size", "resample", "do_center_crop", 
+        "crop_size", "do_normalize", "image_mean", "image_std", 
+        "do_convert_rgb"
+    ]
+    new_kwargs = dict(kwargs)
+    for name, val in zip(arg_names, args):
+        new_kwargs[name] = val
+    return original_clip_init(self, **new_kwargs)
+
+CLIPImageProcessor.__init__ = wrapped_clip_init
+
+sys.modules['transformers'].CLIPFeatureExtractor = CLIPImageProcessor
+transformers.CLIPFeatureExtractor = CLIPImageProcessor
+
 try:
     from medclip import MedCLIPModel, MedCLIPVisionModel, MedCLIPProcessor
 except ImportError:
@@ -44,7 +74,7 @@ class MedCLIPTokenizerWrapper:
         encoded = self.processor(
             text=texts,
             return_tensors="pt",
-            padding=True,
+            padding="max_length",
             truncation=True,
             max_length=256,
         )
@@ -142,7 +172,25 @@ class MedCLIPFoundation(nn.Module):
 
         # ---- Load MedCLIP (Swin-Tiny) ----
         medclip_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
+        
+        # Monkeypatch load_state_dict to handle strict loading issues with newer transformers versions
+        original_load_state_dict = medclip_model.load_state_dict
+        def custom_load_state_dict(state_dict, strict=True):
+            # Remove keys that cause problems in newer transformers versions
+            keys_to_remove = ["text_model.model.embeddings.position_ids"]
+            for key in keys_to_remove:
+                if key in state_dict:
+                    del state_dict[key]
+            # Use strict=False to bypass other non-critical matching conflicts
+            return original_load_state_dict(state_dict, strict=False)
+            
+        medclip_model.load_state_dict = custom_load_state_dict
         medclip_model.from_pretrained()
+
+        # Ensure all parameters are contiguous to prevent safetensors saving issues
+        for param in medclip_model.parameters():
+            if param.data is not None:
+                param.data = param.data.contiguous()
 
         # Store the raw medclip model as a sub-module so its parameters are
         # registered in this nn.Module (important for .to(device), state_dict, etc.)

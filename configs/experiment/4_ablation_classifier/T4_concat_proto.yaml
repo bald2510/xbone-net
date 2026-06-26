@@ -1,5 +1,5 @@
 # @package _global_
-# Table 1 row3 / Table 3 row1: QLoRA + Phase1, image-only Phase2, PrototypicalHead
+# T4: Phase1 + ConcatFusion(clinical) + PrototypicalHead
 defaults:
   - /model/peft@model.peft: qlora
   - /model/fusion@model.fusion: none
@@ -12,7 +12,7 @@ model:
 dataset:
   _placeholder_: true
 
-experiment_name: "T1_p1_imgonly"
+experiment_name: "T4_concat_proto"
 
 params:
   run_phase1: true
@@ -37,9 +37,9 @@ params:
     scheduler: "cosine"
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "none"
+    fusion_type: "concat"
     classifier_type: "prototypical"
-    use_text: false
+    use_text: true
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
 
 seed: 42

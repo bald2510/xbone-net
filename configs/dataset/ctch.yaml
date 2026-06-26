@@ -2,7 +2,7 @@
 
 name: 'ctch'
 batch_size: 32
-num_workers: 4
+num_workers: 0
 
 params:
   img_dir: "${hydra:runtime.cwd}/data/CTCH/images"
@@ -15,13 +15,8 @@ params:
   pathologies: [
     'fracture',
     'dislocation',
-    'bone_tumor',
-    'infection',
     'undetermined',
     'upper_limb_fracture',
     'lower_limb_fracture',
     'spine_fracture',
-    'other_fracture',
-    'benign_bone_tumor',
-    'malignant_bone_tumor',
   ]

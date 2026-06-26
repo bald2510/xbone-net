@@ -1,5 +1,5 @@
 # @package _global_
-# T4: QLoRA + Phase1(InfoNCE loss) + CrossAttention(clinical) + PrototypicalHead
+# T4: Phase1 + ConcatFusion + LinearHead
 defaults:
   - /model/peft@model.peft: qlora
   - /model/fusion@model.fusion: none
@@ -12,7 +12,7 @@ model:
 dataset:
   _placeholder_: true
 
-experiment_name: "T4_infonce"
+experiment_name: "T4_concat_linear"
 
 params:
   run_phase1: true
@@ -24,7 +24,7 @@ params:
     weight_decay: 1e-2
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
     temperature: 0.07
-    loss_type: "infonce"
+    loss_type: "semantic_matching"
     optimizer: "adamw"
     scheduler: "cosine"
     warmup_ratio: 0.1
@@ -37,8 +37,8 @@ params:
     scheduler: "cosine"
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "cross_attention"
-    classifier_type: "prototypical"
+    fusion_type: "concat"
+    classifier_type: "linear"
     use_text: true
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
 

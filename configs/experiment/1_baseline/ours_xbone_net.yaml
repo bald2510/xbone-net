@@ -1,5 +1,5 @@
 # @package _global_
-# Table 1 row4 / Table 3 row2: QLoRA + Phase1 + ConcatFusion(clinical) + PrototypicalHead
+# Table 2: Clinical text — P1 contrastive with clinical + P2 fusion with clinical
 defaults:
   - /model/peft@model.peft: qlora
   - /model/fusion@model.fusion: none
@@ -12,7 +12,7 @@ model:
 dataset:
   _placeholder_: true
 
-experiment_name: "T1_p1_concat"
+experiment_name: "ours_xbone_net"
 
 params:
   run_phase1: true
@@ -22,13 +22,14 @@ params:
     epochs: 50
     lr: 2e-4
     weight_decay: 1e-2
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
-    temperature: 0.07
-    loss_type: "semantic_matching"
     optimizer: "adamw"
     scheduler: "cosine"
     warmup_ratio: 0.1
+    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
+    temperature: 0.07
+    loss_type: "semantic_matching"
     early_stopping_patience: 5
+    p1_report_type: "clinical"
   phase2:
     epochs: 50
     lr: 1e-3
@@ -37,9 +38,10 @@ params:
     scheduler: "cosine"
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "concat"
+    fusion_type: "cross_attention"
     classifier_type: "prototypical"
     use_text: true
+    p2_report_type: "clinical"
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
 
 seed: 42

@@ -1,37 +1,28 @@
 # @package _global_
-# Table 4 row1: QLoRA + Phase1 + CrossAttention(clinical) + LinearHead
+# Baseline B2: MedCLIP (Swin-Tiny + BioClinicalBERT) — Multimodal Cross-Attention Fine-tuning
 defaults:
-  - /model/peft@model.peft: qlora
+  - /model/peft@model.peft: none
   - /model/fusion@model.fusion: none
   - /model/classifier@model.classifier: none
   - /dataset@dataset: btxrd
   - _self_
 
 model:
+  backbone_type: "medclip"
+  freeze_backbone: true
   _placeholder_: true
 dataset:
   _placeholder_: true
 
-experiment_name: "T4_crossattn_linear"
+experiment_name: "B2_medclip"
 
 params:
-  run_phase1: true
+  run_phase1: false
   run_phase2: true
   model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
-  phase1:
-    epochs: 50
-    lr: 2e-4
-    weight_decay: 1e-2
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
-    temperature: 0.07
-    loss_type: "semantic_matching"
-    optimizer: "adamw"
-    scheduler: "cosine"
-    warmup_ratio: 0.1
-    early_stopping_patience: 5
   phase2:
     epochs: 50
-    lr: 1e-3
+    lr: 1e-4
     weight_decay: 1e-4
     optimizer: "adamw"
     scheduler: "cosine"

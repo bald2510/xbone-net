@@ -5,9 +5,9 @@ Runs each experiment config across multiple seeds, then aggregates
 results (mean ± std) for thesis-quality reporting.
 
 Usage:
-    python run_multi_seed.py +experiment=baseline/B1_resnet50
-    python run_multi_seed.py +experiment=baseline/B1_resnet50 --seeds 42 123 456
-    python run_multi_seed.py +experiment=baseline/B1_resnet50 --eval-only
+    python run_multi_seed.py +experiment=1_baseline/B1_resnet50
+    python run_multi_seed.py +experiment=1_baseline/B1_resnet50 --seeds 42 123 456
+    python run_multi_seed.py +experiment=1_baseline/B1_resnet50 --eval-only
 """
 
 import argparse
@@ -178,7 +178,7 @@ def main():
         usage="%(prog)s --experiment <config_path> [--seeds N ...] [--eval-only]"
     )
     parser.add_argument("--experiment", "-e", dest="experiment", default=None,
-                       help="Experiment config path (e.g., baseline/B1_resnet50)")
+                       help="Experiment config path (e.g., 1_baseline/B1_resnet50)")
     parser.add_argument("--seeds", nargs="+", type=int, default=SEEDS,
                        help=f"List of seeds (default: {SEEDS})")
     parser.add_argument("--eval-only", action="store_true",
@@ -197,7 +197,7 @@ def main():
                 break
     
     if experiment is None:
-        parser.error("experiment is required: --experiment baseline/B1_resnet50 or +experiment=baseline/B1_resnet50")
+        parser.error("experiment is required: --experiment 1_baseline/B1_resnet50 or +experiment=1_baseline/B1_resnet50")
     
     # Filter out args we handle explicitly to avoid duplicates in subprocesses
     extra = [a for a in extra if not a.startswith("+experiment=") and not a.startswith("seed=")]

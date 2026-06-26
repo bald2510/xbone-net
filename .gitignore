@@ -44,3 +44,5 @@ Thumbs.db
 *.run.xml
 *-blx.bib
 checkpoints/biomedclip/open_clip_pytorch_model.bin
+pretrained/medclip-resnet/pytorch_model.bin
+pretrained/medclip-resnet/medclip-pretrained.zip

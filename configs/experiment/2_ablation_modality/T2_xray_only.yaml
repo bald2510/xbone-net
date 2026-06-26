@@ -1,5 +1,5 @@
 # @package _global_
-# Table 2: Clinical text — P1 contrastive with clinical + P2 fusion with clinical
+# Table 3 row4: QLoRA + Phase1 + CrossAttention(xray in Phase2) + PrototypicalHead
 defaults:
   - /model/peft@model.peft: qlora
   - /model/fusion@model.fusion: none
@@ -12,7 +12,7 @@ model:
 dataset:
   _placeholder_: true
 
-experiment_name: "T2_clinical"
+experiment_name: "T2_xray_only"
 
 params:
   run_phase1: true
@@ -22,14 +22,13 @@ params:
     epochs: 50
     lr: 2e-4
     weight_decay: 1e-2
-    optimizer: "adamw"
-    scheduler: "cosine"
-    warmup_ratio: 0.1
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
     temperature: 0.07
     loss_type: "semantic_matching"
+    optimizer: "adamw"
+    scheduler: "cosine"
+    warmup_ratio: 0.1
     early_stopping_patience: 5
-    p1_report_type: "clinical"
   phase2:
     epochs: 50
     lr: 1e-3
@@ -41,7 +40,7 @@ params:
     fusion_type: "cross_attention"
     classifier_type: "prototypical"
     use_text: true
-    p2_report_type: "clinical"
+    p2_report_type: "xray"
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
 
 seed: 42

@@ -2,7 +2,7 @@
 
 name: 'btxrd'
 batch_size: 32
-num_workers: 4
+num_workers: 0
 
 params:
   img_dir: "${hydra:runtime.cwd}/data/BTXRD/images"
