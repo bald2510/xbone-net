@@ -1,10 +1,10 @@
 # @package _global_
-# Baseline B3: PubMedCLIP ViT-B/32 — Multimodal Cross-Attention
+# Baseline B3: PubMedCLIP ViT-B/32 on CTCH
 defaults:
   - /model/peft@model.peft: none
   - /model/fusion@model.fusion: none
   - /model/classifier@model.classifier: none
-  - /dataset@dataset: btxrd
+  - /dataset@dataset: ctch
   - _self_
 
 model:
@@ -14,7 +14,7 @@ model:
 dataset:
   _placeholder_: true
 
-experiment_name: "B3_pubmedclip"
+experiment_name: "ctch_baseline/B3_pubmedclip"
 
 params:
   run_phase1: false

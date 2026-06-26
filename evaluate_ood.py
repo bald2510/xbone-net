@@ -201,10 +201,16 @@ def main():
     # Load embeddings
     print(f"\nLoading ID embeddings from: {args.id_embeddings}")
     id_data = load_embeddings(args.id_embeddings)
+    # L2-normalize image embeddings
+    id_embeds_norm = np.linalg.norm(id_data["image_embeddings"], axis=1, keepdims=True)
+    id_data["image_embeddings"] = id_data["image_embeddings"] / (id_embeds_norm + 1e-8)
     print(f"  Shape: {id_data['image_embeddings'].shape}")
 
     print(f"Loading OOD embeddings from: {args.ood_embeddings}")
     ood_data = load_embeddings(args.ood_embeddings)
+    # L2-normalize image embeddings
+    ood_embeds_norm = np.linalg.norm(ood_data["image_embeddings"], axis=1, keepdims=True)
+    ood_data["image_embeddings"] = ood_data["image_embeddings"] / (ood_embeds_norm + 1e-8)
     print(f"  Shape: {ood_data['image_embeddings'].shape}")
 
     # Encode text anchors if needed

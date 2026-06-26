@@ -1,20 +1,20 @@
 # @package _global_
-# Baseline B3: PubMedCLIP ViT-B/32 — Multimodal Cross-Attention
+# Baseline B1: ResNet-50 (ImageNet) on CTCH
 defaults:
   - /model/peft@model.peft: none
   - /model/fusion@model.fusion: none
   - /model/classifier@model.classifier: none
-  - /dataset@dataset: btxrd
+  - /dataset@dataset: ctch
   - _self_
 
 model:
-  backbone_type: "pubmedclip"
-  freeze_backbone: true
+  backbone_type: "resnet50_imagenet"
+  freeze_backbone: false
   _placeholder_: true
 dataset:
   _placeholder_: true
 
-experiment_name: "B3_pubmedclip"
+experiment_name: "ctch_baseline/B1_resnet50"
 
 params:
   run_phase1: false
@@ -22,15 +22,15 @@ params:
   model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
   phase2:
     epochs: 50
-    lr: 1e-3
+    lr: 1e-4
     weight_decay: 1e-4
     optimizer: "adamw"
     scheduler: "cosine"
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "cross_attention"
+    fusion_type: "none"
     classifier_type: "linear"
-    use_text: true
+    use_text: false
     checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
 
 seed: 42

@@ -33,6 +33,7 @@ class CTCHDataset(Dataset):
         clinical_report_dir: str = None,
         # Backward compatibility: single report_dir
         report_dir: str = None,
+        **kwargs,
     ):
         self.img_dir = img_dir
         self.pathologies = pathologies
