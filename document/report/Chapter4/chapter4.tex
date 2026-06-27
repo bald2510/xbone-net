@@ -17,7 +17,7 @@ Trong môi trường lâm sàng thực tế, mô hình phân loại có thể ph
 Thí nghiệm hướng đến việc kiểm chứng giả thuyết:
 \begin{itemize}
     \item Việc sử dụng đầu phân loại nguyên mẫu (Prototypical Head) kết hợp học khoảng cách (Metric Learning) ở Pha 2 giúp tạo lập một không gian đặc trưng có cấu trúc cụm chặt chẽ hơn.
-    \item Khoảng cách Euclidean từ vector đặc trưng của mẫu kiểm thử đến các nguyên mẫu (prototypes) của lớp đã biết cung cấp một thước đo khoảng cách đáng tin cậy để xác định ranh giới từ chối chẩn đoán, giúp phát hiện các mẫu OOD hiệu quả hơn so với hàm xác suất Softmax truyền thống của đầu phân loại tuyến tính.
+    \item Khoảng cách Cosine từ vector đặc trưng của mẫu kiểm thử đến các nguyên mẫu (prototypes) của lớp đã biết cung cấp một thước đo khoảng cách đáng tin cậy để xác định ranh giới từ chối chẩn đoán, giúp phát hiện các mẫu OOD hiệu quả hơn so với hàm xác suất truyền thống của đầu phân loại tuyến tính.
 \end{itemize}
 
 \subsection{Đánh giá vai trò của các nguồn thông tin văn bản lâm sàng và rò rỉ nhãn}
@@ -208,10 +208,99 @@ Về mặt gán nhãn u xương, bộ dữ liệu BTXRD được tổ chức ch�
 Đối với phần báo cáo văn bản cận lâm sàng (X-ray reports), có tổng cộng 3.746 tệp tương ứng với 3.746 hình ảnh. Trong đó, có 1.576 văn bản báo cáo là độc nhất (tỷ lệ độc nhất đạt 42,1\%). Sự trùng lặp văn bản là do quy trình tự động sinh dựa trên các tập thuộc tính và mẫu câu cố định. Tuy nhiên, tính độc nhất này phân bổ cao hơn trên các tập chia nhỏ: tập huấn luyện có 1.333/2.622 báo cáo độc nhất (50,8\%), tập đánh giá có 475/562 báo cáo độc nhất (84,5\%), và tập kiểm thử có 451/562 báo cáo độc nhất (80,2\%). Độ dài trung bình của các báo cáo cận lâm sàng là khoảng 24,6 từ (tối thiểu là 19 từ, tối đa là 36 từ), tương đương trung bình khoảng 172 ký tự (từ 120 đến 266 ký tự).
 
 \subsection{Bộ dữ liệu CTCH}
+Bộ dữ liệu hình ảnh X-quang xương CTCH được thu thập từ bệnh viện Chấn thương Chỉnh hình, bao gồm tổng cộng 400 hình ảnh X-quang từ 400 bệnh nhân khác nhau. 
+Mỗi hình ảnh được gán nhãn với các thông tin lâm sàng bao gồm lý do vào viện, quá trình bệnh lý, tiền sử bệnh lý.
 \subsubsection{Cấu trúc bộ dữ liệu}
+
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south west,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.parent anchor) |- (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[data/BTXRD/
+  [images/
+    [IMG000001.jpeg]
+  ]
+  [reports/
+    [clinical\_vi/
+      [IMG000001.txt]
+    ]
+    [clinical/
+      [IMG000001.txt]
+    ]   
+    [xray\_vi/
+      [IMG000001.txt]
+    ]
+    [xray/
+      [IMG000001.txt]
+    ]
+  ]
+  [data\_labeled.csv]
+  [ctch-labels.csv]
+  [ctch-split.csv]
+]
+\end{forest}
+\end{adjustbox}
+\caption{Sơ đồ phân cấp cấu trúc dữ liệu CTCH}
+\label{fig:ctch_forest}
+\end{figure}
+
+Trong đó:
+\begin{itemize}
+    \item \textbf{images/}: Thư mục chứa toàn bộ hình ảnh chụp X-quang gốc của bệnh nhân dưới định dạng ảnh JPEG thang độ xám.
+    \item \textbf{reports/}: Thư mục lưu trữ hai nguồn văn bản phục vụ cho học máy đa phương thức:
+    \begin{itemize}
+        \item \textbf{clinical/}: Chứa các báo cáo mô tả bệnh sử lâm sàng của từng bệnh nhân.
+        \item \textbf{clinical\_vi/}: Chứa các báo cáo mô tả bệnh sử lâm sàng của từng bệnh nhân bằng tiếng Việt.
+        \item \textbf{xray/}: Chứa các văn bản mô tả phát hiện chẩn đoán hình ảnh trên phim X-quang.
+        \item \textbf{xray\_vi/}: Chứa các văn bản mô tả phát hiện chẩn đoán hình ảnh trên phim X-quang bằng tiếng Việt.
+    \end{itemize}
+    \item \textbf{data\_labeled.csv}: Tệp bảng chứa siêu dữ liệu thô ban đầu.
+    \item \textbf{ctch-labels.csv}: Tệp lưu trữ ánh xạ các lớp bệnh lý của từng ảnh phục vụ cho huấn luyện phân loại.
+    \item \textbf{ctch-split.csv}: Tập tin chỉ định phân tách phân bổ tập dữ liệu (huấn luyện, đánh giá, kiểm thử).
+\end{itemize}
+
 \subsubsection{Tiền xử lý dữ liệu}
+Dữ liệu gốc được thu thập từ bệnh viện Chấn thương Chỉnh hình có nhiều vấn đề như sau:
+\begin{itemize}
+    \item Dữ liệu gốc được thu thập từ bệnh viện Chấn thương Chỉnh hình có nhiều loại ảnh khác nhau, bao gồm ảnh chụp X-quang, ảnh CT, ảnh MRI và các loại ảnh khác. 
+    \item Một ca khám có thể có nhiều ảnh chụp từ các vị trí giải phẫu khác nhau, từ 2 đén vài trăm ảnh, 
+    nhưng chỉ một trong số đó là đúng vị trí và có sự thể hiện rõ về bệnh lý ở mặt thị giác. 
+    \item Một bệnh nhân có thể tái khám nhiều lần, dẫn đến việc có nhiều mẫu dữ liệu tương tự.
+    \item Nhiều ca khám thiếu hụt các trường thông tin quan trọng đến huấn luyện như không có chẩn đoán xác định, không có phân tích ảnh X-quang,...
+    \item Đôi khi chẩn đoán xác định của bác sĩ là những căn bệnh về phần mềm (sụn, dây chằng, gân, cơ) không thể hiện được trên ảnh X-quang.
+\end{itemize}
+Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu để chuẩn hóa và làm sạch dữ liệu trước khi đưa vào huấn luyện mô hình.
+Các bước tiền xử lý bao gồm:
+\begin{itemize}
+    \item Loại bỏ các ảnh không liên quan hoặc không có giá trị chẩn đoán, có các dụng cụ y tế (nẹp, đinh) che vùng tổn thương.
+    \item Đánh dấu và phân loại các mẫu dữ liệu theo lớp bệnh lý của ảnh X-quang 
+    (nếu bệnh là gãy dây chằng thuộc về phần mềm thì nhãn vẫn là "bình thường" nếu ảnh không ghi nhận tổn thương về xương).
+    \item Loại bỏ các ca khám trùng lặp, tái khám nhiều lần.
+    \item Chuẩn hóa và biên dịch các báo cáo y khoa từ tiếng Việt sang tiếng Anh.
+    \item Lọc các ca hiếm gặp, không đủ số lượng mẫu để làm dữ liệu ngoài phân phối.
+\end{itemize}
+
 \section{Độ đo đánh giá}
-Để đánh giá hiệu quả của mô hình đề xuất và các mô hình đối sánh trên bài toán phân loại đa lớp u xương, nhóm nghiên cứu đã sử dụng các độ đo tiêu chuẩn trong học máy y sinh. Do tập dữ liệu BTXRD có sự mất cân bằng lớp nghiêm trọng (lớp Bình thường chiếm hơn 50\% số lượng mẫu, trong khi một số lớp u hiếm như u xơ xương chỉ chiếm khoảng 1,2\%), các chỉ số tính toán được áp dụng cơ chế trung bình vĩ mô (Macro-averaging). Phương pháp này giúp phản ánh chính xác hiệu năng dự đoán trên từng lớp bệnh lý độc lập, ngăn chặn việc kết quả của lớp đa s\subsection{Định nghĩa toán học và ý nghĩa của các độ đo}
+Để đánh giá hiệu quả của mô hình đề xuất và các mô hình đối sánh trên bài toán phân loại đa lớp u xương, nhóm nghiên cứu đã sử dụng các độ đo tiêu chuẩn trong học máy y sinh. Do tập dữ liệu CTCH có sự mất cân bằng lớp nghiêm trọng (lớp Bình thường chiếm hơn 50\% số lượng mẫu, trong khi một số lớp u hiếm như u xơ xương chỉ chiếm khoảng 1,2\%), các chỉ số tính toán được áp dụng cơ chế trung bình vĩ macro (Macro-averaging). Phương pháp này giúp phản ánh chính xác hiệu năng dự đoán trên từng lớp bệnh lý độc lập, ngăn chặn việc kết quả của lớp đa s\subsection{Định nghĩa toán học và ý nghĩa của các độ đo}
 Các chỉ số đánh giá được tính toán dựa trên các khái niệm cơ bản cho từng lớp $c \in \{1, 2, \dots, C\}$ (với $C = 10$ là số lớp):
 \begin{itemize}
     \item \textbf{True Positive ($TP_c$):} Số lượng mẫu thuộc lớp $c$ được dự đoán chính xác vào lớp $c$.
@@ -390,9 +479,9 @@ Nhằm đánh giá khả năng tổng quát hóa của mô hình đề xuất tr
 Do đặc thù bộ dữ liệu CTCH có phân bổ nhãn và chất lượng ảnh khác biệt so với BTXRD, các kết quả thực nghiệm sẽ giúp kiểm chứng năng lực thích ứng miền của mô hình. Kết quả thực nghiệm chi tiết sẽ được cập nhật trong các phiên bản tiếp theo của báo cáo khi quá trình huấn luyện và kiểm thử trên dữ liệu CTCH hoàn tất.
 
 \subsection{Đánh giá khả năng phát hiện dữ liệu ngoài phân phối (OOD)}
-Mục đích của nhóm thí nghiệm này là đánh giá độ tin cậy và khả năng nhận biết dữ liệu bất thường của mô hình XBone-Net khi đối mặt với các mẫu không thuộc phân phối huấn luyện (Out-of-Distribution). Cơ chế phát hiện OOD dựa trên việc tính toán khoảng cách Euclidean từ vector đặc trưng của mẫu kiểm thử đến vector đại diện (prototype) của các lớp bệnh lý đã biết. Nếu khoảng cách đến prototype gần nhất vượt quá một ngưỡng xác định, mẫu sẽ được phân loại là dữ liệu ngoài phân phối hoặc đánh dấu mức độ không chắc chắn cao.
+Mục đích của nhóm thí nghiệm này là đánh giá độ tin cậy và khả năng nhận biết dữ liệu bất thường của mô hình XBone-Net khi đối mặt với các mẫu không thuộc phân phối huấn luyện (Out-of-Distribution). Cơ chế phát hiện OOD dựa trên việc tính toán khoảng cách Cosine từ vector đặc trưng của mẫu kiểm thử đến vector đại diện (prototype) của các lớp bệnh lý đã biết. Nếu khoảng cách đến prototype gần nhất vượt quá một ngưỡng xác định, mẫu sẽ được phân loại là dữ liệu ngoài phân phối hoặc đánh dấu mức độ không chắc chắn cao.
 
-Kết quả đánh giá khả năng phát hiện OOD bằng các độ đo AUROC và FPR95 đối với các phương pháp (Euclidean Distance, Mahalanobis Distance, k-NN) sẽ được cập nhật chi tiết sau khi hoàn thành trích xuất embeddings trên các tập ID (BTXRD) và OOD (FracAtlas).
+Kết quả đánh giá khả năng phát hiện OOD bằng các độ đo AUROC và FPR95 đối với phương pháp khoảng cách Cosine sẽ được đối sánh với các baseline khác sau khi hoàn thành trích xuất embeddings trên các tập ID (BTXRD) và OOD (FracAtlas).
 
 \subsection{Các thí nghiệm loại bỏ thành phần (Ablation Studies)}
 

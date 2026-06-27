@@ -1,0 +1,18 @@
+# @package _global_
+
+name: 'fracatlas'
+batch_size: 32
+num_workers: 0
+
+params:
+  img_dir: "${hydra:runtime.cwd}/data/FracAtlas/images"
+  report_dir: "${hydra:runtime.cwd}/data/FracAtlas/reports"
+  csv_split_path: "${hydra:runtime.cwd}/data/FracAtlas/fracatlas-split.csv"
+  csv_labels_path: "${hydra:runtime.cwd}/data/FracAtlas/fracatlas-labels.csv"
+
+  task_type: "multiclass"
+  num_classes: 2
+  classes: [
+    'non-fractured',
+    'fractured'
+  ]

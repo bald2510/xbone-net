@@ -94,7 +94,16 @@ Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp c�
 \label{tab:scratchMethod}
 \end{table}
 
-\subsection{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)} đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu (thường cố gắng dung hợp dữ liệu thô thành một khối thống nhất), Med-VLMs chú trọng vào việc đối chiếu và liên kết chặt chẽ ngữ nghĩa giữa hình ảnh và ngôn ngữ tự nhiên. Cụ thể, kiến trúc của chúng thường kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này khớp với nhau. Lúc này, bộ phân loại không gán nhãn theo cách truyền thống mà đóng vai trò là một cơ chế đo lường mức độ tương đồng. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
+\subsection{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)} Các mô hình ngôn ngữ trực quan đánh dấu một bước tiến quan trọng 
+trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu 
+(thường cố gắng dung hợp dữ liệu thô thành một khối thống nhất), Med-VLMs chú trọng vào việc đối chiếu và liên kết chặt chẽ 
+ngữ nghĩa giữa hình ảnh và ngôn ngữ tự nhiên. 
+Cụ thể, kiến trúc của chúng thường kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, 
+điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, 
+Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này khớp với nhau. 
+Lúc này, bộ phân loại không gán nhãn theo cách truyền thống mà đóng vai trò là một cơ chế đo lường mức độ tương đồng. 
+Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, 
+từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
 
 Để đạt được khả năng trên, các nghiên cứu tiền huấn luyện Med-VLMs hiện nay đang phát triển chủ yếu theo ba hướng: học tương phản, học có che giấu và tích hợp tri thức y khoa (chi tiết tổng hợp được trình bày tại các Bảng \ref{tab:VLMPretrainingPrinciple}, \ref{tab:VLMPretrainingMethod}, \ref{tab:VLMPretrainingResult}).
 
@@ -534,4 +543,86 @@ Trong định hướng xây dựng một hệ thống phân loại ảnh y khoa 
 \end{enumerate}
 Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.  
  
-\section{Các phương pháp nhận diện dữ liệu ngoài phân phối}
+\section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
+Bài toán phát hiện dữ liệu ngoài phân phối (OOD detection) đóng vai trò then chốt trong việc đảm bảo tính an toàn 
+và độ tin cậy của các hệ thống trí tuệ nhân tạo, đặc biệt trong các ứng dụng rủi ro cao như chẩn đoán hình ảnh y khoa. 
+Dựa trên cơ chế hoạt động và cách biểu diễn dữ liệu, các phương pháp OOD hiện nay có thể được phân loại thành các nhóm chính sau đây.
+\subsection{Phương pháp dựa trên đầu ra của mô hình (Post-hoc Methods)}
+Nhóm phương pháp này tận dụng trực tiếp đầu ra (logits hoặc probabilities) của một mạng nơ-ron đã được huấn luyện 
+mà không cần thay đổi kiến trúc hay huấn luyện lại mô hình.
+\begin{itemize}
+  \item \textbf{Maximum Softmax Probability (MSP):} 
+  Đây là phương pháp nền tảng, dựa trên giả định rằng mô hình sẽ đưa ra xác suất dự đoán thấp hơn đối với các mẫu OOD. 
+  Tuy nhiên, các mạng nơ-ron sâu thường gặp hiện tượng "tự tin thái quá" (overconfidence), khiến MSP kém hiệu quả trên thực tế.
+  \item \textbf{ODIN (Out-of-DIstribution detector for Neural networks):} 
+  Khắc phục nhược điểm của MSP bằng cách sử dụng kỹ thuật Temperature Scaling và thêm nhiễu (perturbation) vào đầu vào. 
+  Cơ chế này giúp khuếch đại sự khác biệt về logit giữa mẫu In-Distribution (ID) và OOD.
+  \item \textbf{Energy-based Scores:} Thay vì sử dụng xác suất phân bố, phương pháp này 
+  chuyển đổi các giá trị logit thành mức năng lượng. Các mẫu ID sẽ có mức năng lượng thấp, 
+  trong khi các mẫu OOD có năng lượng cao. Hàm năng lượng được định nghĩa như sau:
+  $$E(x; f) = -T \log \sum_{i} \exp(f_i(x)/T)$$
+  Trong đó, $f_i(x)$ là logit của lớp $i$ và $T$ là tham số nhiệt độ (temperature).
+\end{itemize}
+
+\subsection{Không gian đặc trưng và Mạng nguyên mẫu }
+Thay vì chỉ sử dụng lớp đầu ra, các phương pháp này khai thác không gian ẩn (latent space) để tính toán khoảng cách 
+từ mẫu kiểm thử đến phân phối dữ liệu huấn luyện. Tiêu biểu trong nhóm này là kiến trúc 
+\textbf{Mạng nguyên mẫu (Prototypical Networks)}.
+Trong không gian nhúng, các mẫu của cùng một lớp được gom cụm xung quanh một "nguyên mẫu" (prototype) $c_k$, 
+được tính bằng trung bình các vector đặc trưng của tập dữ liệu hỗ trợ 
+$S_k$:$$c_k = \frac{1}{|S_k|} \sum_{x_i \in S_k} f_\theta(x_i)$$
+Khả năng phát hiện OOD của phương pháp này phụ thuộc chặt chẽ vào độ đo khoảng cách được sử dụng:
+\begin{itemize}
+  \item \textbf{Khoảng cách Euclidean ($L_2$ Norm):} Tính toán bằng công thức $d_E(z, c_k) = \| z - c_k \|_2$. 
+  Phương pháp này giả định các cụm dữ liệu có dạng hình cầu và đẳng hướng (isotropic). 
+  Dù dễ tính toán, nó thường kém hiệu quả do bỏ qua sự tương quan và độ phương sai khác biệt giữa các chiều đặc trưng.
+  \item \textbf{Khoảng cách Cosine:} Định lượng góc giữa hai vector ($d_C(z, c_k) = 1 - \frac{z \cdot c_k}{\|z\|_2 \|c_k\|_2}$). 
+  Khoảng cách này loại bỏ ảnh hưởng của độ lớn vector (magnitude), rất hiệu quả khi kết hợp với các hàm mất mát đối chiếu 
+  (Contrastive Loss), nhưng có thể làm mất đi tín hiệu nhận diện quan trọng khi các mẫu OOD thường có norm thấp hơn ID.
+  \item \textbf{Khoảng cách Mahalanobis:} Là độ đo mạnh mẽ nhất cho Near-OOD, được biểu diễn qua công thức 
+  $d_M(z, c_k) = \sqrt{(z - c_k)^T \Sigma_k^{-1} (z - c_k)}$ (với $\Sigma_k$ là ma trận hiệp phương sai). 
+  Bằng cách cho phép các cụm dữ liệu có dạng ellipsoid linh hoạt (anisotropic), 
+  Mahalanobis đánh giá được mức độ bất thường dựa trên chính sự phân bố nội bộ của lớp, 
+  dù chi phí tính toán nghịch đảo ma trận là một rào cản lớn khi tập dữ liệu hỗ trợ nhỏ.
+\end{itemize}
+
+\subsection{Mô hình sinh và Định lượng độ không chắc chắn (Generative Models \& Uncertainty Quantification)}
+Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng tái tạo dữ liệu và ước lượng độ tin cậy của mô hình.
+\begin{itemize}
+  \item \textbf{Lỗi tái tạo (Reconstruction Error):} Sử dụng các mô hình Autoencoders hoặc Variational Autoencoders (VAEs) 
+  được huấn luyện chỉ trên dữ liệu ID (ví dụ: các cấu trúc giải phẫu bình thường). 
+  Khi gặp dữ liệu OOD, mô hình sẽ không thể khôi phục chính xác, dẫn đến lỗi tái tạo pixel-level cao, 
+  từ đó không chỉ phát hiện mà còn khoanh vùng được vùng bất thường.\item \textbf{Monte Carlo Dropout (MC Dropout):} 
+  Để định lượng "độ không chắc chắn nhận thức" (epistemic uncertainty), kỹ thuật này thực hiện quá trình truyền xuôi (forward pass) 
+  nhiều lần với dropout được kích hoạt trong pha kiểm thử. Phương sai lớn giữa các lần dự đoán là tín hiệu mạnh mẽ chỉ ra rằng mô 
+  hình đang đối mặt với dữ liệu chưa từng quan sát.
+\end{itemize}
+
+\subsection{Học sâu Đa phương thức trong phát hiện OOD Y khoa (Multimodal Deep Learning)}
+Trong bối cảnh phân loại ảnh y khoa phức tạp, ranh giới giữa ID và OOD thường rất mỏng manh (Near-OOD) 
+do sự đa dạng của các bệnh lý hiếm gặp hoặc hiện tượng dịch chuyển phân phối (Covariate shift). 
+Các phương pháp OOD hiện đại đang dịch chuyển mạnh mẽ sang kiến trúc Học sâu đa phương thức (Multimodal Deep Learning - MDL).
+\begin{itemize}
+  \item \textbf{Supervised Contrastive Learning:} Nhằm giải quyết Covariate shift giữa các hệ thống thu nhận hình ảnh 
+  (ví dụ: các máy chụp X-quang khác nhau), kỹ thuật đối chiếu có giám sát ép mô hình học các biểu diễn hình thái cốt lõi của 
+  tổn thương thay vì ghi nhớ nhiễu (noise/texture). Điều này giúp tối ưu hóa ranh giới khoảng cách trong không gian ẩn.
+  \item \textbf{Zero-shot OOD với Vision-Language Models:} Sự xuất hiện của các mô hình nền tảng y khoa như BiomedCLIP 
+  cho phép phát hiện OOD thông qua độ lệch pha (misalignment) giữa đặc trưng hình ảnh và văn bản. 
+  Cụ thể, thông qua cơ chế Knowledge-guided Cross-Attention, hệ thống có thể đối chiếu chéo (cross-reference) 
+  các vùng hình ảnh với kho tri thức y khoa. Ví dụ, trong bài toán phân loại khối u xương (bone tumor) đa phương thức, 
+  nếu mô hình đối mặt với một ảnh X-quang chứa mảnh ghép kim loại chỉnh hình hoặc một dạng Sarcoma chưa từng có trong tập huấn luyện, 
+  điểm tương đồng (Alignment Score) giữa đặc trưng ảnh và các báo cáo u xương tiêu chuẩn sẽ suy giảm đột ngột. 
+  Sự sụt giảm độ chú ý tại các vùng bất thường này cung cấp cơ chế "cắm cờ" (flag) OOD mạnh mẽ và có khả năng giải thích cao 
+  (interpretable).
+\end{itemize}
+
+\subsection{Hạn chế của các phương pháp hiện tại và Cơ sở lựa chọn}
+
+Các phương pháp OOD hiện hành vẫn tồn tại nhiều điểm yếu khi áp dụng vào phân loại ảnh y khoa: nhóm Post-hoc (MSP, ODIN) dễ mắc lỗi "tự tin thái quá" và kém hiệu quả với ranh giới Near-OOD; nhóm Generative tốn kém tài nguyên tính toán và dễ tổng quát hóa sai (over-generalization); trong khi Contrastive Learning lại phụ thuộc quá mức vào lượng dữ liệu lớn, khó xử lý các tập dữ liệu y tế mất cân bằng nghiêm trọng.
+
+Do đó, Mạng nguyên mẫu (Prototypical Networks) được lựa chọn làm giải pháp cốt lõi nhờ ba ưu thế chiến lược:
+\begin{enumerate}
+\item \textbf{Tối ưu cho dữ liệu khan hiếm (Few-shot):} Hoạt động ổn định ngay cả với tập dữ liệu hỗ trợ rất nhỏ, đặc biệt phù hợp để xử lý các biến thể bệnh lý hiếm gặp như khối u xương mà không bị chệch (bias).
+\item \textbf{Cơ sở suy luận minh bạch:} Định lượng trực tiếp sự bất thường thông qua khoảng cách hình học tới các nguyên mẫu bệnh lý, đáp ứng yêu cầu khắt khe về khả năng giải thích (interpretability) trong lâm sàng.
+\item \textbf{Nhạy bén với Near-OOD:} Khả năng tích hợp linh hoạt với các độ đo (như Mahalanobis) giúp mô hình đánh giá chính xác độ phân tán của dữ liệu, từ đó bóp nghẹt dung sai và phát hiện sự chênh lệch mỏng manh nhất trong không gian đặc trưng đa phương thức.
+\end{enumerate}
