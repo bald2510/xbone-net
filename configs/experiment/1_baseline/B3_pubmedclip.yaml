@@ -1,7 +1,7 @@
 # @package _global_
 # Baseline B3: PubMedCLIP ViT-B/32 — Multimodal Cross-Attention
 defaults:
-  - /model/peft@model.peft: qlora
+  - /model/peft@model.peft: none
   - /model/fusion@model.fusion: none
   - /model/classifier@model.classifier: none
   - /dataset@dataset: btxrd

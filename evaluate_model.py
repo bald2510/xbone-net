@@ -385,8 +385,14 @@ def compute_metrics_multiclass(
 
     # AUROC (one-vs-rest)
     try:
+        # Check if probabilities sum to 1.0; if not, L1-normalize them for OvR AUROC
+        probs_sum = all_probs.sum(axis=1, keepdims=True)
+        if not np.allclose(probs_sum, 1.0, atol=1e-5):
+            probs_for_auc = all_probs / (probs_sum + 1e-8)
+        else:
+            probs_for_auc = all_probs
         macro_auroc = float(roc_auc_score(
-            all_gt, all_probs, average="macro", multi_class="ovr",
+            all_gt, probs_for_auc, average="macro", multi_class="ovr",
         ))
     except ValueError:
         macro_auroc = float("nan")

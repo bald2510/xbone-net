@@ -15,8 +15,8 @@ params:
   num_classes: 10
   classes: [
     'normal',                    # 0: Bình thường (không có u)
-    'osteochondroma',            # 1: U xương sụn
-    'osteosarcoma',              # 2: Sarcoma xương (ác tính)
+    'osteochondroma',             # 1: U xương sụn
+    'osteosarcoma' -> benign -> tumor,              # 2: Sarcoma xương (ác tính)
     'multiple osteochondromas',  # 3: Đa u xương sụn
     'simple bone cyst',          # 4: Nang xương đơn thuần
     'other bt',                  # 5: U lành tính khác

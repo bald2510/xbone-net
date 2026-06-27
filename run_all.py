@@ -24,20 +24,27 @@ from pathlib import Path
 
 import numpy as np
 
-# ── Experiment registry ──────────────────────────────────────────────────────
-# Ordered so baselines run first, then ablations (dependencies respected).
-
 EXPERIMENTS = OrderedDict({
-    # ─── 1. Đánh giá đối sánh hiệu năng (Baseline Comparison) ───
+    # # ─── 1. Đánh giá đối sánh hiệu năng (Baseline Comparison) ───
     "baseline": [
         # "1_baseline/B1_resnet50",
-        "1_baseline/B2_medclip", 
+        # "1_baseline/B2_medclip", 
         # "1_baseline/B3_pubmedclip",
         # "1_baseline/B4_biomedclip",
         # "1_baseline/B5_clip",
+        "1_baseline/B6_biomedclip_zeroshot",
         # "1_baseline/ours_xbone_net",
     ],
-    # ─── 2. Đánh giá nguồn văn bản lâm sàng và rò rỉ nhãn (Modality Ablation) ───
+    # # ─── CTCH Baselines ───
+    # "ctch_baseline": [
+    #     "ctch_baseline/B1_resnet50",
+    #     "ctch_baseline/B2_medclip",
+    #     "ctch_baseline/B3_pubmedclip",
+    #     "ctch_baseline/B4_biomedclip",
+    #     "ctch_baseline/B5_clip",
+    #     "ctch_baseline/ours_xbone_net",
+    # ],
+    # # ─── 2. Đánh giá nguồn văn bản lâm sàng và rò rỉ nhãn (Modality Ablation) ───
     # "ablation_modality": [
     #     "2_ablation_modality/T2_img_only",
     #     "2_ablation_modality/T2_clinical_only",
@@ -45,21 +52,21 @@ EXPERIMENTS = OrderedDict({
     #     "2_ablation_modality/T2_xray_clinical",
     #     "2_ablation_modality/T2_both"
     # ],
-    # ─── 3. Đánh giá tinh chỉnh backbone và trôi lệch biểu diễn (PEFT & Drift Ablation) ───
-    "ablation_finetune": [
-        "3_ablation_finetune/T3_no_ft",
-        "3_ablation_finetune/T3_lora_ft",
-        "3_ablation_finetune/T3_full_ft",
-        "3_ablation_finetune/T3_lora_ft_clinical_only",
-        "3_ablation_finetune/T3_full_ft_clinical_only"
-    ],
+    # # ─── 3. Đánh giá tinh chỉnh backbone và trôi lệch biểu diễn (PEFT & Drift Ablation) ───
+    # "ablation_finetune": [
+    #     "3_ablation_finetune/T3_no_ft",
+    #     "3_ablation_finetune/T3_lora_ft",
+    #     "3_ablation_finetune/T3_full_ft",
+    #     "3_ablation_finetune/T3_lora_ft_clinical_only",
+    #     "3_ablation_finetune/T3_full_ft_clinical_only"
+    # ],
     # # ─── 4. So sánh hiệu quả giữa các đầu phân loại (Classifier Ablation) ───
-    "ablation_classifier": [
-        "4_ablation_classifier/T4_crossattn_linear",
-        "4_ablation_classifier/T4_concat_linear",
-        "4_ablation_classifier/T4_crossattn_proto",
-        "4_ablation_classifier/T4_concat_proto"
-    ],
+    # "ablation_classifier": [
+    #     "4_ablation_classifier/T4_crossattn_linear",
+    #     "4_ablation_classifier/T4_concat_linear",
+    #     "4_ablation_classifier/T4_crossattn_proto",
+    #     "4_ablation_classifier/T4_concat_proto"
+    # ],
     # # ─── 6. Đánh giá hàm mất mát và tối ưu (Loss Ablation) ───
     # "ablation_loss": [
     #     "6_ablation_loss/T6_bce_proto",
