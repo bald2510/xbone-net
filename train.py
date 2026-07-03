@@ -604,14 +604,12 @@ def main(cfg: DictConfig):
             cb_beta = p2_cfg.get("cb_beta", 0.99)
             class_weights = compute_class_weights(train_dataset, num_classes, device, weight_type, cb_beta)
             loss_cfg = p2_cfg.get("loss", {}) or {}
-            if classifier_type == "prototypical" and phase2_loss_type != "ce":
+            if classifier_type == "prototypical":
                 from src.utils.losses import CombinedPhase2LossMulticlass
                 criterion_p2 = CombinedPhase2LossMulticlass(
                     class_weights=class_weights,
                     proto_margin=loss_cfg.get("proto_margin", 0.5),
-                    ood_margin=loss_cfg.get("ood_margin", 1.0),
-                    lambda_proto=loss_cfg.get("lambda_proto", 0.5),
-                    lambda_ood=loss_cfg.get("lambda_ood", 0.0),
+                    lambda_proto=loss_cfg.get("lambda_proto", 0.3),
                     label_smoothing=loss_cfg.get("label_smoothing", 0.1),
                 )
             else:

@@ -1,29 +1,24 @@
 # @package _global_
-# Baseline: PUBMEDCLIP — Zero-Shot Classification on BTXRD
 defaults:
-  - /model/peft@model.peft: none
-  - /model/fusion@model.fusion: none
-  - /model/classifier@model.classifier: none
-  - /dataset@dataset: btxrd
-  - _self_
-
+- /model/peft@model.peft: none
+- /model/fusion@model.fusion: none
+- /model/classifier@model.classifier: none
+- /dataset@dataset: btxrd
+- _self_
 model:
-  backbone_type: "pubmedclip"
+  backbone_type: pubmedclip
   freeze_backbone: true
   _placeholder_: true
 dataset:
   _placeholder_: true
-
-experiment_name: "btxrd/baselines/zeroshot/pubmedclip_zeroshot"
-
+experiment_name: btxrd/baselines/zeroshot/pubmedclip_zeroshot
 params:
   run_phase1: false
   run_phase2: false
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
   phase2:
-    fusion_type: "none"
-    classifier_type: "none"
+    fusion_type: none
+    classifier_type: none
     use_text: false
-    checkpoint_path: ""
-
+    checkpoint_path: ''
 seed: 42

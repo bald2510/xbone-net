@@ -33,16 +33,17 @@ EXPERIMENTS = OrderedDict({
     # ],
     # --- BTXRD Fine-Tuned Baselines ---
     "btxrd_finetuned": [
-        "btxrd/baselines/finetuned/clip",
+        # "btxrd/baselines/finetuned/clip", 
         # "btxrd/baselines/finetuned/pubmedclip",
-        "btxrd/baselines/finetuned/medclip",
+        # "btxrd/baselines/finetuned/medclip",
         "btxrd/baselines/finetuned/biomedclip",
         # "btxrd/baselines/finetuned/resnet50",
         # "btxrd/baselines/finetuned/densenet",
     ],
-    # # --- BTXRD Proposed Model ---
+    # --- BTXRD Proposed Model ---
     # "btxrd_proposed": [
     #     "btxrd/proposed/ours_xbone_net",
+    #     "btxrd/proposed/ours_xbone_net_concat",
     # ],
     # # --- BTXRD Ablation Studies ---
     # "btxrd_ablation_architecture": [
@@ -156,13 +157,14 @@ def seed_dir(experiment: str, seed: int) -> str:
 # Execution & Metric Collection
 # ============================================================
 
-def run_one(script: str, experiment: str, seed: int) -> bool:
+def run_one(script: str, experiment: str, seed: int, extra_args: list | None = None) -> bool:
     """Execute train.py or evaluate.py subprocess for given experiment and seed.
 
     Args:
         script: Python script filename ('train.py' or 'evaluate.py').
         experiment: Experiment configuration identifier.
         seed: Integer seed value.
+        extra_args: Optional list of extra CLI argument strings.
 
     Returns:
         bool: True if process executed with exit code 0; False otherwise.
@@ -177,6 +179,9 @@ def run_one(script: str, experiment: str, seed: int) -> bool:
         f"++params.phase1.checkpoint_path={os.path.join(sd, 'best_phase1.pth')}",
         f"++params.phase2.checkpoint_path={os.path.join(sd, 'best_phase2.pth')}",
     ]
+
+    if extra_args:
+        cmd.extend(extra_args)
 
     if "evaluate.py" in script:
         cmd.extend(["--output-dir", output_dir])
@@ -323,6 +328,8 @@ def main():
                         help=f"Seeds to run (default: {DEFAULT_SEEDS})")
     parser.add_argument("--train-only", action="store_true",
                         help="Only train models and save checkpoints, skip evaluation")
+    parser.add_argument("--phase2-only", "-p2", action="store_true",
+                        help="Skip Phase 1 contrastive training, only train Phase 2 classifier")
     parser.add_argument("--eval-only", action="store_true",
                         help="Skip training, only evaluate + aggregate")
     parser.add_argument("--table", action="store_true",
@@ -332,7 +339,13 @@ def main():
     experiments = get_experiments(args.group)
     seeds = args.seeds
 
-    mode_str = "TABLE ONLY" if args.table else ("TRAIN ONLY" if args.train_only else ("EVAL ONLY" if args.eval_only else "TRAIN + EVAL"))
+    mode_str = "TABLE ONLY" if args.table else (
+        "PHASE2 ONLY" if args.phase2_only else (
+            "TRAIN ONLY" if args.train_only else (
+                "EVAL ONLY" if args.eval_only else "TRAIN + EVAL"
+            )
+        )
+    )
 
     print("+----------------------------------------------------------+")
     print("|  XBone-Net -- Full Experiment Suite                      |")
@@ -365,11 +378,12 @@ def main():
             ckpt_p2 = os.path.join(sd, "best_phase2.pth")
             ckpt_p1 = os.path.join(sd, "best_phase1.pth")
 
-            # --- STEP 1: Train model (Synchronous & Mandatory for fine-tuned experiments) ---
+            # --- STEP 1: Train model ---
             if not args.eval_only and not is_zeroshot:
+                p2_extra = ["++params.run_phase1=false", "++params.run_phase2=true"] if args.phase2_only else None
                 print(f"\n  [STEP 1/2: TRAINING] Launching train.py for {experiment} (seed={seed})...")
                 sys.stdout.flush()
-                train_success = run_one("train.py", experiment, seed)
+                train_success = run_one("train.py", experiment, seed, extra_args=p2_extra)
 
                 # Strictly verify train.py process exited cleanly with code 0
                 if not train_success:

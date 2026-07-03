@@ -117,25 +117,37 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         )
         
         # Text encoder PEFT adapter
-        text_module = getattr(backbone.model, 'text', None)
-        if text_module is not None and 'text_target_modules' in params:
+        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
+        if text_module is not None:
             text_params = common_params.copy()
-            text_params['target_modules'] = params['text_target_modules']
-            text_module.transformer = apply_peft(
-                module=text_module.transformer,
+            if 'text_target_modules' in params:
+                text_params['target_modules'] = params['text_target_modules']
+            
+            target_text_submodule = getattr(text_module, 'transformer', text_module)
+            adapted_text_submodule = apply_peft(
+                module=target_text_submodule,
                 cfg={'type': peft_type, 'params': text_params}
             )
+            if hasattr(text_module, 'transformer'):
+                text_module.transformer = adapted_text_submodule
+            elif hasattr(backbone.model, 'text_model'):
+                backbone.model.text_model = adapted_text_submodule
     elif peft_type == 'full_ft':
         backbone.model.visual = apply_peft(
             module=backbone.model.visual,
             cfg=peft_cfg
         )
-        text_module = getattr(backbone.model, 'text', None)
+        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
         if text_module is not None:
-            text_module.transformer = apply_peft(
-                module=text_module.transformer,
+            target_text_submodule = getattr(text_module, 'transformer', text_module)
+            adapted_text_submodule = apply_peft(
+                module=target_text_submodule,
                 cfg=peft_cfg
             )
+            if hasattr(text_module, 'transformer'):
+                text_module.transformer = adapted_text_submodule
+            elif hasattr(backbone.model, 'text_model'):
+                backbone.model.text_model = adapted_text_submodule
     else:
         backbone.model.visual = apply_peft(
             module=backbone.model.visual, 
