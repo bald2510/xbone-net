@@ -103,6 +103,15 @@ Dựa trên những hạn chế của mô hình gốc, nghiên cứu đề xuấ
 
 \section{Ý tưởng ban đầu}
 
+\subsection{Dữ liệu thực tế}
+Với dữ liệu ảnh X-quang xương được thu thập từ Bệnh viện Chấn thương Chỉnh hình TP.HCM, nhóm nhận thấy rằng các báo cáo khám tổng quát của bác sĩ thường có ba phần quan trọng nhất: (1) lời khai của bệnh nhân, (2) tiền sử bệnh lý và (3) phân tích ảnh X-quang. Trong đó, phần phân tích ảnh X-quang chứa các nhận định trực tiếp của bác sĩ dựa trên hình ảnh, bao gồm mô tả tổn thương và kết luận chẩn đoán, nên mang giá trị thông tin cao nhất.
+
+Tuy nhiên, nội dung của phần này thực chất được xây dựng từ chính ảnh X-quang và thường chứa các thông tin gần tương đương với nhãn phân loại của bài toán hướng đến, chẳng hạn như loại tổn thương, vị trí tổn thương hoặc kết luận chẩn đoán. Do đó, nếu sử dụng phần phân tích ảnh X-quang làm đầu vào cùng với ảnh trong quá trình huấn luyện, mô hình sẽ được cung cấp thông tin suy luận trực tiếp từ mục tiêu dự đoán, dẫn đến hiện tượng rò rỉ thông tin (information leakage). Khi đó, kết quả đánh giá có thể bị đánh giá quá cao do mô hình học từ thông tin đã chứa đáp án thay vì khai thác mối quan hệ giữa ảnh X-quang và các thông tin lâm sàng thực sự.
+
+Vì vậy, trong nghiên cứu này, phần phân tích ảnh X-quang được loại bỏ khỏi dữ liệu văn bản đầu vào, sử dụng để tạo ra nhãn phân loại, không sử dụng chẩn đoán xác định vì nó được tổng hợp từ kết quả của nhiều . Mô hình chỉ sử dụng các thông tin có sẵn trước khi bác sĩ đọc ảnh, bao gồm lời khai của bệnh nhân và tiền sử bệnh lý. Cách xây dựng dữ liệu này phản ánh đúng quy trình chẩn đoán lâm sàng trong thực tế, đồng thời đảm bảo tính khách quan và khả năng tổng quát của mô hình.
+
+\subsection{Ý tưởng đề xuất}
+
 Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một hệ thống học sâu đa phương thức nhằm khai thác đồng thời thông tin từ ảnh X-quang và dữ liệu lâm sàng văn bản. Đặc biệt, hệ thống được thiết kế theo hướng tích hợp tri thức y khoa nhằm nâng cao khả năng học ít mẫu và phát hiện dữ liệu ngoài phân phối. Cụ thể, kiến trúc bao gồm các thành phần chính như sau:
     \begin{itemize}
         \item \textbf{Bộ mã hóa ảnh:} Kế thừa lại mô hình ViT-Base của phương pháp BiomedCLIP \cite{BiomedCLIP}
@@ -115,10 +124,10 @@ nhãn được quyết định bởi khoảng cách đến các prototype trong 
     \end{itemize}
 Đồng thời, các trọng số attention và thông tin từ tri thức y khoa được khai thác để trực quan hóa và giải thích kết quả dự đoán.
 
-\section{Giai đoạn off-line}
-Giai đoạn off-line nhằm xây dựng bộ tham số cho mô hình, thiết lập không gian biểu diễn chung và học cách dung hợp giữa đặc trưng hình ảnh X-quang và ngữ nghĩa y khoa.
+\section{Giai đoạn huấn luyện}
+Giai đoạn huấn luyện nhằm xây dựng bộ tham số cho mô hình, thiết lập không gian biểu diễn chung và học cách dung hợp giữa đặc trưng hình ảnh X-quang và ngữ nghĩa y khoa.
 
-Giai đoạn off-line gồm 2 công đoạn: Domain-Adaption và Fine-tuning. Trong đó, công đoạn Domain-Adaption nhằm mục đích giúp mô hình thích nghi từ miền dữ liệu tiền huấn luyện lớn sang miền dữ liệu y khoa đích của bài toán, trong khi công đoạn Fine-tuning tập trung vào việc tối ưu hóa khả năng dung hợp dữ liệu và phân loại trên tập dữ liệu mục tiêu.
+Giai đoạn huấn luyện gồm 2 công đoạn: Domain-Adaption và Fine-tuning. Trong đó, công đoạn Domain-Adaption nhằm mục đích giúp mô hình thích nghi từ miền dữ liệu tiền huấn luyện lớn sang miền dữ liệu y khoa đích của bài toán, trong khi công đoạn Fine-tuning tập trung vào việc tối ưu hóa khả năng dung hợp dữ liệu và phân loại trên tập dữ liệu mục tiêu.
 
 \subsection{Domain-Adaption với kỹ thuật LoRA}
 \begin{figure}[H]
@@ -217,7 +226,6 @@ Sơ đồ của hệ thống trong giai đoạn online được trình bày tron
 \section{Đóng góp của phương pháp}
 \begin{itemize}
     \item \textbf{Tích hợp tri thức y khoa với biểu diễn đa phương thức:} Không chỉ sử dụng kết hợp cả hai phương thức dữ liệu,
-phương pháp đã thực hiện trích xuất các thông tin cần thiết từ văn bản y khoa theo khuôn mẫu, giúp giảm nhiễu ngôn ngữ tự nhiên, tăng tính nhất quán ngữ nghĩa; đồng thời việc làm giàu tri thức qua UMLS giúp làm giàu ngữ nghĩa văn bản theo chuẩn y khoa mà không gặp vấn đề hallucination so với việc tạo ra mô tả bằng LLM.
     \item \textbf{Cơ chế Cross-Attention có hướng dẫn tri thức:} Việc sử dụng cơ chế Cross-Attention có hướng dẫn tri thức giúp mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý,
 thay vì các vùng nền không liên quan. Điều này không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
     \item \textbf{Cơ chế fusion ở nhiều cấp độ:} Việc kết hợp đặc trưng toàn cục và cục bộ thông qua Cross-Attention và khối Transformer giúp mô hình khai thác tối đa dữ liệu
