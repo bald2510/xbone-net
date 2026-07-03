@@ -33,7 +33,7 @@ Cần lưu ý rằng hệ thống được đề xuất không thay thế vai tr
 
 \subsection{Ý nghĩa khoa học của đề tài}
 
-Một trong những đóng góp học thuật quan trọng và mang tính thực tiễn lâm sàng cao nhất của nghiên cứu này là việc phát hiện, phân tích và đề xuất giải pháp triệt tiêu hoàn toàn hiện tượng rò rỉ nhãn trong các hệ thống ngôn ngữ trực quan y tế (Med-VLMs). Hầu hết các nghiên cứu VLM y học trước đây thường dựa trên một giả định phi thực tế rằng báo cáo kết quả X-quang hoàn chỉnh đã có sẵn để làm đầu vào cho mô hình AI đưa ra chẩn đoán. Tuy nhiên, trong quy trình lâm sàng thực tế, báo cáo X-quang này chỉ được bác sĩ chẩn đoán hình ảnh soạn thảo sau khi đã phân tích hình ảnh phim chụp; do đó, việc đưa nó vào quá trình suy luận của AI sẽ trực tiếp làm rò rỉ nhãn bệnh lý thông qua các từ khóa văn bản chuyên môn, làm mất đi hoàn toàn giá trị chẩn đoán thực tế của hệ thống hỗ trợ. Để giải quyết rào cản này, nghiên cứu đề xuất một quy trình huấn luyện hai pha bất đối xứng: khai thác báo cáo X-quang chuyên sâu để tối ưu hóa không gian căn chỉnh biểu diễn ở giai đoạn offline, nhưng sử dụng thông tin bệnh sử lâm sàng ban đầu (như triệu chứng sơ bộ, độ tuổi, giới tính, vị trí đau) ở giai đoạn suy luận online. Giải pháp này không chỉ ngăn chặn hiện tượng rò rỉ nhãn mà còn mô phỏng chính xác luồng công việc của bác sĩ trong thực tế, mở ra một hướng đi thực tiễn, tin cậy cao cho việc triển khai các hệ thống trí tuệ nhân tạo hỗ trợ chẩn đoán tại các cơ sở y tế.
+Đề tài góp phần làm rõ hiệu quả của việc kết hợp dữ liệu ảnh X-quang và văn bản lâm sàng trong bài toán phân loại đa lớp theo hướng đa phương thức. Thông qua việc khai thác đồng thời hai nguồn dữ liệu, nghiên cứu đánh giá khả năng cải thiện chất lượng biểu diễn và hiệu quả phân loại so với các phương pháp chỉ sử dụng một phương thức, qua đó cung cấp cơ sở cho việc phát triển các hệ thống hỗ trợ chẩn đoán tận dụng hiệu quả dữ liệu y tế đa phương thức.
 
 Bên cạnh đó, nghiên cứu khai thác và tinh chỉnh mô hình ngôn ngữ trực quan BioMedCLIP \cite{BiomedCLIP} trên dữ liệu X-quang xương, góp phần đánh giá khả năng thích nghi của các mô hình tiền huấn luyện đa phương thức đối với các bài toán y khoa chuyên biệt có quy mô dữ liệu hạn chế và phân bố mất cân bằng.
 
@@ -51,40 +51,12 @@ Bên cạnh đó, hệ thống được thiết kế nhằm thích ứng với c
 
 Đồng thời, mô hình cung cấp các bản đồ nhiệt trực quan hóa vùng ảnh ảnh hưởng đến kết quả dự đoán và cơ chế cảnh báo đối với các mẫu dữ liệu ngoài phân phối, góp phần nâng cao tính minh bạch, độ tin cậy và tính an toàn khi hỗ trợ bác sĩ trong quá trình chẩn đoán.
 
-\section{Định nghĩa các khái niệm}
-Nhằm đảm bảo sự thống nhất trong quá trình nghiên cứu và trình bày, một số khái niệm cơ bản được định nghĩa như sau:
-\subsection{Thông tin lâm sàng}
-Thông tin lâm sàng là những dữ liệu thu thập trực tiếp qua quá trình bác sĩ thăm khám người bệnh, bao gồm việc khai thác bệnh sử và khám thực thể (nhìn, sờ, gõ, nghe) \cite{Dorland2011}. Dữ liệu này mang tính chất định hướng ban đầu, giúp bác sĩ khoanh vùng tổn thương và đưa ra các quyết định chỉ định thăm khám chuyên sâu tiếp theo \cite{Bickley2020_Bates}.
-\begin{figure}[H]
-\centering
-    \includegraphics[width=0.8\linewidth]{images/ClinicalSource.png}
-    \caption{Nguồn thông tin lâm sàng bao gồm khai thác bệnh sử và khám thực thể}
-    \label{fig:clinical_source}
-\end{figure}
-
-\subsection{Thông tin cận lâm sàng}
-Thông tin cận lâm sàng là các dữ liệu khách quan thu được từ việc áp dụng các trang thiết bị và kỹ thuật y khoa hiện đại (như hình ảnh X-quang, cắt lớp, hay xét nghiệm sinh hóa) \cite{Dorland2011}. Nếu lâm sàng dùng để định hướng, thì cận lâm sàng cung cấp bằng chứng xác thực từ bên trong cơ thể để chẩn đoán chính xác bệnh lý.
-\begin{figure}[H]
-\centering
-    \includegraphics[width=0.8\linewidth]{images/XraySource.png}
-    \caption{Nguồn thông tin cận lâm sàng từ hình ảnh X-quang}
-    \label{fig:xray_source}
-\end{figure}
-
-Ngoài ra, thông tin cận lâm sàng còn bao gồm các báo cáo đọc ảnh của bác sĩ đọc ảnh, đây là những dữ liệu văn bản được trích xuất từ quá trình phân tích hình ảnh y tế, cung cấp các nhận định chuyên môn về tình trạng bệnh nhân dựa trên hình ảnh thu được \cite{Bickley2020_Bates}.
-\begin{figure}[H]
-\centering
-    \includegraphics[width=0.8\linewidth]{images/XrayReportSource.png}
-    \caption{Nguồn thông tin từ báo cáo đọc ảnh X-quang}
-    \label{fig:xray_report_source}
-\end{figure}
-
 \section{Giới thiệu bài toán}
 
 Bài toán được nghiên cứu trong đề tài là bài toán phân loại đa lớp ảnh X-quang sử dụng học sâu đa phương thức. Mục tiêu của hệ thống là dự đoán các loại bệnh hoặc tổn thương dựa trên đồng thời dữ liệu hình ảnh X-quang và thông tin văn bản lâm sàng liên quan.
 
 \begin{itemize}
-  \item \textbf{Đầu vào (Input):} Hệ thống nhận vào các nguồn dữ liệu sau:
+  \item \textbf{Đầu vào:} Hệ thống nhận vào các nguồn dữ liệu sau:
 
   \begin{itemize}
     \item Ảnh X-quang của bệnh nhân:
@@ -94,7 +66,7 @@ Bài toán được nghiên cứu trong đề tài là bài toán phân loại �
         \item $C$: số kênh màu của ảnh.
     \end{itemize}
 
-    \item Thông tin văn bản đầu vào được phân định theo hai giai đoạn: (1) Báo cáo chẩn đoán hình ảnh chuyên sâu của bác sĩ được sử dụng ở giai đoạn huấn luyện offline để căn chỉnh không gian biểu diễn; (2) Thông tin bệnh sử lâm sàng ban đầu (lời khai bệnh nhân, triệu chứng) được sử dụng ở giai đoạn suy luận online để hỗ trợ chẩn đoán thực tế mà không gây rò rỉ nhãn.
+    \item Văn bản thông tin lâm sàng (lời khai bệnh nhân, triệu chứng).
 \[ x^{txt} = \{w_1, w_2, ..., w_T\} \] trong đó:
     \begin{itemize}
         \item $w_t$: token thứ $t$,
@@ -105,13 +77,13 @@ Bài toán được nghiên cứu trong đề tài là bài toán phân loại �
 \[ \mathcal{Y} = \{y_1, y_2, ..., y_K\} \] với $K$ là số lớp bệnh cần phân loại.
   \end{itemize}
 
-  \item \textbf{Đầu ra (Output):} Hệ thống sinh ra:
+  \item \textbf{Đầu ra:} Hệ thống sinh ra:
 
   \begin{itemize}
-    \item Các nhãn dự đoán cuối cùng, được sắp xếp theo thứ tự:
-\[ y^{*} = \arg\max_{k \in \{1,...,K\}} \hat{y}_k \]
-
-    \item Bản đồ nhiệt trực quan hóa trên ảnh nhằm giải thích dự đoán của mô hình
+    \item Cảnh báo dữ liệu ngoài phân phối/chưa từng gặp với các mẫu được hệ thống cho là không thuộc các lớp đã học.
+    \item Nhãn dự đoán cuối cùng với các mẫu được cho là thuộc các lớp đã học:
+    \[ \hat{y} = f(x^{img}, x^{txt}) \in \mathcal{Y} \] trong đó $f$ là hàm ánh xạ được học bởi mô hình.
+    \item Bản đồ nhiệt trực quan hóa trên ảnh nhằm giải thích dự đoán của mô hình.
   \end{itemize}
 \end{itemize}
 
@@ -122,10 +94,10 @@ Mặc dù các mô hình học sâu đa phương thức đã đạt được nhi
 \begin{itemize}
     \item Tồn tại sự chênh lệch lớn giữa các bộ dữ liệu đa phương thức hiện có (thường là cặp ảnh X-quang và báo cáo đọc ảnh X-quang)
 so với luồng công việc thực tế lâm sàng (bao gồm ảnh chụp X-quang kết hợp với báo cáo tổng quát), làm hạn chế khả năng ứng dụng trực tiếp của các mô hình.
-    \item Sự khác biệt về đặc trưng giữa dữ liệu hình ảnh và dữ liệu văn bản gây khó khăn cho quá trình học biểu diễn chung, yêu cầu một cơ chế dung hợp hiệu quả.
+    \item Sự khác biệt về không gian và ngữ nghĩa giữa dữ liệu hình ảnh và dữ liệu văn bản gây khó khăn cho quá trình học biểu diễn chung, yêu cầu một cơ chế dung hợp hiệu quả.
     \item Dữ liệu y tế thường có số lượng hạn chế và mất cân bằng giữa các lớp bệnh, đặt ra yêu cầu đặc biệt về thiết kế mô hình để tận dụng tối đa thông tin có sẵn.
     \item Trong thực tế lâm sàng, luôn có tỉ lệ xuất hiện những loại bệnh mới nằm ngoài dữ liệu huấn luyện, đặt ra yêu cầu về khả năng tổng quát hóa và thích ứng của mô hình.
-    \item Khả năng giải thích của mô hình vẫn còn hạn chế, gây khó khăn cho việc triển khai trong thực tế lâm sàng.
+    \item Khả năng giải thích của mô hình vẫn còn hạn chế khiến độ tin cậy vào các dự đoán của hệ thống là không cao, gây khó khăn cho việc triển khai trong thực tế lâm sàng.
 \end{itemize}
 
 \subsection{Các hướng tiếp cận hiện có}
