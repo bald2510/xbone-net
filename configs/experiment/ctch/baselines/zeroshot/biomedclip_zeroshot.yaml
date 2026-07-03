@@ -1,0 +1,29 @@
+# @package _global_
+# Baseline B6: BiomedCLIP ViT-B/16 — Zero-Shot Classification on CTCH
+defaults:
+  - /model/peft@model.peft: none
+  - /model/fusion@model.fusion: none
+  - /model/classifier@model.classifier: none
+  - /dataset@dataset: ctch
+  - _self_
+
+model:
+  backbone_type: "biomedclip"
+  freeze_backbone: true
+  _placeholder_: true
+dataset:
+  _placeholder_: true
+
+experiment_name: "ctch/baselines/zeroshot/biomedclip_zeroshot"
+
+params:
+  run_phase1: false
+  run_phase2: false
+  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  phase2:
+    fusion_type: "none"
+    classifier_type: "none"
+    use_text: false
+    checkpoint_path: ""
+
+seed: 42

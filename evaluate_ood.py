@@ -1,32 +1,11 @@
 """
-OOD Detection Evaluation for XBone-Net
-========================================
-Evaluates OOD detection using pre-extracted embeddings from evaluate_model.py.
-
-Usage:
-    # Cross-dataset OOD: FracAtlas (ID) vs BTXRD (OOD)
-    python evaluate_ood.py \
-        --id-embeddings results/claim2_loss_semantic_fracatlas/seed_42/embeddings.npz \
-        --ood-embeddings results/claim2_loss_semantic_btxrd/seed_42/embeddings.npz \
-        --methods mahalanobis,knn,text_anchor \
-        --output-dir results/ood/fracatlas_vs_btxrd
-
-    # Few-shot reference set study
-    python evaluate_ood.py \
-        --id-embeddings results/.../embeddings.npz \
-        --ood-embeddings results/.../embeddings.npz \
-        --methods mahalanobis,knn \
-        --n-ref 5,10,25,50,100,0 \
-        --output-dir results/ood/fewshot_study
-
-    # With text anchors (requires model checkpoint for encoding prompts)
-    python evaluate_ood.py \
-        --id-embeddings results/.../embeddings.npz \
-        --ood-embeddings results/.../embeddings.npz \
-        --methods text_anchor \
-        --checkpoint checkpoints/.../best_phase1.pth \
-        --id-pathologies "fractured" \
-        --output-dir results/ood/text_anchor
+XBone-Net Out-of-Distribution Detection Evaluation.
+===============================================================================
+Evaluates OOD detection performance on pre-extracted image and text embeddings:
+  - Data Loading: Loads L2-normalized ID and OOD embeddings from .npz files.
+  - Prototypes & Anchors: Extracts class prototypes from Phase 2 checkpoints and zero-shot text anchors.
+  - OOD Scoring: Fits OODDetector on reference ID samples using Mahalanobis, k-NN, or text-anchor.
+  - Metrics Export: Computes AUROC and FPR@95TPR and saves metrics to JSON.
 """
 
 import sys
@@ -41,17 +20,28 @@ import datetime
 import torch
 import numpy as np
 
-from utils.ood import OODDetector, evaluate_ood
+from src.utils.ood import OODDetector, evaluate_ood
+
+
+# ============================================================
+# Data Loading & Anchor Extraction
+# ============================================================
 
 
 def load_embeddings(path: str) -> dict:
-    """Load embeddings from .npz file created by evaluate_model.py."""
+    """Load image and optional text embeddings from a .npz archive.
+
+    Args:
+        path: File path to .npz file produced by evaluate.py --save-embeddings.
+
+    Returns:
+        dict: Dictionary containing image_embeddings, labels, and optional text_embeddings.
+    """
     data = np.load(path, allow_pickle=True)
     result = {
         "image_embeddings": data["image_embeddings"],
         "labels": data["labels"],
     }
-    # Load text embeddings if present
     text_keys = [k for k in data.files if k.startswith("text_embeddings_")]
     if text_keys:
         result["text_embeddings"] = {
@@ -60,17 +50,62 @@ def load_embeddings(path: str) -> dict:
     return result
 
 
+def load_prototypes_from_checkpoint(checkpoint_path: str):
+    """Extract learned class prototypes from a Phase 2 checkpoint.
+
+    Scans the checkpoint state_dict for keys containing head.prototypes and
+    returns the prototype weight matrix as a NumPy array.
+
+    Args:
+        checkpoint_path: File path to a PyTorch .pth checkpoint.
+
+    Returns:
+        np.ndarray: Prototype matrix of shape (num_classes, embed_dim) if present; None otherwise.
+    """
+    if not checkpoint_path or not os.path.exists(checkpoint_path):
+        return None
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        state_dict = checkpoint.get("model_state_dict", checkpoint)
+
+        proto_key = None
+        for key in state_dict.keys():
+            if "head.prototypes" in key:
+                proto_key = key
+                break
+
+        if proto_key is not None:
+            prototypes = state_dict[proto_key].numpy()
+            print(f"Loaded prototypes of shape {prototypes.shape} from '{proto_key}'.")
+            return prototypes
+    except Exception as e:
+        print(f"[Warning] Failed to load prototypes from checkpoint: {e}")
+    return None
+
+
 def encode_text_anchors(
     checkpoint_path: str,
     pathologies: list[str],
     device: torch.device,
     image_context: str = "a bone x-ray",
 ) -> np.ndarray:
-    """Encode text prompts as OOD anchors using a BiomedCLIP model."""
-    from models.builder import build_model
+    """Encode text prompts into L2-normalized text anchor embeddings.
+
+    Builds model, loads checkpoint weights, and encodes positive prompts for each
+    pathology to produce anchor vectors for text-anchor OOD scoring.
+
+    Args:
+        checkpoint_path: File path to model checkpoint.
+        pathologies: List of target pathology class names.
+        device: Target torch.device for model encoding.
+        image_context: Context phrase for prompt construction (default: 'a bone x-ray').
+
+    Returns:
+        np.ndarray: Array of shape (len(pathologies), embed_dim) containing text anchors.
+    """
+    from src.models.builder import build_model
     from omegaconf import OmegaConf
 
-    # Build minimal model just for text encoding
     cfg = OmegaConf.create({
         "peft": {"type": "none", "params": {}},
         "fusion": {"type": "none", "params": {}},
@@ -78,7 +113,6 @@ def encode_text_anchors(
     })
     model = build_model(cfg).to(device)
 
-    # Load checkpoint if provided
     if checkpoint_path and os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         state_dict = checkpoint.get("model_state_dict", checkpoint)
@@ -95,7 +129,6 @@ def encode_text_anchors(
     model.eval()
     tokenizer = model.backbone.tokenizer
 
-    # Encode positive text prompts for each ID pathology
     anchors = []
     with torch.no_grad():
         for path in pathologies:
@@ -105,8 +138,12 @@ def encode_text_anchors(
             feat /= feat.norm(dim=-1, keepdim=True)
             anchors.append(feat.cpu().numpy())
 
-    return np.vstack(anchors)  # (K, D)
+    return np.vstack(anchors)
 
+
+# ============================================================
+# OOD Evaluation Core
+# ============================================================
 
 def run_ood_evaluation(
     id_embeddings: np.ndarray,
@@ -115,18 +152,29 @@ def run_ood_evaluation(
     methods: list[str],
     n_ref_sizes: list[int],
     text_anchor_embeddings: np.ndarray = None,
+    prototypes: np.ndarray = None,
 ) -> dict:
-    """
-    Run OOD detection with multiple methods and reference set sizes.
+    """Compute OOD detection metrics across scoring methods and reference sizes.
 
-    Returns structured results for all method × n_ref combinations.
+    Fits OODDetector on reference ID samples, computes scores for ID and OOD
+    embeddings, and calculates AUROC and FPR@95TPR metrics.
+
+    Args:
+        id_embeddings: L2-normalized ID image embeddings of shape (N_id, D).
+        id_labels: Integer class labels for ID samples of shape (N_id,).
+        ood_embeddings: L2-normalized OOD image embeddings of shape (N_ood, D).
+        methods: List of scoring method names ('mahalanobis', 'knn', 'text_anchor', 'energy').
+        n_ref_sizes: Reference subset sizes to evaluate (0 = full ID set).
+        text_anchor_embeddings: Optional text anchor matrix of shape (C, D).
+        prototypes: Optional class prototypes matrix of shape (C, D).
+
+    Returns:
+        dict: Mapping '{method}_{ref_key}' to evaluation metrics (auroc, fpr_at_95tpr).
     """
     results = {}
 
     for n_ref in n_ref_sizes:
-        # Subsample reference set
         if n_ref == 0:
-            # Use full ID set
             ref_embeds = id_embeddings
             ref_labels = id_labels
             ref_key = "full"
@@ -137,16 +185,15 @@ def run_ood_evaluation(
             ref_labels = id_labels[idx]
             ref_key = f"n{n_ref}"
 
-        # Fit OOD detector on reference set
         detector = OODDetector()
-        detector.fit(ref_embeds, ref_labels)
+        detector.fit(ref_embeds, ref_labels, prototypes=prototypes)
 
         for method in methods:
             key = f"{method}_{ref_key}"
 
             if method == "text_anchor":
                 if text_anchor_embeddings is None:
-                    print(f"  [Skip] text_anchor requires --checkpoint and --id-pathologies")
+                    print("  [Skip] text_anchor requires --checkpoint and --id-pathologies")
                     continue
                 id_scores = detector.score_text_anchor(id_embeddings, text_anchor_embeddings)
                 ood_scores = detector.score_text_anchor(ood_embeddings, text_anchor_embeddings)
@@ -157,14 +204,12 @@ def run_ood_evaluation(
                 id_scores = detector.score_knn(id_embeddings, k=5)
                 ood_scores = detector.score_knn(ood_embeddings, k=5)
             elif method == "energy":
-                # Energy requires logits — skip if not available
-                print(f"  [Skip] Energy score requires logits, not embeddings.")
+                print("  [Skip] Energy score requires logits, not embeddings.")
                 continue
             else:
                 print(f"  [Warning] Unknown method: {method}")
                 continue
 
-            # Evaluate
             eval_result = evaluate_ood(id_scores, ood_scores)
             results[key] = eval_result
 
@@ -174,7 +219,12 @@ def run_ood_evaluation(
     return results
 
 
+# ============================================================
+# Main Entry Point & CLI Parsing
+# ============================================================
+
 def main():
+    """CLI entry-point: parse arguments, load data, and execute OOD evaluation."""
     parser = argparse.ArgumentParser(description="OOD detection evaluation")
     parser.add_argument("--id-embeddings", required=True, help="Path to ID embeddings .npz")
     parser.add_argument("--ood-embeddings", required=True, help="Path to OOD embeddings .npz")
@@ -194,26 +244,21 @@ def main():
     print("OOD DETECTION EVALUATION")
     print("=" * 60)
 
-    # Parse arguments
     methods = [m.strip() for m in args.methods.split(",")]
     n_ref_sizes = [int(n.strip()) for n in args.n_ref.split(",")]
 
-    # Load embeddings
     print(f"\nLoading ID embeddings from: {args.id_embeddings}")
     id_data = load_embeddings(args.id_embeddings)
-    # L2-normalize image embeddings
     id_embeds_norm = np.linalg.norm(id_data["image_embeddings"], axis=1, keepdims=True)
     id_data["image_embeddings"] = id_data["image_embeddings"] / (id_embeds_norm + 1e-8)
     print(f"  Shape: {id_data['image_embeddings'].shape}")
 
     print(f"Loading OOD embeddings from: {args.ood_embeddings}")
     ood_data = load_embeddings(args.ood_embeddings)
-    # L2-normalize image embeddings
     ood_embeds_norm = np.linalg.norm(ood_data["image_embeddings"], axis=1, keepdims=True)
     ood_data["image_embeddings"] = ood_data["image_embeddings"] / (ood_embeds_norm + 1e-8)
     print(f"  Shape: {ood_data['image_embeddings'].shape}")
 
-    # Encode text anchors if needed
     text_anchors = None
     if "text_anchor" in methods and args.checkpoint and args.id_pathologies:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -224,7 +269,10 @@ def main():
         )
         print(f"  Text anchor shape: {text_anchors.shape}")
 
-    # Run OOD evaluation
+    prototypes = None
+    if args.checkpoint:
+        prototypes = load_prototypes_from_checkpoint(args.checkpoint)
+
     print(f"\nMethods: {methods}")
     print(f"Reference sizes: {n_ref_sizes}")
     print("-" * 60)
@@ -236,9 +284,9 @@ def main():
         methods=methods,
         n_ref_sizes=n_ref_sizes,
         text_anchor_embeddings=text_anchors,
+        prototypes=prototypes,
     )
 
-    # Save results
     os.makedirs(args.output_dir, exist_ok=True)
     output = {
         "type": "ood_evaluation",
@@ -254,8 +302,9 @@ def main():
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\n✅ OOD results saved to: {json_path}")
+    print(f"\nOOD results saved to: {json_path}")
 
 
 if __name__ == "__main__":
     main()
+

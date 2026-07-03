@@ -1,4 +1,4 @@
 type: "prototypical"
 params:
   feature_dim: 512
-  num_classes: 14  # Default; overridden dynamically by train_2stage.py
+  num_classes: 14  # Default; overridden dynamically by train.py

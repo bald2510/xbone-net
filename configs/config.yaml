@@ -14,5 +14,6 @@ params:
   run_phase1: true
   run_phase2: true
   gradient_checkpointing: true
+  debug: false
 
 seed: 42

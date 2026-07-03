@@ -1,0 +1,36 @@
+# @package _global_
+# Baseline B7: DenseNet-121 (ImageNet) on BTXRD
+defaults:
+  - /model/peft@model.peft: none
+  - /model/fusion@model.fusion: none
+  - /model/classifier@model.classifier: none
+  - /dataset@dataset: btxrd
+  - _self_
+
+model:
+  backbone_type: "densenet121_imagenet"
+  freeze_backbone: false
+  _placeholder_: true
+dataset:
+  _placeholder_: true
+
+experiment_name: "btxrd/baselines/finetuned/densenet"
+
+params:
+  run_phase1: false
+  run_phase2: true
+  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  phase2:
+    epochs: 50
+    lr: 1e-4
+    weight_decay: 1e-4
+    optimizer: "adamw"
+    scheduler: "cosine"
+    warmup_ratio: 0.1
+    early_stopping_patience: 5
+    fusion_type: "none"
+    classifier_type: "linear"
+    use_text: false
+    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
+
+seed: 42
