@@ -13,7 +13,7 @@ Không chỉ là dữ liệu bổ sung, văn bản còn được khai thác như
 
 Mặc dù các mô hình như TransMed \cite{TransMed} đã chứng minh sức mạnh của kiến trúc lai CNN-Transformer trong việc thiết lập sự phụ thuộc ở khoảng cách xa đối với dữ liệu đa phương thức, các phương pháp nối đặc trưng truyền thống vẫn gặp hạn chế lớn do sự khác biệt về không gian véc-tơ và khoảng cách ngữ nghĩa giữa ảnh và văn bản.
 
-Để giải quyết triệt để vấn đề này, IRENE \cite{IRENE} đã loại bỏ cách tiếp cận trích xuất đặc trưng riêng lẻ. Thay vào đó, IRENE đưa tất cả dữ liệu (hình ảnh, báo cáo lâm sàng không cấu trúc, và dữ liệu cấu trúc) về một dạng token chung và sử dụng một mô hình Transformer duy nhất để học biểu diễn tổng thể. Việc sử dụng cơ chế chú ý đa phương thức hai chiều cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ. Đóng góp của văn bản trong cấu trúc này mang tính quyết định: các thử nghiệm loại bỏ (ablation study) của IRENE chỉ ra rằng, việc thiếu vắng văn bản báo cáo bệnh lý (chief complaints) làm giảm 6\% hiệu suất mô hình , và việc bỏ qua các kết quả xét nghiệm làm giảm thêm 4\%.
+Để giải quyết triệt để vấn đề này, IRENE \cite{IRENE} đã loại bỏ cách tiếp cận trích xuất đặc trưng riêng lẻ. Thay vào đó, IRENE đưa tất cả dữ liệu (hình ảnh, báo cáo lâm sàng không cấu trúc, và dữ liệu cấu trúc) về một dạng token chung và sử dụng một mô hình Transformer duy nhất để học biểu diễn tổng thể. Việc sử dụng cơ chế chú ý đa phương thức hai chiều cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ. Đóng góp của văn bản trong cấu trúc này mang tính quyết định: các thử nghiệm loại bỏ (ablation study) của IRENE chỉ ra rằng, việc thiếu vắng văn bản báo cáo bệnh lý (chief complaints) làm giảm 6\% hiệu suất mô hình, và việc bỏ qua các kết quả xét nghiệm làm giảm thêm 4\%.
 
 Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp của văn bản đã tiến hóa từ việc chỉ là một véc-tơ thông tin ghép nối thêm, trở thành một thành phần cốt lõi có khả năng gióng hàng ngữ nghĩa và định hướng sự chú ý, giúp các mô hình học sâu đưa ra chẩn đoán hình ảnh y khoa toàn diện và chính xác hơn.
 
@@ -361,97 +361,13 @@ Thứ ba, \textbf{tích hợp tri thức y khoa (Knowledge Integration)} ra đ�
 \end{table}
 
 \subsection{Các mô hình ngôn ngữ lớn y khoa đa phương thức}
-Trong thời gian gần đây, với sự phát triển của các mô hình ngôn ngữ lớn được huấn luyện trên những tập dữ liệu rất lớn phục vụ cho rất nhiều tác vụ khác nhau, các mô hình này đang thể hiện sự ảnh hưởng và đa dụng trong lĩnh vực y tế với độ chính xác rất tốt khi chỉ học ít mẫu hoặc không mẫu.
+\subsection{Các mô hình ngôn ngữ lớn y khoa đa phương thức}
 
-Med-Flamingo \cite{moor_2023_medflamingo} là mô hình đầu tiên có khả năng học ít mẫu chuyên dụng cho y tế, thông qua hội thoại tự nhiên để hỗ trợ chẩn đoán. Theo sau đó, LLaVA-Med \cite{li_2023_llavamed} là mô hình chuyển đổi khả năng thực hiện theo chỉ dẫn (instruction-following) từ miền tổng quát sang lĩnh vực y sinh bằng cách sử dụng dữ liệu cặp ảnh-văn bản quy mô lớn với 600.000 cặp, với dữ liệu hội thoại tạo ra từ chú thích ảnh y khoa được tạo ra bằng cách sử dụng GPT-4. Phương pháp này đã đề xuất quy trình huấn luyện 2 bước: (1) Căn chỉnh khái niệm; (2) Tinh chỉnh chỉ dẫn đầy đủ; 2 bước này tương ứng với giai đoạn học và suy luận. Kết quả thể hiện khả năng suy luận vượt trội trên dữ liệu chưa từng thấy.
+Sự phát triển của các mô hình ngôn ngữ lớn (Large Language Models - LLMs) đã thúc đẩy nhiều nghiên cứu trong lĩnh vực y tế, đặc biệt là các mô hình đa phương thức có khả năng kết hợp thông tin hình ảnh và văn bản để hỗ trợ chẩn đoán và trả lời câu hỏi y khoa.
 
-Med-Palm M \cite{MED-PALM-M} là mô hình của Google, đánh dấu bước tiến từ các mô hình đơn nhiệm sang đa nhiệm quy mô lớn, có khả năng xử lý đa nhiệm và đa phương thức bằng một bộ tham số duy nhất, thay vì sử dụng các mô hình chuyên biệt cho từng tác vụ. Gần đây hơn, SkinGPT-4 \cite{SkinGPT-4} là hệ thống chẩn đoán da liễu tương tác đầu tiên sử dụng LLM quy mô lớn với độ chính xác cao, đã kết hợp khả năng hiểu hình ảnh y tế chuyên sâu với khả năng suy luận và giao tiếp của các mô hình ngôn ngữ lớn (LLM), tạo ra một hệ thống chẩn đoán da liễu có thể tương tác, giải thích lý do và đưa ra lời khuyên hữu ích cho người dùng.
+Một số mô hình tiêu biểu bao gồm Med-Flamingo \cite{moor_2023_medflamingo}, mô hình học ít mẫu (few-shot) đầu tiên dành cho y tế; LLaVA-Med \cite{li_2023_llavamed}, mở rộng khả năng thực hiện theo chỉ dẫn (instruction-following) sang miền y sinh thông qua dữ liệu hội thoại được xây dựng từ các cặp ảnh–văn bản; Med-PaLM M \cite{MED-PALM-M}, mô hình đa nhiệm và đa phương thức quy mô lớn của Google; và SkinGPT-4 \cite{SkinGPT-4}, hệ thống hỗ trợ chẩn đoán da liễu kết hợp khả năng hiểu ảnh y khoa với suy luận ngôn ngữ.
 
-Dù đưa đến các phương pháp có độ chính xác cao đến rất cao trong nhiều tác vụ cùng việc hỗ trợ trong việc giao tiếp với mô hình, kích cỡ và chi phí huấn luyện (Med-Flamingo có đến 9 tỷ thông số) để vận hành các mô hình ngôn ngữ lớn đa phương thức là một vấn đề lớn, đi kèm với vấn đề ảo giác có thể gặp phải khi đối mặt mới dữ liệu mới hoặc những câu hỏi phức tạp. Ngoài ra nếu yêu cầu một độ chính xác cao - một yêu cầu quan trọng trong lĩnh vực y tế trong một tác vụ cụ thể thì đây không phải một cách tiếp cận tốt cho bài toán này.
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[H]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|l|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Nguyên lý}}} \\
- &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{} \\ \hline
-\textbf{1} &
-  \textbf{Med-Flamingo (2023)} &
-  \begin{tabular}[c]{@{}l@{}}Huấn luyện (từ nền tảng OpenFlamingo-9B) trên các dữ liệu văn bản \\ và hình ảnh y tế. Mô hình có khả năng học theo ngữ cảnh để sinh ra \\ văn bản tạo các báo cáo, giải thích y khoa hoặc trả lời câu hỏi mở.\end{tabular} \\ \hline
-\textbf{2} &
-  \textbf{LLaVA-Med (2023)} &
-  \begin{tabular}[c]{@{}l@{}}Chuyển đổi khả năng theo sát chỉ dẫn (instruction-following) từ \\ miền tổng quát sang miền y sinh bằng cách sử dụng dữ liệu cặp \\ ảnh-văn bản quy mô lớn.\end{tabular} \\ \hline
-\textbf{3} &
-  \textbf{Med-PaLM M (2023)} &
-  \begin{tabular}[c]{@{}l@{}}Xây dựng một hệ thống AI y sinh tổng quát (Generalist Biomedical AI) \\ có khả năng xử lý đa nhiệm và đa phương thức bằng một bộ tham số \\ duy nhất, thay vì các mô hình chuyên biệt cho từng tác vụ\end{tabular} \\ \hline
-\textbf{4} &
-  \textbf{SkinGPT-4 (2024)} &
-  \begin{tabular}[c]{@{}l@{}}Kết hợp khả năng hiểu hình ảnh y tế chuyên sâu với khả năng suy luận \\ và giao tiếp của các mô hình ngôn ngữ lớn (LLM). Mục tiêu là tạo ra \\ một hệ thống chẩn đoán da liễu có thể tương tác, giải thích lý do và \\ đưa ra lời khuyên hữu ích cho người dùng.\end{tabular} \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp nguyên lý của các mô hình ngôn ngữ lớn đa phương thức}
-\label{tab:MedMLLLMPrinciple}
-\end{table}
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[H]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|llll|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Phương pháp}} \\ \cline{3-6}
- &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ ảnh\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-\textbf{1} &
-  \textbf{Med-Flamingo (2023)} &
-  \multicolumn{1}{l|}{Frozen CLIP ViT} &
-  \multicolumn{1}{l|}{LLaMA-7B} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Intermediate \\ fusion\end{tabular}} &
-  LLaMA Decoder \\ \hline
-\textbf{2} &
-  \textbf{LLaVA-Med (2023)} &
-  \multicolumn{1}{l|}{CLIP ViT-L/14} &
-  \multicolumn{1}{l|}{LLaMA} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Projection \\ Matrix\end{tabular}} &
-  LLM (Vicuna) \\ \hline
-\textbf{3} &
-  \textbf{Med-PaLM M (2023)} &
-  \multicolumn{1}{l|}{ViT (4B - 22B)} &
-  \multicolumn{1}{l|}{PaLM} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Multimodal \\ embedding\end{tabular}} &
-  PaLM \\ \hline
-\textbf{4} &
-  \textbf{SkinGPT-4 (2024)} &
-  \multicolumn{1}{l|}{Vision Transformer} &
-  \multicolumn{1}{l|}{GPT-4} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Linear \\ alignment\end{tabular}} &
-  LLaMA-2-13B \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp phương pháp của các mô hình ngôn ngữ lớn đa phương thức}
-\label{tab:MedMLLLMMethod}
-\end{table}
-
-Dựa trên sự phân tích các ưu và nhược điểm từ những khảo sát trên, hướng tiếp cận đề xuất trong nghiên cứu này được thiết kế có chọn lọc nhằm tối ưu hóa hiệu năng và chi phí:
-\begin{itemize}
-    \item \textbf{Kế thừa BiomedCLIP \cite{BiomedCLIP}:} Tận dụng sức mạnh của các bộ mã hóa đã được huấn luyện với chất lượng cao.
-    \item \textbf{Không áp dụng học tương phản \& học có che giấu:} Khó khắc phục rào cản về tài nguyên tính toán lớn và giảm thiểu rủi ro gặp phải hiện tượng âm tính giả.
-    \item \textbf{Tích hợp tri thức từ UMLS (tương tự MedKLIP \cite{MedKLIP}):} Sử dụng để làm giàu thêm tri thức trong các báo cáo lâm sàng.
-\end{itemize}
+Mặc dù đạt hiệu quả cao trong nhiều tác vụ như trả lời câu hỏi y khoa, hội thoại và hỗ trợ ra quyết định, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác (hallucination). Do đó, đối với các bài toán chuyên biệt như phân loại ảnh X-quang, việc sử dụng các mô hình thị giác hoặc mô hình ngôn ngữ–thị giác chuyên dụng thường phù hợp và hiệu quả hơn.
 
 \section{Các kỹ thuật tinh chỉnh mô hình}
 
@@ -535,53 +451,83 @@ Trong định hướng xây dựng một hệ thống phân loại ảnh y khoa 
 \end{enumerate}
 Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.
 
-\section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
-Bài toán phát hiện dữ liệu ngoài phân phối (OOD detection) đóng vai trò then chốt trong việc đảm bảo tính an toàn và độ tin cậy của các hệ thống trí tuệ nhân tạo, đặc biệt trong các ứng dụng rủi ro cao như chẩn đoán hình ảnh y khoa. Dựa trên cơ chế hoạt động và cách biểu diễn dữ liệu, các phương pháp OOD hiện nay có thể được phân loại thành các nhóm chính sau đây.
-\subsection{Phương pháp dựa trên đầu ra của mô hình (Post-hoc Methods)}
-Nhóm phương pháp này tận dụng trực tiếp đầu ra (logits hoặc probabilities) của một mạng nơ-ron đã được huấn luyện mà không cần thay đổi kiến trúc hay huấn luyện lại mô hình.
-\begin{itemize}
-  \item \textbf{Maximum Softmax Probability (MSP):}
-Đây là phương pháp nền tảng, dựa trên giả định rằng mô hình sẽ đưa ra xác suất dự đoán thấp hơn đối với các mẫu OOD. Tuy nhiên, các mạng nơ-ron sâu thường gặp hiện tượng "tự tin thái quá" (overconfidence), khiến MSP kém hiệu quả trên thực tế.
-  \item \textbf{ODIN (Out-of-DIstribution detector for Neural networks):}
-Khắc phục nhược điểm của MSP bằng cách sử dụng kỹ thuật Temperature Scaling và thêm nhiễu (perturbation) vào đầu vào. Cơ chế này giúp khuếch đại sự khác biệt về logit giữa mẫu In-Distribution (ID) và OOD.
-  \item \textbf{Energy-based Scores:} Thay vì sử dụng xác suất phân bố, phương pháp này
-chuyển đổi các giá trị logit thành mức năng lượng. Các mẫu ID sẽ có mức năng lượng thấp, trong khi các mẫu OOD có năng lượng cao. Hàm năng lượng được định nghĩa như sau: $$E(x; f) = -T \log \sum_{i} \exp(f_i(x)/T)$$ Trong đó, $f_i(x)$ là logit của lớp $i$ và $T$ là tham số nhiệt độ (temperature).
-\end{itemize}
+\section{Các phương pháp phát hiện dữ liệu ngoài phân phối} 
+Phát hiện dữ liệu ngoài phân phối (Out-of-Distribution Detection - OOD Detection) là bài toán xác định các mẫu dữ liệu không thuộc phân phối của tập huấn luyện nhằm nâng cao độ tin cậy và tính an toàn của các hệ thống học sâu. Trong lĩnh vực chẩn đoán hình ảnh y khoa, khả năng phát hiện các trường hợp chưa từng xuất hiện hoặc khác biệt đáng kể so với dữ liệu huấn luyện có ý nghĩa quan trọng nhằm giảm nguy cơ đưa ra các dự đoán sai với độ tin cậy cao. Các phương pháp OOD hiện nay có thể được chia thành các nhóm chính sau đây. 
 
-\subsection{Không gian đặc trưng và Mạng nguyên mẫu }
-Thay vì chỉ sử dụng lớp đầu ra, các phương pháp này khai thác không gian ẩn (latent space) để tính toán khoảng cách từ mẫu kiểm thử đến phân phối dữ liệu huấn luyện. Tiêu biểu trong nhóm này là kiến trúc \textbf{Mạng nguyên mẫu (Prototypical Networks)}. Trong không gian nhúng, các mẫu của cùng một lớp được gom cụm xung quanh một "nguyên mẫu" (prototype) $c_k$, được tính bằng trung bình các vector đặc trưng của tập dữ liệu hỗ trợ $S_k$:$$c_k = \frac{1}{|S_k|} \sum_{x_i \in S_k} f_\theta(x_i)$$ Khả năng phát hiện OOD của phương pháp này phụ thuộc chặt chẽ vào độ đo khoảng cách được sử dụng:
-\begin{itemize}
-  \item \textbf{Khoảng cách Euclidean ($L_2$ Norm):} Tính toán bằng công thức $d_E(z, c_k) = \| z - c_k \|_2$.
-Phương pháp này giả định các cụm dữ liệu có dạng hình cầu và đẳng hướng (isotropic). Dù dễ tính toán, nó thường kém hiệu quả do bỏ qua sự tương quan và độ phương sai khác biệt giữa các chiều đặc trưng.
-  \item \textbf{Khoảng cách Cosine:} Định lượng góc giữa hai vector ($d_C(z, c_k) = 1 - \frac{z \cdot c_k}{\|z\|_2 \|c_k\|_2}$).
-Khoảng cách này loại bỏ ảnh hưởng của độ lớn vector (magnitude), rất hiệu quả khi kết hợp với các hàm mất mát đối chiếu (Contrastive Loss), nhưng có thể làm mất đi tín hiệu nhận diện quan trọng khi các mẫu OOD thường có norm thấp hơn ID.
-  \item \textbf{Khoảng cách Mahalanobis:} Là độ đo mạnh mẽ nhất cho Near-OOD, được biểu diễn qua công thức
-$d_M(z, c_k) = \sqrt{(z - c_k)^T \Sigma_k^{-1} (z - c_k)}$ (với $\Sigma_k$ là ma trận hiệp phương sai). Bằng cách cho phép các cụm dữ liệu có dạng ellipsoid linh hoạt (anisotropic), Mahalanobis đánh giá được mức độ bất thường dựa trên chính sự phân bố nội bộ của lớp, dù chi phí tính toán nghịch đảo ma trận là một rào cản lớn khi tập dữ liệu hỗ trợ nhỏ.
-\end{itemize}
+\subsection{Các phương pháp hậu xử lý dựa trên đầu ra mô hình (Post-hoc Methods)} 
+Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô hình đã được huấn luyện mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình. 
+\begin{itemize} 
+  \item \textbf{Maximum Softmax Probability (MSP):} Sử dụng xác suất Softmax lớn nhất làm độ tin cậy của dự đoán. Các mẫu có xác suất cực đại thấp được xem là ứng viên OOD. Tuy nhiên, các mạng nơ-ron sâu thường có xu hướng dự đoán quá tự tin (overconfidence), làm giảm hiệu quả của phương pháp. 
+  \item \textbf{ODIN (Out-of-DIstribution detector for Neural Networks):} Mở rộng MSP bằng cách kết hợp Temperature Scaling và nhiễu đầu vào (input perturbation) nhằm gia tăng khoảng cách logit giữa dữ liệu trong phân phối (In-Distribution - ID) và dữ liệu OOD. 
+  \item \textbf{Energy-based Score:} Thay vì sử dụng xác suất Softmax, phương pháp này sử dụng giá trị năng lượng được tính từ vector logit: 
+  \[ E(x)=-T\log\sum_i\exp\left(\frac{f_i(x)}{T}\right), \] 
+  trong đó $f_i(x)$ là logit của lớp thứ $i$ và $T$ là hệ số nhiệt độ. Dữ liệu ID thường có mức năng lượng thấp hơn so với dữ liệu OOD. 
+\end{itemize} 
 
-\subsection{Mô hình sinh và Định lượng độ không chắc chắn (Generative Models \& Uncertainty Quantification)}
-Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng tái tạo dữ liệu và ước lượng độ tin cậy của mô hình.
-\begin{itemize}
-  \item \textbf{Lỗi tái tạo (Reconstruction Error):} Sử dụng các mô hình Autoencoders hoặc Variational Autoencoders (VAEs)
-được huấn luyện chỉ trên dữ liệu ID (ví dụ: các cấu trúc giải phẫu bình thường). Khi gặp dữ liệu OOD, mô hình sẽ không thể khôi phục chính xác, dẫn đến lỗi tái tạo pixel-level cao, từ đó không chỉ phát hiện mà còn khoanh vùng được vùng bất thường.\item \textbf{Monte Carlo Dropout (MC Dropout):} Để định lượng "độ không chắc chắn nhận thức" (epistemic uncertainty), kỹ thuật này thực hiện quá trình truyền xuôi (forward pass) nhiều lần với dropout được kích hoạt trong pha kiểm thử. Phương sai lớn giữa các lần dự đoán là tín hiệu mạnh mẽ chỉ ra rằng mô hình đang đối mặt với dữ liệu chưa từng quan sát.
-\end{itemize}
+\subsection{Các phương pháp dựa trên không gian đặc trưng (Feature-space-based Methods)} 
+Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nhóm phương pháp này thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Ý tưởng chính là đo khoảng cách giữa embedding của mẫu kiểm thử và phân bố đặc trưng của dữ liệu huấn luyện. Hiệu quả của nhóm phương pháp này phụ thuộc mạnh vào chất lượng biểu diễn đặc trưng mà mô hình học được. Một số độ đo khoảng cách phổ biến bao gồm: 
+\begin{itemize} 
+  \item \textbf{Khoảng cách Euclidean:} 
+  \[ d_E(z,c_k)=\|z-c_k\|_2. \] 
+  Khoảng cách Euclidean giả định các cụm dữ liệu có dạng cầu và có phương sai đồng đều theo mọi chiều. Phương pháp đơn giản nhưng không phản ánh được sự tương quan giữa các chiều đặc trưng. 
+  \item \textbf{Khoảng cách Cosine:} 
+  \[ d_C(z,c_k)=1-\frac{z\cdot c_k}{\|z\|\|c_k\|}. \] 
+  Khoảng cách Cosine chỉ xét hướng của vector đặc trưng và bỏ qua độ lớn (magnitude), thường được sử dụng trong các bài toán metric learning và Vision-Language Models. 
+  \item \textbf{Khoảng cách Mahalanobis:} 
+  \[ d_M(z,c_k)=\sqrt{(z-c_k)^T\Sigma_k^{-1}(z-c_k)}, \] 
+  trong đó $\Sigma_k$ là ma trận hiệp phương sai của lớp $k$. Khác với Euclidean và Cosine, Mahalanobis khai thác thêm thông tin về phương sai và tương quan giữa các chiều đặc trưng, nhờ đó phản ánh chính xác hơn mức độ bất thường của mẫu kiểm thử đối với phân bố của từng lớp, đặc biệt trong các trường hợp Near-OOD. 
+\end{itemize} 
 
-\subsection{Học sâu Đa phương thức trong phát hiện OOD Y khoa (Multimodal Deep Learning)}
-Trong bối cảnh phân loại ảnh y khoa phức tạp, ranh giới giữa ID và OOD thường rất mỏng manh (Near-OOD) do sự đa dạng của các bệnh lý hiếm gặp hoặc hiện tượng dịch chuyển phân phối (Covariate shift). Các phương pháp OOD hiện đại đang dịch chuyển mạnh mẽ sang kiến trúc Học sâu đa phương thức (Multimodal Deep Learning - MDL).
-\begin{itemize}
-  \item \textbf{Supervised Contrastive Learning:} Nhằm giải quyết Covariate shift giữa các hệ thống thu nhận hình ảnh
-(ví dụ: các máy chụp X-quang khác nhau), kỹ thuật đối chiếu có giám sát ép mô hình học các biểu diễn hình thái cốt lõi của tổn thương thay vì ghi nhớ nhiễu (noise/texture). Điều này giúp tối ưu hóa ranh giới khoảng cách trong không gian ẩn.
-  \item \textbf{Zero-shot OOD với Vision-Language Models:} Sự xuất hiện của các mô hình nền tảng y khoa như BiomedCLIP
-cho phép phát hiện OOD thông qua độ lệch pha (misalignment) giữa đặc trưng hình ảnh và văn bản. Cụ thể, thông qua cơ chế Knowledge-guided Cross-Attention, hệ thống có thể đối chiếu chéo (cross-reference) các vùng hình ảnh với kho tri thức y khoa. Ví dụ, trong bài toán phân loại khối u xương (bone tumor) đa phương thức, nếu mô hình đối mặt với một ảnh X-quang chứa mảnh ghép kim loại chỉnh hình hoặc một dạng Sarcoma chưa từng có trong tập huấn luyện, điểm tương đồng (Alignment Score) giữa đặc trưng ảnh và các báo cáo u xương tiêu chuẩn sẽ suy giảm đột ngột. Sự sụt giảm độ chú ý tại các vùng bất thường này cung cấp cơ chế "cắm cờ" (flag) OOD mạnh mẽ và có khả năng giải thích cao (interpretable).
-\end{itemize}
+\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD\\(Representation Learning)}
+Các phương pháp trong nhóm này không trực tiếp thực hiện phát hiện OOD mà tập trung xây dựng không gian đặc trưng có tính phân biệt cao, từ đó nâng cao hiệu quả của các phương pháp phát hiện OOD dựa trên khoảng cách. Một số hướng tiếp cận tiêu biểu gồm: 
+\begin{itemize} 
+  \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng. 
+  \item \textbf{Center Loss:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng. 
+  \item \textbf{Prototypical Loss:} Biểu diễn mỗi lớp bởi một nguyên mẫu (prototype), được tính bằng trung bình embedding của các mẫu cùng lớp: 
+  \[ c_k=\frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i). \] 
+  Trong quá trình huấn luyện, embedding của các mẫu được kéo về prototype của lớp tương ứng và tách xa prototype của các lớp khác, giúp giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Nhờ đó, không gian đặc trưng trở nên phân biệt hơn, tạo điều kiện thuận lợi cho các phương pháp OOD dựa trên khoảng cách như Mahalanobis. 
+\end{itemize} 
 
-\subsection{Hạn chế của các phương pháp hiện tại và Cơ sở lựa chọn}
+\subsection{Các phương pháp sinh và định lượng độ không chắc chắn} Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng mô hình hóa phân phối dữ liệu hoặc ước lượng độ không chắc chắn của mô hình. 
+\begin{itemize} 
+  \item \textbf{Reconstruction Error:} Các mô hình Autoencoder hoặc Variational Autoencoder được huấn luyện để tái tạo dữ liệu ID. Khi gặp dữ liệu OOD, sai số tái tạo thường tăng lên đáng kể. 
+  \item \textbf{Monte Carlo Dropout:} Thực hiện nhiều lần suy luận với Dropout được kích hoạt trong giai đoạn kiểm thử nhằm ước lượng độ không chắc chắn nhận thức (epistemic uncertainty). Phương sai lớn giữa các lần dự đoán là dấu hiệu cho thấy mẫu có khả năng thuộc OOD. 
+\end{itemize} 
 
-Các phương pháp OOD hiện hành vẫn tồn tại nhiều điểm yếu khi áp dụng vào phân loại ảnh y khoa: nhóm Post-hoc (MSP, ODIN) dễ mắc lỗi "tự tin thái quá" và kém hiệu quả với ranh giới Near-OOD; nhóm Generative tốn kém tài nguyên tính toán và dễ tổng quát hóa sai (over-generalization); trong khi Contrastive Learning lại phụ thuộc quá mức vào lượng dữ liệu lớn, khó xử lý các tập dữ liệu y tế mất cân bằng nghiêm trọng.
+\subsection{Cơ sở lựa chọn phương pháp} Các phương pháp OOD hiện nay đều có những ưu điểm và hạn chế riêng. Các phương pháp hậu xử lý dựa trên đầu ra như MSP, ODIN và Energy Score có ưu điểm là đơn giản nhưng hiệu quả phụ thuộc nhiều vào đầu ra của bộ phân loại và thường suy giảm đối với các trường hợp Near-OOD. Trong khi đó, các phương pháp sinh và định lượng độ không chắc chắn có chi phí tính toán cao và yêu cầu kiến trúc mô hình phức tạp hơn. Đối với các phương pháp dựa trên khoảng cách, hiệu quả phát hiện OOD phụ thuộc trực tiếp vào chất lượng của không gian đặc trưng. Nếu embedding của các lớp chưa đủ tập trung hoặc có phương sai nội lớp lớn thì việc sử dụng các độ đo khoảng cách sẽ khó phân biệt được dữ liệu ID và OOD. Vì vậy, nghiên cứu này lựa chọn kết hợp \textbf{Prototypical Loss} và \textbf{Mahalanobis Distance}. Trong giai đoạn huấn luyện, Prototypical Loss được sử dụng để học không gian đặc trưng có tính phân biệt cao thông qua việc giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế \textit{post-hoc} để đo khoảng cách từ embedding của mẫu kiểm thử đến phân bố đặc trưng của từng lớp. Mặc dù việc phân loại được thực hiện dựa trên độ tương đồng Cosine giữa embedding và prototype, Mahalanobis vẫn được sử dụng trong giai đoạn phát hiện OOD vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, từ đó phản ánh chính xác hơn mức độ bất thường của mẫu trong không gian đặc trưng. Sự kết hợp này tận dụng được ưu điểm của cả hai thành phần: Prototypical Loss giúp xây dựng embedding có tính phân biệt cao, trong khi Mahalanobis Distance cung cấp một cơ chế phát hiện OOD hiệu quả mà không cần huấn luyện thêm mô hình chuyên biệt.
 
-Do đó, Mạng nguyên mẫu (Prototypical Networks) được lựa chọn làm giải pháp cốt lõi nhờ ba ưu thế chiến lược:
-\begin{enumerate}
-\item \textbf{Tối ưu cho dữ liệu khan hiếm (Few-shot):} Hoạt động ổn định ngay cả với tập dữ liệu hỗ trợ rất nhỏ, đặc biệt phù hợp để xử lý các biến thể bệnh lý hiếm gặp như khối u xương mà không bị chệch (bias).
-\item \textbf{Cơ sở suy luận minh bạch:} Định lượng trực tiếp sự bất thường thông qua khoảng cách hình học tới các nguyên mẫu bệnh lý, đáp ứng yêu cầu khắt khe về khả năng giải thích (interpretability) trong lâm sàng.
-\item \textbf{Nhạy bén với Near-OOD:} Khả năng tích hợp linh hoạt với các độ đo (như Mahalanobis) giúp mô hình đánh giá chính xác độ phân tán của dữ liệu, từ đó bóp nghẹt dung sai và phát hiện sự chênh lệch mỏng manh nhất trong không gian đặc trưng đa phương thức.
-\end{enumerate}
+\section{Bàn luận}
+
+\subsection{Xu hướng ứng dụng học sâu đa phương thức trong chẩn đoán ảnh y khoa}
+
+Qua khảo sát các công trình nghiên cứu, có thể nhận thấy rằng học sâu đa phương thức đang trở thành xu hướng quan trọng trong lĩnh vực chẩn đoán ảnh y khoa. Thay vì chỉ khai thác thông tin từ ảnh y khoa, nhiều nghiên cứu đã kết hợp thêm dữ liệu văn bản như báo cáo chẩn đoán, tiền sử bệnh hoặc thông tin lâm sàng nhằm tận dụng tính bổ sung giữa các phương thức dữ liệu.
+
+Song song với đó, sự xuất hiện của các mô hình ngôn ngữ trực quan y khoa (Medical Vision-Language Models) như BioMedCLIP đã mở ra hướng tiếp cận mới cho các bài toán phân loại ảnh y khoa. Nhờ được tiền huấn luyện trên tập dữ liệu ảnh -- văn bản quy mô lớn, các mô hình này học được biểu diễn đa phương thức giàu ngữ nghĩa và có khả năng thích nghi tốt với nhiều tác vụ khác nhau. Kết hợp với các phương pháp tinh chỉnh hiệu quả tham số (Parameter-Efficient Fine-Tuning - PEFT), việc khai thác các mô hình nền tảng trở nên khả thi hơn ngay cả khi dữ liệu huấn luyện chuyên ngành còn hạn chế.
+
+\subsection{Hạn chế của các nghiên cứu hiện nay}
+
+Mặc dù đạt được nhiều kết quả tích cực, các nghiên cứu hiện nay vẫn tồn tại một số hạn chế khi áp dụng vào bài toán phân loại ảnh X-quang xương.
+
+Thứ nhất, phần lớn các nghiên cứu được phát triển trên các bộ dữ liệu X-quang ngực hoặc các bệnh lý phổ biến, trong khi số lượng nghiên cứu dành riêng cho ảnh X-quang xương và các bệnh lý xương vẫn còn hạn chế. Đặc điểm của các tổn thương xương thường đa dạng, số lượng mẫu ít và có sự mất cân bằng giữa các lớp, khiến việc xây dựng mô hình có khả năng tổng quát tốt trở nên khó khăn hơn.
+
+Thứ hai, nhiều phương pháp đa phương thức chỉ khai thác báo cáo đọc ảnh hoặc mô tả ngắn đi kèm ảnh mà chưa tận dụng đầy đủ các thông tin lâm sàng như triệu chứng, tiền sử bệnh hoặc cơ chế chấn thương. Trong thực tế lâm sàng, đây đều là những nguồn thông tin quan trọng giúp bác sĩ đưa ra chẩn đoán chính xác hơn.
+
+Thứ ba, mặc dù các mô hình nền tảng đạt hiệu quả cao, nhiều nghiên cứu vẫn lựa chọn tinh chỉnh toàn bộ tham số của mô hình. Cách tiếp cận này đòi hỏi chi phí tính toán lớn, đồng thời làm tăng nguy cơ quên tri thức đã được học trong giai đoạn tiền huấn luyện.
+
+Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu năng phân loại mà chưa quan tâm đầy đủ đến khả năng phát hiện dữ liệu ngoài phân phối. Trong môi trường lâm sàng, mô hình có thể gặp các trường hợp bệnh lý hiếm, dữ liệu có chất lượng thấp hoặc các bất thường chưa xuất hiện trong tập huấn luyện. Nếu không có cơ chế phát hiện OOD, mô hình vẫn có thể đưa ra dự đoán với độ tin cậy cao mặc dù kết quả không chính xác.
+
+\subsection{Cơ sở lựa chọn phương pháp đề xuất}
+
+Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên mô hình BioMedCLIP kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Thay vì tinh chỉnh toàn bộ mô hình, kỹ thuật LoRA được sử dụng nhằm giảm số lượng tham số cần cập nhật, từ đó giảm chi phí huấn luyện trong khi vẫn bảo tồn phần lớn tri thức đã được học từ giai đoạn tiền huấn luyện.
+
+Để khai thác hiệu quả hai nguồn dữ liệu, đặc trưng hình ảnh và đặc trưng văn bản được kết hợp thông qua mô-đun dung hợp đa phương thức trước khi thực hiện phân loại. Cách tiếp cận này giúp mô hình học được mối quan hệ bổ sung giữa hai phương thức dữ liệu, phù hợp với quy trình chẩn đoán thực tế của bác sĩ.
+
+Bên cạnh mục tiêu phân loại, luận văn sử dụng Prototypical Loss để học không gian đặc trưng có tính phân biệt cao hơn. Hàm mất mát này không trực tiếp thực hiện phát hiện dữ liệu ngoài phân phối mà đóng vai trò giảm phương sai nội lớp và tăng khoảng cách giữa các lớp trong không gian embedding, tạo ra các biểu diễn đặc trưng ổn định và dễ phân tách hơn.
+
+Trên không gian đặc trưng đã học, khoảng cách Mahalanobis được sử dụng theo cơ chế \textit{post-hoc} để phát hiện dữ liệu ngoài phân phối. Khác với khoảng cách Euclidean hoặc Cosine chỉ phản ánh mức độ tương đồng giữa các vector đặc trưng, Mahalanobis còn khai thác thông tin về phương sai và mối tương quan giữa các chiều đặc trưng của từng lớp. Điều này giúp mô hình đánh giá chính xác hơn mức độ bất thường của mẫu kiểm thử, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
+
+Sự kết hợp giữa Prototypical Loss và Mahalanobis Distance cho phép tách biệt hai giai đoạn của hệ thống: Prototypical Loss được sử dụng trong quá trình huấn luyện để xây dựng không gian đặc trưng có tính phân biệt cao, trong khi Mahalanobis Distance được áp dụng sau khi huấn luyện để phát hiện dữ liệu ngoài phân phối mà không cần xây dựng thêm một mô hình OOD chuyên biệt.
+
+\subsection{Định hướng của luận văn}
+
+Từ các phân tích trên, luận văn đề xuất một hệ thống phân loại ảnh X-quang xương đa phương thức dựa trên BioMedCLIP kết hợp với thông tin lâm sàng. Hệ thống sử dụng LoRA để tinh chỉnh mô hình nền, mô-đun dung hợp đa phương thức để kết hợp đặc trưng ảnh và văn bản, Prototypical Loss để học không gian đặc trưng có tính phân biệt và Mahalanobis Distance để phát hiện dữ liệu ngoài phân phối theo cơ chế \textit{post-hoc}. Kiến trúc của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày chi tiết trong Chương 3.
