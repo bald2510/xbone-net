@@ -39,9 +39,5 @@ params:
     use_text: true
     p2_report_type: clinical
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    phase2_loss_type: weighted_ce_proto
-    loss:
-      proto_margin: 0.5
-      lambda_proto: 0.3
-      label_smoothing: 0.1
+    phase2_loss_type: ce
 seed: 42

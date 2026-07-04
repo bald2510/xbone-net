@@ -33,12 +33,12 @@ EXPERIMENTS = OrderedDict({
     # ],
     # --- BTXRD Fine-Tuned Baselines ---
     "btxrd_finetuned": [
-        # "btxrd/baselines/finetuned/clip", 
-        # "btxrd/baselines/finetuned/pubmedclip",
-        # "btxrd/baselines/finetuned/medclip",
-        "btxrd/baselines/finetuned/biomedclip",
         # "btxrd/baselines/finetuned/resnet50",
         # "btxrd/baselines/finetuned/densenet",
+        "btxrd/baselines/finetuned/clip", 
+        "btxrd/baselines/finetuned/pubmedclip",
+        "btxrd/baselines/finetuned/medclip",
+        "btxrd/baselines/finetuned/biomedclip",
     ],
     # --- BTXRD Proposed Model ---
     # "btxrd_proposed": [

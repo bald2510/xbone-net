@@ -534,6 +534,14 @@ def main(cfg: DictConfig):
         logger_p1.close()
         print("Phase 1 complete!\n")
 
+    if not os.path.exists(cp_p1):
+        # Fallback search: look for shared pre-trained Phase 1 checkpoint under baselines/finetuned/{backbone_type}
+        clean_backbone = backbone_type.split('_')[0].lower()
+        seed_val = cfg.get("seed", 42)
+        shared_cp = os.path.join(hydra.utils.get_original_cwd(), "checkpoints", "btxrd", "baselines", "finetuned", clean_backbone, f"seed_{seed_val}", "best_phase1.pth")
+        if os.path.exists(shared_cp):
+            cp_p1 = shared_cp
+
     if os.path.exists(cp_p1):
         print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
         checkpoint = torch.load(cp_p1, map_location=device)

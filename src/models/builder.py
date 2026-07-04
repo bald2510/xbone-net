@@ -87,9 +87,14 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
     elif backbone_type in OPENCLIP_BACKBONE_TYPES:
         backbone = OpenCLIPFoundation(model_key=backbone_type, freeze_base=freeze_base)
         print(f"[Builder] {backbone_type} backbone (frozen={freeze_base})")
-    else:
+    elif backbone_type == "biomedclip":
         backbone = BiomedCLIPFoundation(freeze_base=freeze_base)
         print(f"[Builder] BiomedCLIP backbone (frozen={freeze_base})")
+    else:
+        raise ValueError(
+            f"Unknown backbone_type '{backbone_type}'. "
+            f"Supported options: ['biomedclip', 'pubmedclip', 'clip', 'medclip', 'resnet50_imagenet', 'densenet121_imagenet']"
+        )
     
     # --- Parameter-Efficient Fine-Tuning (PEFT) injection ---
     peft_cfg = cfg.get('peft', {'type': 'none', 'params': {}})
@@ -103,6 +108,10 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         elif peft_type == 'full_ft':
             for param in backbone.parameters():
                 param.requires_grad = True
+    if backbone_type == 'clip' and peft_type == 'qlora':
+        print("[Builder] Warning: OpenAI CLIP uses PyTorch native MultiheadAttention which is incompatible with 4-bit qlora. Automatically falling back to standard lora.")
+        peft_type = 'lora'
+
     elif peft_type in ('lora', 'qlora'):
         params = peft_cfg.get('params', {})
         # Separate shared hyper-parameters from encoder-specific target lists

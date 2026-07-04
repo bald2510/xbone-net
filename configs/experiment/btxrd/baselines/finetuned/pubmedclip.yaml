@@ -1,10 +1,10 @@
 # @package _global_
 defaults:
-- /model/peft@model.peft: qlora
-- /model/fusion@model.fusion: none
-- /model/classifier@model.classifier: none
-- /dataset@dataset: btxrd
-- _self_
+  - /model/peft@model.peft: qlora
+  - /model/fusion@model.fusion: none
+  - /model/classifier@model.classifier: none
+  - /dataset@dataset: btxrd
+  - _self_
 model:
   backbone_type: pubmedclip
   freeze_backbone: false
@@ -15,7 +15,7 @@ experiment_name: btxrd/baselines/finetuned/pubmedclip
 params:
   run_phase1: true
   run_phase2: true
-  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+  model_dir: checkpoints/btxrd/baselines/finetuned/pubmedclip/seed_/
   phase1:
     epochs: 50
     lr: 2e-4
@@ -23,7 +23,7 @@ params:
     optimizer: adamw
     scheduler: cosine
     warmup_ratio: 0.1
-    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
+    checkpoint_path: checkpoints/btxrd/baselines/finetuned/pubmedclip/seed_/best_phase1.pth
     temperature: 0.07
     loss_type: semantic_matching
     early_stopping_patience: 5
@@ -36,10 +36,10 @@ params:
     scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: concat
-    classifier_type: linear
+    fusion_type: cross_attention
+    classifier_type: prototypical
     use_text: true
     p2_report_type: clinical
-    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
+    checkpoint_path: checkpoints/btxrd/baselines/finetuned/pubmedclip/seed_/best_phase2.pth
     phase2_loss_type: ce
 seed: 42
