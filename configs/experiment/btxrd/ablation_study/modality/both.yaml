@@ -1,47 +1,47 @@
 # @package _global_
-# Table 2: Both text — P1 contrastive with xray+clinical + P2 fusion with xray+clinical
 defaults:
-  - /model/peft@model.peft: qlora
-  - /model/fusion@model.fusion: none
-  - /model/classifier@model.classifier: none
-  - /dataset@dataset: btxrd
-  - _self_
-
+- /model/peft@model.peft: qlora
+- /model/fusion@model.fusion: none
+- /model/classifier@model.classifier: none
+- /dataset@dataset: btxrd
+- _self_
 model:
   _placeholder_: true
 dataset:
   _placeholder_: true
-
-experiment_name: "btxrd/ablation_study/T2_both"
-
+experiment_name: btxrd/ablation_study/T2_both
 params:
   run_phase1: true
   run_phase2: true
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
   phase1:
     epochs: 50
     lr: 2e-4
     weight_decay: 1e-2
-    optimizer: "adamw"
-    scheduler: "cosine"
+    optimizer: adamw
+    scheduler: cosine
     warmup_ratio: 0.1
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     temperature: 0.07
-    loss_type: "semantic_matching"
+    loss_type: semantic_matching
     early_stopping_patience: 5
-    p1_report_type: "both"
+    p1_report_type: both
   phase2:
     epochs: 50
     lr: 1e-3
     weight_decay: 1e-4
-    optimizer: "adamw"
-    scheduler: "cosine"
+    optimizer: adamw
+    scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "cross_attention"
-    classifier_type: "prototypical"
+    fusion_type: cross_attention
+    classifier_type: prototypical
     use_text: true
-    p2_report_type: "both"
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
-
+    p2_report_type: both
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
+    phase2_loss_type: weighted_ce_proto
+    loss:
+      proto_margin: 0.5
+      lambda_proto: 0.3
+      label_smoothing: 0.1
 seed: 42

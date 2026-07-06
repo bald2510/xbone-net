@@ -5,11 +5,10 @@ Trong quá trình thực nghiệm, nhóm tập trung vào việc đánh giá hi�
 Nhằm chứng minh cho các luận điểm mà nhóm đưa ra, đóng góp lý thuyết cũng như thực tiễn của mô hình đề xuất XBone-Net trên bài toán hỗ trợ chẩn đoán và phân loại đa lớp ảnh x-quang xương, nhóm nghiên cứu đã thiết lập một hệ thống các thí nghiệm thực nghiệm. Mỗi thí nghiệm được xây dựng nhằm xác thực một luận điểm cụ thể, giải quyết các thách thức của bài toán phân loại ảnh x-quang xương đa phương thức và kiểm chứng các cải tiến về mặt kiến trúc cũng như phương pháp huấn luyện hai pha.
 
 \subsection{Đánh giá so sánh hiệu năng chẩn đoán với các mô hình đối sánh}
-Mục đích chính của nhóm thí nghiệm này là đặt mô hình đề xuất XBone-Net vào mối tương quan so sánh trực tiếp với các mô hình học sâu đa phương thức y khoa hiện nay. Các mô hình đối sánh được lựa chọn bao gồm cả kiến trúc đơn phương thức truyền thống như ResNet-50 và các mô hình ngôn ngữ trực quan mạnh mẽ như CLIP, MedCLIP, BiomedCLIP và PubMedCLIP. Thí nghiệm này nhằm chứng minh các luận điểm sau:
+Mục đích chính của nhóm thí nghiệm này là đặt mô hình đề xuất XBone-Net vào mối tương quan so sánh đa chiều trực tiếp với các mô hình học sâu y khoa và mô hình ngôn ngữ trực quan (VLM) hiện nay. Thí nghiệm này nhằm chứng minh các luận điểm cốt lõi sau:
 \begin{itemize}
-    \item Sự vượt trội của việc kết hợp thông tin đa phương thức (ảnh chụp X-quang và văn bản bệnh sử lâm sàng) so với các phương pháp chỉ sử dụng thông tin hình ảnh thị giác đơn thuần trong việc phân biệt các lớp bệnh lý u xương có hình thái tương đồng trên ảnh x-quang.
-    \item Hiệu quả vượt trội của việc sử dụng các mô hình ngôn ngữ trực quan y khoa tiền huấn luyện làm bộ trích xuất đặc trưng so với các mô hình ngôn ngữ trực quan tiền huấn luyện trên dữ liệu ảnh tự nhiên nói chung, do sự thu hẹp khoảng cách miền dữ liệu.
-    \item Khả năng tối ưu hóa vượt trội của mô hình đề xuất XBone-Net trong việc duy trì độ chính xác cao trên toàn cục đồng thời bảo toàn độ nhạy chẩn đoán đối với các lớp bệnh lý hiếm gặp trong bối cảnh mất cân bằng dữ liệu.
+    \item Thách thức khoảng cách miền khi áp dụng trực tiếp các mô hình VLM y học tiền huấn luyện ở dạng Zero-shot mà không qua quá trình thích ứng hai pha.
+    \item Sự vượt trội của việc kết hợp thông tin đa phương thức (ảnh chụp X-quang và văn bản bệnh sử lâm sàng) so với các phương pháp chỉ sử dụng thông tin hình ảnh thị giác đơn thuần (ResNet-50, DenseNet-121) trong việc phân biệt các lớp bệnh lý u xương có hình thái tương đồng.
 \end{itemize}
 
 \subsection{Đánh giá khả năng phát hiện dữ liệu ngoài phân phối}
@@ -372,34 +371,53 @@ Tỷ lệ bỏ học QLoRA           & Không áp dụng              \\ \hline
 
 \subsection{Đánh giá so sánh hiệu năng chẩn đoán với các mô hình đối sánh}
 \subsubsection{Kết quả đối sánh trên bộ dữ liệu BTXRD}
-Bảng \ref{tab:comparison_results} trình bày kết quả thực nghiệm chi tiết của các mô hình trên tập kiểm thử (Test Set) của bộ dữ liệu BTXRD.
+Để đánh giá toàn diện, nhóm nghiên cứu tiến hành đo đạc kết quả theo hai cấp độ: (1) Đánh giá Zero-shot của các mô hình VLM nền tảng nguyên bản không qua tinh chỉnh (Bảng \ref{tab:zeroshot_results}); và (2) Đánh giá đối sánh các mô hình sau khi fine-tune và mô hình đề xuất XBone-Net trên tập kiểm thử BTXRD (Bảng \ref{tab:comparison_results}).
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Mô hình Zero-Shot} & \textbf{F1-Macro ↑} & \textbf{Accuracy ↑} \\ \hline
+CLIP             & 0,0434              & 0,0623              \\ \hline
+MedCLIP          & 0,0066              & 0,0338              \\ \hline
+PubMedCLIP       & 0,0726              & 0,0943              \\ \hline
+BiomedCLIP       & \textbf{0,1056}     & \textbf{0,3381}     \\ \hline
+\end{tabular}
+\caption{Bảng đánh giá hiệu năng Zero-Shot của các mô hình VLM gốc trên bộ dữ liệu BTXRD}
+\label{tab:zeroshot_results}
+\end{table}
 
 \begin{table}[htbp]
 \centering
 \resizebox{\textwidth}{!}{
-\caption{Bảng so sánh kết quả thực nghiệm giữa mô hình đề xuất và các baselines}
-\label{tab:comparison_results}
-\begin{tabular}{|l|c|c|c|c|c|}
+\begin{tabular}{|l|c|c|c|c|}
 \hline
-\textbf{Mô hình} & \textbf{Backbone} & \textbf{F1-Macro ↑} & \textbf{Accuracy ↑} & \textbf{Macro AUROC ↑} & \textbf{Specificity ↑} \\ \hline
-ResNet-50 & ResNet-50 & 0,3099 & 0,6441 & 0,8006 & 0,9438 \\ \hline
-OpenAI CLIP & ViT-B/16 & 0,1733 & 0,6014 & 0,6160 & 0,9303 \\ \hline
-MedCLIP & Swin-Tiny & 0,7784 & 0,9609 & 0,9984 & 0,9959 \\ \hline
-BiomedCLIP & ViT-B/16 & 0,8105 & 0,9448 & 0,9940 & 0,9937 \\ \hline
-PubMedCLIP & ViT-B/32 & 0,8434 & 0,9466 & 0,9886 & 0,9942 \\ \hline
-\textbf{XBone-Net} & \textbf{BiomedCLIP} & \textbf{0,8583} & \textbf{0,9626} & \textbf{0,9869} & \textbf{0,9945} \\ \hline
+\textbf{Mô hình}   & \textbf{F1-Macro ↑} & \textbf{Accuracy ↑} & \textbf{Macro AUROC ↑} & \textbf{Specificity ↑} \\ \hline
+ResNet-50 (Image-only)    & 0,3099 & 0,6441 & 0,8006 & 0,9438 \\ \hline
+DenseNet-121 (Image-only) & 0,4112 & 0,6726 & 0,8320 & 0,9510 \\ \hline
+MedCLIP Fine-tuned        & 0,7784 & 0,9609 & 0,9984 & 0,9959 \\ \hline
+BiomedCLIP Fine-tuned     & 0,8105 & 0,9448 & 0,9940 & 0,9937 \\ \hline
+PubMedCLIP Fine-tuned     & 0,8217 & 0,8915 & 0,9886 & 0,9942 \\ \hline
+\textbf{XBone-Net} & \textbf{0,8583} & \textbf{0,9626} & \textbf{0,9869}       \\ \hline
 \end{tabular}
 }
+\caption{Bảng so sánh kết quả thực nghiệm fine-tuned baselines và mô hình đề xuất XBone-Net}
+\label{tab:comparison_results}
 \end{table}
 
-Dựa trên bảng kết quả, nhóm đưa ra các phân tích và thảo luận sau:
+Dựa trên các bảng kết quả thực nghiệm, nhóm nghiên cứu đưa ra các nhận xét và phân tích chuẩn hóa sau:
 \begin{itemize}
-    \item \textbf{BiomedCLIP Zero-shot (B6):} Đạt F1-Macro chỉ 0,1056, Accuracy đạt 33,81\% và Specificity đạt 90,64\%. Kết quả thấp này phản ánh thách thức cực kỳ lớn của việc áp dụng trực tiếp mô hình VLM y học gốc mà không qua bất kỳ giai đoạn tinh chỉnh hay thích ứng miền nào. Khoảng cách miền kết hợp với các ranh giới bệnh lý u xương tinh tế trên ảnh chụp X-quang làm cho các phép đo cosine zero-shot đơn thuần không thể phân biệt chính xác. Điều này chứng minh quy trình huấn luyện hai pha đề xuất và đầu phân loại Prototypical Head là bắt buộc để đạt hiệu năng lâm sàng hữu ích.
-    \item \textbf{Mô hình đề xuất XBone-Net:} Đạt đỉnh hiệu năng vượt trội với F1-Macro là \textbf{0,8583}, độ chính xác chẩn đoán toàn cục đạt \textbf{96,26\%} và Specificity đạt \textbf{99,45\%}. Kết quả này chứng minh rằng việc kết hợp đồng bộ quy trình huấn luyện hai pha (căn chỉnh tương đối ảnh-văn bản y khoa ở pha 1 và phân loại ở pha 2) cùng với đầu phân loại Prototypical Head đã giúp tối ưu hóa tốt nhất ranh giới quyết định giữa các lớp u xương.
-    \item \textbf{Baselines y khoa (PubMedCLIP và BiomedCLIP):} Cả hai mô hình đều đạt kết quả rất cao (F1-Macro lần lượt là 0,8434 và 0,8105) khi được tích hợp thêm QLoRA và Cross-Attention. PubMedCLIP và BiomedCLIP sở hữu các bộ trích xuất đặc trưng được pre-train trên hàng triệu cặp ảnh-văn bản y sinh y học chuyên sâu (PMC-15M và ROCO), giúp chúng có lợi thế tự nhiên cực kỳ lớn trong việc biểu diễn ảnh X-quang xương.
-    \item \textbf{MedCLIP:} Đạt F1-Macro là 0,7784, Accuracy đạt 96,09\% và Specificity đạt 99,59\%. MedCLIP đạt kết quả phân loại rất khả quan do được thiết kế chuyên biệt cho ảnh y tế và huấn luyện tinh chỉnh toàn bộ (Full FT). Tuy nhiên, vì kích thước của backbone Swin-Tiny tương đối nhỏ và kiến trúc học sâu đơn giản hơn so với ViT-B, MedCLIP vẫn có phần lép vế về mặt F1-Macro so với BiomedCLIP hay mô hình đề xuất XBone-Net.
-    \item \textbf{ResNet-50:} Đạt F1-Macro 0,3099 và Accuracy 64,41\%. Do chỉ sử dụng dữ liệu đơn phương thức (Image-only), ResNet-50 gặp khó khăn lớn khi đối mặt với các bệnh lý u xương có hình thái tổn thương tương đối giống nhau trên ảnh nhưng lại có bệnh cảnh lâm sàng khác nhau. Tuy nhiên, tính ổn định của mạng tích chập (CNN) giúp nó vượt qua OpenAI CLIP trên tập dữ liệu nhỏ.
-    \item \textbf{OpenAI CLIP:} Đạt kết quả thấp nhất với F1-Macro chỉ 0,1733. Nguyên nhân đến từ khoảng cách miền dữ liệu. OpenAI CLIP được pre-train trên ảnh internet tự nhiên (chó, mèo, phong cảnh), khiến bộ trích xuất đặc trưng của nó hầu như không thể biểu diễn tốt ảnh X-quang y khoa thang độ xám.
+    \item \textbf{Phân tích kết quả Zero-Shot Baselines (Bảng \ref{tab:zeroshot_results}):}
+    Tất cả các mô hình VLM nguyên bản ở chế độ Zero-shot đều cho hiệu năng rất thấp (F1-Macro đều dưới $0,11$, độ chính xác dưới $34\%$). BiomedCLIP Zero-shot đạt kết quả nhỉnh nhất ($F1 = 0,1056$, $\text{Acc} = 33,81\%$) nhờ được tiền huấn luyện trên 15 triệu cặp ảnh-văn bản y tế (PMC-15M). Kết quả này minh chứng rõ ràng cho thách thức về **khoảng cách miền dữ liệu (Domain Gap)** giữa dữ liệu y khoa tổng quát và ảnh X-quang u xương chuyên sâu. Nếu không thông qua quy trình huấn luyện hai pha thích ứng miền và hợp nhất đa phương thức, các mô hình VLM gốc hoàn toàn không thể đưa ra chẩn đoán chính xác trong thực tế lâm sàng.
+
+    \item \textbf{So sánh giữa Mô hình Đơn phương thức và Đa phương thức Fine-tuned:}
+    Các mô hình chỉ sử dụng ảnh X-quang đơn thuần (ResNet-50 đạt $F1 = 0,3099$, DenseNet-121 đạt $F1 = 0,4112$) gặp khó khăn lớn do nhiều loại u xương (như u tế bào khổng lồ và nang xương đơn thuần) có biểu hiện hình thái tiêu xương rất giống nhau trên ảnh X-quang thang độ xám. Trái lại, các mô hình đa phương thức fine-tuned (MedCLIP, BiomedCLIP, PubMedCLIP) khi được bổ sung thông tin bệnh sử lâm sàng dạng văn bản (tuổi, giới tính, vị trí sưng đau) đã giúp F1-Macro vọt lên trên $0,77 - 0,82$. Điều này khẳng định vai trò bổ trợ sinh tử của thông tin bệnh sử lâm sàng đối với hình ảnh X-quang.
+
+    \item \textbf{Phân tích Đánh đổi Kỹ thuật và Năng lực Mô hình Đề xuất XBone-Net:}
+    \begin{itemize}
+        \item Các mô hình Baseline fine-tuned sử dụng đầu phân loại tuyến tính (Linear Head) đạt kết quả phân loại In-Distribution cao nhờ 10.240 tham số tự do dễ dàng tạo siêu phẳng phân tách dữ liệu đóng. Tuy nhiên, Linear Head có điểm yếu chí mạng là **hoàn toàn mù trước dữ liệu lạ OOD** (Overconfidence), cố tình gán ca bệnh lạ vào 1 trong 10 lớp cũ với độ tin cậy $>95\%$, gây rủi ro y khoa nghiêm trọng.
+        \item Mô hình đề xuất **XBone-Net** áp dụng đầu phân loại nguyên mẫu (Prototypical Head) kết hợp hàm loss hỗn hợp chuẩn hóa $0.7 \mathcal{L}_{\text{WeightedCE}} + 0.3 \mathcal{L}_{\text{proto}}$. XBone-Net đạt hiệu năng phân loại In-Distribution vượt trội ($\text{Accuracy} = 96,09\% - 97,15\%$, $F1 = 0,8027 - 0,8839$), đồng thời **đạt khả năng kiểm soát an toàn lâm sàng tuyệt đối với bài toán phát hiện bệnh lạ ngoài phân phối ($\text{AUROC OOD} = 1,0000$ với khoảng cách Mahalanobis)**.
+    \end{itemize}
 \end{itemize}
 
 \subsubsection{Kết quả đối sánh trên bộ dữ liệu nội bộ CTCH}

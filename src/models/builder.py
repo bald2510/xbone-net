@@ -87,9 +87,14 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
     elif backbone_type in OPENCLIP_BACKBONE_TYPES:
         backbone = OpenCLIPFoundation(model_key=backbone_type, freeze_base=freeze_base)
         print(f"[Builder] {backbone_type} backbone (frozen={freeze_base})")
-    else:
+    elif backbone_type == "biomedclip":
         backbone = BiomedCLIPFoundation(freeze_base=freeze_base)
         print(f"[Builder] BiomedCLIP backbone (frozen={freeze_base})")
+    else:
+        raise ValueError(
+            f"Unknown backbone_type '{backbone_type}'. "
+            f"Supported options: ['biomedclip', 'pubmedclip', 'clip', 'medclip', 'resnet50_imagenet', 'densenet121_imagenet']"
+        )
     
     # --- Parameter-Efficient Fine-Tuning (PEFT) injection ---
     peft_cfg = cfg.get('peft', {'type': 'none', 'params': {}})
@@ -103,6 +108,10 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         elif peft_type == 'full_ft':
             for param in backbone.parameters():
                 param.requires_grad = True
+    if backbone_type == 'clip' and peft_type == 'qlora':
+        print("[Builder] Warning: OpenAI CLIP uses PyTorch native MultiheadAttention which is incompatible with 4-bit qlora. Automatically falling back to standard lora.")
+        peft_type = 'lora'
+
     elif peft_type in ('lora', 'qlora'):
         params = peft_cfg.get('params', {})
         # Separate shared hyper-parameters from encoder-specific target lists
@@ -117,25 +126,37 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         )
         
         # Text encoder PEFT adapter
-        text_module = getattr(backbone.model, 'text', None)
-        if text_module is not None and 'text_target_modules' in params:
+        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
+        if text_module is not None:
             text_params = common_params.copy()
-            text_params['target_modules'] = params['text_target_modules']
-            text_module.transformer = apply_peft(
-                module=text_module.transformer,
+            if 'text_target_modules' in params:
+                text_params['target_modules'] = params['text_target_modules']
+            
+            target_text_submodule = getattr(text_module, 'transformer', text_module)
+            adapted_text_submodule = apply_peft(
+                module=target_text_submodule,
                 cfg={'type': peft_type, 'params': text_params}
             )
+            if hasattr(text_module, 'transformer'):
+                text_module.transformer = adapted_text_submodule
+            elif hasattr(backbone.model, 'text_model'):
+                backbone.model.text_model = adapted_text_submodule
     elif peft_type == 'full_ft':
         backbone.model.visual = apply_peft(
             module=backbone.model.visual,
             cfg=peft_cfg
         )
-        text_module = getattr(backbone.model, 'text', None)
+        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
         if text_module is not None:
-            text_module.transformer = apply_peft(
-                module=text_module.transformer,
+            target_text_submodule = getattr(text_module, 'transformer', text_module)
+            adapted_text_submodule = apply_peft(
+                module=target_text_submodule,
                 cfg=peft_cfg
             )
+            if hasattr(text_module, 'transformer'):
+                text_module.transformer = adapted_text_submodule
+            elif hasattr(backbone.model, 'text_model'):
+                backbone.model.text_model = adapted_text_submodule
     else:
         backbone.model.visual = apply_peft(
             module=backbone.model.visual, 

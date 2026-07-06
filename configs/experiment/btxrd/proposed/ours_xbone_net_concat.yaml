@@ -9,7 +9,7 @@ model:
   _placeholder_: true
 dataset:
   _placeholder_: true
-experiment_name: btxrd/ablation_study/T2_xray_only
+experiment_name: btxrd/proposed/ours_xbone_net_concat
 params:
   run_phase1: true
   run_phase2: true
@@ -18,13 +18,14 @@ params:
     epochs: 50
     lr: 2e-4
     weight_decay: 1e-2
-    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
-    temperature: 0.07
-    loss_type: semantic_matching
     optimizer: adamw
     scheduler: cosine
     warmup_ratio: 0.1
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
+    temperature: 0.07
+    loss_type: semantic_matching
     early_stopping_patience: 5
+    p1_report_type: clinical
   phase2:
     epochs: 50
     lr: 1e-3
@@ -33,14 +34,10 @@ params:
     scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: cross_attention
+    fusion_type: concat
     classifier_type: prototypical
     use_text: true
-    p2_report_type: xray
+    p2_report_type: clinical
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    phase2_loss_type: weighted_ce_proto
-    loss:
-      proto_margin: 0.5
-      lambda_proto: 0.3
-      label_smoothing: 0.1
+    phase2_loss_type: ce
 seed: 42
