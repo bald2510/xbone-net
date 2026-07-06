@@ -1,1 +1,22 @@
 \chapter{Kết luận và hướng phát triển}
+\section{Kết luận}
+
+Khóa luận đã nghiên cứu và đề xuất một hệ thống phân loại ảnh X-quang xương đa phương thức kết hợp khả năng phát hiện dữ liệu ngoài phân phối nhằm hỗ trợ chẩn đoán các bệnh lý cơ xương khớp. Hệ thống khai thác đồng thời hai nguồn thông tin gồm ảnh X-quang và thông tin lâm sàng, từ đó tận dụng được tính bổ sung giữa hai phương thức dữ liệu để nâng cao hiệu quả phân loại.
+
+Trên cơ sở mô hình nền BioMedCLIP, nghiên cứu áp dụng kỹ thuật tinh chỉnh tham số hiệu quả LoRA để thích nghi với miền dữ liệu X-quang xương mà không làm thay đổi toàn bộ trọng số của mô hình. Đặc trưng hình ảnh và văn bản được kết hợp thông qua cơ chế chú ý hai chiều, sau đó được huấn luyện bằng sự kết hợp giữa hàm mất mát Cross-Entropy và Prototypical Loss. Trong đó, Cross-Entropy đảm nhiệm nhiệm vụ tối ưu phân loại, còn Prototypical Loss giúp xây dựng không gian đặc trưng có tính phân biệt cao, tạo tiền đề cho giai đoạn phát hiện dữ liệu ngoài phân phối.
+
+Đối với bài toán phát hiện dữ liệu ngoài phân phối, luận văn lựa chọn phương pháp Mahalanobis Distance theo cơ chế hậu xử lý (post-hoc), với không gian đặc trưng đã được học dựa vào mạng nguyên mẫu. Cách tiếp cận này tận dụng trực tiếp không gian đặc trưng đã được học trong quá trình huấn luyện để đánh giá mức độ bất thường của mẫu kiểm thử mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình. Điều này giúp nâng cao độ tin cậy của hệ thống khi triển khai trong các tình huống lâm sàng thực tế, nơi có thể xuất hiện các bệnh lý hoặc trường hợp chưa từng xuất hiện trong dữ liệu huấn luyện.
+
+Các thực nghiệm được thực hiện trên bộ dữ liệu BTXRD kết hợp với bộ dữ liệu nội bộ CTCH đã cho thấy phương pháp đề xuất đạt hiệu quả tốt trong nhiệm vụ phân loại, đồng thời xây dựng được không gian đặc trưng phù hợp để hỗ trợ phát hiện dữ liệu ngoài phân phối. Kết quả cũng cho thấy việc kết hợp thông tin lâm sàng với ảnh X-quang giúp cải thiện khả năng nhận diện bệnh lý so với việc chỉ sử dụng một nguồn dữ liệu.
+
+Nhìn chung, luận văn đã hoàn thành các mục tiêu nghiên cứu đã đề ra, bao gồm xây dựng mô hình phân loại đa phương thức dựa trên BioMedCLIP, tối ưu biểu diễn đặc trưng bằng Prototypical Loss và tích hợp cơ chế phát hiện dữ liệu ngoài phân phối dựa trên khoảng cách Mahalanobis. Các kết quả đạt được là cơ sở cho việc phát triển các hệ thống hỗ trợ chẩn đoán có độ tin cậy cao hơn trong lĩnh vực chẩn đoán hình ảnh y khoa.
+
+\section{Hướng phát triển}
+
+Mặc dù đạt được những kết quả khả quan, phương pháp đề xuất vẫn còn một số hạn chế và có thể được mở rộng trong các nghiên cứu tiếp theo.
+
+Thứ nhất, phương pháp phát hiện dữ liệu ngoài phân phối hiện được xây dựng theo hướng hậu xử lý bằng khoảng cách Mahalanobis. Các nghiên cứu tiếp theo có thể khảo sát những phương pháp OOD hiện đại hơn hoặc tích hợp trực tiếp mục tiêu phát hiện OOD vào quá trình huấn luyện để nâng cao khả năng phát hiện các trường hợp Near-OOD.
+
+Thứ hai, phạm vi thực nghiệm của luận văn mới được đánh giá trên bộ dữ liệu BTXRD và bộ dữ liệu CTCH. Trong tương lai, cần mở rộng thực nghiệm trên nhiều bộ dữ liệu X-quang xương có quy mô lớn hơn cũng như đánh giá khả năng tổng quát hóa giữa các bệnh viện, thiết bị chụp và điều kiện thu nhận ảnh khác nhau.
+
+Cuối cùng, hệ thống hiện tập trung vào hai nhiệm vụ chính là phân loại và phát hiện dữ liệu ngoài phân phối. Trong tương lai, có thể tích hợp thêm các phương pháp giải thích mô hình (Explainable AI) hoặc các mô hình ngôn ngữ lớn y khoa nhằm hỗ trợ sinh báo cáo chẩn đoán, giải thích kết quả dự đoán và tăng cường khả năng tương tác với bác sĩ trong quá trình hỗ trợ ra quyết định lâm sàng.

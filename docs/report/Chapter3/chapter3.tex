@@ -3,7 +3,7 @@
 
 \section{Tổng quan phương pháp đề xuất}
 
-Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một hệ thống học sâu đa phương thức nhằm khai thác đồng thời thông tin từ ảnh X-quang và dữ liệu lâm sàng văn bản. Đặc biệt, hệ thống được thiết kế theo hướng tích hợp tri thức y khoa nhằm nâng cao khả năng học ít mẫu và phát hiện dữ liệu ngoài phân phối. Cụ thể, kiến trúc bao gồm các thành phần chính như sau:
+Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một hệ thống học sâu đa phương thức nhằm khai thác đồng thời thông tin từ ảnh X-quang và dữ liệu lâm sàng văn bản. Đặc biệt, hệ thống được thiết kế với khả năng học trong điều kiện ít mẫu và phát hiện dữ liệu ngoài phân phối. Cụ thể, kiến trúc bao gồm các thành phần chính như sau:
     \begin{itemize}
         \item \textbf{Bộ mã hóa ảnh:} Kế thừa lại mô hình ViT-Base của phương pháp BiomedCLIP \cite{BiomedCLIP}
         \item \textbf{Bộ mã hóa văn bản:} Kế thừa lại mô hình PubMedBERT của phương pháp BiomedCLIP \cite{BiomedCLIP}
@@ -11,7 +11,7 @@ Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một 
         \item \textbf{Bộ phân loại:} Dùng phương pháp metric-based few-shot learning với một prototypical network, nhãn được quyết định bởi khoảng cách đến các prototype trong không gian biểu diễn chung, thay vì lớp phân loại truyền thống làm ràng buộc mô hình phân loại vào các nhãn đã biết, giúp phát hiện dữ liệu ngoài phân phối khi khoảng cách đó vượt quá ngưỡng xác định.
 
     \end{itemize}
-Đồng thời, các trọng số attention và thông tin từ tri thức y khoa được khai thác để trực quan hóa và giải thích kết quả dự đoán.
+Đồng thời, các trọng số attention được khai thác để trực quan hóa và giải thích kết quả dự đoán.
 
 % \section{Đánh giá BioMedCLIP và đề xuất cải tiến}
 % Với việc được tiền huấn luyện trên bộ dữ liệu PMC-15M, đã bao gồm ảnh X-quang, nhóm quyết định sử dụng mô hình BioMedCLIP làm mô hình cơ sở để phát triển hệ thống phân loại. Trước tiên, nhóm thực hiện đánh giá khả năng phân loại ảnh X-quang xương của mô hình BiomedCLIP \cite{BiomedCLIP} thuần túy để đánh giá khả năng phân loại với một tác vụ riêng biệt ở miền ảnh X-Quang xương, yêu cầu một độ chính xác cao với độ nhầm lẫn thấp để đáp ứng với yêu cầu thực tế, đặc biệt là trong lĩnh vực y khoa.
@@ -233,11 +233,10 @@ Việc kết hợp Cross-Entropy và Prototypical Loss cho phép mô hình đồ
     \label{fig:online}
 \end{figure}
 
-Sơ đồ của hệ thống trong giai đoạn online được trình bày trong Hình \ref{fig:online}. Gần tương ứng với công đoạn Fine-tuning, ảnh X-Quang cùng báo cáo tổng quát gồm lời khai của bệnh nhân và tiền sử bệnh lý sau tiền xử lí được đưa vào bộ mã hóa tương ứng để trích xuất đặc trưng. Các đặc trưng này được đưa vào khối Cross-Attention để học các mối liên hệ tương tác giữa đặc trưng toàn cục với các đặc trưng cục bộ, sau đó được đưa vào khối Transformer để hợp nhất đặc trưng đa phương thức ở mức độ sâu hơn trước khi được đưa vào mạng prototypical để dự đoán nhãn bệnh lý, ở đây, nhãn được lựa chọn dựa trên khoảng cách đến các prototype, nếu khoảng cách đến prototype gần nhất vượt quá ngưỡng nhất định, mô hình sẽ đánh dấu là không chắc chắn. Ngoài ra, các trọng số attention và thông tin từ tri thức y khoa được khai thác để trực quan hóa và giải thích kết quả dự đoán. Cụ thể, mô hình có thể tạo ra các bản đồ nhiệt trực quan hóa trên ảnh X-quang dựa trên các trọng số attention để giải thích dự đoán của mô hình.
+Sơ đồ của hệ thống trong giai đoạn online được trình bày trong Hình \ref{fig:online}. Gần tương ứng với công đoạn Fine-tuning, ảnh X-Quang cùng báo cáo tổng quát gồm lời khai của bệnh nhân và tiền sử bệnh lý sau tiền xử lí được đưa vào bộ mã hóa tương ứng để trích xuất đặc trưng. Các đặc trưng này được đưa vào khối Cross-Attention để học các mối liên hệ tương tác giữa đặc trưng toàn cục với các đặc trưng cục bộ, sau đó được đưa vào khối Transformer để hợp nhất đặc trưng đa phương thức ở mức độ sâu hơn trước khi được đưa vào mạng prototypical để dự đoán nhãn bệnh lý, ở đây, nhãn được lựa chọn dựa trên khoảng cách đến các prototype, nếu khoảng cách đến prototype gần nhất vượt quá ngưỡng nhất định, mô hình sẽ đánh dấu là không chắc chắn. Ngoài ra, các trọng số attention được khai thác để trực quan hóa và giải thích kết quả dự đoán. Cụ thể, mô hình có thể tạo ra các bản đồ nhiệt trực quan hóa trên ảnh X-quang dựa trên các trọng số attention để giải thích dự đoán của mô hình.
 
 \section{Đóng góp của phương pháp}
 \begin{itemize}
-    \item \textbf{Tích hợp tri thức y khoa với biểu diễn đa phương thức:} Không chỉ sử dụng kết hợp cả hai phương thức dữ liệu,
     \item \textbf{Cơ chế Cross-Attention có hướng dẫn tri thức:} Việc sử dụng cơ chế Cross-Attention có hướng dẫn tri thức giúp mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý,
 thay vì các vùng nền không liên quan. Điều này không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
     \item \textbf{Cơ chế fusion ở nhiều cấp độ:} Việc kết hợp đặc trưng toàn cục và cục bộ thông qua Cross-Attention và khối Transformer giúp mô hình khai thác tối đa dữ liệu
