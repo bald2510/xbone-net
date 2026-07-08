@@ -31,26 +31,24 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
     #     "btxrd/baselines/zeroshot/medclip_zeroshot",
     # ],
+    #--- BTXRD Proposed Model ---
+    "btxrd_proposed": [
+        "btxrd/proposed/ours_xbone_net",
+    ],
     # --- BTXRD Fine-Tuned Baselines ---
     "btxrd_finetuned": [
-        # "btxrd/baselines/finetuned/resnet50",
-        # "btxrd/baselines/finetuned/densenet",
+        "btxrd/baselines/finetuned/resnet50",
+        "btxrd/baselines/finetuned/densenet",
         "btxrd/baselines/finetuned/clip", 
         "btxrd/baselines/finetuned/pubmedclip",
         "btxrd/baselines/finetuned/medclip",
         "btxrd/baselines/finetuned/biomedclip",
     ],
-    # --- BTXRD Proposed Model ---
-    # "btxrd_proposed": [
-    #     "btxrd/proposed/ours_xbone_net",
-    #     "btxrd/proposed/ours_xbone_net_concat",
-    # ],
     # # --- BTXRD Ablation Studies ---
     # "btxrd_ablation_architecture": [
     #     "btxrd/ablation_study/architecture/concat_linear",
     #     "btxrd/ablation_study/architecture/concat_proto",
     #     "btxrd/ablation_study/architecture/crossattn_linear",
-    #     "btxrd/ablation_study/architecture/crossattn_proto",
     # ],
     # "btxrd_ablation_finetune": [
     #     "btxrd/ablation_study/finetune/full_ft",
@@ -58,20 +56,17 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/ablation_study/finetune/no_ft",
     # ],
     # "btxrd_ablation_modality": [
-    #     "btxrd/ablation_study/modality/both",
-    #     "btxrd/ablation_study/modality/clinical_only",
     #     "btxrd/ablation_study/modality/img_only",
     #     "btxrd/ablation_study/modality/xray_clinical",
-    #     "btxrd/ablation_study/modality/xray_only",
     # ],
-    # # --- CTCH Zero-Shot Baselines ---
+    # --- CTCH Zero-Shot Baselines ---
     # "ctch_zeroshot": [
     #     "ctch/baselines/zeroshot/biomedclip_zeroshot",
     #     "ctch/baselines/zeroshot/clip_zeroshot",
     #     "ctch/baselines/zeroshot/pubmedclip_zeroshot",
     #     "ctch/baselines/zeroshot/medclip_zeroshot",
     # ],
-    # # --- CTCH Fine-Tuned Baselines ---
+    # --- CTCH Fine-Tuned Baselines ---
     # "ctch_finetuned": [
     #     "ctch/baselines/finetuned/biomedclip",
     #     "ctch/baselines/finetuned/clip",
@@ -80,7 +75,7 @@ EXPERIMENTS = OrderedDict({
     #     "ctch/baselines/finetuned/resnet50",
     #     "ctch/baselines/finetuned/densenet",
     # ],
-    # # --- CTCH Proposed Model ---
+    # --- CTCH Proposed Model ---
     # "ctch_proposed": [
     #     "ctch/proposed/ours_xbone_net",
     # ],
@@ -89,8 +84,8 @@ EXPERIMENTS = OrderedDict({
 DEFAULT_SEEDS = [42]
 
 METRIC_KEYS = [
-    "f1_macro", "accuracy", "sensitivity_macro", "specificity_macro",
-    "precision_macro", "auroc_macro",
+    "f1_macro", "accuracy", "sensitivity", "specificity",
+    "precision", "auroc_macro",
 ]
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -226,11 +221,14 @@ def load_metrics(experiment: str, seed: int) -> dict | None:
                 else:
                     metrics_dict = {}
 
+                # Legacy alias mapping (kept for backward compatibility)
                 for key, macro_key in [("sensitivity", "sensitivity_macro"), 
                                         ("specificity", "specificity_macro"), 
                                         ("precision", "precision_macro")]:
                     if key in metrics_dict and macro_key not in metrics_dict:
                         metrics_dict[macro_key] = metrics_dict[key]
+                    if macro_key in metrics_dict and key not in metrics_dict:
+                        metrics_dict[key] = metrics_dict[macro_key]
 
                 return metrics_dict
             except Exception as e:
@@ -302,7 +300,7 @@ def print_results_table(results: dict[str, dict]):
     for exp, agg in results.items():
         name = exp.split("/")[-1]
         cols = []
-        for key in ["f1_macro", "accuracy", "sensitivity_macro", "auroc_macro"]:
+        for key in ["f1_macro", "accuracy", "sensitivity", "auroc_macro"]:
             if key in agg and agg[key].get("n", 0) > 0:
                 cols.append(f"{agg[key]['mean']:.4f}+/-{agg[key]['std']:.4f}")
             else:

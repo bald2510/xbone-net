@@ -1,18 +1,15 @@
 """
-Loss Functions for XBone-Net Two-Stage Pipeline.
+Loss Functions for XBone-Net Two-Phase Pipeline.
 ===============================================================================
-Implements objective functions used across both training phases of XBone-Net,
-focusing on multi-class ASL + Prototype loss architecture:
+Implements streamlined objective functions used across both training phases of XBone-Net:
 
-Phase 1 (Contrastive Learning):
+Phase 1 (Multimodal Contrastive Alignment):
   - SoftTargetSemanticMatchingLoss: Soft-target cross-entropy encoding same-class similarity
 
-Phase 2 (Multi-Class Classification & Prototype Learning):
-  - AsymmetricLossMulticlass: ASL adapted for multi-class classification with hard negative suppression
-  - PrototypeLossMulticlass: Multi-class metric learning cosine distance objective to prototypes
-  - OODMarginLoss: Regularization pushing out-of-distribution embeddings away from class prototypes
-  - CombinedPhase2LossMulticlass: Composite multi-class loss combining ASL/CE + Prototype + OOD margin:
-    L_total = L_ASL + lambda_proto * L_proto + lambda_ood * L_ood
+Phase 2 (Supervised Classification & Prototype Learning):
+  - PrototypeLossMulticlass: Metric learning cosine distance objective to class prototypes
+  - CombinedPhase2LossMulticlass: Composite loss combining Class-Weighted Cross-Entropy and Prototype loss:
+      L_total = L_CE + lambda_proto * L_proto
 """
 
 import torch
@@ -21,7 +18,7 @@ import torch.nn.functional as F
 
 
 # ============================================================
-# Helper Functions & Parameter Extraction
+# Phase 1 Helper Functions
 # ============================================================
 
 def get_clip_logit_params(clip_model, require_bias: bool = False):
@@ -32,17 +29,21 @@ def get_clip_logit_params(clip_model, require_bias: bool = False):
 
     Args:
         clip_model: OpenCLIP model instance with logit_scale parameter.
-        require_bias: If True and model lacks logit_bias, creates a registered
-            parameter initialized to -10.0.
+        require_bias: If True and model lacks logit_bias, registers a bias parameter.
 
     Returns:
         Tuple of (logit_scale, logit_bias) nn.Parameter objects.
 
     Raises:
-        AttributeError: If clip_model does not have a logit_scale attribute.
+        AttributeError: If clip_model does not have a logit_scale parameter.
     """
     if not hasattr(clip_model, "logit_scale"):
-        raise AttributeError("Expected OpenCLIP model with a `logit_scale` parameter.")
+        # Fallback for non-OpenCLIP backbones (e.g., MedCLIP): create a learnable logit_scale
+        # initialized to ln(1/0.07) ≈ 2.66, matching standard CLIP temperature
+        import math
+        logit_scale = nn.Parameter(torch.tensor(math.log(1.0 / 0.07)))
+        setattr(clip_model, "logit_scale", logit_scale)
+        print("  [Loss] Created learnable logit_scale for non-OpenCLIP backbone.")
 
     logit_scale = clip_model.logit_scale
     logit_bias = getattr(clip_model, "logit_bias", None)
@@ -81,7 +82,7 @@ def _pairwise_logits(image_features, text_features, logit_scale, logit_bias=None
 
 
 # ============================================================
-# Phase 1: Contrastive Loss Functions
+# Phase 1: Contrastive Loss Function
 # ============================================================
 
 class SoftTargetSemanticMatchingLoss(nn.Module):
@@ -143,8 +144,64 @@ class SoftTargetSemanticMatchingLoss(nn.Module):
         return 0.5 * (loss_v2t + loss_t2v)
 
 
+class DHNNCELoss(nn.Module):
+    """Decoupled Hard Negative Noise Contrastive Estimation (DHN-NCE) Loss.
+    
+    Removes the positive pair from the denominator and applies a temperature-scaled
+    weighting to hard negatives. This prevents gradient vanishing and forces the model
+    to focus on distinguishing semantically similar but distinct pairs (e.g., in medical images).
+    
+    Formula:
+        L = -pos + logsumexp(neg * (1 + beta)) - logsumexp(neg * beta)
+    """
+
+    def __init__(self, clip_model, beta: float = 0.5):
+        """Initialize DHN-NCE loss.
+        
+        Args:
+            clip_model: OpenCLIP model providing logit scale.
+            beta: Hard negative weighting factor. Higher beta = more focus on hard negatives.
+        """
+        super().__init__()
+        self.logit_scale, _ = get_clip_logit_params(clip_model)
+        self.beta = beta
+
+    def forward(self, image_features, text_features, disease_labels=None):
+        """Compute DHN-NCE loss.
+        
+        Args:
+            image_features: Image embeddings of shape (B, D).
+            text_features: Text embeddings of shape (B, D).
+            disease_labels: Optional labels, not used directly in pure DHN-NCE but kept for API.
+        """
+        device = image_features.device
+        batch_size = image_features.size(0)
+        
+        # Calculate logits [B, B]
+        logits_v2t = _pairwise_logits(image_features, text_features, self.logit_scale)
+        logits_t2v = logits_v2t.T
+        
+        mask = ~torch.eye(batch_size, dtype=torch.bool, device=device)
+        
+        def compute_dhn(logits):
+            pos = logits.diag()
+            neg = logits[mask].view(batch_size, batch_size - 1)
+            
+            # Using logsumexp for numerical stability
+            lse_1 = torch.logsumexp(neg * (1 + self.beta), dim=1)
+            lse_2 = torch.logsumexp(neg * self.beta, dim=1)
+            
+            return (-pos + lse_1 - lse_2).mean()
+            
+        loss_v2t = compute_dhn(logits_v2t)
+        loss_t2v = compute_dhn(logits_t2v)
+        
+        return 0.5 * (loss_v2t + loss_t2v)
+
+
 LOSS_REGISTRY = {
     "semantic_matching": SoftTargetSemanticMatchingLoss,
+    "dhn_nce": DHNNCELoss,
 }
 
 
@@ -168,81 +225,8 @@ def build_loss(loss_type: str, clip_model=None, **kwargs):
 
 
 # ============================================================
-# Phase 2: Multi-Class ASL + Prototype Loss Modules
+# Phase 2: Cross Entropy + Prototype Loss Modules
 # ============================================================
-
-class AsymmetricLossMulticlass(nn.Module):
-    """Asymmetric Loss (ASL) adapted for multi-class classification.
-
-    Applies asymmetric focal penalties and probability margin clipping to
-    one-hot encoded targets, suppressing negative class gradients and focusing
-    learning capacity on hard positive and minority classes.
-
-    Formula:
-        L_pos = - y_onehot * (1 - p)^gamma_pos * log(p)
-        L_neg = - (1 - y_onehot) * max(p - clip, 0)^gamma_neg * log(1 - max(p - clip, 0))
-
-    Attributes:
-        gamma_pos (float): Positive focal exponent.
-        gamma_neg (float): Negative focal exponent for hard negative down-weighting.
-        clip (float): Asymmetric margin clipping factor.
-        class_weights (torch.Tensor): Optional per-class weight vector.
-    """
-
-    def __init__(self, gamma_pos: float = 0.0, gamma_neg: float = 4.0, clip: float = 0.05, class_weights=None):
-        """Initialize Multi-Class Asymmetric Loss.
-
-        Args:
-            gamma_pos: Positive focusing exponent (default: 0.0).
-            gamma_neg: Negative focusing exponent for suppressing easy negatives (default: 4.0).
-            clip: Probability margin threshold for hard negative suppression (default: 0.05).
-            class_weights: Optional per-class weight vector for handling class imbalance.
-        """
-        super().__init__()
-        self.gamma_pos = gamma_pos
-        self.gamma_neg = gamma_neg
-        self.clip = clip
-        self.class_weights = class_weights
-
-    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """Compute Multi-Class ASL over predicted logits and target indices.
-
-        Args:
-            logits: Unnormalized network outputs of shape (B, C).
-            targets: Target tensor of shape (B,) containing class indices or (B, C) one-hot.
-
-        Returns:
-            Scalar mean loss value.
-        """
-        if targets.ndim == 1:
-            num_classes = logits.shape[-1]
-            one_hot = F.one_hot(targets, num_classes=num_classes).float()
-        else:
-            one_hot = targets.float()
-
-        p = torch.sigmoid(logits)
-        eps = 1e-8
-
-        # Positive loss for target class
-        pos_loss = one_hot * (1 - p).pow(self.gamma_pos) * torch.log(p.clamp(min=eps))
-        
-        # Asymmetric negative loss for non-target classes with margin clipping
-        p_m = (p - self.clip).clamp(min=0)
-        neg_loss = (1 - one_hot) * p_m.pow(self.gamma_neg) * torch.log((1 - p_m).clamp(min=eps))
-
-        asl_loss = -(pos_loss + neg_loss)
-        
-        if self.class_weights is not None:
-            weights = self.class_weights.to(logits.device)
-            asl_loss = asl_loss * weights.view(1, -1)
-
-        return asl_loss.sum(dim=-1).mean()
-
-
-class AsymmetricLoss(AsymmetricLossMulticlass):
-    """Alias for multi-label backward compatibility."""
-    pass
-
 
 class PrototypeLossMulticlass(nn.Module):
     """Multi-class prototype distance objective for metric learning.
@@ -278,6 +262,9 @@ class PrototypeLossMulticlass(nn.Module):
         Returns:
             Scalar loss value combining positive pull and negative push.
         """
+        if targets.ndim > 1:
+            targets = targets.argmax(dim=-1)
+
         normed_f = F.normalize(features, dim=-1)
         normed_p = F.normalize(prototypes, dim=-1)
         cosine_sim = normed_f @ normed_p.T
@@ -295,70 +282,54 @@ class PrototypeLossMulticlass(nn.Module):
         return pull_loss + push_loss
 
 
-class PrototypeLoss(nn.Module):
+class PrototypeLoss(PrototypeLossMulticlass):
     """Alias for backward compatibility."""
-    def __init__(self, margin: float = 0.5):
-        super().__init__()
-        self.proto_multi = PrototypeLossMulticlass(margin)
-
-    def forward(self, features, prototypes, targets):
-        if targets.ndim > 1:
-            targets = targets.argmax(dim=-1)
-        return self.proto_multi(features, prototypes, targets)
-
-
-class OODMarginLoss(nn.Module):
-    """Margin loss pushing out-of-distribution (OOD) features away from prototypes.
-
-    Formula:
-        L = mean(relu(margin - min_k dist(f_ood, p_k)))
-
-    Attributes:
-        margin (float): Minimum desired distance to nearest class prototype.
-    """
-
-    def __init__(self, margin: float = 1.0):
-        """Initialize OOD margin loss.
-
-        Args:
-            margin: Desired minimum distance threshold.
-        """
-        super().__init__()
-        self.margin = margin
-
-    def forward(self, ood_features: torch.Tensor, prototypes: torch.Tensor) -> torch.Tensor:
-        """Compute OOD separation margin loss.
-
-        Args:
-            ood_features: Features from OOD samples of shape (N, D).
-            prototypes: Class prototype vectors of shape (C, D).
-
-        Returns:
-            Scalar loss tensor.
-        """
-        if ood_features is None or len(ood_features) == 0:
-            return torch.tensor(0.0, device=prototypes.device)
-
-        normed_ood = F.normalize(ood_features, dim=-1)
-        normed_proto = F.normalize(prototypes, dim=-1)
-        cosine_sim = normed_ood @ normed_proto.T
-        dist = 1.0 - cosine_sim
-        min_dist, _ = dist.min(dim=1)
-        loss = F.relu(self.margin - min_dist).mean()
-        return loss
+    pass
 
 
 class CombinedPhase2LossMulticlass(nn.Module):
-    """Combined Weighted Cross-Entropy and Prototype loss for multi-class classification.
+    """Combined Unweighted Cross-Entropy and Prototype loss for Phase 2.
 
     Formula:
-        L_total = (1 - lambda_proto) * L_weighted_ce + lambda_proto * L_proto
+        L_total = L_ce + lambda_proto * L_proto
 
     Attributes:
-        ce (nn.CrossEntropyLoss): Class-weighted cross-entropy classification loss.
+        ce (nn.CrossEntropyLoss): Standard unweighted cross-entropy classification loss with label smoothing.
         proto_loss (PrototypeLossMulticlass): Multi-class prototype distance objective.
-        lambda_proto (float): Convex weight factor for prototype loss (default: 0.3).
+        lambda_proto (float): Weight factor for prototype loss (default: 0.3).
     """
+
+class FocalLossMulticlass(nn.Module):
+    """Multi-class Focal Loss.
+    
+    Combines class weights (alpha) with a modulating factor (gamma) to down-weight
+    easy examples and focus training on hard examples.
+    
+    Formula:
+        FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
+    """
+    def __init__(self, alpha=None, gamma=2.0, label_smoothing=0.1):
+        super().__init__()
+        self.alpha = alpha  # Tensor of class weights
+        self.gamma = gamma
+        self.label_smoothing = label_smoothing
+        self.ce = nn.CrossEntropyLoss(weight=alpha, label_smoothing=label_smoothing, reduction='none')
+
+    def forward(self, logits, targets):
+        # Calculate standard CE loss per sample
+        ce_loss = self.ce(logits, targets)
+        
+        # Calculate p_t (probability of target class)
+        pt = torch.exp(-ce_loss)
+        
+        # Modulating factor
+        focal_weight = (1 - pt) ** self.gamma
+        
+        return (focal_weight * ce_loss).mean()
+
+
+class CombinedPhase2LossMulticlass(nn.Module):
+    """Composite objective for Phase 2 classification training."""
 
     def __init__(
         self,
@@ -366,24 +337,32 @@ class CombinedPhase2LossMulticlass(nn.Module):
         proto_margin: float = 0.5,
         lambda_proto: float = 0.3,
         label_smoothing: float = 0.1,
+        use_focal_loss: bool = False,
+        gamma: float = 2.0,
         **kwargs,
     ):
-        """Initialize multi-class Phase 2 combined Weighted CE + Proto loss module.
+        """Initialize Phase 2 combined Unweighted CE/Focal + Proto loss module.
 
         Args:
-            class_weights: Class-balanced weight tensor for handling class imbalance.
-            proto_margin: Distance margin for prototype loss (default: 0.5).
-            lambda_proto: Convex weight factor for prototype loss (default: 0.3).
-            label_smoothing: Label smoothing factor for cross-entropy (default: 0.1).
-            **kwargs: Unused extra arguments for backward compatibility.
+            class_weights: Optional weight tensor for handling class imbalance.
+            proto_margin: Distance margin for prototype loss.
+            lambda_proto: Weight factor for prototype loss.
+            label_smoothing: Label smoothing factor.
+            use_focal_loss: If True, uses Focal Loss instead of Cross Entropy.
+            gamma: Gamma parameter for Focal Loss.
+            **kwargs: Unused extra arguments.
         """
         super().__init__()
-        self.ce = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=label_smoothing)
+        if use_focal_loss:
+            self.ce = FocalLossMulticlass(alpha=class_weights, gamma=gamma, label_smoothing=label_smoothing)
+        else:
+            self.ce = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=label_smoothing)
+            
         self.proto_loss = PrototypeLossMulticlass(proto_margin)
         self.lambda_proto = lambda_proto
 
     def forward(self, logits, targets, features=None, prototypes=None, **kwargs):
-        """Compute composite multi-class training loss.
+        """Compute composite Phase 2 training loss.
 
         Args:
             logits: Output classification logits of shape (B, C).
@@ -395,6 +374,9 @@ class CombinedPhase2LossMulticlass(nn.Module):
         Returns:
             Scalar combined loss tensor.
         """
+        if targets.ndim > 1:
+            targets = targets.argmax(dim=-1)
+
         l_ce = self.ce(logits, targets)
 
         if features is not None and prototypes is not None:

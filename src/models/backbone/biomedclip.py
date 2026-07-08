@@ -48,33 +48,53 @@ class BiomedCLIPFoundation(nn.Module):
         # --- Load model checkpoint and transforms ---
         self.model, _, self.preprocess = create_model_and_transforms(model_name)
         self.tokenizer = get_tokenizer(model_name)
+        
+        # Attribute to control local vs global feature extraction dynamically
+        self.return_local = False
 
         # --- Freeze backbone parameters if requested ---
         if freeze_base:
             for param in self.model.parameters():
                 param.requires_grad = False
 
+    @property
+    def tokenizer_obj(self):
+        """Tokenizer callable alias for interface consistency."""
+        return self.tokenizer
+
     def forward(self, images, input_ids):
         """Extract and L2-normalize image and text feature embeddings.
 
-        Mathematical Formulation:
-            Features are L2-normalized onto the unit hypersphere:
-            v_norm = v / ||v||_2
-            where ||v||_2 = sqrt(sum(v_i^2)). This ensures dot product equals cosine similarity.
+        Supports dynamic local feature extraction if self.return_local is True.
 
         Args:
             images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
             input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
 
         Returns:
-            tuple: (image_features, text_features) where each tensor is L2-normalized
-                with shape [B, 512].
+            tuple: (image_features, text_features) where:
+                - If self.return_local is False: shapes [B, 512] and [B, 512].
+                - If self.return_local is True: shapes [B, 197, 512] and [B, L, 512].
         """
-        # --- Feature extraction ---
-        image_features = self.model.encode_image(images)
-        text_features = self.model.encode_text(input_ids)
+        if getattr(self, "return_local", False):
+            # --- Local Feature Extraction for Cross-Attention ---
+            # 1. Image visual patch embeddings: trunk.forward_features yields [B, 197, 768]
+            patch_feats_768 = self.model.visual.trunk.forward_features(images)
+            # Project using visual head (Dropout + Linear) to [B, 197, 512]
+            image_features = self.model.visual.head(patch_feats_768)
+            
+            # 2. Text token embeddings: transformer yields last_hidden_state [B, L, 768]
+            text_module = getattr(self.model, 'text', getattr(self.model, 'text_model', None))
+            transformer_out = text_module.transformer(input_ids)
+            text_feats_768 = transformer_out[0]
+            # Project using text proj (Linear + GELU + Linear) to [B, L, 512]
+            text_features = text_module.proj(text_feats_768)
+        else:
+            # --- Global Feature Extraction ---
+            image_features = self.model.encode_image(images)
+            text_features = self.model.encode_text(input_ids)
 
-        # --- L2 normalization (cosine similarity matching) ---
+        # --- L2 normalization (along embedding dimension) ---
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 

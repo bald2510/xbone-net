@@ -1,500 +1,191 @@
 \chapter{Các công trình nghiên cứu liên quan}
 \label{Chapter2}
 
-Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng, các kỹ thuật để tinh chỉnh mô mình và phương pháp phát hiện dữ liệu ngoài phân phối từ đó đưa ra các nhận xét về các phương pháp hiện có làm tiền đề cho phương pháp đề xuất.
+Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng, các kỹ thuật tinh chỉnh hiệu quả tham số và phương pháp phát hiện dữ liệu ngoài phân phối, từ đó đưa ra các nhận xét về các phương pháp hiện có làm tiền đề cho phương pháp đề xuất.
 
 \section{Các mô hình nền tảng}
 
-\subsection{Các mô hình xây dựng từ đầu}
+\subsection{Các mô hình kết hợp ngôn ngữ - ảnh xây dựng từ đầu}
 
-Sự kết hợp giữa dữ liệu cận lâm sàng và báo cáo lâm sàng, lịch sử bệnh lý đã tạo ra những bước tiến lớn trong việc cải thiện độ chính xác của các mô hình chẩn đoán chẩn đoán, đặc biệt là thông qua việc sử dụng văn bản để bù đắp những thiếu sót thông tin mà hình ảnh đơn thuần không thể cung cấp. Khởi điểm với các phương pháp sử dụng văn bản để cung cấp bối cảnh lâm sàng thiết yếu. Nghiên cứu của X. Mei \cite{XMei} trong việc chẩn đoán COVID-19 là một minh chứng rõ nét: khi ảnh chụp CT ngực ở giai đoạn sớm có thể chưa biểu hiện bất thường, việc tích hợp thông tin lâm sàng thông qua mạng MLP với đặc trưng ảnh từ CNN đã giúp mô hình nhận diện chính xác 68\% số bệnh nhân dương tính mà các bác sĩ X-quang đã bỏ sót. Điều này khẳng định văn bản có khả năng định hướng chẩn đoán ngay cả khi tín hiệu hình ảnh còn mờ nhạt.
+Sự kết hợp giữa dữ liệu cận lâm sàng và báo cáo lâm sàng, lịch sử bệnh lý đã tạo ra những bước tiến lớn trong việc cải thiện độ chính xác của các mô hình chẩn đoán, đặc biệt là thông qua việc sử dụng văn bản để bù đắp những thiếu sót thông tin mà hình ảnh đơn thuần không thể cung cấp. Nghiên cứu của X. Mei \cite{XMei} trong việc chẩn đoán COVID-19 là một minh chứng rõ nét: khi ảnh chụp CT ngực ở giai đoạn sớm có thể chưa biểu hiện bất thường, việc tích hợp thông tin lâm sàng thông qua mạng MLP với đặc trưng ảnh từ CNN đã giúp mô hình nhận diện chính xác 68\% số bệnh nhân dương tính mà các bác sĩ X-quang đã bỏ sót. Mô hình TieNet \cite{TieNet} đã mã hóa các báo cáo y tế và tích hợp các cơ chế chú ý đa cấp để gióng hàng các từ mang ý nghĩa quan trọng với các vùng ảnh tương ứng, cải thiện trung bình 6\% chỉ số AUC so với các mô hình chỉ dùng ảnh. Gần đây, IRENE \cite{IRENE} đưa tất cả dữ liệu về một dạng token chung và sử dụng một mô hình Transformer duy nhất, cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ.
 
-Không chỉ là dữ liệu bổ sung, văn bản còn được khai thác như một "tri thức tiên nghiệm" để hướng dẫn mô hình tập trung vào các vùng ảnh quan trọng. Mô hình TieNet \cite{TieNet} đã mã hóa các báo cáo y tế và tích hợp các cơ chế chú ý đa cấp độ để làm nổi bật các từ mang ý nghĩa quan trọng, từ đó gióng hàng chúng với các vùng ảnh tương ứng. Việc sử dụng văn bản làm tri thức dẫn đường này đã giúp TieNet cải thiện đáng kể kết quả phân loại bệnh lý, tăng trung bình 6\% chỉ số AUC so với các mô hình chỉ dùng ảnh.
+Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp của văn bản đã đi từ việc chỉ là một véc-tơ thông tin ghép nối thêm, trở thành một thành phần cốt lõi có khả năng gióng hàng ngữ nghĩa và định hướng trong cơ chế chú ý. Tuy nhiên, các mô hình xây dựng từ đầu thường đòi hỏi dữ liệu ghép cặp quy mô lớn và chi phí huấn luyện cao, tạo tiền đề cho sự xuất hiện của các mô hình ngôn ngữ trực quan y khoa.
 
-Mặc dù các mô hình như TransMed \cite{TransMed} đã chứng minh sức mạnh của kiến trúc lai CNN-Transformer trong việc thiết lập sự phụ thuộc ở khoảng cách xa đối với dữ liệu đa phương thức, các phương pháp nối đặc trưng truyền thống vẫn gặp hạn chế lớn do sự khác biệt về không gian véc-tơ và khoảng cách ngữ nghĩa giữa ảnh và văn bản.
+\subsection{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)}
 
-Để giải quyết triệt để vấn đề này, IRENE \cite{IRENE} đã loại bỏ cách tiếp cận trích xuất đặc trưng riêng lẻ. Thay vào đó, IRENE đưa tất cả dữ liệu (hình ảnh, báo cáo lâm sàng không cấu trúc, và dữ liệu cấu trúc) về một dạng token chung và sử dụng một mô hình Transformer duy nhất để học biểu diễn tổng thể. Việc sử dụng cơ chế chú ý đa phương thức hai chiều cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ. Đóng góp của văn bản trong cấu trúc này mang tính quyết định: các thử nghiệm loại bỏ (ablation study) của IRENE chỉ ra rằng, việc thiếu vắng văn bản báo cáo bệnh lý (chief complaints) làm giảm 6\% hiệu suất mô hình, và việc bỏ qua các kết quả xét nghiệm làm giảm thêm 4\%.
+Các mô hình ngôn ngữ trực quan đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu, Med-VLMs kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
 
-Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp của văn bản đã tiến hóa từ việc chỉ là một véc-tơ thông tin ghép nối thêm, trở thành một thành phần cốt lõi có khả năng gióng hàng ngữ nghĩa và định hướng sự chú ý, giúp các mô hình học sâu đưa ra chẩn đoán hình ảnh y khoa toàn diện và chính xác hơn.
+Chiến lược \textbf{học tương phản (Contrastive Learning)} là hướng tiếp cận được ứng dụng rộng rãi nhất và có liên quan trực tiếp đến phương pháp đề xuất trong luận văn. Nguyên lý của chiến lược này là tối ưu hóa không gian biểu diễn bằng cách thu hẹp khoảng cách giữa các cặp đặc trưng ảnh -- văn bản tương đồng, đồng thời đẩy các cặp khác biệt ra xa nhau.
 
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
+ConVIRT \cite{ConVIRT} là nghiên cứu tiên phong áp dụng học tương phản cho dữ liệu y khoa, sử dụng ResNet50 và BERT để tối ưu bộ mã hóa ảnh và văn bản, đạt 90,3\% accuracy trên bộ dữ liệu COVIDx. GLoRIA \cite{GLoRIA} mở rộng hướng tiếp cận này bằng cách kết hợp hai hàm mất mát toàn cục (global contrastive) và cục bộ (local contrastive), cho phép căn chỉnh chi tiết giữa các vùng trong ảnh và các từ trong câu. MedCLIP \cite{MedCLIP} đề xuất cơ chế tách cặp và trích xuất tri thức cùng hàm mất mát Semantic Matching nhằm giải quyết vấn đề âm tính giả (false negative) — khi các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý. BiomedCLIP \cite{BiomedCLIP} kế thừa kiến trúc CLIP với bộ mã hóa ViT-Base và PubMedBERT, được tiền huấn luyện trên 15 triệu cặp dữ liệu từ tập PMC-15M, đạt độ chính xác phân loại 83\%.
+
+Ngoài học tương phản, các hướng tiếp cận khác bao gồm \textbf{học có che giấu (Masked Learning)} và \textbf{tích hợp tri thức y khoa (Knowledge Integration)}. Tuy nhiên, các phương pháp này thường phụ thuộc vào nguồn dữ liệu ghép cặp sẵn hoặc đồ thị tri thức chuyên biệt, hạn chế khả năng ứng dụng trên các bài toán không có sẵn nguồn tri thức ngoài.
+
+% Bảng tổng hợp các Med-VLMs liên quan
 \begin{table}[H]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|l|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Nguyên lý}}} \\
- &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{} \\ \hline
-\textbf{1} &
-  \textbf{TieNet (2018)} &
-  \begin{tabular}[c]{@{}l@{}}Sử dụng các báo cáo y tế như một tri thức tiên nghiệm kết hợp với \\ hình ảnh X-quang để phân loại bệnh lý lồng ngực và tạo báo cáo y \\ khoa tự động. Mô hình tích hợp các cơ chế chú ý đa cấp để làm nổi \\ bật các từ mang ý nghĩa quan trọng và các vùng ảnh tương ứng\end{tabular} \\ \hline
-\textbf{2} &
-  \textbf{X. Mei (2020)} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp các phát hiện trên ảnh chụp CT ngực với các thông tin lâm sàng \\ nhằm chẩn đoán nhanh bệnh nhân nhiễm COVID-19 ở giai đoạn sớm, khi \\ mà ảnh CT có thể chưa có biểu hiện bất thường\end{tabular} \\ \hline
-\textbf{3} &
-  \textbf{TransMed (2021)} &
-  \begin{tabular}[c]{@{}l@{}}Kết hợp sức mạnh của CNN trong việc trích xuất đặc trưng cục bộ \\ và của Transformer trong việc thiết lập sự phụ thuộc ở khoảng cách xa\\  để tận dụng mối quan hệ giữa các phương thức/chuỗi trên ảnh y khoa.\end{tabular} \\ \hline
-\textbf{4} &
-  \textbf{IRENE (2023)} &
-  \begin{tabular}[c]{@{}l@{}}Thay vì dùng các mô hình riêng biệt cho từng loại dữ liệu, chỉ sử dụng một \\ Transformer duy nhất xử lý đồng thời dữ liệu hình ảnh, văn bản. Nguyên lý \\ mấu chốt là trực tiếp khai thác mối liên kết nội bộ của từng phương thức \\ và giữa các phương thức khác nhau.\end{tabular} \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp nguyên lý của các mô hình kết hợp ngôn ngữ - ảnh nổi bật}
-\label{tab:scratchPrinciple}
-\end{table}
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[H]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|llcl|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Kiến trúc mô hình}} \\ \cline{3-6}
- &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ ảnh\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-\textbf{1} &
-  \textbf{TieNet (2018)} &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{word2vec} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level \\ fusion\end{tabular}} &
-  Fully Connected \\ \hline
-\textbf{2} &
-  \textbf{X. Mei (2020)} &
-  \multicolumn{1}{l|}{Inception-ResNet-v2} &
-  \multicolumn{1}{l|}{MLP} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level\\ fusion\end{tabular}} &
-  MLP \\ \hline
-\textbf{3} &
-  \textbf{TransMed (2021)} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}2D CNN \\ (ResNet18 đến 152)\end{tabular}} &
-  \multicolumn{1}{l|}{N/a} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level\\ fusion\end{tabular}} &
-  Fully Connected \\ \hline
-\textbf{4} &
-  \textbf{IRENE (2023)} &
-  \multicolumn{1}{l|}{Convolution layer} &
-  \multicolumn{1}{l|}{Pretrained BERT} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Feature-level \\ fusion\end{tabular}} &
-  MLP \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp phương pháp của các mô hình kết hợp ngôn ngữ - ảnh nổi bật}
-\label{tab:scratchMethod}
-\end{table}
-
-\subsection{Mô hình ngôn ngữ trực quan y khoa (Med-VLMs)} Các mô hình ngôn ngữ trực quan đánh dấu một bước tiến quan trọng
-trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu (thường cố gắng dung hợp dữ liệu thô thành một khối thống nhất), Med-VLMs chú trọng vào việc đối chiếu và liên kết chặt chẽ ngữ nghĩa giữa hình ảnh và ngôn ngữ tự nhiên. Cụ thể, kiến trúc của chúng thường kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này khớp với nhau. Lúc này, bộ phân loại không gán nhãn theo cách truyền thống mà đóng vai trò là một cơ chế đo lường mức độ tương đồng. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
-
-Để đạt được khả năng trên, các nghiên cứu tiền huấn luyện Med-VLMs hiện nay đang phát triển chủ yếu theo ba hướng: học tương phản, học có che giấu và tích hợp tri thức y khoa (chi tiết tổng hợp được trình bày tại các Bảng \ref{tab:VLMPretrainingPrinciple}, \ref{tab:VLMPretrainingMethod}, \ref{tab:VLMPretrainingResult}).
-
-Thứ nhất, \textbf{học tương phản (Contrastive Learning)} là chiến lược được ứng dụng rộng rãi nhất, tiêu biểu với các mô hình như ConVIRT \cite{ConVIRT}, GLoRIA \cite{GLoRIA}, MedCLIP \cite{MedCLIP} và BiomedCLIP \cite{BiomedCLIP}. Nguyên lý của chiến lược này là tối ưu hóa không gian biểu diễn bằng cách thu hẹp khoảng cách giữa các cặp đặc trưng ảnh - văn bản tương đồng, đồng thời đẩy các cặp khác biệt ra xa nhau ở mức độ cục bộ lẫn toàn cục. Phương pháp này đem lại hiệu năng ấn tượng; ví dụ, BiomedCLIP \cite{BiomedCLIP} (huấn luyện trên 15 triệu cặp dữ liệu) đạt độ chính xác phân loại 83\%, trong khi ConVIRT \cite{ConVIRT} đạt 90,3\% trên bộ dữ liệu COVIDx. Mặc dù có ưu điểm vượt trội là khả năng học biểu diễn không cần gán nhãn thủ công, học tương phản vẫn bộc lộ hạn chế về việc tiêu tốn tài nguyên tính toán lớn và rủi ro xảy ra hiện tượng âm tính giả (đẩy xa các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý).
-
-Thứ hai, \textbf{học có che giấu (Masked Learning)} là hướng đi tập trung vào mục tiêu tái tạo dữ liệu, với các đại diện nổi bật như MRM \cite{MRM} và MedViLL \cite{MedViLL}. Bằng cách ẩn ngẫu nhiên các vùng ảnh hoặc từ ngữ trong báo cáo y khoa, kiến trúc này buộc mô hình phải dự đoán và khôi phục phần thông tin bị khuyết. Hướng tiếp cận này thể hiện ưu thế rõ rệt trong các môi trường khan hiếm dữ liệu; điển hình là MRM \cite{MRM} đạt mức 92,7\% AUC chỉ với 10\% dữ liệu từ tập RSNA. Tuy nhiên, rào cản chính của phương pháp này nằm ở việc phụ thuộc vào nguồn dữ liệu đã được ghép cặp sẵn từ trước, cộng với độ phức tạp tính toán cao của quá trình khôi phục điểm ảnh/token.
-
-Thứ ba, \textbf{tích hợp tri thức y khoa (Knowledge Integration)} ra đời nhằm giải quyết những đặc thù phức tạp của ngôn ngữ lâm sàng. Các mô hình như MedKLIP \cite{MedKLIP}, BioViL \cite{BioViL}, BioViL-T \cite{BioViL-T} và KAD \cite{KAD} tận dụng đồ thị tri thức (như RadGraph) hoặc dữ liệu chuỗi thời gian để cung cấp tín hiệu giám sát chi tiết về cả loại và vị trí bệnh lý. Cách tiếp cận này giúp giải quyết triệt để sự mơ hồ của các từ vựng diễn tả tiến triển bệnh (ví dụ: "cải thiện", "xấu đi"). Về mặt hiệu năng, KAD \cite{KAD} đạt 0.966 AUC trên tập PadChest ở thiết lập không mẫu (zero-shot), còn BioViL-T \cite{BioViL-T} đạt độ chính xác 67,4\% trong bài toán phân loại tiến triển bệnh. Dù vậy, các phương pháp này chưa loại bỏ hoàn toàn được hiện tượng âm tính giả và rất dễ gặp sai số nếu nhãn chẩn đoán thực tế nằm ngoài cơ sở tri thức đồ thị gốc.
-
-\begin{table}[htpb]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|l|l|}
-\hline
-\textbf{STT} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Phân loại}} &
-  \multicolumn{1}{c|}{\textbf{Nguyên lý}} \\ \hline
-\textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT\\ (2020)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Tối ưu bộ mã hoá ảnh và văn bản bằng cách kéo các cặp đặc trưng \\ ảnh-văn bản giống nhau lại gần nhau và đẩy các cặp đặc trưng \\ ảnh-văn bản khác nhau ra xa\end{tabular} \\ \hline
-\textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA\\ (2021)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Dùng hai hàm mất mát global contrastive để kéo các cặp đặc trưng \\ ảnh-văn bản, trong khi đó hàm mát mát local contrastive học cách \\ căn chỉnh chi tiết của các vùng trong ảnh và các từ trong câu\end{tabular} \\ \hline
-\textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP\\ (2022)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Đề xuất cơ chế tách cặp và trích xuất tri thức, và đề xuất hàm \\ mất mát Semantic Matching nhằm giải quyết vấn đề false negative\end{tabular} \\ \hline
-\textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Có cơ chế tương tự như CLIP nhưng được tiền huấn luyện với \\ bộ dữ liệu PMC-15M\end{tabular} \\ \hline
-\textbf{5} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MRM\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học có che\\ giấu\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Ẩn ngẫu nhiên các thông tin trong văn bản và các vùng trong ảnh \\ để cho mô hình dự đoán lại ảnh và văn bản hoàn chỉnh.\end{tabular} \\ \hline
-\textbf{6} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedViLL\\ (2022)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Học có che\\ giấu\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Đề xuất một kiến trúc dựa trên BERT kết hợp với một mặt nạ chú ý \\ mới được đề xuất (BAR) cho phép ảnh tương tác tự do với văn bản \\ trong các tác vụ hiểu, đồng thời đảm bảo tính tự hồi quy cho các \\ token trong văn bản trong các tác vụ sinh\end{tabular} \\ \hline
-\textbf{7} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL\\ (2022)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp\\ kiến thức\\ y khoa\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Đề xuất một bộ mã hoá văn bản CXR-BERT được tối ưu cho ảnh \\ X-quang, duy trì hàm mất mát MLM để giúp mô mình giữ lại được \\ các kiến thức văn bản trong quá trình căn chỉnh với ảnh\end{tabular} \\ \hline
-\textbf{8} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL-T\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp\\ kiến thức\\ y khoa\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Sử dụng các ảnh X-quang từ trước kết hợp với ảnh hiện tại để học \\ được các đặc trưng không gian, thời gian từ đó giải thích cho các từ \\ vựng như "cải thiện" giúp giảm đi sự mơ hồ trong báo cáo\end{tabular} \\ \hline
-\textbf{9} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedKLIP\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp\\ kiến thức\\ y khoa\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Đề xuất một mô-đun trích xuất bộ ba và cơ chế mã hoá tăng cường \\ tri thức, từ đó tạo ra biểu diển tốt hơn cho văn bản\end{tabular} \\ \hline
-\textbf{10} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}KAD\\ (2023)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp\\ kiến thức\\ y khoa\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Tích hợp kiến thức y khoa vào quá trình tiền huấn luyện để giúp \\ mô hình học các biểu diễn có ý nghĩa hơn\end{tabular} \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp nguyên lý của các phương pháp tiền huấn luyện mô hình ngôn ngữ trực quan}
-\label{tab:VLMPretrainingPrinciple}
-\end{table}
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[htpb]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|c|l|llll|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tiền huấn \\ luyện\end{tabular}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Mục tiêu \\ tiền huấn \\ luyện\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Phương pháp}} \\ \cline{5-8}
- &
-  \multicolumn{1}{c|}{} &
-   &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ thị giác\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-\textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT\\ (2020)\end{tabular}} &
-  CL &
-  GCL &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{BERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA\\ (2021)\end{tabular}} &
-  CL &
-  LCL, GCL &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{BioClinicalBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP\\ (2022)\end{tabular}} &
-  CL &
-  GCL &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} &
-  \multicolumn{1}{l|}{BioClinicalBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Knowledge-enhanced \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP\\ (2023)\end{tabular}} &
-  CL &
-  GCL &
-  \multicolumn{1}{l|}{ViT-Base} &
-  \multicolumn{1}{l|}{PubMedBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  N/a \\ \hline
-\textbf{5} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MRM\\ (2023)\end{tabular}} &
-  MP &
-  MIM, MLM &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kiến trúc \\ giống ViT\end{tabular}} &
-  \multicolumn{1}{l|}{WordPiece} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global Context \\ Injection\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Văn bản: Transformer;\\ Hình ảnh: Fully Connected\end{tabular} \\ \hline
-\textbf{6} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedViLL\\ (2022)\end{tabular}} &
-  HA &
-  MLM, ITM &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{BERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross-modal \\ Self-Attention\end{tabular}} &
-  Multi-Layer Perceptron \\ \hline
-\textbf{7} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL\\ (2022)\end{tabular}} &
-  HA &
-  CL, MLM &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{CXR-BERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
-  N/A \\ \hline
-\textbf{8} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL-T\\ (2023)\end{tabular}} &
-  HA &
-  CL, MLM &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{CXR-BERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
-  N/A \\ \hline
-\textbf{9} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedKLIP\\ (2023)\end{tabular}} &
-  CL &
-  LCL &
-  \multicolumn{1}{l|}{ResNet50} &
-  \multicolumn{1}{l|}{ClinicalBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Knowledge-enhanced \\ Alignment\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Constrative head, \\ Cross-Entroy head\end{tabular} \\ \hline
-\textbf{10} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}KAD\\ (2023)\end{tabular}} &
-  HA &
-  \begin{tabular}[c]{@{}l@{}}CL, Disease \\ Diagnosis \\ Prediction\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ResNet50, \\ ViT-Base\end{tabular}} &
-  \multicolumn{1}{l|}{PubMedBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
-  Disease Query Network \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp chiến lược, mục tiêu và phương pháp tiền huấn luyện của các mô hình ngôn ngữ trực quan. Trong đó, CL (Contrastive Learning): Học tương phản; GCL (Global Contrastive Learning): Học tương phản toàn cục; LCL (Local Contrastive Learning): Học tương phản cục bộ; MIM (Masked Image Modeling): Mô hình hóa hình ảnh có che giấu; MLM (Masked Language Modeling): Mô hình hóa ngôn ngữ có che giấu; ITM (Image-Text Matching): Ghép nối ảnh - văn bản;}
-\label{tab:VLMPretrainingMethod}
-\end{table}
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[htpb]
 \centering
 \resizebox{\textwidth}{!}{
 \begin{tabular}{|c|l|l|llll|}
 \hline
 \multirow{2}{*}{\textbf{STT}} &
   \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ dữ liệu\\ tiền huấn luyện\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Hiệu năng}} \\ \cline{4-7}
+  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tiền huấn \\ luyện\end{tabular}}}} &
+  \multicolumn{4}{c|}{\textbf{Phương pháp}} \\ \cline{4-7}
  &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{} &
-  \multicolumn{1}{c|}{\textbf{Tác vụ}} &
-  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ dữ liệu\\ đánh giá\end{tabular}}} &
-  \multicolumn{1}{c|}{\textbf{Độ đo}} &
-  \multicolumn{1}{c|}{\textbf{Kết quả}} \\ \hline
-\textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT\\ (2020)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}MIMIC-CXR, \\ Private Bone image\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}RSNA Pneumonia, \\ CheXpert, COVIDx, \\ MURA\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}AUC,\\ Accuracy\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại ít mẫu: RSNA (1\%): 88.8\% AUC, \\ (10\%): 91.5\% AUC; CheXpert (1\%): 87.0\% AUC, \\ (10\%): 88.1\% AUC; MURA (1\%): 81.3\% AUC, \\ (10\%): 86.5\% AUC\\ - Phân loại ảnh: RSNA: 92.7\% AUC, \\ CheXpert: 88.1\% AUC, MURA: 89.0\% AUC; \\ COVIDx 90.3\% ACC\end{tabular} \\ \hline
-\textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA\\ (2021)\end{tabular}} &
-  CheXpert &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}CheXpert, RSNA \\ Pneumonia\end{tabular}} &
-  \multicolumn{1}{l|}{AUROC} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: CheXpert 5x200: 0.61 ACC, \\ 0.67 F1; RSNA: 0.70 ACC, 0.58 F1; \\ - Phân loại ít mẫu: CheXpert (1\%): 86.6 AUC, \\ (10\%): 87.8 AUC, RSNA (1\%): 86.1 AUC, \\ (10\%) 88.0 AUC\\ - Phân loại ảnh: CheXpert: 88.1 AUC, \\ RSNA: 88.6 AUC\end{tabular} \\ \hline
-\textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP\\ (2022)\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}MIMIC-CXR, \\ CheXpert\end{tabular} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}MIMIC-5x200, \\ COVID, RSNA \\ Pneumonia\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Mean \\ Accuracy\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: \\ CheXpert-5x200: 0.5942 ACC; \\ MIMIC-5x200: 0.5430 ACC; COVID: 0.8472 ACC; \\ RSNA: 0.7682 ACC\\ - Phân loại ảnh: CheXpert-5x200: 0.5960 ACC; \\ MIMIC-5x200: 0.5650 ACC; COVID: 0.7890 ACC; \\ RSNA: 0.8075 ACC\end{tabular} \\ \hline
-\textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP\\ (2023)\end{tabular}} &
-  PMC-15M &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}PCam, LC25000 \\ (Lung, Colon), \\ TCGA-TIL, RSNA \\ Pneumonia\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}AUC,\\ Accuracy\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: PCam: 73.41\% ACC; \\ LC25000 Lung 65.23\% ACC; LC25000 Colon 92.98\%; \\ RSNA 78.95\%; TCGA-TIL: 67.04\%\\ - Phân loại ít mẫu: PCam (1\%): 82\% ACC, (10\%): 83\%; \\ RSNA (1\%): 77\% ACC, (10\%): 82\% ACC\\ - Phân loại ảnh: PCam: 83\% ACC, RSNA: 83\% ACC\end{tabular} \\ \hline
-\textbf{5} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MRM\\ (2023)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}CheXpert, NIH \\ ChestX-ray, RSNA \\ Pneumonia, COVID-19 \\ Image Data Collection\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}AUC, \\ Accuracy\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại ít mẫu: CheXpert (1\%): 88.5 AUC, \\ (10\%): 88.5 AUC; RSNA (1\%): 91.3 AUC, \\ (10\%): 92.7 AUC; NIH ChestX-ray (1\%): 79.4 AUC, \\ (10\%): 84.0 AUC\\ - Phân loại ảnh: CheXpert: 88.7 AUC, RSNA 93.3, \\ NIH ChestX-ray: 85.9, COVID-19: 85.8\end{tabular} \\ \hline
-\textbf{6} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedViLL\\ (2022)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{- Phân loại chẩn đoán} &
-  \multicolumn{1}{l|}{MIMIC-CXR, Open-I} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Micro-averaged \\ AUROC,\\ Micro-averaged \\ F1 score\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại ảnh: MIMIC-CXR: 0.980 avg AUROC, \\ 0.839 F1; Open-I: 0.892 avg AUROC, 0.407 F1\end{tabular} \\ \hline
-\textbf{7} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL\\ (2022)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{RSNA Pneumonia} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Accuracy, \\ F1-score, \\ AUROC, \\ Sensitivity\\ Specificity.\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: RSNA: 0.732 ACC, 0.831 AUC; \\ ChestX-ray14: 0.6912 AUC\\ - Phân loại ít mẫu: RSNA (1\%): 0.805 ACC, 0.881 AUC; \\ (10\%): 0.812 ACC, 0.884 AUC\\ - Phân loại ảnh: RSNA: 0.822 ACC, 0.891 AUC\end{tabular} \\ \hline
-\textbf{8} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BioViL-T\\ (2023)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\\ - Phân loại không mẫu\\ - Phân loại ảnh tiến triển\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}MS-CXR-T, RSNA \\ Penumonia, Chest \\ ImaGenome\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Macro-Accuracy, \\ Accuracy, F1, \\ AUROC.\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại Tiến triển: MS-CXR-T: 67.4\% Acc\\ - Phân loại không mẫu: RSNA: 0.805 ACC, 0.871 AUC\\ - Phân loại ít mẫu: RSNA (1\%): 0.814 ACC, 0.890 AUC\end{tabular} \\ \hline
-\textbf{9} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedKLIP\\ (2023)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ChestX-ray14, RSNA \\ Pneumonia, SIIM-ACR \\ Pneumothorax, COVIDx \\ CXR-2, COVID Rural, \\ Edema Severity\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}AUC, \\ F1-score, \\ Accuracy.\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: RSNA: 0.8694 AUC, 0.6342 F1; \\ SIIM-ACR: 0.8924 AUC, 0.6833 F1; \\ ChestX-ray14: 0.7676 AUC, 0.2525 F1; \\ COVID-19: 0.7396 AUC, 0.7670 F1\\ - Phân loại ít mẫu: ChestX-ray14 (1\%): 0.7721 AUC, \\ (10\%): 0.7894; RSNA (1\%): 0.8731 AUC, \\ (10\%): 0.8799 AUC\\ - Phân loại mẫu: ChestX-ray14: 0.8323 AUC, \\ RSNA 0.8931\end{tabular} \\ \hline
-\textbf{10} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}KAD\\ (2023)\end{tabular}} &
-  MIMIC-CXR &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}- Phân loại ảnh\\ - Phân loại ít mẫu\\ - Phân loại không mẫu\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}PadChest, NIH \\ ChestXray14, CheXpert, \\ ChestX-Det\end{tabular}} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}AUC, \\ F1-Score, \\ MCC\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}- Phân loại không mẫu: PadChest: 0.966 AUC; \\ CheXpert: 0.905 AUC, 0.647 F1, 0.589 MCC\\ - Phân loại ít mẫu: ChestXray-14 (1\%): 0.78 AUC, \\ 0.31 F1; (10\%): 0.80 AUC, 0.33 F1\\ - Phân loại ảnh: ChestXray-14: 0.82 AUC, 0.34 F1\end{tabular} \\ \hline
-\end{tabular}
-}
-\caption{Bảng tổng hợp kết quả của các phương pháp tiền huấn luyện mô hình ngôn ngữ trực quan}
-\label{tab:VLMPretrainingResult}
-\end{table}
-
-\subsection{Các mô hình ngôn ngữ lớn y khoa đa phương thức}
-\subsection{Các mô hình ngôn ngữ lớn y khoa đa phương thức}
-
-Sự phát triển của các mô hình ngôn ngữ lớn (Large Language Models - LLMs) đã thúc đẩy nhiều nghiên cứu trong lĩnh vực y tế, đặc biệt là các mô hình đa phương thức có khả năng kết hợp thông tin hình ảnh và văn bản để hỗ trợ chẩn đoán và trả lời câu hỏi y khoa.
-
-Một số mô hình tiêu biểu bao gồm Med-Flamingo \cite{moor_2023_medflamingo}, mô hình học ít mẫu (few-shot) đầu tiên dành cho y tế; LLaVA-Med \cite{li_2023_llavamed}, mở rộng khả năng thực hiện theo chỉ dẫn (instruction-following) sang miền y sinh thông qua dữ liệu hội thoại được xây dựng từ các cặp ảnh–văn bản; Med-PaLM M \cite{MED-PALM-M}, mô hình đa nhiệm và đa phương thức quy mô lớn của Google; và SkinGPT-4 \cite{SkinGPT-4}, hệ thống hỗ trợ chẩn đoán da liễu kết hợp khả năng hiểu ảnh y khoa với suy luận ngôn ngữ.
-
-Mặc dù đạt hiệu quả cao trong nhiều tác vụ như trả lời câu hỏi y khoa, hội thoại và hỗ trợ ra quyết định, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác (hallucination). Do đó, đối với các bài toán chuyên biệt như phân loại ảnh X-quang, việc sử dụng các mô hình thị giác hoặc mô hình ngôn ngữ–thị giác chuyên dụng thường phù hợp và hiệu quả hơn.
-
-\section{Các kỹ thuật tinh chỉnh mô hình}
-
-Sự xuất hiện của các Mô hình Nền tảng (Foundation Models) nói chung và Mô hình Ngôn ngữ - Thị giác Y sinh (Med-VLMs) nói riêng đã mang lại một nền tảng tri thức đa phương thức khổng lồ. Tuy nhiên, để triển khai hiệu quả các mô hình này vào các bài toán lâm sàng đặc thù — chẳng hạn như phát triển hệ thống phân loại ảnh y khoa chỉnh hình kết hợp dữ liệu lâm sàng — quá trình chuyển giao tri thức là bắt buộc.
-
-Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần (Full Fine-tuning) và dò tuyến tính (Linear Probing). Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao với miền dữ liệu mới nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ. Hơn nữa, trên các tập dữ liệu y tế ghép cặp thường khan hiếm, phương pháp này rất dễ dẫn đến hiện tượng "quên thảm khốc" (catastrophic forgetting), làm mất đi tri thức tổng quát đã được tiền huấn luyện. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân loại duy nhất ở cuối. Dù tiết kiệm tài nguyên đáng kể, dò tuyến tính lại hạn chế khả năng tinh chỉnh các biểu diễn sâu của mô hình, dẫn đến hiệu suất thường dưới mức tối ưu khi sự chênh lệch phân phối (domain shift) giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
-
-Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, Tinh chỉnh Hiệu quả Tham số (Parameter-Efficient Fine-Tuning - PEFT) đã nổi lên như một giải pháp thay thế lý tưởng. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên, rút ngắn thời gian huấn luyện và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp PEFT được chia thành ba hướng tiếp cận chính:
-
-\subsection{Tinh chỉnh sử dụng câu nhắc (Prompt Tuning)}
-Hướng tiếp cận này chèn thêm các tham số (vector) có thể học được vào không gian đầu vào của mô hình (thị giác hoặc văn bản) mà không thay đổi cấu trúc mạng bên trong.
-\begin{itemize}
-    \item \textbf{Điểm mạnh:} Tiết kiệm tham số tối đa, bảo toàn nguyên vẹn tri thức của mô hình gốc, đặc biệt hiệu quả trong các kịch bản học ít mẫu (few-shot) hoặc không mẫu (zero-shot).
-    \item \textbf{Điểm yếu:} Việc tối ưu hóa khó khăn do không gian biểu diễn bị giới hạn ở đầu vào, nhạy cảm với cách khởi tạo, và chiếm dụng một phần độ dài của chuỗi đầu vào (sequence length context).
-\end{itemize}
-Trong lĩnh vực y tế, các phương pháp như CITE \cite{CITE}, FPT \cite{FPT} hay PLIP \cite{PLIP} khai thác đặc trưng thị giác kết hợp với tri thức lâm sàng, cho thấy hiệu quả vượt trội ngay cả khi thiếu hụt dữ liệu (ví dụ: PLIP đạt 0.896 AUC chỉ với 5\% dữ liệu PanNuke). Nhằm giải quyết khó khăn khi thiết kế thủ công, MedPrompt \cite{MedPrompt} và UniDCP \cite{UniDCP} tự động sinh câu nhắc động dựa trên ngữ cảnh ảnh để xử lý đa tác vụ. Gần đây, việc tích hợp Mô hình ngôn ngữ Lớn (LLM) qua ViP \cite{ViP}, CILMP \cite{CLIMP} và BiomedCoOp \cite{BiomedCoOp} giúp tạo sinh các câu nhắc ngữ nghĩa sâu sắc, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản.
-
-\subsection{Tinh chỉnh bộ điều hợp (Adapter Tuning)}
-Thay vì can thiệp ở không gian đầu vào, phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ (adapters) vào giữa các lớp kiến trúc của mạng học sâu (ví dụ: giữa các lớp Transformer).
-\begin{itemize}
-    \item \textbf{Điểm mạnh:} Tính mô-đun hóa cao, dễ dàng thêm/bớt các adapter cho các tác vụ khác nhau mà không can thiệp vào tham số gốc, dễ hội tụ hơn so với Prompt Tuning.
-    \item \textbf{Điểm yếu:} Việc chèn thêm các lớp mạng vật lý làm tăng độ trễ suy luận (inference latency), hạn chế khả năng triển khai trên các hệ thống đòi hỏi thời gian thực.
-\end{itemize}
-Điển hình cho hướng đi này, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức. Ở hướng bán giám sát, mô hình MedUnA \cite{MedUnA} dùng LLM tạo nhãn giả và tinh chỉnh không giám sát bộ điều hợp trên ảnh chưa gán nhãn, giúp mô hình thích ứng tốt mà không thay đổi trọng số.
-
-\subsection{Tinh chỉnh chọn lọc (Selective Tuning)}
-Hướng đi này tối ưu hóa kiến trúc bằng cách không thêm bất kỳ tham số mới nào, mà chỉ chọn lọc ra một lượng nhỏ các tham số (hoặc ma trận trọng số) quan trọng nhất của mô hình gốc để cập nhật.
-\begin{itemize}
-    \item \textbf{Điểm mạnh:} Không làm thay đổi kiến trúc mô hình, hoàn toàn không gây tăng độ trễ (zero inference latency) do tham số cập nhật được hợp nhất trực tiếp vào trọng số gốc.
-    \item \textbf{Điểm yếu:} Đòi hỏi phương pháp heuristic phức tạp để xác định chính xác các tham số nào ảnh hưởng lớn nhất đến hiệu năng của tác vụ mục tiêu.
-\end{itemize}
-Về ứng dụng thực tiễn, TransMed \cite{TransMed} kết hợp LLM để chuyển đổi nhãn bệnh thành mô tả chi tiết, trong khi SH-PEFT \cite{SH-PEFT} chỉ tìm và cập nhật các trọng số quan trọng nhất trên bộ mã hóa thị giác. Nổi bật nhất trong nhóm hiệu quả là sự xuất hiện của các cơ chế thích ứng hạng thấp như LoRA (được LCBB \cite{LCBB} áp dụng), giúp bám sát hiệu năng của tinh chỉnh toàn phần (đạt 93.1\% AUROC trên tập RSNA với 10\% dữ liệu gán nhãn) nhưng giảm thiểu tối đa chi phí.
-
-% Please add the following required packages to your document preamble:
-% \usepackage{multirow}
-\begin{table}[htpb]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|l|l|llll|}
-\hline
-\multirow{2}{*}{\textbf{STT}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tinh chỉnh\end{tabular}}}} &
-  \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}Phương pháp \\ tinh chỉnh\end{tabular}}}} &
-  \multicolumn{4}{c|}{\textbf{Phương pháp}} \\ \cline{5-8}
- &
-  \multicolumn{1}{c|}{} &
   \multicolumn{1}{c|}{} &
   \multicolumn{1}{c|}{} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ thị giác\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Bộ mã hoá \\ văn bản\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
-\textbf{1} & \textbf{\begin{tabular}[c]{@{}l@{}}CITE\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}CLIP ViT-Base, \\ ImageNet-21k ViT-Base, \\ INTERN ViT-Base\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BioLinkBERT-large, \\ BioBERT-large , \\ Kế thừa CLIP\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{2} & \textbf{\begin{tabular}[c]{@{}l@{}}UniDCP\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{CLIP ViT} & \multicolumn{1}{l|}{RoBERTa} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{3} & \textbf{\begin{tabular}[c]{@{}l@{}}ViP\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Cross Attention, \\ Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{4} & \textbf{\begin{tabular}[c]{@{}l@{}}PLIP\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning, Efficient \\ Selective tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{Concatnate} & N/a \\ \hline
-\textbf{5} & \textbf{\begin{tabular}[c]{@{}l@{}}FPT\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{N/a} & \multicolumn{1}{l|}{Cross Attention} & N/a \\ \hline
-\textbf{6} & \textbf{\begin{tabular}[c]{@{}l@{}}MedPrompt\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Textual prompt \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{7} & \textbf{\begin{tabular}[c]{@{}l@{}}CILMP\\ (2025)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Hadamard Product, \\ Concatnate\end{tabular}} & N/a \\ \hline
-\textbf{8} & \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCoOp\\ (2025)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Visual-Textual \\ prompt tuning\end{tabular} & \multicolumn{1}{l|}{Kế thừa BiomedCLIP} & \multicolumn{1}{l|}{Kế thừa BiomedCLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{9} & \textbf{\begin{tabular}[c]{@{}l@{}}CLIPath\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{ResNet50} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{10} & \textbf{\begin{tabular}[c]{@{}l@{}}FTB\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ResNet autoencoder, \\ DINOv2-small, \\ DINOv2-base\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}BERT, \\ BioBERT, \\ ClinicalBERT, \\ CXR-BERT, \\ PubMedBERT\end{tabular}} & \multicolumn{1}{l|}{Cross Attention} & N/a \\ \hline
-\textbf{11} & \textbf{\begin{tabular}[c]{@{}l@{}}MedUnA\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Adapter \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}ViT-Base, \\ MedCLIP-Swin\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa CLIP, \\ MedCLIP\end{tabular}} & \multicolumn{1}{l|}{No Fusion} & N/a \\ \hline
-\textbf{12} & \textbf{\begin{tabular}[c]{@{}l@{}}TransMed\\ (2023)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ViT-Base\end{tabular}} & \multicolumn{1}{l|}{BERT, LLM/GPT-4} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} & N/a \\ \hline
-\textbf{13} & \textbf{\begin{tabular}[c]{@{}l@{}}SH-PEFT\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Direct Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{ViT-Base} & \multicolumn{1}{l|}{Kế thừa CLIP} & \multicolumn{1}{l|}{No Fusion} & N/a \\ \hline
-\textbf{14} & \textbf{\begin{tabular}[c]{@{}l@{}}LCBB\\ (2024)\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Parameter-efficient \\ fine tuning\end{tabular} & \begin{tabular}[c]{@{}l@{}}Efficient Selective \\ tuning\end{tabular} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Kế thừa MAE, \\ MRM\end{tabular}} & N/a \\ \hline
+\textbf{1} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT\\ (2020)\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
+  \multicolumn{1}{l|}{ResNet50} &
+  \multicolumn{1}{l|}{BERT} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
+  N/a \\ \hline
+\textbf{2} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA\\ (2021)\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
+  \multicolumn{1}{l|}{ResNet50} &
+  \multicolumn{1}{l|}{BioClinicalBERT} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
+  N/a \\ \hline
+\textbf{3} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP\\ (2022)\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} &
+  \multicolumn{1}{l|}{BioClinicalBERT} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Knowledge-enhanced \\ Alignment\end{tabular}} &
+  N/a \\ \hline
+\textbf{4} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP\\ (2023)\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
+  \multicolumn{1}{l|}{ViT-Base} &
+  \multicolumn{1}{l|}{PubMedBERT} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
+  N/a \\ \hline
 \end{tabular}
 }
-\caption{Bảng tổng hợp chiến lược, mục tiêu và phương pháp học chuyển giao của các mô hình ngôn ngữ trực quan}
+\caption{Bảng tổng hợp các mô hình ngôn ngữ trực quan y khoa sử dụng học tương phản.}
+\label{tab:VLMPretrainingMethod}
+\end{table}
+
+Song song với các Med-VLMs, sự phát triển của các mô hình ngôn ngữ lớn (LLMs) đa phương thức như Med-Flamingo \cite{moor_2023_medflamingo}, LLaVA-Med \cite{li_2023_llavamed} hay Med-PaLM M \cite{MED-PALM-M} đã cho thấy tiềm năng trong các tác vụ hội thoại và hỗ trợ ra quyết định y khoa. Tuy nhiên, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác (hallucination). Do đó, đối với các bài toán phân loại chuyên biệt như phân loại ảnh X-quang xương, việc sử dụng các mô hình ngôn ngữ -- thị giác chuyên dụng kết hợp tinh chỉnh hiệu quả tham số thường phù hợp và hiệu quả hơn.
+
+\section{Các kỹ thuật tinh chỉnh hiệu quả tham số}
+
+Sự xuất hiện của các Mô hình Nền tảng (Foundation Models) nói chung và Mô hình Ngôn ngữ -- Thị giác Y sinh (Med-VLMs) nói riêng đã mang lại một nền tảng tri thức đa phương thức khổng lồ. Tuy nhiên, để triển khai hiệu quả các mô hình này vào các bài toán lâm sàng đặc thù, quá trình chuyển giao tri thức là bắt buộc.
+
+Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần (Full Fine-tuning) và dò tuyến tính (Linear Probing). Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ và rất dễ dẫn đến hiện tượng ``quên thảm khốc'' (catastrophic forgetting) trên các tập dữ liệu y tế nhỏ. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân loại duy nhất ở cuối, tiết kiệm tài nguyên nhưng hạn chế khả năng thích ứng khi sự chênh lệch phân phối (domain shift) giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
+
+Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, Tinh chỉnh Hiệu quả Tham số (Parameter-Efficient Fine-Tuning -- PEFT) đã nổi lên như một giải pháp thay thế. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp PEFT được chia thành ba hướng tiếp cận chính:
+
+\subsection{Tinh chỉnh sử dụng câu nhắc (Prompt Tuning)}
+Hướng tiếp cận này chèn thêm các tham số (vector) có thể học được vào không gian đầu vào của mô hình mà không thay đổi cấu trúc mạng bên trong.
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Tiết kiệm tham số tối đa, bảo toàn nguyên vẹn tri thức của mô hình gốc, đặc biệt hiệu quả trong các kịch bản học ít mẫu (few-shot) hoặc không mẫu (zero-shot).
+    \item \textbf{Điểm yếu:} Tối ưu hóa khó khăn do không gian biểu diễn bị giới hạn ở đầu vào, nhạy cảm với cách khởi tạo, và chiếm dụng một phần độ dài của chuỗi đầu vào.
+\end{itemize}
+Trong lĩnh vực y tế, PLIP \cite{PLIP} kết hợp đặc trưng thị giác với câu nhắc hiệu quả, đạt 0,896 AUC chỉ với 5\% dữ liệu PanNuke. BiomedCoOp \cite{BiomedCoOp} tích hợp mô hình ngôn ngữ lớn để tự động sinh các câu nhắc ngữ nghĩa, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản.
+
+\subsection{Tinh chỉnh bộ điều hợp (Adapter Tuning)}
+Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ (adapters) vào giữa các lớp kiến trúc của mạng học sâu.
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Tính mô-đun hóa cao, dễ dàng thêm/bớt các adapter cho các tác vụ khác nhau mà không can thiệp vào tham số gốc.
+    \item \textbf{Điểm yếu:} Việc chèn thêm các lớp mạng vật lý làm tăng độ trễ suy luận (inference latency), hạn chế khả năng triển khai trên các hệ thống đòi hỏi thời gian thực.
+\end{itemize}
+Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức.
+
+\subsection{Tinh chỉnh chọn lọc (Selective Tuning)}
+Hướng đi này không thêm bất kỳ tham số mới nào, mà chỉ chọn lọc ra một lượng nhỏ các tham số quan trọng nhất của mô hình gốc để cập nhật.
+\begin{itemize}
+    \item \textbf{Điểm mạnh:} Không làm thay đổi kiến trúc mô hình, hoàn toàn không gây tăng độ trễ (zero inference latency) do tham số cập nhật được hợp nhất trực tiếp vào trọng số gốc.
+    \item \textbf{Điểm yếu:} Đòi hỏi phương pháp heuristic phức tạp để xác định chính xác các tham số nào ảnh hưởng lớn nhất đến hiệu năng của tác vụ mục tiêu.
+\end{itemize}
+Nổi bật nhất trong nhóm này là cơ chế thích ứng hạng thấp LoRA (Low-Rank Adaptation). LoRA đóng băng toàn bộ trọng số của mô hình tiền huấn luyện, đồng thời tiêm các ma trận phân rã hạng thấp vào các khối Attention. LCBB \cite{LCBB} áp dụng LoRA và đạt 93,1\% AUROC trên tập RSNA với chỉ 10\% dữ liệu gán nhãn, bám sát hiệu năng của tinh chỉnh toàn phần nhưng giảm thiểu tối đa chi phí.
+
+% Bảng tổng hợp đại diện PEFT
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|l|l|l|l|}
+\hline
+\textbf{STT} &
+  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Tên phương \\ pháp\end{tabular}}} &
+  \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ tinh chỉnh\end{tabular}}} &
+  \multicolumn{1}{c|}{\textbf{Nguyên lý}} &
+  \multicolumn{1}{c|}{\textbf{Kết quả nổi bật}} \\ \hline
+\textbf{1} &
+  \textbf{PLIP (2024)} &
+  Prompt Tuning &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp câu nhắc thị giác với selective tuning, \\ tận dụng đặc trưng hình ảnh để tinh chỉnh hiệu quả\end{tabular} &
+  0,896 AUC (5\% PanNuke) \\ \hline
+\textbf{2} &
+  \textbf{CLIPath (2023)} &
+  Adapter Tuning &
+  \begin{tabular}[c]{@{}l@{}}Sử dụng kết nối thặng dư để giảm khoảng cách miền \\ trên dữ liệu mô bệnh học\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Cải thiện so với CLIP \\ trên dữ liệu nhỏ\end{tabular} \\ \hline
+\textbf{3} &
+  \textbf{LCBB (2024)} &
+  \begin{tabular}[c]{@{}l@{}}Selective Tuning \\ (LoRA)\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Áp dụng LoRA vào bộ mã hóa thị giác, \\ giữ nguyên hiệu năng tinh chỉnh toàn phần\end{tabular} &
+  93,1\% AUROC (RSNA, 10\%) \\ \hline
+\textbf{4} &
+  \textbf{FTB (2024)} &
+  Adapter Tuning &
+  \begin{tabular}[c]{@{}l@{}}Mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản, \\ chắt lọc thông tin đa phương thức\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Cải thiện trên CheXpert, \\ RSNA\end{tabular} \\ \hline
+\end{tabular}
+}
+\caption{Bảng tổng hợp các phương pháp tinh chỉnh hiệu quả tham số đại diện cho các mô hình ngôn ngữ trực quan y khoa.}
 \label{tab:VLMTransferlearningMethod}
 \end{table}
 
-\subsection{Cơ sở lựa chọn kỹ thuật LoRA cho hệ thống phân loại y khoa đa phương thức}
-Trong định hướng xây dựng một hệ thống phân loại ảnh y khoa hiệu năng cao kết hợp với dữ liệu lâm sàng, bài toán đặt ra không chỉ là tính chính xác trên các vùng tổn thương đặc thù (như xương khớp), mà còn là tính khả thi khi triển khai các kiến trúc khổng lồ của VLMs. Việc sử dụng toàn bộ mô hình gốc vừa bất khả thi về mặt phần cứng, vừa đối mặt với rủi ro mất đi biểu diễn đặc trưng ngôn ngữ - hình ảnh vốn có. Do đó, kỹ thuật LoRA (Low-Rank Adaptation) được lựa chọn như một phương pháp PEFT cốt lõi với các lý do sau:
+\section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
+Phát hiện dữ liệu ngoài phân phối (Out-of-Distribution Detection -- OOD Detection) là bài toán xác định các mẫu dữ liệu không thuộc phân phối của tập huấn luyện nhằm nâng cao độ tin cậy và tính an toàn của các hệ thống học sâu. Trong lĩnh vực chẩn đoán hình ảnh y khoa, khả năng phát hiện các trường hợp chưa từng xuất hiện hoặc khác biệt đáng kể so với dữ liệu huấn luyện có ý nghĩa quan trọng nhằm giảm nguy cơ đưa ra các dự đoán sai với độ tin cậy cao. Các phương pháp OOD hiện nay có thể được chia thành các nhóm chính sau đây.
 
-\begin{enumerate}
-    \item \textbf{Hiệu quả tham số và tài nguyên:} LoRA đóng băng toàn bộ trọng số của mô hình tiền huấn luyện, đồng thời tiêm các ma trận phân rã hạng thấp (low-rank decomposition matrices) vào mạng nơ-ron (chủ yếu là các khối Attention). Điều này giúp giảm số lượng tham số cần huấn luyện xuống hàng vạn lần và tối ưu hóa VRAM yêu cầu, cho phép tinh chỉnh các mô hình VLM kích thước lớn ngay cả khi nguồn lực máy tính bị hạn chế.
-    \item \textbf{Loại bỏ hoàn toàn độ trễ suy luận (Zero Inference Latency):} Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số học được của LoRA có thể được cộng gộp (merge) trực tiếp vào các ma trận trọng số gốc của VLM khi hoàn tất huấn luyện. Đặc tính này mang lại độ trễ tương đương với mô hình gốc, cực kỳ quan trọng đối với các hệ thống hỗ trợ chẩn đoán thời gian thực.
-    \item \textbf{Cân bằng giữa thích ứng và bảo toàn tri thức:} Ảnh y khoa đòi hỏi mô hình phải nhận diện các đặc trưng họa tiết tinh tế mà mô hình miền tự nhiên có thể bỏ qua. LoRA cho phép mô hình bám sát dữ liệu thị giác y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát, tránh hiện tượng quá khớp (overfitting) thường thấy khi full fine-tuning trên các tập dữ liệu nhỏ.
-\end{enumerate}
-Tóm lại, thông qua việc áp dụng LoRA, hệ thống được đảm bảo tính linh hoạt, tốc độ đáp ứng cao và khả năng khai thác toàn diện sự kết hợp phức tạp giữa mô tả y khoa và hình ảnh X-quang, đáp ứng trọn vẹn yêu cầu của một bài toán y tế chuyên sâu.
+\subsection{Các phương pháp hậu xử lý dựa trên đầu ra mô hình (Post-hoc Methods)}
+Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô hình đã được huấn luyện mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình.
+\begin{itemize}
+  \item \textbf{Maximum Softmax Probability (MSP):} Sử dụng xác suất Softmax lớn nhất làm độ tin cậy của dự đoán. Các mẫu có xác suất cực đại thấp được xem là ứng viên OOD. Tuy nhiên, các mạng nơ-ron sâu thường có xu hướng dự đoán quá tự tin (overconfidence), làm giảm hiệu quả của phương pháp.
+  \item \textbf{ODIN (Out-of-DIstribution detector for Neural Networks):} Mở rộng MSP bằng cách kết hợp Temperature Scaling và nhiễu đầu vào (input perturbation) nhằm gia tăng khoảng cách logit giữa dữ liệu trong phân phối (In-Distribution -- ID) và dữ liệu OOD.
+  \item \textbf{Energy-based Score:} Thay vì sử dụng xác suất Softmax, phương pháp này sử dụng giá trị năng lượng được tính từ vector logit:
+  \[ E(x)=-T\log\sum_i\exp\left(\frac{f_i(x)}{T}\right), \]
+  trong đó $f_i(x)$ là logit của lớp thứ $i$ và $T$ là hệ số nhiệt độ. Dữ liệu ID thường có mức năng lượng thấp hơn so với dữ liệu OOD.
+\end{itemize}
 
-\section{Các phương pháp phát hiện dữ liệu ngoài phân phối} 
-Phát hiện dữ liệu ngoài phân phối (Out-of-Distribution Detection - OOD Detection) là bài toán xác định các mẫu dữ liệu không thuộc phân phối của tập huấn luyện nhằm nâng cao độ tin cậy và tính an toàn của các hệ thống học sâu. Trong lĩnh vực chẩn đoán hình ảnh y khoa, khả năng phát hiện các trường hợp chưa từng xuất hiện hoặc khác biệt đáng kể so với dữ liệu huấn luyện có ý nghĩa quan trọng nhằm giảm nguy cơ đưa ra các dự đoán sai với độ tin cậy cao. Các phương pháp OOD hiện nay có thể được chia thành các nhóm chính sau đây. 
+\subsection{Các phương pháp dựa trên không gian đặc trưng (Feature-space-based Methods)}
+Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nhóm phương pháp này thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Ý tưởng chính là đo khoảng cách giữa embedding của mẫu kiểm thử và phân bố đặc trưng của dữ liệu huấn luyện. Một số độ đo khoảng cách phổ biến bao gồm:
+\begin{itemize}
+  \item \textbf{Khoảng cách Euclidean:}
+  \[ d_E(z,c_k)=\|z-c_k\|_2. \]
+  Khoảng cách Euclidean giả định các cụm dữ liệu có dạng cầu và có phương sai đồng đều theo mọi chiều. Phương pháp đơn giản nhưng không phản ánh được sự tương quan giữa các chiều đặc trưng.
+  \item \textbf{Khoảng cách Cosine:}
+  \[ d_C(z,c_k)=1-\frac{z\cdot c_k}{\|z\|\|c_k\|}. \]
+  Khoảng cách Cosine chỉ xét hướng của vector đặc trưng và bỏ qua độ lớn (magnitude), thường được sử dụng trong các bài toán metric learning và Vision-Language Models.
+  \item \textbf{Khoảng cách Mahalanobis:}
+  \[ d_M(z,c_k)=\sqrt{(z-c_k)^T\Sigma_k^{-1}(z-c_k)}, \]
+  trong đó $\Sigma_k$ là ma trận hiệp phương sai của lớp $k$. Khác với Euclidean và Cosine, Mahalanobis khai thác thêm thông tin về phương sai và tương quan giữa các chiều đặc trưng, nhờ đó phản ánh chính xác hơn mức độ bất thường của mẫu kiểm thử đối với phân bố của từng lớp, đặc biệt trong các trường hợp Near-OOD.
+\end{itemize}
 
-\subsection{Các phương pháp hậu xử lý dựa trên đầu ra mô hình (Post-hoc Methods)} 
-Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô hình đã được huấn luyện mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình. 
-\begin{itemize} 
-  \item \textbf{Maximum Softmax Probability (MSP):} Sử dụng xác suất Softmax lớn nhất làm độ tin cậy của dự đoán. Các mẫu có xác suất cực đại thấp được xem là ứng viên OOD. Tuy nhiên, các mạng nơ-ron sâu thường có xu hướng dự đoán quá tự tin (overconfidence), làm giảm hiệu quả của phương pháp. 
-  \item \textbf{ODIN (Out-of-DIstribution detector for Neural Networks):} Mở rộng MSP bằng cách kết hợp Temperature Scaling và nhiễu đầu vào (input perturbation) nhằm gia tăng khoảng cách logit giữa dữ liệu trong phân phối (In-Distribution - ID) và dữ liệu OOD. 
-  \item \textbf{Energy-based Score:} Thay vì sử dụng xác suất Softmax, phương pháp này sử dụng giá trị năng lượng được tính từ vector logit: 
-  \[ E(x)=-T\log\sum_i\exp\left(\frac{f_i(x)}{T}\right), \] 
-  trong đó $f_i(x)$ là logit của lớp thứ $i$ và $T$ là hệ số nhiệt độ. Dữ liệu ID thường có mức năng lượng thấp hơn so với dữ liệu OOD. 
-\end{itemize} 
+\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD (Representation Learning)}
+Các phương pháp trong nhóm này không trực tiếp thực hiện phát hiện OOD mà tập trung xây dựng không gian đặc trưng có tính phân biệt cao, từ đó nâng cao hiệu quả của các phương pháp phát hiện OOD dựa trên khoảng cách. Một số hướng tiếp cận tiêu biểu gồm:
+\begin{itemize}
+  \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
+  \item \textbf{Center Loss:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng.
+  \item \textbf{Prototypical Loss:} Biểu diễn mỗi lớp bởi một nguyên mẫu (prototype), được tính bằng trung bình embedding của các mẫu cùng lớp:
+  \[ c_k=\frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i). \]
+  Trong quá trình huấn luyện, embedding của các mẫu được kéo về prototype của lớp tương ứng và tách xa prototype của các lớp khác, giúp giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Nhờ đó, không gian đặc trưng trở nên phân biệt hơn, tạo điều kiện thuận lợi cho các phương pháp OOD dựa trên khoảng cách như Mahalanobis.
+\end{itemize}
 
-\subsection{Các phương pháp dựa trên không gian đặc trưng (Feature-space-based Methods)} 
-Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nhóm phương pháp này thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Ý tưởng chính là đo khoảng cách giữa embedding của mẫu kiểm thử và phân bố đặc trưng của dữ liệu huấn luyện. Hiệu quả của nhóm phương pháp này phụ thuộc mạnh vào chất lượng biểu diễn đặc trưng mà mô hình học được. Một số độ đo khoảng cách phổ biến bao gồm: 
-\begin{itemize} 
-  \item \textbf{Khoảng cách Euclidean:} 
-  \[ d_E(z,c_k)=\|z-c_k\|_2. \] 
-  Khoảng cách Euclidean giả định các cụm dữ liệu có dạng cầu và có phương sai đồng đều theo mọi chiều. Phương pháp đơn giản nhưng không phản ánh được sự tương quan giữa các chiều đặc trưng. 
-  \item \textbf{Khoảng cách Cosine:} 
-  \[ d_C(z,c_k)=1-\frac{z\cdot c_k}{\|z\|\|c_k\|}. \] 
-  Khoảng cách Cosine chỉ xét hướng của vector đặc trưng và bỏ qua độ lớn (magnitude), thường được sử dụng trong các bài toán metric learning và Vision-Language Models. 
-  \item \textbf{Khoảng cách Mahalanobis:} 
-  \[ d_M(z,c_k)=\sqrt{(z-c_k)^T\Sigma_k^{-1}(z-c_k)}, \] 
-  trong đó $\Sigma_k$ là ma trận hiệp phương sai của lớp $k$. Khác với Euclidean và Cosine, Mahalanobis khai thác thêm thông tin về phương sai và tương quan giữa các chiều đặc trưng, nhờ đó phản ánh chính xác hơn mức độ bất thường của mẫu kiểm thử đối với phân bố của từng lớp, đặc biệt trong các trường hợp Near-OOD. 
-\end{itemize} 
-
-\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD\\(Representation Learning)}
-Các phương pháp trong nhóm này không trực tiếp thực hiện phát hiện OOD mà tập trung xây dựng không gian đặc trưng có tính phân biệt cao, từ đó nâng cao hiệu quả của các phương pháp phát hiện OOD dựa trên khoảng cách. Một số hướng tiếp cận tiêu biểu gồm: 
-\begin{itemize} 
-  \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng. 
-  \item \textbf{Center Loss:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng. 
-  \item \textbf{Prototypical Loss:} Biểu diễn mỗi lớp bởi một nguyên mẫu (prototype), được tính bằng trung bình embedding của các mẫu cùng lớp: 
-  \[ c_k=\frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i). \] 
-  Trong quá trình huấn luyện, embedding của các mẫu được kéo về prototype của lớp tương ứng và tách xa prototype của các lớp khác, giúp giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Nhờ đó, không gian đặc trưng trở nên phân biệt hơn, tạo điều kiện thuận lợi cho các phương pháp OOD dựa trên khoảng cách như Mahalanobis. 
-\end{itemize} 
-
-\subsection{Các phương pháp sinh và định lượng độ không chắc chắn} Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng mô hình hóa phân phối dữ liệu hoặc ước lượng độ không chắc chắn của mô hình. 
-\begin{itemize} 
-  \item \textbf{Reconstruction Error:} Các mô hình Autoencoder hoặc Variational Autoencoder được huấn luyện để tái tạo dữ liệu ID. Khi gặp dữ liệu OOD, sai số tái tạo thường tăng lên đáng kể. 
-  \item \textbf{Monte Carlo Dropout:} Thực hiện nhiều lần suy luận với Dropout được kích hoạt trong giai đoạn kiểm thử nhằm ước lượng độ không chắc chắn nhận thức (epistemic uncertainty). Phương sai lớn giữa các lần dự đoán là dấu hiệu cho thấy mẫu có khả năng thuộc OOD. 
-\end{itemize} 
-
-\subsection{Cơ sở lựa chọn phương pháp} Các phương pháp OOD hiện nay đều có những ưu điểm và hạn chế riêng. Các phương pháp hậu xử lý dựa trên đầu ra như MSP, ODIN và Energy Score có ưu điểm là đơn giản nhưng hiệu quả phụ thuộc nhiều vào đầu ra của bộ phân loại và thường suy giảm đối với các trường hợp Near-OOD. Trong khi đó, các phương pháp sinh và định lượng độ không chắc chắn có chi phí tính toán cao và yêu cầu kiến trúc mô hình phức tạp hơn. Đối với các phương pháp dựa trên khoảng cách, hiệu quả phát hiện OOD phụ thuộc trực tiếp vào chất lượng của không gian đặc trưng. Nếu embedding của các lớp chưa đủ tập trung hoặc có phương sai nội lớp lớn thì việc sử dụng các độ đo khoảng cách sẽ khó phân biệt được dữ liệu ID và OOD. Vì vậy, nghiên cứu này lựa chọn kết hợp \textbf{Prototypical Loss} và \textbf{Mahalanobis Distance}. Trong giai đoạn huấn luyện, Prototypical Loss được sử dụng để học không gian đặc trưng có tính phân biệt cao thông qua việc giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế \textit{post-hoc} để đo khoảng cách từ embedding của mẫu kiểm thử đến phân bố đặc trưng của từng lớp. Mặc dù việc phân loại được thực hiện dựa trên độ tương đồng Cosine giữa embedding và prototype, Mahalanobis vẫn được sử dụng trong giai đoạn phát hiện OOD vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, từ đó phản ánh chính xác hơn mức độ bất thường của mẫu trong không gian đặc trưng. Sự kết hợp này tận dụng được ưu điểm của cả hai thành phần: Prototypical Loss giúp xây dựng embedding có tính phân biệt cao, trong khi Mahalanobis Distance cung cấp một cơ chế phát hiện OOD hiệu quả mà không cần huấn luyện thêm mô hình chuyên biệt.
+\subsection{Các phương pháp sinh và định lượng độ không chắc chắn}
+Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng mô hình hóa phân phối dữ liệu hoặc ước lượng độ không chắc chắn của mô hình.
+\begin{itemize}
+  \item \textbf{Reconstruction Error:} Các mô hình Autoencoder hoặc Variational Autoencoder được huấn luyện để tái tạo dữ liệu ID. Khi gặp dữ liệu OOD, sai số tái tạo thường tăng lên đáng kể.
+  \item \textbf{Monte Carlo Dropout:} Thực hiện nhiều lần suy luận với Dropout được kích hoạt trong giai đoạn kiểm thử nhằm ước lượng độ không chắc chắn nhận thức (epistemic uncertainty). Phương sai lớn giữa các lần dự đoán là dấu hiệu cho thấy mẫu có khả năng thuộc OOD.
+\end{itemize}
 
 \section{Bàn luận}
 
@@ -502,7 +193,7 @@ Các phương pháp trong nhóm này không trực tiếp thực hiện phát hi
 
 Qua khảo sát các công trình nghiên cứu, có thể nhận thấy rằng học sâu đa phương thức đang trở thành xu hướng quan trọng trong lĩnh vực chẩn đoán ảnh y khoa. Thay vì chỉ khai thác thông tin từ ảnh y khoa, nhiều nghiên cứu đã kết hợp thêm dữ liệu văn bản như báo cáo chẩn đoán, tiền sử bệnh hoặc thông tin lâm sàng nhằm tận dụng tính bổ sung giữa các phương thức dữ liệu.
 
-Song song với đó, sự xuất hiện của các mô hình ngôn ngữ trực quan y khoa (Medical Vision-Language Models) như BioMedCLIP đã mở ra hướng tiếp cận mới cho các bài toán phân loại ảnh y khoa. Nhờ được tiền huấn luyện trên tập dữ liệu ảnh -- văn bản quy mô lớn, các mô hình này học được biểu diễn đa phương thức giàu ngữ nghĩa và có khả năng thích nghi tốt với nhiều tác vụ khác nhau. Kết hợp với các phương pháp tinh chỉnh hiệu quả tham số (Parameter-Efficient Fine-Tuning - PEFT), việc khai thác các mô hình nền tảng trở nên khả thi hơn ngay cả khi dữ liệu huấn luyện chuyên ngành còn hạn chế.
+Song song với đó, sự xuất hiện của các mô hình ngôn ngữ trực quan y khoa như BiomedCLIP \cite{BiomedCLIP} đã mở ra hướng tiếp cận mới cho các bài toán phân loại ảnh y khoa. Nhờ được tiền huấn luyện trên tập dữ liệu ảnh -- văn bản quy mô lớn, các mô hình này học được biểu diễn đa phương thức giàu ngữ nghĩa và có khả năng thích nghi tốt với nhiều tác vụ khác nhau. Kết hợp với các phương pháp tinh chỉnh hiệu quả tham số, việc khai thác các mô hình nền tảng trở nên khả thi hơn ngay cả khi dữ liệu huấn luyện còn hạn chế.
 
 \subsection{Hạn chế của các nghiên cứu hiện nay}
 
@@ -516,18 +207,23 @@ Thứ ba, mặc dù các mô hình nền tảng đạt hiệu quả cao, nhiều
 
 Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu năng phân loại mà chưa quan tâm đầy đủ đến khả năng phát hiện dữ liệu ngoài phân phối. Trong môi trường lâm sàng, mô hình có thể gặp các trường hợp bệnh lý hiếm, dữ liệu có chất lượng thấp hoặc các bất thường chưa xuất hiện trong tập huấn luyện. Nếu không có cơ chế phát hiện OOD, mô hình vẫn có thể đưa ra dự đoán với độ tin cậy cao mặc dù kết quả không chính xác.
 
-\subsection{Cơ sở lựa chọn phương pháp đề xuất}
+\subsection{Cơ sở lựa chọn và định hướng phương pháp đề xuất}
 
-Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên mô hình BioMedCLIP kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Thay vì tinh chỉnh toàn bộ mô hình, kỹ thuật LoRA được sử dụng nhằm giảm số lượng tham số cần cập nhật, từ đó giảm chi phí huấn luyện trong khi vẫn bảo tồn phần lớn tri thức đã được học từ giai đoạn tiền huấn luyện.
+Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên việc kế thừa mô hình BiomedCLIP \cite{BiomedCLIP} kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Các lựa chọn thiết kế cụ thể được đưa ra dựa trên phân tích sau:
 
-Để khai thác hiệu quả hai nguồn dữ liệu, đặc trưng hình ảnh và đặc trưng văn bản được kết hợp thông qua mô-đun dung hợp đa phương thức trước khi thực hiện phân loại. Cách tiếp cận này giúp mô hình học được mối quan hệ bổ sung giữa hai phương thức dữ liệu, phù hợp với quy trình chẩn đoán thực tế của bác sĩ.
+\textbf{Về kỹ thuật tinh chỉnh:} Kỹ thuật QLoRA được lựa chọn thay vì tinh chỉnh toàn phần hoặc các phương pháp tinh chỉnh hiệu quả tham số khác, vì ba lý do chính:
+\begin{itemize}
+  \item QLoRA giảm số lượng tham số cần huấn luyện xuống đáng kể bằng cách tiêm các ma trận phân rã hạng thấp vào mạng nơ-ron, cho phép tinh chỉnh các mô hình VLM ngay cả khi nguồn lực tính toán bị hạn chế.
+  \item Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số của QLoRA có thể được cộng gộp trực tiếp vào trọng số gốc, giúp không tăng độ trễ trong lúc suy luận.
+  \item QLoRA cho phép mô hình bám sát dữ liệu y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát đã được tiền huấn luyện.
+\end{itemize}
 
-Bên cạnh mục tiêu phân loại, luận văn sử dụng Prototypical Loss để học không gian đặc trưng có tính phân biệt cao hơn. Hàm mất mát này không trực tiếp thực hiện phát hiện dữ liệu ngoài phân phối mà đóng vai trò giảm phương sai nội lớp và tăng khoảng cách giữa các lớp trong không gian embedding, tạo ra các biểu diễn đặc trưng ổn định và dễ phân tách hơn.
+\textbf{Về phương pháp phát hiện OOD:} Luận văn kết hợp Prototypical Loss \cite{} và Mahalanobis Distance theo cơ chế hai giai đoạn tách biệt. Trong giai đoạn huấn luyện, Prototypical Loss được sử dụng để xây dựng không gian đặc trưng có tính phân biệt cao thông qua việc giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế post-hoc để phát hiện dữ liệu ngoài phân phối. Mahalanobis được lựa chọn thay vì Euclidean hoặc Cosine vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, phản ánh chính xác hơn mức độ bất thường của mẫu, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
 
-Trên không gian đặc trưng đã học, khoảng cách Mahalanobis được sử dụng theo cơ chế \textit{post-hoc} để phát hiện dữ liệu ngoài phân phối. Khác với khoảng cách Euclidean hoặc Cosine chỉ phản ánh mức độ tương đồng giữa các vector đặc trưng, Mahalanobis còn khai thác thông tin về phương sai và mối tương quan giữa các chiều đặc trưng của từng lớp. Điều này giúp mô hình đánh giá chính xác hơn mức độ bất thường của mẫu kiểm thử, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
+\textbf{Về kiến trúc pipeline:} Hệ thống được thiết kế theo kiến trúc hai giai đoạn :
+\begin{itemize}
+  \item \textbf{Giai đoạn 1 -- Căn chỉnh tương phản:} Chỉ huấn luyện backbone (BiomedCLIP thông qua LoRA) bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
+  \item \textbf{Giai đoạn 2 -- Huấn luyện dung hợp và phân loại:} Backbone được đóng băng hoàn toàn, chỉ huấn luyện mô-đun dung hợp đa phương thức (cross-attention) và bộ phân loại (prototypical head). Thiết kế này tách biệt quá trình thích ứng backbone khỏi quá trình học phân loại, giảm thiểu rủi ro quá khớp.
+\end{itemize}
 
-Sự kết hợp giữa Prototypical Loss và Mahalanobis Distance cho phép tách biệt hai giai đoạn của hệ thống: Prototypical Loss được sử dụng trong quá trình huấn luyện để xây dựng không gian đặc trưng có tính phân biệt cao, trong khi Mahalanobis Distance được áp dụng sau khi huấn luyện để phát hiện dữ liệu ngoài phân phối mà không cần xây dựng thêm một mô hình OOD chuyên biệt.
-
-\subsection{Định hướng của luận văn}
-
-Từ các phân tích trên, luận văn đề xuất một hệ thống phân loại ảnh X-quang xương đa phương thức dựa trên BioMedCLIP kết hợp với thông tin lâm sàng. Hệ thống sử dụng LoRA để tinh chỉnh mô hình nền, mô-đun dung hợp đa phương thức để kết hợp đặc trưng ảnh và văn bản, Prototypical Loss để học không gian đặc trưng có tính phân biệt và Mahalanobis Distance để phát hiện dữ liệu ngoài phân phối theo cơ chế \textit{post-hoc}. Kiến trúc của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày chi tiết trong Chương 3.
+Kiến trúc chi tiết của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày trong Chương 3.

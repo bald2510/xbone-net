@@ -490,8 +490,8 @@ def main(cfg: DictConfig) -> None:
 
     render_and_save_spatial_attention(image, captured_spatial_attention, output_path="results/attention_map.png")
     if attn_info is not None:
-        top_attn = attn_info["top_attn_weights"].cpu().squeeze(0).squeeze(-1).squeeze(-1).numpy()
-        bottom_attn = attn_info["bottom_attn_weights"].cpu().squeeze(0).squeeze(-1).squeeze(-1).numpy()
+        top_attn = attn_info["top_attn_weights"].mean(dim=-1).cpu().squeeze(0).squeeze(-1).numpy()
+        bottom_attn = attn_info["bottom_attn_weights"].mean(dim=-1).cpu().squeeze(0).squeeze(-1).numpy()
 
         top_out = attn_info["top_out"]
         bottom_out = attn_info["bottom_out"]

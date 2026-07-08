@@ -11,12 +11,20 @@ params:
   csv_split_path: "${hydra:runtime.cwd}/data/CTCH/ctch-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/CTCH/ctch-labels.csv"
 
-  task_type: "multilabel"
-  pathologies: [
-    'fracture',
-    'dislocation',
-    'undetermined',
-    'upper_limb_fracture',
-    'lower_limb_fracture',
-    'spine_fracture',
+  # Multi-class classification (12 classes, ordered by frequency)
+  task_type: "multiclass"
+  num_classes: 12
+  classes: [
+    'normal',                # 0: Bình thường
+    'radius_fracture',       # 1: Gãy xương quay
+    'humerus_fracture',      # 2: Gãy xương cánh tay
+    'femur_fracture',        # 3: Gãy xương đùi
+    'lower_leg_fracture',    # 4: Gãy xương cẳng chân
+    'tibia_fracture',        # 5: Gãy xương chày
+    'finger_fracture',       # 6: Gãy xương ngón tay
+    'ankle_fracture',        # 7: Gãy xương cổ chân
+    'forearm_fracture',      # 8: Gãy xương cẳng tay
+    'patella_fracture',      # 9: Gãy xương bánh chè
+    'foot_fracture',         # 10: Gãy xương bàn chân
+    'other',                 # 11: Các bệnh lý khác (< 50 mẫu)
   ]

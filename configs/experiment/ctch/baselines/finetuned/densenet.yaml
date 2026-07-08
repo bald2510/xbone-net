@@ -1,36 +1,50 @@
 # @package _global_
-# Baseline B7: DenseNet-121 (ImageNet) on CTCH
+# ===============================================================================
+# Experiment Config: ctch/baselines/finetuned/densenet
+# Backbone: densenet121 | PEFT: full_ft | Fusion: none | Head: linear
+# ===============================================================================
+
 defaults:
-  - /model/peft@model.peft: none
+  - /model/peft@model.peft: full_ft
   - /model/fusion@model.fusion: none
-  - /model/classifier@model.classifier: none
+  - /model/classifier@model.classifier: linear
   - /dataset@dataset: ctch
   - _self_
 
+# --- Model Architecture ---
 model:
-  backbone_type: "densenet121_imagenet"
+  backbone_type: densenet121
   freeze_backbone: false
-  _placeholder_: true
-dataset:
-  _placeholder_: true
 
-experiment_name: "ctch/baselines/finetuned/densenet"
+# --- Experiment Identifier ---
+experiment_name: ctch/baselines/finetuned/densenet
 
+# --- Training Hyperparameters ---
 params:
-  run_phase1: false
+  run_phase1: false              # Baselines: no Phase 1 (standard fine-tuning only)
   run_phase2: true
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  run_ood: false                 # Set true only for proposed model to calibrate OOD threshold
+  model_dir: checkpoints//seed_/
+
+  # --- Phase 2 Hyperparameters ---
   phase2:
     epochs: 50
     lr: 1e-4
     weight_decay: 1e-4
-    optimizer: "adamw"
-    scheduler: "cosine"
+    optimizer: adamw
+    scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "none"
-    classifier_type: "linear"
-    use_text: false
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
+    phase2_loss_type: ce
+    use_text: true
+    p2_report_type: clinical
+    checkpoint_path: checkpoints//seed_/best_phase2.pth
+    loss:
+      proto_margin: 0.5
+      lambda_proto: 0.3
+      label_smoothing: 0.1
+      use_class_weights: true
+      max_class_weight: 10.0
 
+# --- Global Random Seed ---
 seed: 42

@@ -67,6 +67,7 @@ class BTXRDDataset(Dataset):
         transform=None,
         tokenizer=None,
         max_text_len=256,
+        clinical_subdir: str = "clinical_v2",
         **kwargs,
     ):
         """Initialize the BTXRD dataset.
@@ -75,6 +76,9 @@ class BTXRDDataset(Dataset):
             img_dir: Path to directory containing X-ray image files.
             report_dir: Path to report root directory. If it contains xray/ and
                 clinical/ subdirectories, operates in dual-report mode.
+            clinical_subdir: Name of the clinical report subdirectory under
+                report_dir. Defaults to 'clinical_v2' (sanitized reports).
+                Use 'clinical' for original synthetic reports (ablation only).
             csv_split_path: Path to CSV with image_id and split columns.
             csv_labels_path: Path to CSV with image_id and label columns (class_id
                 for multi-class, or pathology columns for multi-label).
@@ -102,6 +106,15 @@ class BTXRDDataset(Dataset):
         df_labels = pd.read_csv(csv_labels_path)
         df_merged = pd.merge(df_split, df_labels, on=["image_id"], how="inner")
 
+        # --- Pre-compute class_id for multi-class indexing if missing ---
+        if "class_id" not in df_merged.columns and self.classes:
+            def _get_class_id(row):
+                for idx_cls, cls_name in enumerate(self.classes):
+                    if row.get(cls_name, 0) == 1:
+                        return idx_cls
+                return 0
+            df_merged["class_id"] = df_merged.apply(_get_class_id, axis=1)
+
         # --- Filter split and apply subsampling ---
         current_split = "validate" if split == "val" else split
         filtered_df = df_merged[df_merged["split"] == current_split].reset_index(drop=True)
@@ -117,7 +130,7 @@ class BTXRDDataset(Dataset):
 
         # --- Detect dual report directory structure ---
         self.xray_dir = os.path.join(self.report_dir, "xray")
-        self.clinical_dir = os.path.join(self.report_dir, "clinical")
+        self.clinical_dir = os.path.join(self.report_dir, clinical_subdir)
         self.has_dual_reports = os.path.isdir(self.xray_dir) and os.path.isdir(self.clinical_dir)
 
         print(f"[Dataset] Initialized '{split.upper()}' with {len(self.df)} samples. Dual reports: {self.has_dual_reports}")
@@ -145,8 +158,11 @@ class BTXRDDataset(Dataset):
     def __getitem__(self, idx: int):
         """Retrieve a sample by index.
 
+        Args:
+            idx: Integer index into dataset.
+
         Returns:
-            Dual-report mode: (image, xray_ids, clinical_ids, labels)
+            tuple: (image, xray_ids, clinical_ids, labels) in dual-report mode, or
             Single-report mode: (image, input_ids, labels)
         """
         row = self.df.iloc[idx]
@@ -167,7 +183,12 @@ class BTXRDDataset(Dataset):
 
         # --- Encode labels ---
         if self.task_type == "multiclass":
-            labels = torch.tensor(int(row["class_id"]), dtype=torch.long)
+            if "class_id" in row:
+                labels = torch.tensor(int(row["class_id"]), dtype=torch.long)
+            else:
+                class_vals = [int(row.get(c, 0)) for c in self.classes]
+                class_id = class_vals.index(1) if 1 in class_vals else 0
+                labels = torch.tensor(class_id, dtype=torch.long)
         else:
             labels = torch.tensor([float(row.get(path, 0.0)) for path in self.classes], dtype=torch.float32)
 

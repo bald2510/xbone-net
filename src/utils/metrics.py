@@ -117,12 +117,22 @@ def compute_metrics_multiclass(
 
     # --- Compute macro AUROC ---
     try:
-        probs_sum = all_probs.sum(axis=1, keepdims=True)
-        probs_for_auc = all_probs / (probs_sum + 1e-8) if not np.allclose(probs_sum, 1.0, atol=1e-5) else all_probs
+        # Ensure probs columns match the actual number of classes in gt
+        n_unique_classes = len(np.unique(all_gt))
+        probs_for_auc = all_probs
+        if probs_for_auc.shape[1] > n_unique_classes:
+            print(f"  [AUROC Warning] Probs has {probs_for_auc.shape[1]} columns but gt has "
+                  f"{n_unique_classes} unique classes. Trimming to {n_unique_classes} columns.")
+            probs_for_auc = probs_for_auc[:, :n_unique_classes]
+        # Re-normalize so rows sum to 1.0 (required by roc_auc_score)
+        row_sums = probs_for_auc.sum(axis=1, keepdims=True)
+        probs_for_auc = probs_for_auc / (row_sums + 1e-8)
         macro_auroc = float(roc_auc_score(
             all_gt, probs_for_auc, average="macro", multi_class="ovr",
         ))
-    except ValueError:
+    except ValueError as e:
+        print(f"  [AUROC Error] {e} — probs shape: {all_probs.shape}, "
+              f"gt unique: {np.unique(all_gt)}, gt shape: {all_gt.shape}")
         macro_auroc = float("nan")
 
     # --- Compute confusion matrix & per-class specificity ---

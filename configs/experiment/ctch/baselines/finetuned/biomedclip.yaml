@@ -1,49 +1,50 @@
 # @package _global_
-# Baseline B4: BiomedCLIP ViT-B/16 on CTCH
+# ===============================================================================
+# Experiment Config: ctch/baselines/finetuned/biomedclip
+# Backbone: biomedclip | PEFT: full_ft | Fusion: concat | Head: linear
+# ===============================================================================
+
 defaults:
-  - /model/peft@model.peft: qlora
-  - /model/fusion@model.fusion: none
-  - /model/classifier@model.classifier: none
+  - /model/peft@model.peft: full_ft
+  - /model/fusion@model.fusion: concat
+  - /model/classifier@model.classifier: linear
   - /dataset@dataset: ctch
   - _self_
 
+# --- Model Architecture ---
 model:
-  backbone_type: "biomedclip"
+  backbone_type: biomedclip
   freeze_backbone: false
-  _placeholder_: true
-dataset:
-  _placeholder_: true
 
-experiment_name: "ctch/baselines/finetuned/biomedclip"
+# --- Experiment Identifier ---
+experiment_name: ctch/baselines/finetuned/biomedclip
 
+# --- Training Hyperparameters ---
 params:
-  run_phase1: true
+  run_phase1: false              # Baselines: no Phase 1 (standard fine-tuning only)
   run_phase2: true
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
-  phase1:
-    epochs: 50
-    lr: 2e-4
-    weight_decay: 1e-2
-    optimizer: "adamw"
-    scheduler: "cosine"
-    warmup_ratio: 0.1
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth"
-    temperature: 0.07
-    loss_type: "semantic_matching"
-    early_stopping_patience: 5
-    p1_report_type: "clinical"
+  run_ood: false                 # Set true only for proposed model to calibrate OOD threshold
+  model_dir: checkpoints//seed_/
+
+  # --- Phase 2 Hyperparameters ---
   phase2:
     epochs: 50
-    lr: 1e-3
+    lr: 2e-5
     weight_decay: 1e-4
-    optimizer: "adamw"
-    scheduler: "cosine"
+    optimizer: adamw
+    scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "cross_attention"
-    classifier_type: "linear"
+    phase2_loss_type: ce
     use_text: true
-    p2_report_type: "clinical"
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
+    p2_report_type: clinical
+    checkpoint_path: checkpoints//seed_/best_phase2.pth
+    loss:
+      proto_margin: 0.5
+      lambda_proto: 0.3
+      label_smoothing: 0.1
+      use_class_weights: true
+      max_class_weight: 10.0
 
+# --- Global Random Seed ---
 seed: 42

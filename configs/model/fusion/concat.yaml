@@ -1,0 +1,4 @@
+type: concat
+params:
+  text_dim: 512
+  img_dim: 512

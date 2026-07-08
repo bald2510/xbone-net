@@ -210,31 +210,63 @@ def setup_phase2_modules(model, cfg: dict, device):
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
     is_image_only = backbone_type.startswith("resnet50") or backbone_type.startswith("densenet121")
 
-    if is_image_only:
+    # --- Resolve fusion and head types from Hydra model defaults or Phase 2 params ---
+    model_fusion_cfg = cfg.model.get("fusion", {}) or {}
+    model_head_cfg = cfg.model.get("classifier", {}) or {}
+
+    cfg_fusion_type = model_fusion_cfg.get("type", "none")
+    cfg_classifier_type = model_head_cfg.get("type", "none")
+
+    p2_fusion_type = p2_phase_cfg.get("fusion_type", "none")
+    p2_classifier_type = p2_phase_cfg.get("classifier_type", "none")
+
+    run_p2 = params_cfg.get("run_phase2", True)
+    exp_name = str(cfg.get("experiment_name", "")).lower()
+    is_zero_shot = (not run_p2) or ("zeroshot" in exp_name)
+
+    fusion_type = cfg_fusion_type if cfg_fusion_type != "none" else p2_fusion_type
+    classifier_type = cfg_classifier_type if cfg_classifier_type != "none" else p2_classifier_type
+
+    if is_zero_shot:
         fusion_type = "none"
-        classifier_type = p2_phase_cfg.get("classifier_type", "linear")
+        classifier_type = "none"
+    elif is_image_only:
+        fusion_type = "none"
+        if classifier_type == "none":
+            classifier_type = "linear"
         print(f"[Builder] Image-only backbone: skipping fusion, using {classifier_type} head")
     else:
-        fusion_type = p2_phase_cfg.get("fusion_type", "cross_attention")
-        classifier_type = p2_phase_cfg.get("classifier_type", "prototypical")
+        if fusion_type == "none":
+            fusion_type = "cross_attention"
+        if classifier_type == "none":
+            classifier_type = "prototypical"
 
     # --- Hot-swap fusion module if uninitialized (0 params) ---
     fusion_params = sum(p.numel() for p in model.fusion.parameters()) if model.fusion is not None else 0
     if fusion_params == 0 and fusion_type != "none":
+        fusion_params_dict = dict(model_fusion_cfg.get("params", {}))
+        fusion_params_dict.update({'text_dim': feature_dim, 'img_dim': feature_dim})
         model.fusion = build_fusion_module({
             'type': fusion_type,
-            'params': {'text_dim': feature_dim, 'img_dim': feature_dim}
+            'params': fusion_params_dict
         }).to(device)
         print(f"[Builder] Created {fusion_type} fusion ({feature_dim}d)")
 
     # --- Hot-swap classifier head if uninitialized (0 params) ---
     head_params = sum(p.numel() for p in model.head.parameters()) if model.head is not None else 0
     if head_params == 0 and classifier_type != "none":
+        head_params_dict = dict(model_head_cfg.get("params", {}))
+        head_params_dict.update({'feature_dim': feature_dim, 'num_classes': num_classes})
         model.head = build_head_module({
             'type': classifier_type,
-            'params': {'feature_dim': feature_dim, 'num_classes': num_classes}
+            'params': head_params_dict
         }).to(device)
         print(f"[Builder] Created {classifier_type} head ({feature_dim} -> {num_classes} classes)")
+
+    # --- Enable local feature extraction for bi-directional cross-attention ---
+    if hasattr(model.backbone, 'return_local'):
+        model.backbone.return_local = (fusion_type == "cross_attention")
+        print(f"[Builder] Set backbone return_local = {model.backbone.return_local}")
 
     return model, classifier_type, fusion_type, num_classes
 

@@ -38,13 +38,13 @@ class PrototypicalHead(nn.Module):
         >>> logits = head(feats)
     """
 
-    def __init__(self, feature_dim: int = 512, num_classes: int = 14, scale: float = 10.0):
+    def __init__(self, feature_dim: int = 512, num_classes: int = 14, scale: float = 5.0):
         """Initialize prototype vectors and scaling factor.
 
         Args:
             feature_dim (int): Dimensionality D of input feature representations. Defaults to 512.
             num_classes (int): Number of target classification categories K. Defaults to 14.
-            scale (float): Temperature scaling factor s applied to cosine logits. Defaults to 10.0.
+            scale (float): Temperature scaling factor s applied to cosine logits. Defaults to 5.0.
         """
         super().__init__()
         self.num_classes = num_classes

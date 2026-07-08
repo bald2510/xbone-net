@@ -198,6 +198,11 @@ class OpenCLIPFoundation(nn.Module):
             for param in self.model.parameters():
                 param.requires_grad = False
 
+    @property
+    def tokenizer_obj(self):
+        """Tokenizer callable alias for interface consistency across backbones."""
+        return self.tokenizer
+
     def forward(self, images, input_ids):
         """Extract and L2-normalize image and text embeddings.
 

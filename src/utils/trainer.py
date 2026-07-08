@@ -81,21 +81,50 @@ class BioMedCLIPDataCollator:
             padded.append(ids)
         return torch.stack(padded)
 
-    def __call__(self, features: list[dict]) -> dict:
-        """Collate features into batched tensors.
+    def __call__(self, features: list) -> dict:
+        """Collate tuple or dictionary features into batched tensors.
 
         Args:
-            features: List of sample dictionary features.
+            features: List of sample tuples or dictionary features.
 
         Returns:
             Dictionary containing pixel_values, xray_input_ids,
             clinical_input_ids, and labels.
         """
+        if not features:
+            return {}
+
+        first = features[0]
+        if isinstance(first, tuple):
+            if len(first) == 4:
+                # Dual-report sample tuple: (image, xray_ids, clinical_ids, labels)
+                images = torch.stack([f[0] if isinstance(f[0], torch.Tensor) else F_t.to_tensor(f[0]) for f in features])
+                xray_ids = self._pad_ids([f[1] for f in features])
+                clinical_ids = self._pad_ids([f[2] for f in features])
+                labels = torch.stack([f[3] for f in features])
+                return {
+                    "pixel_values": images,
+                    "xray_input_ids": xray_ids,
+                    "clinical_input_ids": clinical_ids,
+                    "labels": labels,
+                }
+            elif len(first) == 3:
+                # Single-report sample tuple: (image, input_ids, labels)
+                images = torch.stack([f[0] for f in features])
+                input_ids = self._pad_ids([f[1] for f in features])
+                labels = torch.stack([f[2] for f in features])
+                return {
+                    "pixel_values": images,
+                    "xray_input_ids": input_ids,
+                    "clinical_input_ids": input_ids,
+                    "labels": labels,
+                }
+
+        # Dictionary format fallback
         pixel_values = torch.stack([f["pixel_values"] for f in features])
         labels = torch.stack([f["labels"] for f in features])
-
-        xray_ids = self._pad_ids([f["xray_input_ids"] for f in features])
-        clinical_ids = self._pad_ids([f["clinical_input_ids"] for f in features])
+        xray_ids = self._pad_ids([f.get("xray_input_ids", f.get("input_ids")) for f in features])
+        clinical_ids = self._pad_ids([f.get("clinical_input_ids", f.get("input_ids")) for f in features])
 
         return {
             "pixel_values": pixel_values,
@@ -156,7 +185,7 @@ class SFTrainer(Trainer):
         Returns:
             Text features tensor or token IDs tensor.
         """
-        if report_type == "both":
+        if report_type in ("both", "xray_clinical"):
             xray_ids = inputs["xray_input_ids"]
             clinical_ids = inputs["clinical_input_ids"]
             _, xray_feat = model.backbone(images, xray_ids)
@@ -184,7 +213,7 @@ class SFTrainer(Trainer):
 
         if self.phase == "phase1":
             # --- Phase 1: Contrastive image-text alignment ---
-            if self.p1_report_type == "both":
+            if self.p1_report_type in ("both", "xray_clinical"):
                 xray_ids = inputs["xray_input_ids"]
                 clinical_ids = inputs["clinical_input_ids"]
                 image_features, xray_feat = model.backbone(images, xray_ids)
@@ -194,11 +223,11 @@ class SFTrainer(Trainer):
                 text_key = "xray_input_ids" if self.p1_report_type == "xray" else "clinical_input_ids"
                 text_ids = inputs[text_key]
                 image_features, text_features = model.backbone(images, text_ids)
-            loss = self.loss_fn(image_features, text_features, labels)
+            loss = self.loss_fn(image_features, text_features, None)
             outputs = {"image_features": image_features, "text_features": text_features}
         else:
             # --- Phase 2: Classification with optional fusion ---
-            if self.use_text_in_p2 and self.p2_report_type == "both":
+            if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 xray_ids = inputs["xray_input_ids"]
                 clinical_ids = inputs["clinical_input_ids"]
                 img_feat, xray_feat = model.backbone(images, xray_ids)
@@ -216,7 +245,7 @@ class SFTrainer(Trainer):
                 text_ids = inputs["xray_input_ids"]
 
             from src.utils.losses import CombinedPhase2Loss, CombinedPhase2LossMulticlass
-            if self.use_text_in_p2 and self.p2_report_type == "both":
+            if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 if isinstance(self.loss_fn, (CombinedPhase2Loss, CombinedPhase2LossMulticlass)):
                     logits, features = model.head(fused, return_features=True)
                     prototypes = model.head.prototypes

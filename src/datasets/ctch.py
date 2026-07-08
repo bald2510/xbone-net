@@ -1,11 +1,11 @@
 """
-CTCH pediatric bone fracture dataset loader for XBone-Net architecture.
+CTCH bone pathology dataset loader for XBone-Net architecture.
 ============================================================
-Provides a PyTorch Dataset for pediatric X-ray images paired with text reports.
+Provides a PyTorch Dataset for X-ray images paired with text reports.
 Used in XBone-Net's dual-stage learning framework:
   - Stage 1: Contrastive image-text alignment using X-ray findings reports
   - Stage 2: Cross-attention multimodal fusion combining X-ray findings + clinical history
-  - Multi-label classification: binary target vector over pediatric fracture pathologies
+  - Supports both multi-class (single integer label) and multi-label classification
 
 Supports dual-report loading (xray_report_dir and clinical_report_dir) with fallback
 to a single report directory for backward compatibility.
@@ -23,14 +23,18 @@ from torch.utils.data import Dataset
 # ============================================================
 
 class CTCHDataset(Dataset):
-    """Dataset loader for the CTCH pediatric bone fracture dataset.
+    """Dataset loader for the CTCH bone pathology dataset.
 
     Always operates in dual-report mode, returning separate imaging findings
     and clinical history texts per sample for multimodal fusion in XBone-Net.
 
+    Supports both multi-class (via class_id or one-hot → argmax) and
+    multi-label classification (binary vector), matching BTXRD format.
+
     Attributes:
-        img_dir: Root directory containing pediatric X-ray image files.
-        pathologies: List of target pathology / class names for multi-label binary vectors.
+        img_dir: Root directory containing X-ray image files.
+        classes: List of target class / pathology names.
+        task_type: Classification mode ('multiclass' or 'multilabel').
         xray_report_dir: Directory containing X-ray findings reports (.txt).
         clinical_report_dir: Directory containing clinical history reports (.txt).
         transform: torchvision.transforms pipeline applied to images.
@@ -41,11 +45,12 @@ class CTCHDataset(Dataset):
     Example:
         ds = CTCHDataset(
             img_dir="data/CTCH/images",
-            csv_split_path="data/CTCH/splits.csv",
-            csv_labels_path="data/CTCH/labels.csv",
-            pathologies=["fracture", "periosteal_reaction"],
-            xray_report_dir="data/CTCH/xray_reports",
-            clinical_report_dir="data/CTCH/clinical_reports",
+            csv_split_path="data/CTCH/ctch-split.csv",
+            csv_labels_path="data/CTCH/ctch-labels.csv",
+            classes=["normal", "radius_fracture", ...],
+            task_type="multiclass",
+            xray_report_dir="data/CTCH/reports/xray",
+            clinical_report_dir="data/CTCH/reports/clinical",
             split="train",
         )
         image, xray_ids, clinical_ids, labels = ds[0]
@@ -56,7 +61,10 @@ class CTCHDataset(Dataset):
         img_dir: str,
         csv_split_path: str,
         csv_labels_path: str,
-        pathologies: list,
+        pathologies: list = None,
+        classes: list = None,
+        task_type: str = "multiclass",
+        num_classes: int = None,
         split: str = "train",
         train_ratio: float = 1.0,
         transform=None,
@@ -74,8 +82,11 @@ class CTCHDataset(Dataset):
         Args:
             img_dir: Path to directory containing image files.
             csv_split_path: Path to CSV with image_id and split columns.
-            csv_labels_path: Path to CSV with image_id and pathology label columns.
-            pathologies: List of pathology column names in labels CSV.
+            csv_labels_path: Path to CSV with image_id and class/pathology label columns.
+            pathologies: List of pathology column names (alias for classes).
+            classes: List of target class / pathology names (takes precedence).
+            task_type: 'multiclass' (single integer label) or 'multilabel' (binary vector).
+            num_classes: Optional explicit class count for external reference.
             split: Data split ('train', 'val', or 'test').
             train_ratio: Fraction of training samples to keep (0.0 to 1.0).
             transform: torchvision.transforms pipeline for image preprocessing.
@@ -87,7 +98,8 @@ class CTCHDataset(Dataset):
             **kwargs: Extra unused arguments for backward compatibility.
         """
         self.img_dir = img_dir
-        self.pathologies = pathologies
+        self.classes = classes or pathologies or []
+        self.task_type = task_type
         self.transform = transform
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
@@ -106,6 +118,15 @@ class CTCHDataset(Dataset):
         df_labels = pd.read_csv(csv_labels_path)
         df_merged = pd.merge(df_split, df_labels, on=["image_id"], how="inner")
 
+        # --- Pre-compute class_id for multi-class indexing if missing ---
+        if task_type == "multiclass" and "class_id" not in df_merged.columns and self.classes:
+            def _get_class_id(row):
+                for idx_cls, cls_name in enumerate(self.classes):
+                    if row.get(cls_name, 0) == 1:
+                        return idx_cls
+                return 0
+            df_merged["class_id"] = df_merged.apply(_get_class_id, axis=1)
+
         # --- Filter split and apply subsampling ---
         current_split = "validate" if split == "val" else split
         filtered_df = df_merged[df_merged["split"] == current_split].reset_index(drop=True)
@@ -114,9 +135,14 @@ class CTCHDataset(Dataset):
             filtered_df = filtered_df.sample(
                 frac=train_ratio, random_state=42
             ).reset_index(drop=True)
+            print(f"[Dataset] Subsampling enabled: using {train_ratio * 100:.1f}% of training data.")
 
         self.df = filtered_df
-        print(f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples.")
+
+        # --- Detect dual report availability ---
+        has_dual = bool(self.xray_report_dir and self.clinical_report_dir)
+        print(f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
+              f"Task: {task_type}, Dual reports: {has_dual}")
 
     def __len__(self):
         """Return the total number of samples in the current split."""
@@ -167,7 +193,8 @@ class CTCHDataset(Dataset):
                 - image: Transformed image tensor
                 - xray_ids: Tokenized X-ray findings report tensor
                 - clinical_ids: Tokenized clinical history report tensor
-                - labels: torch.FloatTensor multi-label binary vector
+                - labels: torch.LongTensor class index (multiclass) or
+                          torch.FloatTensor binary vector (multilabel)
         """
         row = self.df.iloc[idx]
         image_id = str(row["image_id"])
@@ -189,13 +216,20 @@ class CTCHDataset(Dataset):
         xray_ids = self._tokenize(xray_text)
         clinical_ids = self._tokenize(clinical_text)
 
-        # --- Encode multi-label binary vector ---
-        labels = []
-        for path in self.pathologies:
-            val = row.get(path, 0)
-            labels.append(0.0 if pd.isna(val) else float(val))
-        labels = torch.tensor(labels, dtype=torch.float32)
+        # --- Encode labels ---
+        if self.task_type == "multiclass":
+            if "class_id" in row:
+                labels = torch.tensor(int(row["class_id"]), dtype=torch.long)
+            else:
+                class_vals = [int(row.get(c, 0)) for c in self.classes]
+                class_id = class_vals.index(1) if 1 in class_vals else 0
+                labels = torch.tensor(class_id, dtype=torch.long)
+        else:
+            # Multi-label: binary vector
+            label_vals = []
+            for path in self.classes:
+                val = row.get(path, 0)
+                label_vals.append(0.0 if pd.isna(val) else float(val))
+            labels = torch.tensor(label_vals, dtype=torch.float32)
 
         return image, xray_ids, clinical_ids, labels
-
-

@@ -1,45 +1,48 @@
 # @package _global_
 defaults:
 - /model/peft@model.peft: lora
-- /model/fusion@model.fusion: none
-- /model/classifier@model.classifier: none
+- /model/fusion@model.fusion: cross_attention
+- /model/classifier@model.classifier: prototypical
 - /dataset@dataset: btxrd
 - _self_
 model:
-  _placeholder_: true
-dataset:
-  _placeholder_: true
-experiment_name: btxrd/ablation_study/T3_lora_ft
+  backbone_type: biomedclip
+  freeze_backbone: false
+experiment_name: btxrd/ablation_study/finetune/lora_ft
 params:
   run_phase1: true
   run_phase2: true
-  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+  run_ood: false
+  model_dir: checkpoints//seed_/
   phase1:
     epochs: 50
     lr: 2e-4
     weight_decay: 1e-2
-    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
-    temperature: 0.07
-    loss_type: semantic_matching
     optimizer: adamw
     scheduler: cosine
     warmup_ratio: 0.1
-    early_stopping_patience: 5
+    early_stopping_patience: 3
+    checkpoint_path: checkpoints//seed_/best_phase1.pth
+    temperature: 0.07
+    loss_type: semantic_matching
+    p1_report_type: clinical
   phase2:
     epochs: 50
-    lr: 1e-3
+    lr: 2e-5
     weight_decay: 1e-4
     optimizer: adamw
     scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: cross_attention
-    classifier_type: prototypical
+    phase2_loss_type: ce
     use_text: true
-    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    phase2_loss_type: weighted_ce_proto
+    p2_report_type: clinical
+    checkpoint_path: checkpoints//seed_/best_phase2.pth
     loss:
-      proto_margin: 0.5
+      proto_margin: 0.3
       lambda_proto: 0.3
       label_smoothing: 0.1
+      use_class_weights: true
+      weight_type: effective_num
+      effective_num_beta: 0.999
 seed: 42

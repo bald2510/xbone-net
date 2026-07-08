@@ -1,50 +1,59 @@
 """
-XBone-Net Evaluation Pipeline.
+XBone-Net Model Evaluation Pipeline.
 ===============================================================================
-Executes model evaluation, metric computation, bootstrap CIs, and embedding export:
-  - Model Loading: Reconstructs architecture from Hydra config and loads Phase 2/Phase 1 weights.
-  - Inference: Evaluates test set in zero-shot or classifier mode to obtain probabilities.
-  - Metrics & CIs: Computes AUROC, F1, Accuracy, Sensitivity, Specificity, Precision, and optional 95% CIs.
-  - Embedding Export: Option to save intermediate image/text embeddings to .npz for downstream analysis.
+Executes model evaluation, metric computation, bootstrap 95% CIs, and embedding exports:
 
-Outputs results to JSON and optional .npz embeddings.
+  - Model Reconstruction: Reconstructs architecture from Hydra config and loads
+    fine-tuned Phase 2/Phase 1 weights or pre-trained foundation weights.
+  - Test Set Inference: Evaluates test split in zero-shot mode (CLIP text prompts)
+    or classifier mode (cross-attention fusion + prototypical head).
+  - Metric Computation: Calculates AUROC, F1-Macro, Accuracy, Sensitivity, Specificity,
+    Precision, and optional 95% bootstrap confidence intervals.
+  - Embedding Export: Option to export intermediate image/text embeddings to .npz.
+
+Outputs evaluation metrics to JSON and optional .npz embeddings file.
 """
 
-import sys
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8")
-
 import os
+import sys
 import json
 import argparse
 import datetime
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any
+
+# Safely force UTF-8 stdout/stderr on Windows environments
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
 
 import torch
-import hydra
+import torch.nn as nn
 import numpy as np
+import hydra
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
+
 from src.models.builder import build_model, setup_phase2_modules
 from src.datasets.builder import build_dataloader
 from src.utils.prompts import generate_custom_prompts
-from src.utils.metrics import (compute_metrics, compute_metrics_multiclass,
-                                bootstrap_confidence_intervals)
+from src.utils.metrics import (
+    compute_metrics,
+    compute_metrics_multiclass,
+    bootstrap_confidence_intervals,
+)
 
 
 # ============================================================
 # Helper Functions & Checkpoint Loading
 # ============================================================
 
-
 def seed_everything(seed: int = 42) -> None:
     """Set random seeds across Python, NumPy, and PyTorch for deterministic evaluation.
 
     Args:
-        seed: Integer seed value (default: 42).
-
-    Returns:
-        None
+        seed (int): Integer seed value (default: 42).
     """
     import random
     random.seed(seed)
@@ -58,155 +67,120 @@ def seed_everything(seed: int = 42) -> None:
 
 
 def adapt_state_dict_keys(
-    state_dict: dict[str, torch.Tensor],
+    state_dict: Dict[str, torch.Tensor],
     model_keys: list[str],
-) -> dict[str, torch.Tensor]:
+) -> Dict[str, torch.Tensor]:
     """Adapt checkpoint state-dict key prefixes for XBone-Net compatibility.
 
     Checkpoints saved by raw OpenCLIP use prefixes like 'model.' or bare sub-module
     names ('visual.', 'text.'), whereas the XBone-Net wrapper nests everything under
-    'backbone.model.'. This function detects mismatches and re-maps keys so that
-    model.load_state_dict succeeds.
+    'backbone.model.'. This function detects mismatches and re-maps keys.
 
     Args:
-        state_dict: Loaded checkpoint OrderedDict mapping parameter names to tensors.
-        model_keys: List of parameter names from target model state_dict keys.
+        state_dict (Dict[str, torch.Tensor]): Loaded checkpoint state_dict mapping.
+        model_keys (list[str]): Target model parameter name keys.
 
     Returns:
-        dict[str, torch.Tensor]: Adapted state-dict with corrected key prefixes.
+        Dict[str, torch.Tensor]: Adapted state_dict with aligned key prefixes.
     """
-    model_has_backbone_model = any(k.startswith("backbone.model.") for k in model_keys)
+    model_has_backbone = any(k.startswith("backbone.model.") for k in model_keys)
     checkpoint_keys = list(state_dict.keys())
     if not checkpoint_keys:
         return state_dict
 
-    first_ckpt_key = checkpoint_keys[0]
+    first_key = checkpoint_keys[0]
 
-    if model_has_backbone_model and not first_ckpt_key.startswith("backbone.model."):
-        if first_ckpt_key.startswith("model."):
-            print("Detected 'model.' prefix in checkpoint keys. Converting to 'backbone.model.' for compatibility.")
+    if model_has_backbone and not first_key.startswith("backbone.model."):
+        if first_key.startswith("model."):
+            print(" -> Converting 'model.' prefix in checkpoint keys to 'backbone.model.'")
             return {k.replace("model.", "backbone.model.", 1): v for k, v in state_dict.items()}
-
-        elif first_ckpt_key.startswith(("visual.", "transformer.", "text.")):
-            print("Detected raw OpenCLIP submodule prefix in checkpoint keys. Prepending 'backbone.model.' for compatibility.")
+        elif first_key.startswith(("visual.", "transformer.", "text.")):
+            print(" -> Prepending 'backbone.model.' prefix to raw OpenCLIP checkpoint keys.")
             return {"backbone.model." + k: v for k, v in state_dict.items()}
 
     return state_dict
 
 
-def load_checkpoint_from_dir(
-    model: torch.nn.Module,
-    model_dir: str,
-    device: torch.device,
-) -> bool:
-    """Load model weights from a checkpoint directory.
-
-    Searches model_dir for checkpoint files in priority order:
-    best_phase2.pth > best_phase1.pth > best_semantic_lora.pth
-    > open_clip_pytorch_model.bin > checkpoint_epoch_10.pth.
-    Falls back to any .pth / .bin file found in the directory.
-
-    Args:
-        model: Target nn.Module to load weights into.
-        model_dir: Directory path containing checkpoints.
-        device: Target torch.device for weight loading.
-
-    Returns:
-        bool: True if a checkpoint was found and loaded successfully; False otherwise.
-    """
-    if not os.path.isdir(model_dir):
-        print(f"[Warning] model_dir '{model_dir}' does not exist or is not a directory.")
-        return False
-
-    checkpoint_filenames = [
-        "best_phase2.pth",
-        "best_phase1.pth",
-        "best_semantic_lora.pth",
-        "open_clip_pytorch_model.bin",
-        "checkpoint_epoch_10.pth",
-    ]
-
-    checkpoint_path = None
-    for filename in checkpoint_filenames:
-        path = os.path.join(model_dir, filename)
-        if os.path.exists(path):
-            checkpoint_path = path
-            break
-
-    if not checkpoint_path:
-        for file in os.listdir(model_dir):
-            if file.endswith((".pth", ".bin")):
-                checkpoint_path = os.path.join(model_dir, file)
-                break
-
-    if checkpoint_path:
-        print(f"Loading weights from checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        state_dict = checkpoint.get("model_state_dict", checkpoint)
-        state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
-        model.load_state_dict(state_dict, strict=False)
-        print("-> Checkpoint loaded successfully from directory!\n")
-        return True
-    else:
-        print(f"[Warning] No checkpoint file (.pth or .bin) found in directory '{model_dir}'")
-        return False
-
-
 def load_model_checkpoint(
-    model: torch.nn.Module,
+    model: nn.Module,
     cfg: DictConfig,
     device: torch.device,
     is_zero_shot: bool = False,
 ) -> bool:
     """Load model checkpoint weights using paths resolved from config.
 
-    Attempts loading in order: params.model_dir, then checkpoint_path from
+    Searches in priority order: params.model_dir, then checkpoint_path from
     various config levels (root, params, params.phase2, params.phase1).
 
     Args:
-        model: Target nn.Module to load weights into.
-        cfg: Hydra DictConfig containing checkpoint fields.
-        device: Target torch.device for weight mapping.
-        is_zero_shot: Whether the evaluation is a zero-shot baseline.
+        model (nn.Module): Target PyTorch model instance.
+        cfg (DictConfig): Complete Hydra configuration object.
+        device (torch.device): Computation device.
+        is_zero_shot (bool): Flag indicating zero-shot evaluation mode.
 
     Returns:
-        bool: True if checkpoint loaded or official foundation weights are used.
+        bool: True if checkpoint loaded or zero-shot foundation weights are active.
     """
-    loaded = False
+    if is_zero_shot:
+        print(" -> [Zero-Shot Baseline] Using official pre-trained foundation weights loaded at model build time.\n")
+        return True
+
     params_cfg = cfg.get("params", {}) or {}
     model_dir = params_cfg.get("model_dir", None)
+    experiment_name = str(cfg.get("experiment_name", "default_experiment"))
+    seed_val = params_cfg.get("seed", cfg.get("seed", 42))
 
+    default_dir = os.path.join("checkpoints", experiment_name, f"seed_{seed_val}")
+    if not model_dir or "//" in model_dir or "seed_/" in str(model_dir):
+        model_dir = default_dir
+
+    checkpoint_path = None
     if model_dir and os.path.isdir(model_dir):
-        print(f"Searching for checkpoints in folder: {model_dir}")
-        loaded = load_checkpoint_from_dir(model, model_dir, device)
+        for candidate in ["best_phase2.pth", "best_phase1.pth", "checkpoint_epoch_10.pth"]:
+            p = os.path.join(model_dir, candidate)
+            if os.path.exists(p):
+                checkpoint_path = p
+                break
 
-    if not loaded:
-        checkpoint_path = cfg.get("checkpoint_path", None)
+    if not checkpoint_path:
+        checkpoint_path = cfg.get("checkpoint_path", None) or params_cfg.get("checkpoint_path", None)
         if not checkpoint_path:
-            checkpoint_path = params_cfg.get("checkpoint_path", None)
+            p2_cfg = params_cfg.get("phase2", {}) or {}
+            checkpoint_path = p2_cfg.get("checkpoint_path", None)
             if not checkpoint_path:
-                phase2_cfg = params_cfg.get("phase2", {}) or {}
-                checkpoint_path = phase2_cfg.get("checkpoint_path", None)
-                if not checkpoint_path:
-                    phase1_cfg = params_cfg.get("phase1", {}) or {}
-                    checkpoint_path = phase1_cfg.get("checkpoint_path", None)
+                p1_cfg = params_cfg.get("phase1", {}) or {}
+                checkpoint_path = p1_cfg.get("checkpoint_path", None)
 
-        if checkpoint_path and os.path.exists(checkpoint_path):
-            print(f"Loading weights from file: {checkpoint_path}")
-            checkpoint = torch.load(checkpoint_path, map_location=device)
-            state_dict = checkpoint.get("model_state_dict", checkpoint)
-            state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
-            model.load_state_dict(state_dict, strict=False)
-            print("-> Checkpoint loaded successfully from file!\n")
-            loaded = True
-        elif is_zero_shot:
-            print("-> [Zero-Shot Baseline] Using official pre-trained foundation weights (CLIP / PubMedCLIP / MedCLIP / BiomedCLIP) loaded at model build time.\n")
-            return True
-        else:
-            print("-> [Info] No fine-tuned checkpoint found. Model is running with pre-trained foundation weights.\n")
-            return False
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        print(f"Loading weights from checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        state_dict = checkpoint.get("model_state_dict", checkpoint)
+        state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
 
-    return loaded
+        # --- Filter out head weights that mismatch config num_classes ---
+        dataset_params = cfg.dataset.get('params', {})
+        classes = dataset_params.get('classes', dataset_params.get('pathologies', []))
+        expected_num_classes = dataset_params.get('num_classes', len(classes))
+
+        filtered_state_dict = {}
+        for k, v in state_dict.items():
+            # Only filter classification head keys (head.prototypes, head.fc, etc.)
+            # NOT backbone keys like backbone.model.visual.*.head.proj.*
+            if k.startswith('head.') and v.shape[0] != expected_num_classes:
+                print(f"  [Checkpoint] Skipping '{k}' (shape {v.shape}) — "
+                      f"mismatches expected num_classes={expected_num_classes}")
+                continue
+            filtered_state_dict[k] = v
+
+        model.load_state_dict(filtered_state_dict, strict=False)
+        print(" -> Checkpoint loaded successfully!\n")
+        return True
+    elif is_zero_shot:
+        print(" -> [Zero-Shot Baseline] Using official pre-trained foundation weights loaded at model build time.\n")
+        return True
+
+    print(f"[Warning] No checkpoint file (.pth) found. Using initial weights.\n")
+    return False
 
 
 # ============================================================
@@ -214,7 +188,7 @@ def load_model_checkpoint(
 # ============================================================
 
 def run_evaluation(
-    model: torch.nn.Module,
+    model: nn.Module,
     test_loader,
     pathologies: list[str],
     is_classifier: bool,
@@ -222,40 +196,36 @@ def run_evaluation(
     temperature: float = 0.07,
     image_context: str = "a bone x-ray",
     p2_report_type: str = "clinical",
-    save_embeddings: bool = False,
-) -> dict:
-    """Run model inference over test DataLoader and collect predictions.
+    save_embeddings_flag: bool = False,
+) -> Dict[str, Any]:
+    """Run model inference over test DataLoader and collect probabilities.
 
     Operates in classifier mode (forward pass through backbone, fusion, head) or
     zero-shot mode (cosine similarity against pre-encoded text prompts).
 
     Args:
-        model: XBone-Net model in evaluation mode.
-        test_loader: DataLoader for the test split.
-        pathologies: List of target class names.
-        is_classifier: If True, use classification head; else use zero-shot prompts.
-        device: Target torch.device for inference.
-        temperature: Temperature scaling factor for zero-shot cosine logits (default: 0.07).
-        image_context: Context phrase for text prompts (default: 'a bone x-ray').
-        p2_report_type: Report branch ('xray', 'clinical', or 'both').
-        save_embeddings: If True, collect and return intermediate embeddings.
+        model (nn.Module): Model instance in evaluation mode.
+        test_loader: DataLoader for test split.
+        pathologies (list[str]): Target class / pathology names.
+        is_classifier (bool): True if using classification head; False if zero-shot.
+        device (torch.device): Computation device.
+        temperature (float): Temperature factor for zero-shot cosine logits (default: 0.07).
+        image_context (str): Context prompt string for text prompts.
+        p2_report_type (str): Report type for Phase 2 ('xray', 'clinical', 'both').
+        save_embeddings_flag (bool): Flag to save intermediate embeddings.
 
     Returns:
-        dict: Dictionary containing predicted probabilities, ground truths, and optional embeddings.
+        Dict[str, Any]: Dictionary containing 'all_probs', 'all_ground_truths',
+            and optional 'image_embeddings' / 'text_embeddings'.
     """
-    if is_classifier and p2_report_type != "clinical":
-        print(f"[Info] Overriding p2_report_type='{p2_report_type}' to 'clinical' for inference.")
-        p2_report_type = "clinical"
-
     tokenizer = model.backbone.tokenizer
-
-    text_features_dict: dict[str, torch.Tensor] = {}
-    text_embeddings_np: Optional[dict[str, np.ndarray]] = None
+    text_features_dict: Dict[str, torch.Tensor] = {}
+    text_embeddings_np: Optional[Dict[str, np.ndarray]] = None
 
     if not is_classifier:
-        print("\nZero-shot mode: Pre-extracting text prompt features using pre-trained text encoder...")
+        print("\nZero-shot mode: Pre-extracting text prompt features using text encoder...")
         prompt_dict = generate_custom_prompts(pathologies, image_context)
-        print(f"Generated prompts for pathologies: {list(prompt_dict.values())}")
+        print(f"Generated text prompts for classes: {list(prompt_dict.values())}")
 
         with torch.no_grad():
             for path, pair in prompt_dict.items():
@@ -273,14 +243,13 @@ def run_evaluation(
                     pos_feat = model.backbone.model.encode_text(pos_tokens)
                     neg_feat = model.backbone.model.encode_text(neg_tokens)
                 else:
-                    raise AttributeError(f"Model backbone {type(model.backbone)} does not support encode_text.")
+                    raise AttributeError(f"Model backbone {type(model.backbone)} lacks encode_text method.")
 
                 pos_feat = pos_feat / pos_feat.norm(dim=-1, keepdim=True)
                 neg_feat = neg_feat / neg_feat.norm(dim=-1, keepdim=True)
-
                 text_features_dict[path] = torch.cat([pos_feat, neg_feat], dim=0)
 
-        if save_embeddings:
+        if save_embeddings_flag:
             text_embeddings_np = {
                 path: text_features_dict[path].cpu().numpy()
                 for path in pathologies
@@ -288,14 +257,14 @@ def run_evaluation(
 
     all_probs = []
     all_ground_truths = []
-    all_image_embeds = [] if save_embeddings else None
+    all_image_embeds = [] if save_embeddings_flag else None
 
     print("\nScanning test dataset...")
     with torch.no_grad():
         for batch in tqdm(test_loader):
             if len(batch) == 4:
                 images, xray_ids, clinical_ids, labels = batch
-                if p2_report_type == "both":
+                if p2_report_type in ("both", "xray_clinical"):
                     input_ids = None
                 elif p2_report_type == "xray":
                     input_ids = xray_ids
@@ -303,49 +272,38 @@ def run_evaluation(
                     input_ids = clinical_ids
             elif len(batch) == 3:
                 images, input_ids, labels = batch
-                xray_ids = None
-                clinical_ids = None
+                xray_ids, clinical_ids = None, None
             else:
-                raise ValueError(f"Unexpected batch format with length {len(batch)}")
+                raise ValueError(f"Unexpected batch format of length {len(batch)}")
 
             images = images.to(device)
             if input_ids is not None and isinstance(input_ids, torch.Tensor):
                 input_ids = input_ids.to(device)
 
             if is_classifier:
-                if p2_report_type == "both" and len(batch) == 4:
-                    xray_ids = xray_ids.to(device)
-                    clinical_ids = clinical_ids.to(device)
-                    img_feat, xray_feat = model.backbone(images, xray_ids)
-                    _, clinical_feat = model.backbone(images, clinical_ids)
+                if p2_report_type in ("both", "xray_clinical") and len(batch) == 4:
+                    img_feat, xray_feat = model.backbone(images, xray_ids.to(device))
+                    _, clinical_feat = model.backbone(images, clinical_ids.to(device))
                     text_feat = (xray_feat + clinical_feat) / 2.0
-                    if model.fusion is not None:
-                        fused = model.fusion(img_feat, text_feat)
-                    else:
-                        fused = img_feat
-                    if save_embeddings:
+                    fused = model.fusion(img_feat, text_feat) if model.fusion is not None else img_feat
+                    if save_embeddings_flag:
                         all_image_embeds.append(fused.cpu().numpy())
                     logits = model.head(fused)
-                elif save_embeddings:
+                elif save_embeddings_flag:
                     img_feats, txt_feats = model.backbone(images, input_ids)
-                    if txt_feats is None:
-                        fused = img_feats
-                    else:
-                        fused = model.fusion(img_feats, txt_feats)
+                    fused = model.fusion(img_feats, txt_feats) if model.fusion is not None else img_feats
                     all_image_embeds.append(fused.cpu().numpy())
                     logits = model.head(fused)
                 else:
                     outputs = model(images, input_ids)
-                    if isinstance(outputs, tuple):
-                        logits = outputs[0]
-                    else:
-                        logits = outputs
+                    logits = outputs[0] if isinstance(outputs, tuple) else outputs
+
                 batch_probs = torch.softmax(logits, dim=-1)
             else:
                 img_feat = model.backbone.model.encode_image(images)
                 img_feat /= img_feat.norm(dim=-1, keepdim=True)
 
-                if save_embeddings:
+                if save_embeddings_flag:
                     all_image_embeds.append(img_feat.cpu().numpy())
 
                 batch_probs_list = []
@@ -363,7 +321,7 @@ def run_evaluation(
     all_gt_np = torch.cat(all_ground_truths, dim=0).numpy()
 
     image_embeddings_np = None
-    if save_embeddings and all_image_embeds:
+    if save_embeddings_flag and all_image_embeds:
         image_embeddings_np = np.concatenate(all_image_embeds, axis=0)
 
     return {
@@ -379,24 +337,23 @@ def run_evaluation(
 # ============================================================
 
 def save_results_json(
-    metrics: dict,
+    metrics: Dict[str, Any],
     cfg: DictConfig,
     output_dir: str,
-    ci_95: Optional[dict] = None,
+    ci_95: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Save evaluation metrics and experiment configuration to JSON.
 
     Args:
-        metrics: Dictionary of computed metric values.
-        cfg: Hydra DictConfig to serialize alongside results.
-        output_dir: Output directory path for metrics.json.
-        ci_95: Optional dictionary of 95% bootstrap confidence intervals.
+        metrics (Dict[str, Any]): Dictionary of computed metric values.
+        cfg (DictConfig): Complete Hydra configuration.
+        output_dir (str): Output directory path for metrics.json.
+        ci_95 (Optional[Dict[str, Any]]): Optional 95% bootstrap confidence intervals.
 
     Returns:
-        str: Absolute file path to saved metrics.json.
+        str: Absolute file path to saved metrics.json file.
     """
     os.makedirs(output_dir, exist_ok=True)
-
     params_cfg = cfg.get("params", {}) or {}
     experiment_name = params_cfg.get("experiment_name", cfg.get("experiment_name", "unknown"))
     dataset_name = cfg.dataset.get("name", "unknown")
@@ -422,22 +379,22 @@ def save_results_json(
     return json_path
 
 
-def save_embeddings(
+def export_embeddings(
     image_embeddings: Optional[np.ndarray],
-    text_embeddings: Optional[dict[str, np.ndarray]],
+    text_embeddings: Optional[Dict[str, np.ndarray]],
     labels: np.ndarray,
     output_dir: str,
 ) -> Optional[str]:
     """Save extracted image and text embeddings to a compressed .npz file.
 
     Args:
-        image_embeddings: Image embeddings array of shape (N, D) or None.
-        text_embeddings: Optional dict mapping pathology to (2, D) text embeddings.
-        labels: Ground-truth labels array of shape (N,) or (N, C).
-        output_dir: Directory path to save embeddings.npz.
+        image_embeddings (Optional[np.ndarray]): Image embeddings array of shape (N, D).
+        text_embeddings (Optional[Dict[str, np.ndarray]]): Text embeddings dictionary.
+        labels (np.ndarray): Ground-truth labels array.
+        output_dir (str): Output directory.
 
     Returns:
-        Optional[str]: Saved file path or None if image_embeddings is None.
+        Optional[str]: Saved filepath or None if image_embeddings is None.
     """
     if image_embeddings is None:
         print("[Warning] No image embeddings to save.")
@@ -474,40 +431,26 @@ def parse_extra_args() -> argparse.Namespace:
         argparse.Namespace: CLI arguments namespace.
     """
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--bootstrap", action="store_true", default=False,
-                        help="Compute bootstrap 95%% confidence intervals")
-    parser.add_argument("--n-bootstrap", type=int, default=10_000,
-                        help="Number of bootstrap resamples (default: 10000)")
-    parser.add_argument("--save-embeddings", action="store_true", default=False,
-                        help="Save image/text embeddings to .npz")
-    parser.add_argument("--output-dir", type=str, default=None,
-                        help="Directory to save JSON results and embeddings")
-    parser.add_argument("--debug", action="store_true", default=False,
-                        help="Print detailed model architecture layers for debugging")
+    parser.add_argument("--bootstrap", action="store_true", default=False, help="Compute bootstrap 95% confidence intervals")
+    parser.add_argument("--n-bootstrap", type=int, default=10_000, help="Number of bootstrap resamples (default: 10000)")
+    parser.add_argument("--save-embeddings", action="store_true", default=False, help="Save image/text embeddings to .npz")
+    parser.add_argument("--output-dir", type=str, default=None, help="Directory to save JSON results and embeddings")
+    parser.add_argument("--debug", action="store_true", default=False, help="Print detailed model architecture layers for debugging")
 
     extra_args, remaining = parser.parse_known_args()
-
     sys.argv = [sys.argv[0]] + remaining
-
     return extra_args
 
 
-@hydra.main(
-    version_base=None,
-    config_path="configs",
-    config_name="config",
-)
-def main(cfg: DictConfig) -> None:
-    """Execute main evaluation workflow.
+extra_args = parse_extra_args()
 
-    Builds model, loads checkpoint, executes test set inference, computes metrics
-    and optional bootstrap CIs, and exports results.
+
+@hydra.main(config_path="configs", config_name="config", version_base="1.3")
+def main(cfg: DictConfig) -> None:
+    """Main execution orchestrator for XBone-Net evaluation pipeline.
 
     Args:
-        cfg: Hydra DictConfig resolved from configs/config.yaml.
-
-    Returns:
-        None
+        cfg (DictConfig): Complete Hydra configuration object.
     """
     params_cfg = cfg.get("params", {}) or {}
     seed_val = params_cfg.get("seed", cfg.get("seed", 42))
@@ -520,12 +463,12 @@ def main(cfg: DictConfig) -> None:
     model = build_model(cfg.model).to(device)
 
     p2_phase_cfg = params_cfg.get("phase2", {}) or {}
-    _, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    model, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
 
     debug_mode = extra_args.debug or params_cfg.get("debug", cfg.get("debug", False))
     model.print_architecture(verbose=debug_mode)
 
-    pathologies = cfg.dataset.params.get('classes', cfg.dataset.params.get('pathologies', []))
+    pathologies = cfg.dataset.params.get("classes", cfg.dataset.params.get("pathologies", []))
     is_classifier = classifier_type != "none"
     exp_name = str(params_cfg.get("experiment_name", cfg.get("experiment_name", ""))).lower()
     is_zero_shot = (not is_classifier) or ("zeroshot" in exp_name)
@@ -535,29 +478,30 @@ def main(cfg: DictConfig) -> None:
         print(f"[Zero-Shot Baseline] Using official pre-trained foundation weights for '{backbone_type}'.")
 
     model.eval()
+
+    # --- Report parameter counts ---
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    frozen_params = total_params - trainable_params
+    print(f"\n  [Params] Total: {total_params:,} | Trainable: {trainable_params:,} ({100*trainable_params/total_params:.2f}%) | Frozen: {frozen_params:,}")
+
     ckpt_loaded = load_model_checkpoint(model, cfg, device, is_zero_shot=is_zero_shot)
     if not ckpt_loaded and not is_zero_shot:
         print("[ERROR] Cannot run evaluation for fine-tuned experiment because no trained checkpoint (.pth) was found!")
-        print("        Please ensure train.py completes successfully and saves best_phase2.pth before running evaluate.py.\n")
+        print("        Please ensure train.py completes successfully before running evaluate.py.\n")
         sys.exit(1)
 
-    preprocess = model.backbone.preprocess
-    tokenizer = model.backbone.tokenizer
-
     print(f"Loading test dataset: {cfg.dataset.name}...")
+    tokenizer_func = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
     test_loader = build_dataloader(
         cfg=cfg.dataset,
         split="test",
-        transform=preprocess,
-        tokenizer=tokenizer,
+        transform=model.backbone.preprocess,
+        tokenizer=tokenizer_func,
     )
 
-    task_type = cfg.dataset.params.get('task_type', 'multiclass')
-    is_multilabel = (task_type == 'multilabel')
-
-    temperature = params_cfg.get("temperature", 0.07)
-    image_context = params_cfg.get("image_context", "a bone x-ray")
-    p2_report_type = p2_phase_cfg.get("p2_report_type", "clinical")
+    task_type = cfg.dataset.params.get("task_type", "multiclass")
+    is_multilabel = (task_type == "multilabel")
 
     eval_output = run_evaluation(
         model=model,
@@ -565,10 +509,12 @@ def main(cfg: DictConfig) -> None:
         pathologies=list(pathologies),
         is_classifier=is_classifier,
         device=device,
-        temperature=temperature,
-        image_context=image_context,
-        p2_report_type=p2_report_type,
-        save_embeddings=extra_args.save_embeddings,
+        temperature=params_cfg.get("temperature", 0.07),
+        image_context=params_cfg.get("image_context", "a bone x-ray"),
+        # Always use clinical reports for evaluation to prevent data leakage
+        # (xray reports may contain diagnosis labels)
+        p2_report_type="clinical",
+        save_embeddings_flag=extra_args.save_embeddings,
     )
 
     all_probs = eval_output["all_probs"]
@@ -582,7 +528,8 @@ def main(cfg: DictConfig) -> None:
     ci_95 = None
     if extra_args.bootstrap:
         ci_95 = bootstrap_confidence_intervals(
-            all_probs, all_gt,
+            all_probs,
+            all_gt,
             pathologies=list(pathologies),
             is_multilabel=is_multilabel,
             n_bootstrap=extra_args.n_bootstrap,
@@ -592,14 +539,18 @@ def main(cfg: DictConfig) -> None:
     if extra_args.output_dir:
         output_dir = extra_args.output_dir
     else:
-        exp_name = params_cfg.get("experiment_name", cfg.get("experiment_name", "default"))
-        seed_val = params_cfg.get("seed", cfg.get("seed", 0))
-        output_dir = os.path.join("results", str(exp_name), f"seed_{seed_val}")
+        exp_name_str = params_cfg.get("experiment_name", cfg.get("experiment_name", "default"))
+        output_dir = os.path.join("results", str(exp_name_str), f"seed_{seed_val}")
+
+    # Add parameter counts to metrics
+    metrics["param_total"] = total_params
+    metrics["param_trainable"] = trainable_params
+    metrics["param_trainable_pct"] = round(100 * trainable_params / total_params, 2) if total_params > 0 else 0
 
     save_results_json(metrics, cfg, output_dir, ci_95=ci_95)
 
     if extra_args.save_embeddings:
-        save_embeddings(
+        export_embeddings(
             image_embeddings=eval_output["image_embeddings"],
             text_embeddings=eval_output["text_embeddings"],
             labels=all_gt,
@@ -609,8 +560,5 @@ def main(cfg: DictConfig) -> None:
     print("\nEvaluation complete!")
 
 
-extra_args = parse_extra_args()
-
 if __name__ == "__main__":
     main()
-

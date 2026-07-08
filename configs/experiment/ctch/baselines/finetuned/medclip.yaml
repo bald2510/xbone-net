@@ -1,36 +1,50 @@
 # @package _global_
-# Baseline B2: MedCLIP (Swin-Tiny + BioClinicalBERT) on CTCH
+# ===============================================================================
+# Experiment Config: ctch/baselines/finetuned/medclip
+# Backbone: medclip | PEFT: full_ft | Fusion: concat | Head: linear
+# ===============================================================================
+
 defaults:
-  - /model/peft@model.peft: none
-  - /model/fusion@model.fusion: none
-  - /model/classifier@model.classifier: none
+  - /model/peft@model.peft: full_ft
+  - /model/fusion@model.fusion: concat
+  - /model/classifier@model.classifier: linear
   - /dataset@dataset: ctch
   - _self_
 
+# --- Model Architecture ---
 model:
-  backbone_type: "medclip"
-  freeze_backbone: true
-  _placeholder_: true
-dataset:
-  _placeholder_: true
+  backbone_type: medclip
+  freeze_backbone: false
 
-experiment_name: "ctch/baselines/finetuned/medclip"
+# --- Experiment Identifier ---
+experiment_name: ctch/baselines/finetuned/medclip
 
+# --- Training Hyperparameters ---
 params:
-  run_phase1: false
+  run_phase1: false              # Baselines: no Phase 1 (standard fine-tuning only)
   run_phase2: true
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
+  run_ood: false                 # Set true only for proposed model to calibrate OOD threshold
+  model_dir: checkpoints//seed_/
+
+  # --- Phase 2 Hyperparameters ---
   phase2:
     epochs: 50
-    lr: 1e-4
+    lr: 2e-5
     weight_decay: 1e-4
-    optimizer: "adamw"
-    scheduler: "cosine"
+    optimizer: adamw
+    scheduler: cosine
     warmup_ratio: 0.1
     early_stopping_patience: 5
-    fusion_type: "cross_attention"
-    classifier_type: "linear"
+    phase2_loss_type: ce
     use_text: true
-    checkpoint_path: "checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth"
+    p2_report_type: clinical
+    checkpoint_path: checkpoints//seed_/best_phase2.pth
+    loss:
+      proto_margin: 0.5
+      lambda_proto: 0.3
+      label_smoothing: 0.1
+      use_class_weights: true
+      max_class_weight: 10.0
 
+# --- Global Random Seed ---
 seed: 42

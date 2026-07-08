@@ -1,5 +1,9 @@
 # @package _global_
-# Baseline B6: BiomedCLIP ViT-B/16 — Zero-Shot Classification on CTCH
+# ===============================================================================
+# Experiment Config: ctch/baselines/zeroshot/biomedclip_zeroshot
+# Backbone: biomedclip | PEFT: none | Fusion: none | Head: none
+# ===============================================================================
+
 defaults:
   - /model/peft@model.peft: none
   - /model/fusion@model.fusion: none
@@ -7,23 +11,20 @@ defaults:
   - /dataset@dataset: ctch
   - _self_
 
+# --- Model Architecture ---
 model:
-  backbone_type: "biomedclip"
+  backbone_type: biomedclip
   freeze_backbone: true
-  _placeholder_: true
-dataset:
-  _placeholder_: true
 
-experiment_name: "ctch/baselines/zeroshot/biomedclip_zeroshot"
+# --- Experiment Identifier ---
+experiment_name: ctch/baselines/zeroshot/biomedclip_zeroshot
 
+# --- Training Hyperparameters ---
 params:
   run_phase1: false
   run_phase2: false
-  model_dir: "checkpoints/${experiment_name}/seed_${seed}/"
-  phase2:
-    fusion_type: "none"
-    classifier_type: "none"
-    use_text: false
-    checkpoint_path: ""
+  run_ood: false                 # Set true only for proposed model to calibrate OOD threshold
+  model_dir: checkpoints//seed_/
 
+# --- Global Random Seed ---
 seed: 42

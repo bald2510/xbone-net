@@ -93,25 +93,32 @@ class CrossAttentionFusion(nn.Module):
         if txt_feats.dim() == 2:
             txt_feats = txt_feats.unsqueeze(1)
 
-        # --- Top branch: Image attends to Text ---
+        # Extract the global CLS tokens at index 0 (shapes: [B, 1, D])
+        img_global = img_feats[:, 0:1, :]
+        txt_global = txt_feats[:, 0:1, :]
+
+        # --- Top branch: Image Global attends to Text Local sequence ---
+        # Query: [B, 1, D] | Key/Value: [B, L, D] | Output: [B, 1, D]
         top_out, top_attn_weights = self.top_cross_attn(
-            query=img_feats, key=txt_feats, value=txt_feats,
+            query=img_global, key=txt_feats, value=txt_feats,
             need_weights=True, average_attn_weights=False
         )
         top_out = self.top_linear(top_out)
 
-        # --- Bottom branch: Text attends to Image ---
+        # --- Bottom branch: Text Global attends to Image Local sequence ---
+        # Query: [B, 1, D] | Key/Value: [B, N_img, D] | Output: [B, 1, D]
         bottom_out, bottom_attn_weights = self.bottom_cross_attn(
-            query=txt_feats, key=img_feats, value=img_feats,
+            query=txt_global, key=img_feats, value=img_feats,
             need_weights=True, average_attn_weights=False
         )
         bottom_out = self.bottom_linear(bottom_out)
 
-        # --- Joint interaction through Transformer encoder ---
+        # --- Joint interaction of global multi-modal representations ---
+        # Concat along sequence dimension -> shape [B, 2, D]
         combined_seq = torch.cat([top_out, bottom_out], dim=1)
         fused_seq = self.transformer_block(combined_seq)
 
-        # --- Mean pooling over sequence length ---
+        # --- Mean pooling over the 2 fused tokens ---
         fused_global = fused_seq.mean(dim=1)
         
         if return_attn:
@@ -127,4 +134,4 @@ class CrossAttentionFusion(nn.Module):
 
         return fused_global
 
-
+
