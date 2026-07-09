@@ -1,6 +1,8 @@
 # @package _global_
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+
 defaults:
-  - /model/peft@model.peft: none
+  - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: prototypical
   - /dataset@dataset: btxrd
@@ -10,18 +12,19 @@ model:
   backbone_type: biomedclip
   freeze_backbone: true
 
-experiment_name: btxrd/ablation_study/finetune/no_ft
+experiment_name: btxrd/proposed/ours_xbone_net_variant_a
 seed: 42
 
 params:
   run_phase1: true
   run_phase2: true
   run_ood: false
+
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
   phase1:
     enabled: true
-    peft: none
+    peft: lora
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4

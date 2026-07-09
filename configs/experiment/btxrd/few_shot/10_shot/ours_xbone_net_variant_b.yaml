@@ -1,0 +1,18 @@
+# @package _global_
+# ===============================================================================
+# Few-Shot Learning Config: 10-shot
+# Inherits from: experiment/btxrd/proposed/ours_xbone_net_variant_b
+# ===============================================================================
+
+defaults:
+  - /experiment/btxrd/proposed/ours_xbone_net_variant_b
+  - _self_
+
+experiment_name: btxrd/few_shot/10_shot/ours_xbone_net_variant_b
+
+params:
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+
+dataset:
+  params:
+    k_shot: 10

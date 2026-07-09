@@ -31,11 +31,30 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
     #     "btxrd/baselines/zeroshot/medclip_zeroshot",
     # ],
+        # --- BTXRD Few-Shot Learning ---
+    "btxrd_few_shot_1": [
+        "btxrd/few_shot/1_shot/lora_pubmedclip",
+        "btxrd/few_shot/1_shot/lora_biomedclip",
+        "btxrd/few_shot/1_shot/ours_xbone_net_variant_b",
+    ],
+    "btxrd_few_shot_10": [
+        "btxrd/few_shot/10_shot/lora_pubmedclip",
+        "btxrd/few_shot/10_shot/lora_biomedclip",
+        "btxrd/few_shot/10_shot/ours_xbone_net_variant_b",
+    ],
+    "btxrd_few_shot_20": [
+        "btxrd/few_shot/20_shot/lora_pubmedclip",
+        "btxrd/few_shot/20_shot/lora_biomedclip",
+        "btxrd/few_shot/20_shot/ours_xbone_net_variant_b",
+    ],
     #--- BTXRD Proposed Model ---
     "btxrd_proposed": [
-        "btxrd/proposed/ours_xbone_net",
+        "btxrd/proposed/ours_xbone_net_variant_a",
+        "btxrd/proposed/ours_xbone_net_variant_b",
+        "btxrd/proposed/ours_xbone_net_variant_c",
+        "btxrd/proposed/ours_xbone_net_variant_d",
     ],
-    # --- BTXRD Fine-Tuned Baselines ---
+    #--- BTXRD Fine-Tuned Baselines ---
     "btxrd_finetuned": [
         "btxrd/baselines/finetuned/resnet50",
         "btxrd/baselines/finetuned/densenet",
@@ -43,6 +62,11 @@ EXPERIMENTS = OrderedDict({
         "btxrd/baselines/finetuned/pubmedclip",
         "btxrd/baselines/finetuned/medclip",
         "btxrd/baselines/finetuned/biomedclip",
+    ],
+    # --- BTXRD PEFT Fine-Tuned Baselines ---
+    "btxrd_peft_finetuned": [
+        "btxrd/baselines/peft_finetuned/pubmedclip",
+        "btxrd/baselines/peft_finetuned/biomedclip",
     ],
     # # --- BTXRD Ablation Studies ---
     # "btxrd_ablation_architecture": [
@@ -55,10 +79,10 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/ablation_study/finetune/lora_ft",
     #     "btxrd/ablation_study/finetune/no_ft",
     # ],
-    # "btxrd_ablation_modality": [
-    #     "btxrd/ablation_study/modality/img_only",
-    #     "btxrd/ablation_study/modality/xray_clinical",
-    # ],
+     "btxrd_ablation_modality": [
+        "btxrd/ablation_study/modality/xray_only",
+        "btxrd/ablation_study/modality/clinical_only",
+    ],
     # --- CTCH Zero-Shot Baselines ---
     # "ctch_zeroshot": [
     #     "ctch/baselines/zeroshot/biomedclip_zeroshot",

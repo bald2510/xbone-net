@@ -203,18 +203,21 @@ class OpenCLIPFoundation(nn.Module):
         """Tokenizer callable alias for interface consistency across backbones."""
         return self.tokenizer
 
-    def forward(self, images, input_ids):
+    def forward(self, images, input_ids, attention_mask=None):
         """Extract and L2-normalize image and text embeddings.
 
         Args:
             images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
             input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
+            attention_mask (torch.Tensor, optional): Text attention mask (1 for real, 0 for pad).
 
         Returns:
             tuple: (image_features, text_features) with shape [B, 512], L2-normalized.
         """
         # --- Feature extraction ---
         image_features = self.model.encode_image(images)
+        # PubMedCLIP encode_text wrapper can optionally take attention_mask if we updated it,
+        # but for standard open_clip it only takes input_ids.
         text_features = self.model.encode_text(input_ids)
 
         # --- L2 normalization ---

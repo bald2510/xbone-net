@@ -38,18 +38,23 @@ class TrainingLogger:
         logger.log_hyperparams({"lr": 1e-4, "batch_size": 32})
     """
 
-    def __init__(self, log_dir: str, experiment_name: str, phase: str = ""):
+    def __init__(self, log_dir: str, experiment_name: str, phase: str = "", use_timestamp: bool = False):
         """Initialize the logger and create the run directory structure.
 
         Args:
             log_dir: Root directory for all experiment logs.
             experiment_name: Name of the current experiment / model configuration.
             phase: Training phase identifier (e.g., 'phase1', 'phase2').
+            use_timestamp: If True, appends timestamp. If False, logs directly into log_dir/logs/phase.
         """
-        # --- Create timestamped directory ---
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_name = f"{experiment_name}/{phase}_{timestamp}" if phase else f"{experiment_name}/{timestamp}"
-        self.tb_dir = os.path.join(log_dir, run_name)
+        # --- Create directory ---
+        if use_timestamp:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            run_name = f"{experiment_name}/{phase}_{timestamp}" if phase else f"{experiment_name}/{timestamp}"
+            self.tb_dir = os.path.join(log_dir, run_name)
+        else:
+            self.tb_dir = os.path.join(log_dir, "logs", phase) if phase else os.path.join(log_dir, "logs")
+            
         os.makedirs(self.tb_dir, exist_ok=True)
 
         from torch.utils.tensorboard import SummaryWriter
@@ -166,7 +171,7 @@ class TrainingLogger:
         # --- Console output ---
         parts = [f"Epoch {epoch}"]
         for key in ("train_loss", "eval_loss", "learning_rate"):
-            if key in metrics:
+            if key in metrics and metrics[key] is not None:
                 parts.append(f"{key}={metrics[key]:.6f}")
         parts.append(f"time={epoch_time:.1f}s")
         if torch.cuda.is_available():
@@ -206,6 +211,14 @@ class TrainingLogger:
         self.writer.add_scalar("model/trainable_params", trainable, 0)
         self.writer.add_scalar("model/frozen_params", frozen, 0)
         self.writer.add_scalar("model/trainable_ratio_pct", (trainable / total) * 100 if total > 0 else 0, 0)
+        
+        # --- Save full model architecture to text file ---
+        arch_path = os.path.join(self.tb_dir, "model_architecture.txt")
+        try:
+            with open(arch_path, "w", encoding="utf-8") as f:
+                f.write(str(model))
+        except Exception as e:
+            print(f"[Logger] Warning: Could not save model architecture: {e}")
 
     def close(self):
         """Close TensorBoard writer and CSV file handles."""
@@ -277,6 +290,8 @@ class XBoneTrainerCallback(TrainerCallback):
                 epoch_metrics[key] = value
                 self.logger.log_scalar(clean_key, value, epoch)
 
+        epoch_metrics["train_loss"] = None
+        epoch_metrics["learning_rate"] = None
         if state.log_history:
             for entry in reversed(state.log_history):
                 if "loss" in entry and "eval_loss" not in entry:

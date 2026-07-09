@@ -10,6 +10,8 @@ params:
   clinical_subdir: "clinical_v2"   # 'clinical_v2' (sanitized, no leakage) | 'clinical' (original, ablation only)
   csv_split_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-labels.csv"
+  k_shot: null
+  seed: ${seed}
 
   # Multi-class classification (10 leaf classes, ordered by frequency)
   task_type: "multiclass"

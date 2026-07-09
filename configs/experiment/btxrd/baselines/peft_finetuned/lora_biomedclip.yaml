@@ -1,37 +1,39 @@
 # @package _global_
-defaults:
-  - /model/peft@model.peft: none
-  - /model/fusion@model.fusion: cross_attention
-  - /model/classifier@model.classifier: prototypical
-  - /dataset@dataset: btxrd
-  - _self_
+# ===============================================================================
+# Experiment Config: btxrd/baselines/peft_finetuned/biomedclip
+# Backbone: biomedclip | PEFT: lora | Fusion: concat | Head: linear
+# Description: Two-Phase PEFT Baseline using LoRA, Concat Fusion, and Linear Head.
+# ===============================================================================
 
+defaults:
+- /model/peft@model.peft: lora
+- /model/fusion@model.fusion: concat
+- /model/classifier@model.classifier: linear
+- /dataset@dataset: btxrd
+- _self_
 model:
   backbone_type: biomedclip
   freeze_backbone: true
-
-experiment_name: btxrd/ablation_study/finetune/no_ft
+experiment_name: btxrd/baselines/peft_finetuned/lora_biomedclip
 seed: 42
-
 params:
   run_phase1: true
   run_phase2: true
   run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
-
   phase1:
     enabled: true
-    peft: none
+    peft: lora
     epochs: 30
     lr: 5e-5
-    weight_decay: 1e-4
+    weight_decay: 0.0001
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
     target_similarity: 0.7
     beta: 0.5
     p1_report_type: clinical
-    merge_lora_after_training: true
+    merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
     optimizer: adamw
@@ -40,21 +42,18 @@ params:
   phase2:
     enabled: true
     epochs: 50
-    lr: 1e-4
-    weight_decay: 1e-4
+    lr: 0.0001
+    weight_decay: 0.0001
     warmup_ratio: 0.1
     early_stopping_patience: 5
     use_text: true
     p2_report_type: clinical
-    init_from_phase1_merged: true
+    init_from_phase1_merged: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    loss_type: weighted_ce_plus_proto
-    optimizer: adamw  
+    loss_type: ce
+    optimizer: adamw
     scheduler: cosine
-
     loss:
-      proto_margin: 0.3
-      lambda_proto: 0.0
       label_smoothing: 0.1
       use_class_weights: true
       weight_type: effective_num

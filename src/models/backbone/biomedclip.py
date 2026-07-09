@@ -62,7 +62,7 @@ class BiomedCLIPFoundation(nn.Module):
         """Tokenizer callable alias for interface consistency."""
         return self.tokenizer
 
-    def forward(self, images, input_ids):
+    def forward(self, images, input_ids, attention_mask=None):
         """Extract and L2-normalize image and text feature embeddings.
 
         Supports dynamic local feature extraction if self.return_local is True.
@@ -70,6 +70,7 @@ class BiomedCLIPFoundation(nn.Module):
         Args:
             images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
             input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
+            attention_mask (torch.Tensor, optional): Text attention mask (1 for real, 0 for pad).
 
         Returns:
             tuple: (image_features, text_features) where:
@@ -85,7 +86,13 @@ class BiomedCLIPFoundation(nn.Module):
             
             # 2. Text token embeddings: transformer yields last_hidden_state [B, L, 768]
             text_module = getattr(self.model, 'text', getattr(self.model, 'text_model', None))
-            transformer_out = text_module.transformer(input_ids)
+            
+            # Pass attention mask down to PubMedBERT transformer if available
+            if attention_mask is not None:
+                transformer_out = text_module.transformer(input_ids, attention_mask=attention_mask)
+            else:
+                transformer_out = text_module.transformer(input_ids)
+                
             text_feats_768 = transformer_out[0]
             # Project using text proj (Linear + GELU + Linear) to [B, L, 512]
             text_features = text_module.proj(text_feats_768)

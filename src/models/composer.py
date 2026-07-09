@@ -58,46 +58,42 @@ class XBoneMultiModalModel(nn.Module):
         self.fusion = fusion_module
         self.head = head_module
 
-    def forward(self, images, input_ids, return_features: bool = False):
-        """Run the full backbone -> fusion -> head pipeline.
+    def forward(
+        self,
+        images,
+        input_ids=None,
+        attention_mask=None,
+        return_features: bool = False,
+    ):
+        img_feats, txt_feats = self.backbone(
+            images,
+            input_ids,
+            attention_mask=attention_mask,
+        )
 
-        Data flow algorithm:
-            1. Extract embeddings via backbone(images, input_ids) -> (img_feats, txt_feats).
-            2. If txt_feats is None (image-only backbone), skip fusion step.
-               Otherwise pass through fusion(img_feats, txt_feats) -> fused_feats.
-            3. Map fused_feats through head(fused_feats) -> logits.
-
-        Args:
-            images (torch.Tensor): Batch of preprocessed images, shape [B, C, H, W].
-            input_ids (torch.Tensor): Tokenized text input IDs, shape [B, L]. For
-                image-only backbones, this argument is ignored.
-            return_features (bool): If True and the classifier head exposes learnable
-                prototypes (PrototypicalHead), returns intermediate features and
-                prototypes alongside logits. Defaults to False.
-
-        Returns:
-            torch.Tensor or tuple:
-                - If return_features is False (default): class logits tensor of shape [B, K].
-                - If return_features is True and head has prototypes: tuple (logits, features, prototypes)
-                  where logits has shape [B, K], features has shape [B, D], and prototypes has shape [K, D].
-        """
-        # Step 1: Feature extraction from foundation backbone
-        img_feats, txt_feats = self.backbone(images, input_ids)
-
-        # Step 2: Feature fusion (image-only backbones return None for text features)
         if txt_feats is None:
             fused_feats = img_feats
         else:
-            fused_feats = self.fusion(img_feats, txt_feats)
+            txt_key_padding_mask = None
+            if attention_mask is not None and txt_feats.dim() == 3:
+                # txt_feats[:, 1:, :] được dùng trong cross-attention,
+                # nên mask cũng phải bỏ token đầu.
+                txt_key_padding_mask = attention_mask[:, 1:] == 0
 
-        # Step 3: Classification head evaluation
-        # In Phase 2 with a prototypical head, raw features and prototypes can be returned
-        if return_features and hasattr(self.head, 'prototypes'):
+            try:
+                fused_feats = self.fusion(
+                    img_feats,
+                    txt_feats,
+                    txt_key_padding_mask=txt_key_padding_mask,
+                )
+            except TypeError:
+                fused_feats = self.fusion(img_feats, txt_feats)
+
+        if return_features and hasattr(self.head, "prototypes"):
             logits, features = self.head(fused_feats, return_features=True)
             return logits, features, self.head.prototypes
 
-        logits = self.head(fused_feats)
-        return logits
+        return self.head(fused_feats)
     
     def print_parameter_summary(self):
         """Print a human-readable summary of model parameters.

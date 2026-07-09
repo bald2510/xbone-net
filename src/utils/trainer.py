@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from transformers import Trainer
+import torchvision.transforms.functional as F_t
 
 
 # ============================================================
@@ -60,26 +61,35 @@ class BioMedCLIPDataCollator:
 
     pad_token_id: int = 0
 
-    def _pad_ids(self, ids_list):
-        """Right-pad a list of 1-D token-ID tensors to uniform length.
+    def _pad_ids_with_mask(self, ids_list):
+        """Right-pad a list of 1-D token-ID tensors and generate attention masks.
 
         Args:
             ids_list: List of 1-D torch.Tensor token-ID sequences.
 
         Returns:
-            Batched torch.Tensor of shape (B, max_len).
+            Tuple of (padded_ids, attention_masks) of shape (B, max_len).
+            attention_masks uses 1 for real tokens and 0 for padding.
         """
+        import torch
         if all(ids.shape == ids_list[0].shape for ids in ids_list):
-            return torch.stack(ids_list)
+            padded = torch.stack(ids_list)
+            return padded, torch.ones_like(padded, dtype=torch.long)
+            
         max_len = max(ids.shape[0] for ids in ids_list)
         padded = []
+        masks = []
         for ids in ids_list:
             pad_len = max_len - ids.shape[0]
+            mask = torch.ones_like(ids, dtype=torch.long)
             if pad_len > 0:
                 padding = torch.full((pad_len,), self.pad_token_id, dtype=ids.dtype)
+                pad_mask = torch.zeros((pad_len,), dtype=torch.long)
                 ids = torch.cat([ids, padding])
+                mask = torch.cat([mask, pad_mask])
             padded.append(ids)
-        return torch.stack(padded)
+            masks.append(mask)
+        return torch.stack(padded), torch.stack(masks)
 
     def __call__(self, features: list) -> dict:
         """Collate tuple or dictionary features into batched tensors.
@@ -97,39 +107,47 @@ class BioMedCLIPDataCollator:
         first = features[0]
         if isinstance(first, tuple):
             if len(first) == 4:
-                # Dual-report sample tuple: (image, xray_ids, clinical_ids, labels)
                 images = torch.stack([f[0] if isinstance(f[0], torch.Tensor) else F_t.to_tensor(f[0]) for f in features])
-                xray_ids = self._pad_ids([f[1] for f in features])
-                clinical_ids = self._pad_ids([f[2] for f in features])
+                xray_ids, xray_mask = self._pad_ids_with_mask([f[1] for f in features])
+                clinical_ids, clinical_mask = self._pad_ids_with_mask([f[2] for f in features])
                 labels = torch.stack([f[3] for f in features])
                 return {
                     "pixel_values": images,
                     "xray_input_ids": xray_ids,
+                    "xray_attention_mask": xray_mask,
                     "clinical_input_ids": clinical_ids,
+                    "clinical_attention_mask": clinical_mask,
                     "labels": labels,
                 }
             elif len(first) == 3:
-                # Single-report sample tuple: (image, input_ids, labels)
                 images = torch.stack([f[0] for f in features])
-                input_ids = self._pad_ids([f[1] for f in features])
+                input_ids, input_mask = self._pad_ids_with_mask([f[1] for f in features])
                 labels = torch.stack([f[2] for f in features])
                 return {
                     "pixel_values": images,
                     "xray_input_ids": input_ids,
+                    "xray_attention_mask": input_mask,
                     "clinical_input_ids": input_ids,
+                    "clinical_attention_mask": input_mask,
                     "labels": labels,
                 }
 
         # Dictionary format fallback
         pixel_values = torch.stack([f["pixel_values"] for f in features])
         labels = torch.stack([f["labels"] for f in features])
-        xray_ids = self._pad_ids([f.get("xray_input_ids", f.get("input_ids")) for f in features])
-        clinical_ids = self._pad_ids([f.get("clinical_input_ids", f.get("input_ids")) for f in features])
+        
+        xray_ids_list = [f.get("xray_input_ids", f.get("input_ids")) for f in features]
+        clinical_ids_list = [f.get("clinical_input_ids", f.get("input_ids")) for f in features]
+        
+        xray_ids, xray_mask = self._pad_ids_with_mask(xray_ids_list)
+        clinical_ids, clinical_mask = self._pad_ids_with_mask(clinical_ids_list)
 
         return {
             "pixel_values": pixel_values,
             "xray_input_ids": xray_ids,
+            "xray_attention_mask": xray_mask,
             "clinical_input_ids": clinical_ids,
+            "clinical_attention_mask": clinical_mask,
             "labels": labels,
         }
 
@@ -210,62 +228,88 @@ class SFTrainer(Trainer):
         """
         images = inputs["pixel_values"]
         labels = inputs["labels"]
+        labels_for_loss = labels.argmax(dim=-1) if labels.ndim > 1 else labels
 
         if self.phase == "phase1":
             # --- Phase 1: Contrastive image-text alignment ---
             if self.p1_report_type in ("both", "xray_clinical"):
                 xray_ids = inputs["xray_input_ids"]
+                xray_mask = inputs.get("xray_attention_mask")
                 clinical_ids = inputs["clinical_input_ids"]
-                image_features, xray_feat = model.backbone(images, xray_ids)
-                _, clinical_feat = model.backbone(images, clinical_ids)
+                clinical_mask = inputs.get("clinical_attention_mask")
+                
+                image_features, xray_feat = model.backbone(images, xray_ids, attention_mask=xray_mask)
+                _, clinical_feat = model.backbone(images, clinical_ids, attention_mask=clinical_mask)
                 text_features = (xray_feat + clinical_feat) / 2.0
             else:
-                text_key = "xray_input_ids" if self.p1_report_type == "xray" else "clinical_input_ids"
-                text_ids = inputs[text_key]
-                image_features, text_features = model.backbone(images, text_ids)
-            loss = self.loss_fn(image_features, text_features, None)
+                is_xray = self.p1_report_type == "xray"
+                text_ids = inputs["xray_input_ids"] if is_xray else inputs["clinical_input_ids"]
+                text_mask = inputs.get("xray_attention_mask" if is_xray else "clinical_attention_mask")
+                image_features, text_features = model.backbone(images, text_ids, attention_mask=text_mask)
+            loss = self.loss_fn(image_features, text_features, labels_for_loss)
             outputs = {"image_features": image_features, "text_features": text_features}
         else:
             # --- Phase 2: Classification with optional fusion ---
             if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 xray_ids = inputs["xray_input_ids"]
+                xray_mask = inputs.get("xray_attention_mask")
                 clinical_ids = inputs["clinical_input_ids"]
-                img_feat, xray_feat = model.backbone(images, xray_ids)
-                _, clinical_feat = model.backbone(images, clinical_ids)
+                clinical_mask = inputs.get("clinical_attention_mask")
+                
+                img_feat, xray_feat = model.backbone(images, xray_ids, attention_mask=xray_mask)
+                _, clinical_feat = model.backbone(images, clinical_ids, attention_mask=clinical_mask)
                 text_feat = (xray_feat + clinical_feat) / 2.0
+                
+                # We blend the masks for cross-attention if both are used
+                # In this complex dual case, typically we use one mask or intersection.
+                # To be safe, we just use xray_mask as primary if not None.
+                fusion_mask = xray_mask if xray_mask is not None else clinical_mask
+                
                 if model.fusion is not None:
-                    fused = model.fusion(img_feat, text_feat)
+                    # In composer, fusion is called inside model(images, text_ids).
+                    # Here we call model.fusion directly for the dual branch.
+                    if fusion_mask is not None and text_feat.dim() == 3:
+                        txt_key_padding_mask = (fusion_mask[:, 1:] == 0)
+                        try:
+                            fused = model.fusion(img_feat, text_feat, txt_key_padding_mask=txt_key_padding_mask)
+                        except TypeError:
+                            fused = model.fusion(img_feat, text_feat)
+                    else:
+                        fused = model.fusion(img_feat, text_feat)
                 else:
                     fused = img_feat
                 text_ids = None
+                text_mask = None
             elif self.use_text_in_p2:
-                text_key = "xray_input_ids" if self.p2_report_type == "xray" else "clinical_input_ids"
-                text_ids = inputs[text_key]
+                is_xray = self.p2_report_type == "xray"
+                text_ids = inputs["xray_input_ids"] if is_xray else inputs["clinical_input_ids"]
+                text_mask = inputs.get("xray_attention_mask" if is_xray else "clinical_attention_mask")
             else:
                 text_ids = inputs["xray_input_ids"]
+                text_mask = inputs.get("xray_attention_mask")
 
             from src.utils.losses import CombinedPhase2Loss, CombinedPhase2LossMulticlass
             if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 if isinstance(self.loss_fn, (CombinedPhase2Loss, CombinedPhase2LossMulticlass)):
                     logits, features = model.head(fused, return_features=True)
-                    prototypes = model.head.prototypes
-                    loss = self.loss_fn(logits, labels, features=fused, prototypes=prototypes)
+                    prototypes = getattr(model.head, "prototypes", None)
+                    loss = self.loss_fn(logits, labels_for_loss, features=fused, prototypes=prototypes)
                 else:
                     logits = model.head(fused)
-                    loss = self.loss_fn(logits, labels)
+                    loss = self.loss_fn(logits, labels_for_loss)
                 outputs = logits
             elif isinstance(self.loss_fn, (CombinedPhase2Loss, CombinedPhase2LossMulticlass)):
-                outputs = model(images, text_ids, return_features=True)
+                outputs = model(images, text_ids, attention_mask=text_mask, return_features=True)
                 if isinstance(outputs, tuple) and len(outputs) == 3:
                     logits, features, prototypes = outputs
-                    loss = self.loss_fn(logits, labels, features=features, prototypes=prototypes)
+                    loss = self.loss_fn(logits, labels_for_loss, features=features, prototypes=prototypes)
                 else:
                     logits = outputs[0] if isinstance(outputs, tuple) else outputs
-                    loss = self.loss_fn(logits, labels)
+                    loss = self.loss_fn(logits, labels_for_loss)
             else:
-                outputs = model(images, text_ids)
+                outputs = model(images, text_ids, attention_mask=text_mask)
                 logits = outputs[0] if isinstance(outputs, tuple) else outputs
-                loss = self.loss_fn(logits, labels)
+                loss = self.loss_fn(logits, labels_for_loss)
 
         return (loss, outputs) if return_outputs else loss
 

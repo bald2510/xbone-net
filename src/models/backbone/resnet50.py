@@ -88,7 +88,7 @@ class ResNet50Backbone(nn.Module):
 
         self.tokenizer = DummyTokenizer()
 
-    def forward(self, images, input_ids=None):
+    def forward(self, images, input_ids=None, **kwargs):
         """Extract and L2-normalize image embeddings.
 
         Args:
@@ -183,7 +183,7 @@ class ResNet50Foundation(nn.Module):
         self.preprocess = self._backbone.preprocess
         self.tokenizer = self._backbone.tokenizer
 
-    def forward(self, images, input_ids=None):
+    def forward(self, images, input_ids=None, **kwargs):
         """Forward pass forwarding to underlying ResNet50Backbone.
 
         Args:

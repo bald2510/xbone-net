@@ -68,6 +68,8 @@ class BTXRDDataset(Dataset):
         tokenizer=None,
         max_text_len=256,
         clinical_subdir: str = "clinical_v2",
+        k_shot: int = None,
+        seed: int = 42,
         **kwargs,
     ):
         """Initialize the BTXRD dataset.
@@ -119,12 +121,20 @@ class BTXRDDataset(Dataset):
         current_split = "validate" if split == "val" else split
         filtered_df = df_merged[df_merged["split"] == current_split].reset_index(drop=True)
 
-        if current_split == "train" and train_ratio < 1.0:
+        if current_split == "train" and k_shot is not None:
+            if "class_id" in filtered_df.columns:
+                filtered_df = filtered_df.groupby("class_id", group_keys=False).apply(
+                    lambda x: x.sample(n=min(len(x), k_shot), random_state=seed)
+                ).reset_index(drop=True)
+                print(f"[Dataset] Few-shot learning enabled: {k_shot}-shot sampling (seed={seed}).")
+            else:
+                print(f"[Dataset] Warning: k_shot={k_shot} requested but 'class_id' not found. Ignored.")
+        elif current_split == "train" and train_ratio < 1.0:
             filtered_df = filtered_df.sample(
                 frac=train_ratio, 
-                random_state=42
+                random_state=seed
             ).reset_index(drop=True)
-            print(f"[Dataset] Subsampling enabled: using {train_ratio * 100:.1f}% of training data.")
+            print(f"[Dataset] Subsampling enabled: using {train_ratio * 100:.1f}% of training data (seed={seed}).")
 
         self.df = filtered_df
 

@@ -105,7 +105,7 @@ def run_phase1(
     epochs_p1 = p1_cfg.get("epochs", 50)
     lr_p1 = p1_cfg.get("lr", 2e-4)
     wd_p1 = p1_cfg.get("weight_decay", 1e-2)
-    patience_p1 = p1_cfg.get("early_stopping_patience", 5)
+    patience_p1 = int(p1_cfg.get("early_stopping_patience", 5))
     loss_type_p1 = p1_cfg.get("loss_type", "semantic_matching")
     p1_report_type = p1_cfg.get("p1_report_type", "clinical")
 
@@ -146,7 +146,12 @@ def run_phase1(
     total_steps_p1 = steps_per_epoch_p1 * epochs_p1
     warmup_steps_p1 = int(p1_cfg.get("warmup_ratio", 0.1) * total_steps_p1)
 
-    loss_fn_p1 = build_loss(loss_type_p1, clip_model=model.backbone.model, temperature=p1_cfg.get("temperature", 0.07))
+    loss_fn_p1 = build_loss(
+        loss_type_p1, 
+        clip_model=model.backbone.model, 
+        temperature=p1_cfg.get("temperature", 0.07),
+        target_similarity=p1_cfg.get("target_similarity", 0.7)
+    )
     tokenizer_p1 = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
     pad_id = resolve_pad_token_id(tokenizer_p1) if tokenizer_p1 is not None else 0
 
@@ -203,6 +208,91 @@ def run_phase1(
 # Phase 2: Classification & Prototype Learning
 # ============================================================
 
+from transformers import TrainerCallback
+
+class DynamicProtoLossCallback(TrainerCallback):
+    """Dynamically schedules the lambda_proto weight based on the epoch."""
+    def __init__(self, criterion):
+        self.criterion = criterion
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        # state.epoch is a float indicating the number of epochs completed
+        # e.g., at the start of the first epoch, state.epoch = 0.0
+        epoch = int(state.epoch) + 1  
+        
+        if epoch <= 10:
+            new_lambda = 0.0
+        elif epoch <= 30:
+            new_lambda = 0.05
+        else:
+            new_lambda = 0.1
+            
+        if hasattr(self.criterion, 'lambda_proto'):
+            old_lambda = self.criterion.lambda_proto
+            if old_lambda != new_lambda:
+                self.criterion.lambda_proto = new_lambda
+                print(f"\n[DynamicProtoLossCallback] Epoch {epoch}: Updated lambda_proto from {old_lambda} to {new_lambda}")
+
+                if old_lambda == 0.0 and new_lambda > 0.0:
+                    model = kwargs.get('model')
+                    train_dataloader = kwargs.get('train_dataloader')
+                    if model is not None and train_dataloader is not None:
+                        actual_model = model.module if hasattr(model, 'module') else model
+                        if hasattr(actual_model, 'head') and hasattr(actual_model.head, 'prototypes'):
+                            self._warm_start_prototypes(actual_model, train_dataloader)
+
+    def _warm_start_prototypes(self, model, dataloader):
+        import torch
+        import torch.nn.functional as F
+        from tqdm import tqdm
+        
+        print("\n[DynamicProtoLossCallback] Calculating data centroids to warm-start prototypes...")
+        model.eval()
+        device = next(model.parameters()).device
+        
+        all_features = []
+        all_labels = []
+        
+        with torch.no_grad():
+            for batch in tqdm(dataloader, desc="Extracting Train Features"):
+                pixel_values = batch["pixel_values"].to(device)
+                input_ids = batch.get("xray_input_ids", batch.get("clinical_input_ids", batch.get("input_ids", None)))
+                attention_mask = batch.get("xray_attention_mask", batch.get("clinical_attention_mask", None))
+                labels = batch["labels"].to(device)
+                
+                if input_ids is not None:
+                    input_ids = input_ids.to(device)
+                if attention_mask is not None:
+                    attention_mask = attention_mask.to(device)
+                
+                _, features, _ = model(images=pixel_values, input_ids=input_ids, attention_mask=attention_mask, return_features=True)
+                
+                all_features.append(features.cpu())
+                if labels.ndim > 1:
+                    labels = labels.argmax(dim=-1)
+                all_labels.append(labels.cpu())
+                
+        all_features = torch.cat(all_features, dim=0)
+        all_labels = torch.cat(all_labels, dim=0)
+        
+        num_classes = model.head.prototypes.size(0)
+        new_prototypes = torch.zeros_like(model.head.prototypes.data)
+        
+        for c in range(num_classes):
+            mask = (all_labels == c)
+            if mask.sum() > 0:
+                class_feats = all_features[mask]
+                mean_feat = class_feats.mean(dim=0)
+                mean_feat = F.normalize(mean_feat, dim=-1)
+                new_prototypes[c] = mean_feat.to(device)
+            else:
+                new_prototypes[c] = model.head.prototypes.data[c]
+                
+        model.head.prototypes.data.copy_(new_prototypes)
+        print("[DynamicProtoLossCallback] Successfully updated prototypes with Data Centroids!\n")
+        model.train()
+
+
 def run_phase2(
     cfg: DictConfig,
     model: nn.Module,
@@ -236,7 +326,7 @@ def run_phase2(
     epochs_p2 = p2_cfg.get("epochs", 50)
     lr_p2 = p2_cfg.get("lr", 1e-3)
     wd_p2 = p2_cfg.get("weight_decay", 1e-4)
-    patience_p2 = p2_cfg.get("early_stopping_patience", 5)
+    patience_p2 = int(p2_cfg.get("early_stopping_patience", 5))
     classifier_type = p2_cfg.get("classifier_type", "prototypical")
 
     print("\n" + "=" * 60)
@@ -377,7 +467,7 @@ def run_phase2(
         eval_dataset=val_loader.dataset,
         data_collator=BioMedCLIPDataCollator(pad_token_id=pad_id),
         compute_metrics=compute_metrics_eval,
-        callbacks=[XBoneTrainerCallback(logger_p2), EarlyStoppingCallback(early_stopping_patience=patience_p2)],
+        callbacks=[XBoneTrainerCallback(logger_p2), EarlyStoppingCallback(early_stopping_patience=patience_p2), DynamicProtoLossCallback(criterion_p2)],
         loss_fn=criterion_p2,
         optimizers=(optimizer_p2, None),
         phase="phase2",
@@ -496,6 +586,15 @@ def main(cfg: DictConfig) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}\n")
 
+    # Resolve phase control flags
+    do_phase1 = cfg.params.get("phase1", {}).get("enabled", cfg.params.get("run_phase1", True))
+    do_phase2 = cfg.params.get("phase2", {}).get("enabled", cfg.params.get("run_phase2", True))
+    init_from_merged = cfg.params.get("phase2", {}).get("init_from_phase1_merged", False)
+
+    if not do_phase1 and do_phase2 and init_from_merged:
+        print(" -> [Config] Khởi tạo từ checkpoint đã gộp (Merged Phase 1). Tắt khởi tạo PEFT.")
+        cfg.model.peft.type = 'none'
+
     # --- Initialize Model ---
     print("Building model...")
     model = build_model(cfg.model).to(device)
@@ -521,23 +620,19 @@ def main(cfg: DictConfig) -> None:
     val_loader = build_dataloader(cfg.dataset, split="val", transform=preprocess_func, tokenizer=tokenizer_func)
 
     # --- Resolve Checkpoint Paths ---
-    do_phase1 = cfg.params.get("run_phase1", True)
-    do_phase2 = cfg.params.get("run_phase2", True)
-    log_dir = os.path.join(hydra.utils.get_original_cwd(), "runs")
+    log_dir = os.path.join(hydra.utils.get_original_cwd(), cfg.params.model_dir)
     experiment_name = cfg.get("experiment_name", "default_experiment")
     seed_val = cfg.get("seed", 42)
 
-    default_dir = os.path.join("checkpoints", experiment_name, f"seed_{seed_val}")
-    model_dir = cfg.params.get("model_dir", default_dir)
-    if "//" in model_dir or "seed_/" in model_dir:
-        model_dir = default_dir
+    # Use dict.get to support old format gracefully but prioritize new format
+    p1_cfg = cfg.params.get("phase1", {})
+    p2_cfg = cfg.params.get("phase2", {})
+    
+    cp_p1 = p1_cfg.get("checkpoint_path", "")
+    cp_merged = p1_cfg.get("merged_checkpoint_path", "")
+    cp_p2 = p2_cfg.get("checkpoint_path", "")
 
-    cp_p1 = cfg.params.phase1.get("checkpoint_path", os.path.join(model_dir, "best_phase1.pth"))
-    cp_p2 = cfg.params.phase2.get("checkpoint_path", os.path.join(model_dir, "best_phase2.pth"))
-    if "//" in cp_p1 or "seed_/" in cp_p1:
-        cp_p1 = os.path.join(model_dir, "best_phase1.pth")
-    if "//" in cp_p2 or "seed_/" in cp_p2:
-        cp_p2 = os.path.join(model_dir, "best_phase2.pth")
+    merge_after_p1 = p1_cfg.get("merge_lora_after_training", False)
 
     # --- Phase 1 Execution ---
     if do_phase1:
@@ -561,52 +656,84 @@ def main(cfg: DictConfig) -> None:
             use_fp16=use_fp16,
         )
 
-    # Checkpoint fallback sharing search
-    if not os.path.exists(cp_p1):
-        clean_backbone = cfg.model.backbone_type.split("_")[0].lower()
-        seed_val = cfg.get("seed", 42)
-        shared_cp = os.path.join(
-            hydra.utils.get_original_cwd(),
-            "checkpoints",
-            "btxrd",
-            "baselines",
-            "finetuned",
-            clean_backbone,
-            f"seed_{seed_val}",
-            "best_phase1.pth",
-        )
-        if os.path.exists(shared_cp):
-            cp_p1 = shared_cp
+        if merge_after_p1:
+            from peft import PeftModel
+            def merge_peft_adapters(module):
+                for name, child in list(module.named_children()):
+                    if isinstance(child, PeftModel):
+                        print(f"[*] Hợp nhất (Merging) PEFT adapters tại: {name}...")
+                        merged_child = child.merge_and_unload()
+                        setattr(module, name, merged_child)
+                    else:
+                        merge_peft_adapters(child)
+            print("\n[Phase 1] Hợp nhất trọng số LoRA vào Base Model...")
+            merge_peft_adapters(model)
+            if cp_merged:
+                os.makedirs(os.path.dirname(cp_merged), exist_ok=True)
+                torch.save(model.state_dict(), cp_merged)
+                print(f" [*] Đã lưu Merged Phase 1 Checkpoint tại: {cp_merged}")
 
-    if os.path.exists(cp_p1):
-        print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
-        checkpoint = torch.load(cp_p1, map_location=device)
-        state_dict = checkpoint.get("model_state_dict", checkpoint)
-        model.load_state_dict(state_dict, strict=False)
-        print(" -> Phase 1 weights loaded successfully!")
-    else:
-        print(f"\n[Warning] No Phase 1 checkpoint found at: {cp_p1}. Using initial weights.")
+    # Checkpoint loading for Phase 2 if Phase 1 was skipped
+    if not do_phase1 and do_phase2:
+        if init_from_merged and cp_merged and os.path.exists(cp_merged):
+            print(f"Loading merged Phase 1 checkpoint from: {cp_merged}")
+            checkpoint = torch.load(cp_merged, map_location=device)
+            state_dict = checkpoint.get("model_state_dict", checkpoint)
+            model.load_state_dict(state_dict, strict=False)
+            print(" -> Merged Phase 1 weights loaded successfully!")
+        elif cp_p1 and os.path.exists(cp_p1):
+            print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
+            checkpoint = torch.load(cp_p1, map_location=device)
+            state_dict = checkpoint.get("model_state_dict", checkpoint)
+            model.load_state_dict(state_dict, strict=False)
+            print(" -> Phase 1 weights loaded successfully!")
+            
+            # Since we loaded unmerged LoRA weights, merge them now if requested
+            if merge_after_p1:
+                from peft import PeftModel
+                def merge_peft_adapters(module):
+                    for name, child in list(module.named_children()):
+                        if isinstance(child, PeftModel):
+                            print(f"[*] Hợp nhất (Merging) PEFT adapters tại: {name}...")
+                            merged_child = child.merge_and_unload()
+                            setattr(module, name, merged_child)
+                        else:
+                            merge_peft_adapters(child)
+                print("\n[Chuyển đổi] Hợp nhất trọng số LoRA vào Base Model...")
+                merge_peft_adapters(model)
+            else:
+                print("\n[Chuyển đổi] Giữ nguyên LoRA adapters (KHÔNG hợp nhất) cho Phase 2.")
+        else:
+            print(f"\n[Warning] No Phase 1 checkpoint found. Using initial weights.")
 
     # --- Phase 2 Execution ---
     if do_phase2:
         model, _, _, _ = setup_phase2_modules(model, cfg, device)
 
         # --- Configure parameter trainability for Phase 2 ---
-        # Proposed (do_phase1=True):
-        #   Phase 1 froze fusion+head -> need to unfreeze them
-        #   Freeze backbone -> only fusion + classifier are trained
-        # Baselines (do_phase1=False):
-        #   No freeze changes -> backbone + fusion + head all trainable
-        if do_phase1:
+        is_merged = (do_phase1 and merge_after_p1) or init_from_merged
+        has_adapters = (do_phase1 and not merge_after_p1) or (
+            not do_phase1 and cp_p1 and not init_from_merged
+        )
+
+        if is_merged:
             for param in model.backbone.parameters():
                 param.requires_grad = False
             for param in model.fusion.parameters():
                 param.requires_grad = True
             for param in model.head.parameters():
                 param.requires_grad = True
-            print("\n[Phase 2 Setup] Backbone FROZEN | Fusion + Head UNFROZEN")
+            print("\n[Phase 2 Setup] Backbone FROZEN (Merged) | Fusion + Head UNFROZEN")
+        elif has_adapters:
+            # Do NOT freeze model.backbone.parameters() because that would freeze the LoRA adapters.
+            # PEFT already froze the base weights and kept LoRA trainable during initialization.
+            for param in model.fusion.parameters():
+                param.requires_grad = True
+            for param in model.head.parameters():
+                param.requires_grad = True
+            print("\n[Phase 2 Setup] Backbone Base FROZEN, LoRA TRAINABLE | Fusion + Head UNFROZEN")
         else:
-            print("\n[Phase 2 Setup] Backbone TRAINABLE (no Phase 1, full fine-tuning)")
+            print("\n[Phase 2 Setup] Backbone TRAINABLE (full fine-tuning)")
 
         model = model.to(device)
 

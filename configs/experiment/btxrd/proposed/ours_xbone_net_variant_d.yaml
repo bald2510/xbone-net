@@ -1,27 +1,36 @@
 # @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/proposed/ours_xbone_net_variant_d
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Does NOT merge LoRA. Uses X-ray reports in Phase 1 instead of clinical.
+# ===============================================================================
+
 defaults:
-  - /model/peft@model.peft: none
+  - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: prototypical
   - /dataset@dataset: btxrd
   - _self_
 
+# --- Model Architecture ---
 model:
   backbone_type: biomedclip
   freeze_backbone: true
 
-experiment_name: btxrd/ablation_study/finetune/no_ft
-seed: 42
+# --- Experiment Identifier ---
+experiment_name: btxrd/proposed/ours_xbone_net_variant_d
 
+# --- Training Hyperparameters ---
 params:
   run_phase1: true
   run_phase2: true
   run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
+  # --- Phase 1 Hyperparameters ---
   phase1:
     enabled: true
-    peft: none
+    peft: lora
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4
@@ -30,13 +39,14 @@ params:
     loss_type: semantic_matching
     target_similarity: 0.7
     beta: 0.5
-    p1_report_type: clinical
-    merge_lora_after_training: true
+    p1_report_type: xray
+    merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
     optimizer: adamw
     scheduler: cosine
 
+  # --- Phase 2 Hyperparameters ---
   phase2:
     enabled: true
     epochs: 50
@@ -46,7 +56,7 @@ params:
     early_stopping_patience: 5
     use_text: true
     p2_report_type: clinical
-    init_from_phase1_merged: true
+    init_from_phase1_merged: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
     loss_type: weighted_ce_plus_proto
     optimizer: adamw  
@@ -59,3 +69,6 @@ params:
       use_class_weights: true
       weight_type: effective_num
       effective_num_beta: 0.999
+
+# --- Global Random Seed ---
+seed: 42

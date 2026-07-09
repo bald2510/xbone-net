@@ -247,19 +247,23 @@ class MedCLIPFoundation(nn.Module):
             for param in self._medclip.parameters():
                 param.requires_grad = False
 
-    def forward(self, images, input_ids):
-        """Extract and L2-normalize image and text embeddings.
+    def forward(self, images, input_ids, attention_mask=None):
+        """Extract and L2-normalize image and text feature embeddings.
+
+        Supports dynamic local feature extraction if self.return_local is True.
 
         Args:
             images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
             input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
+            attention_mask (torch.Tensor, optional): Text attention mask (1 for real, 0 for pad).
 
         Returns:
             tuple: (image_features, text_features) with shape [B, 512], L2-normalized.
         """
         # --- Feature extraction ---
         image_features = self._medclip.encode_image(images)
-        attention_mask = (input_ids != 0).long()
+        if attention_mask is None:
+            attention_mask = (input_ids != 0).long()
         text_features = self._medclip.encode_text(input_ids, attention_mask)
 
         # --- L2 normalization ---

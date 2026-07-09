@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - /model/peft@model.peft: none
+  - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: prototypical
   - /dataset@dataset: btxrd
@@ -10,7 +10,7 @@ model:
   backbone_type: biomedclip
   freeze_backbone: true
 
-experiment_name: btxrd/ablation_study/finetune/no_ft
+experiment_name: btxrd/ablation_study/modality/clinical_only
 seed: 42
 
 params:
@@ -21,7 +21,7 @@ params:
 
   phase1:
     enabled: true
-    peft: none
+    peft: lora
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4

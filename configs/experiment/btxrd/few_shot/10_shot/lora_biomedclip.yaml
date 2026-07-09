@@ -1,0 +1,18 @@
+# @package _global_
+# ===============================================================================
+# Few-Shot Learning Config: 10-shot
+# Inherits from: experiment/btxrd/baselines/peft_finetuned/lora_biomedclip
+# ===============================================================================
+
+defaults:
+  - /experiment/btxrd/baselines/peft_finetuned/lora_biomedclip
+  - _self_
+
+experiment_name: btxrd/few_shot/10_shot/lora_biomedclip
+
+params:
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+
+dataset:
+  params:
+    k_shot: 10

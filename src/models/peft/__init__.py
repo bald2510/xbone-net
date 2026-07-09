@@ -9,7 +9,8 @@ Defines the registry and factory functions for applying parameter-efficient fine
 """
 
 import torch.nn as nn
-from .qlora import inject_qlora, inject_lora
+from .qlora import inject_qlora
+from .lora import inject_lora
 
 
 # ============================================================

@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - /model/peft@model.peft: none
+  - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: prototypical
   - /dataset@dataset: btxrd
@@ -10,7 +10,7 @@ model:
   backbone_type: biomedclip
   freeze_backbone: true
 
-experiment_name: btxrd/ablation_study/finetune/no_ft
+experiment_name: btxrd/ablation_study/modality/xray_only
 seed: 42
 
 params:
@@ -21,7 +21,7 @@ params:
 
   phase1:
     enabled: true
-    peft: none
+    peft: lora
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4
@@ -30,7 +30,7 @@ params:
     loss_type: semantic_matching
     target_similarity: 0.7
     beta: 0.5
-    p1_report_type: clinical
+    p1_report_type: xray
     merge_lora_after_training: true
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
@@ -45,7 +45,7 @@ params:
     warmup_ratio: 0.1
     early_stopping_patience: 5
     use_text: true
-    p2_report_type: clinical
+    p2_report_type: xray
     init_from_phase1_merged: true
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
     loss_type: weighted_ce_plus_proto

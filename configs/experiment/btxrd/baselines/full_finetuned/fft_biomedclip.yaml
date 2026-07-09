@@ -1,0 +1,50 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/baselines/finetuned/biomedclip
+# Backbone: biomedclip | PEFT: full_ft | Fusion: concat | Head: linear
+# Description: Fine-tuned Baseline Model using fully fine-tuned Vision-Language backbone.
+# ===============================================================================
+
+defaults:
+  - /model/peft@model.peft: full_ft
+  - /model/fusion@model.fusion: concat
+  - /model/classifier@model.classifier: linear
+  - /dataset@dataset: btxrd
+  - _self_
+
+# --- Model Architecture ---
+model:
+  backbone_type: biomedclip
+  freeze_backbone: false
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/baselines/finetuned/fft_biomedclip
+
+# --- Training Hyperparameters ---
+params:
+  run_phase1: false
+  run_phase2: true
+  run_ood: false
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+
+  # --- Phase 2 Hyperparameters ---
+  phase2:
+    epochs: 50
+    lr: 2e-5
+    weight_decay: 1e-4
+    optimizer: adamw
+    scheduler: cosine
+    warmup_ratio: 0.1
+    early_stopping_patience: 5
+    use_text: true
+    p2_report_type: clinical
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
+
+    loss:
+      label_smoothing: 0.1
+      use_class_weights: true
+      weight_type: effective_num
+      effective_num_beta: 0.999
+
+# --- Global Random Seed ---
+seed: 42
