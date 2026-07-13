@@ -1,18 +1,37 @@
 # @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/finetune/xbone_highres_no_ft
+# Backbone: biomedclip | PEFT: none | Fusion: cross_attention | Head: prototypical
+# Description: Ablation Study configuration.
+# ===============================================================================
+
 defaults:
-  - /model/peft@model.peft: lora
+  - /model/peft@model.peft: none
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: prototypical
   - /dataset@dataset: btxrd
   - _self_
 
+# --- Model Architecture ---
 model:
   backbone_type: biomedclip
   freeze_backbone: true
+  num_visual_tokens: 8
 
-experiment_name: btxrd/ablation_study/finetune/lora_ft
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/finetune/xbone_highres_no_ft
 seed: 42
 
+# --- Dataset Configuration ---
+dataset:
+  params:
+    high_res:
+      enabled: true
+      tile_size: 224
+      stride: 112
+      max_tiles: 16
+
+# --- Training Hyperparameters ---
 params:
   run_phase1: true
   run_phase2: true
@@ -21,7 +40,7 @@ params:
 
   phase1:
     enabled: true
-    peft: lora
+    peft: none
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4

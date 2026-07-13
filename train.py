@@ -35,6 +35,7 @@ import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from torch.optim import AdamW, SGD
+import torch.nn.functional as F
 from trl import SFTConfig
 from transformers import EarlyStoppingCallback
 from sklearn.metrics import accuracy_score, f1_score
@@ -66,6 +67,63 @@ def seed_everything(seed: int = 42) -> None:
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def load_state_dict_checked(
+    model: nn.Module,
+    state_dict: dict,
+    context: str,
+    critical_substrings=("lora_A", "lora_B", "visual_resampler"),
+):
+    """Load a checkpoint and fail when critical trainable modules are missing."""
+    result = model.load_state_dict(state_dict, strict=False)
+    missing = list(result.missing_keys)
+    unexpected = list(result.unexpected_keys)
+
+    critical_missing = [
+        key for key in missing
+        if any(token in key for token in critical_substrings)
+    ]
+
+    print(
+        f" -> [{context}] checkpoint load: "
+        f"missing={len(missing)}, unexpected={len(unexpected)}"
+    )
+    if unexpected:
+        print("    Unexpected examples:", unexpected[:10])
+    if critical_missing:
+        raise RuntimeError(
+            f"Critical checkpoint weights were not loaded in {context}:\n"
+            + "\n".join(critical_missing[:30])
+        )
+    return result
+
+
+def extract_class_ids(dataset) -> np.ndarray:
+    """Extract integer class IDs from datasets and torch Subset wrappers."""
+    if hasattr(dataset, "df") and "class_id" in dataset.df.columns:
+        return np.asarray(dataset.df["class_id"].values, dtype=np.int64)
+
+    if hasattr(dataset, "indices") and hasattr(dataset, "dataset"):
+        base_ids = extract_class_ids(dataset.dataset)
+        return base_ids[np.asarray(dataset.indices, dtype=np.int64)]
+
+    if hasattr(dataset, "labels"):
+        labels = np.asarray(dataset.labels)
+        if labels.ndim > 1:
+            labels = labels.argmax(axis=-1)
+        return labels.astype(np.int64)
+
+    if hasattr(dataset, "targets"):
+        labels = np.asarray(dataset.targets)
+        if labels.ndim > 1:
+            labels = labels.argmax(axis=-1)
+        return labels.astype(np.int64)
+
+    raise AttributeError(
+        "Cannot extract class IDs. Expected df['class_id'], labels, targets, "
+        "or a Subset wrapper around one of these datasets."
+    )
 
 
 # ============================================================
@@ -138,20 +196,26 @@ def run_phase1(
     })
     logger_p1.log_model_summary(model)
 
-    # Only train backbone parameters in Phase 1 (contrastive alignment)
-    trainable_params_p1 = [p for p in model.backbone.parameters() if p.requires_grad]
+    # Build the loss before collecting optimizer parameters. Some non-OpenCLIP
+    # backbones receive a logit_scale parameter during loss construction.
+    loss_fn_p1 = build_loss(
+        loss_type_p1,
+        clip_model=model.backbone.model,
+        temperature=p1_cfg.get("temperature", 0.07),
+        target_similarity=p1_cfg.get("target_similarity", 0.95),
+    )
+
+    trainable_params_p1 = [
+        parameter for parameter in model.backbone.parameters()
+        if parameter.requires_grad
+    ]
+    if not trainable_params_p1:
+        raise RuntimeError("Phase 1 has no trainable backbone parameters.")
     optimizer_p1 = AdamW(trainable_params_p1, lr=lr_p1, weight_decay=wd_p1)
 
     steps_per_epoch_p1 = math.ceil(len(train_loader.dataset) / cfg.dataset.batch_size)
     total_steps_p1 = steps_per_epoch_p1 * epochs_p1
     warmup_steps_p1 = int(p1_cfg.get("warmup_ratio", 0.1) * total_steps_p1)
-
-    loss_fn_p1 = build_loss(
-        loss_type_p1, 
-        clip_model=model.backbone.model, 
-        temperature=p1_cfg.get("temperature", 0.07),
-        target_similarity=p1_cfg.get("target_similarity", 0.7)
-    )
     tokenizer_p1 = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
     pad_id = resolve_pad_token_id(tokenizer_p1) if tokenizer_p1 is not None else 0
 
@@ -166,6 +230,7 @@ def run_phase1(
         save_strategy="epoch",
         logging_strategy="steps",
         logging_steps=10,
+        lr_scheduler_type=p1_cfg.get("scheduler", "cosine"),
         warmup_steps=warmup_steps_p1,
         max_steps=total_steps_p1,
         load_best_model_at_end=True,
@@ -177,6 +242,7 @@ def run_phase1(
         max_grad_norm=1.0,
         dataloader_num_workers=cfg.dataset.num_workers,
         report_to="none",
+        remove_unused_columns=False,
     )
 
     trainer_p1 = SFTrainer(
@@ -194,7 +260,7 @@ def run_phase1(
 
     trainer_p1.train()
 
-    os.makedirs(os.path.dirname(cp_p1), exist_ok=True)
+    os.makedirs(os.path.dirname(cp_p1) or ".", exist_ok=True)
     best_model_p1 = trainer_p1.model
     torch.save(best_model_p1.state_dict(), cp_p1)
     print(f" [*] Saved best Phase 1 checkpoint: {cp_p1} (eval_loss={trainer_p1.state.best_metric})")
@@ -208,91 +274,6 @@ def run_phase1(
 # Phase 2: Classification & Prototype Learning
 # ============================================================
 
-from transformers import TrainerCallback
-
-class DynamicProtoLossCallback(TrainerCallback):
-    """Dynamically schedules the lambda_proto weight based on the epoch."""
-    def __init__(self, criterion):
-        self.criterion = criterion
-
-    def on_epoch_begin(self, args, state, control, **kwargs):
-        # state.epoch is a float indicating the number of epochs completed
-        # e.g., at the start of the first epoch, state.epoch = 0.0
-        epoch = int(state.epoch) + 1  
-        
-        if epoch <= 10:
-            new_lambda = 0.0
-        elif epoch <= 30:
-            new_lambda = 0.05
-        else:
-            new_lambda = 0.1
-            
-        if hasattr(self.criterion, 'lambda_proto'):
-            old_lambda = self.criterion.lambda_proto
-            if old_lambda != new_lambda:
-                self.criterion.lambda_proto = new_lambda
-                print(f"\n[DynamicProtoLossCallback] Epoch {epoch}: Updated lambda_proto from {old_lambda} to {new_lambda}")
-
-                if old_lambda == 0.0 and new_lambda > 0.0:
-                    model = kwargs.get('model')
-                    train_dataloader = kwargs.get('train_dataloader')
-                    if model is not None and train_dataloader is not None:
-                        actual_model = model.module if hasattr(model, 'module') else model
-                        if hasattr(actual_model, 'head') and hasattr(actual_model.head, 'prototypes'):
-                            self._warm_start_prototypes(actual_model, train_dataloader)
-
-    def _warm_start_prototypes(self, model, dataloader):
-        import torch
-        import torch.nn.functional as F
-        from tqdm import tqdm
-        
-        print("\n[DynamicProtoLossCallback] Calculating data centroids to warm-start prototypes...")
-        model.eval()
-        device = next(model.parameters()).device
-        
-        all_features = []
-        all_labels = []
-        
-        with torch.no_grad():
-            for batch in tqdm(dataloader, desc="Extracting Train Features"):
-                pixel_values = batch["pixel_values"].to(device)
-                input_ids = batch.get("xray_input_ids", batch.get("clinical_input_ids", batch.get("input_ids", None)))
-                attention_mask = batch.get("xray_attention_mask", batch.get("clinical_attention_mask", None))
-                labels = batch["labels"].to(device)
-                
-                if input_ids is not None:
-                    input_ids = input_ids.to(device)
-                if attention_mask is not None:
-                    attention_mask = attention_mask.to(device)
-                
-                _, features, _ = model(images=pixel_values, input_ids=input_ids, attention_mask=attention_mask, return_features=True)
-                
-                all_features.append(features.cpu())
-                if labels.ndim > 1:
-                    labels = labels.argmax(dim=-1)
-                all_labels.append(labels.cpu())
-                
-        all_features = torch.cat(all_features, dim=0)
-        all_labels = torch.cat(all_labels, dim=0)
-        
-        num_classes = model.head.prototypes.size(0)
-        new_prototypes = torch.zeros_like(model.head.prototypes.data)
-        
-        for c in range(num_classes):
-            mask = (all_labels == c)
-            if mask.sum() > 0:
-                class_feats = all_features[mask]
-                mean_feat = class_feats.mean(dim=0)
-                mean_feat = F.normalize(mean_feat, dim=-1)
-                new_prototypes[c] = mean_feat.to(device)
-            else:
-                new_prototypes[c] = model.head.prototypes.data[c]
-                
-        model.head.prototypes.data.copy_(new_prototypes)
-        print("[DynamicProtoLossCallback] Successfully updated prototypes with Data Centroids!\n")
-        model.train()
-
-
 def run_phase2(
     cfg: DictConfig,
     model: nn.Module,
@@ -304,6 +285,7 @@ def run_phase2(
     experiment_name: str,
     use_bf16: bool,
     use_fp16: bool,
+    classifier_type: str = "prototypical",
 ) -> nn.Module:
     """Execute Phase 2 supervised classification and prototype training.
 
@@ -318,6 +300,7 @@ def run_phase2(
         experiment_name (str): Experiment identifier.
         use_bf16 (bool): Flag to enable BF16 precision.
         use_fp16 (bool): Flag to enable FP16 precision.
+        classifier_type (str): Resolved classifier head type.
 
     Returns:
         nn.Module: Model updated with Phase 2 fine-tuned weights.
@@ -327,7 +310,6 @@ def run_phase2(
     lr_p2 = p2_cfg.get("lr", 1e-3)
     wd_p2 = p2_cfg.get("weight_decay", 1e-4)
     patience_p2 = int(p2_cfg.get("early_stopping_patience", 5))
-    classifier_type = p2_cfg.get("classifier_type", "prototypical")
 
     print("\n" + "=" * 60)
     print("PHASE 2: CLASSIFIER AND FUSION TRAINING")
@@ -339,7 +321,14 @@ def run_phase2(
     n_head = sum(p.numel() for p in model.head.parameters() if p.requires_grad)
     n_total = sum(p.numel() for p in model.parameters())
     n_trainable = n_backbone + n_fusion + n_head
-    backbone_status = "TRAINABLE (full fine-tuning)" if n_backbone > 0 else "FROZEN (after Phase 1)"
+    peft_type = cfg.model.peft.get("type", "none")
+
+    if n_backbone == 0:
+        backbone_status = "FROZEN"
+    elif peft_type in ("lora", "qlora"):
+        backbone_status = "BASE FROZEN, ADAPTERS TRAINABLE"
+    else:
+        backbone_status = "TRAINABLE (FULL FINE-TUNING)"
     print(f"  Backbone    : {backbone_status}")
     print(f"  Trainable Parameters:")
     print(f"    Backbone  : {n_backbone:>12,}")
@@ -364,41 +353,58 @@ def run_phase2(
     loss_cfg = p2_cfg.get("loss", {}) or {}
     use_class_weights = loss_cfg.get("use_class_weights", False)
 
-    # Compute class weights from training set distribution
+    # Compute class weights from the exact training subset.
     class_weights_tensor = None
     if use_class_weights:
-        try:
-            train_dataset = train_loader.dataset
-            class_ids = train_dataset.df["class_id"].values
-            num_classes = len(train_dataset.classes) if train_dataset.classes else int(class_ids.max() + 1)
-            class_counts = np.bincount(class_ids, minlength=num_classes).astype(float)
-            
-            weight_type = loss_cfg.get("weight_type", "effective_num")
-            if weight_type == "effective_num":
-                beta = loss_cfg.get("effective_num_beta", 0.999)
-                # w_i = (1 - beta) / (1 - beta^N_i)
-                effective_num = (1.0 - np.power(beta, class_counts)) / (1.0 - beta)
-                raw_weights = 1.0 / np.maximum(effective_num, 1e-8)
-                # Normalize weights so they sum to num_classes
-                raw_weights = raw_weights * (num_classes / np.sum(raw_weights))
-                print(f"  [Loss] Class weights (Effective Number of Samples, beta={beta}):")
-            else:
-                # Inverse frequency weighting: w_i = N_total / (num_classes * N_i)
-                total = class_counts.sum()
-                raw_weights = total / (num_classes * np.maximum(class_counts, 1.0))
-                # Clamp to prevent extreme weights for very rare classes
-                max_weight = loss_cfg.get("max_class_weight", 10.0)
-                raw_weights = np.minimum(raw_weights, max_weight)
-                print(f"  [Loss] Class weights (inv-freq, clamped at {max_weight}):")
-                
-            class_weights_tensor = torch.tensor(raw_weights, dtype=torch.float32).to(device)
-            dataset_params = cfg.dataset.get('params', {})
-            class_names = dataset_params.get('classes', dataset_params.get('pathologies', []))
-            for i, w in enumerate(raw_weights):
-                name = class_names[i] if i < len(class_names) else f"class_{i}"
-                print(f"    {name:30s}: {w:.3f} (n={int(class_counts[i])})")
-        except Exception as e:
-            print(f"  [Loss] Could not compute class weights: {e}. Using uniform weights.")
+        class_ids = extract_class_ids(train_loader.dataset)
+        dataset_params = cfg.dataset.get("params", {})
+        class_names = dataset_params.get(
+            "classes", dataset_params.get("pathologies", [])
+        )
+        configured_num_classes = int(
+            dataset_params.get(
+                "num_classes",
+                len(class_names) if class_names else int(class_ids.max() + 1),
+            )
+        )
+        num_classes = configured_num_classes
+        class_counts = np.bincount(class_ids, minlength=num_classes).astype(float)
+
+        if np.any(class_counts == 0):
+            missing_classes = np.flatnonzero(class_counts == 0).tolist()
+            raise ValueError(
+                "Class-weighted training requires every configured class to be "
+                f"present in the training subset. Missing classes: {missing_classes}"
+            )
+
+        weight_type = loss_cfg.get("weight_type", "effective_num")
+        if weight_type == "effective_num":
+            beta = float(loss_cfg.get("effective_num_beta", 0.999))
+            if not 0.0 <= beta < 1.0:
+                raise ValueError("effective_num_beta must be in [0, 1).")
+            effective_num = (1.0 - np.power(beta, class_counts)) / max(1.0 - beta, 1e-12)
+            raw_weights = 1.0 / np.maximum(effective_num, 1e-8)
+            raw_weights *= num_classes / raw_weights.sum()
+            print(f"  [Loss] Effective-number class weights (beta={beta}):")
+        elif weight_type in ("inverse", "inverse_frequency", "inv_freq"):
+            total = class_counts.sum()
+            raw_weights = total / (num_classes * class_counts)
+            max_weight = float(loss_cfg.get("max_class_weight", 10.0))
+            raw_weights = np.minimum(raw_weights, max_weight)
+            raw_weights *= num_classes / raw_weights.sum()
+            print(f"  [Loss] Inverse-frequency class weights (cap={max_weight}):")
+        else:
+            raise ValueError(
+                f"Unknown class weight_type='{weight_type}'. "
+                "Use effective_num or inverse_frequency."
+            )
+
+        class_weights_tensor = torch.tensor(
+            raw_weights, dtype=torch.float32, device=device
+        )
+        for class_id, weight in enumerate(raw_weights):
+            name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
+            print(f"    {name:30s}: {weight:.3f} (n={int(class_counts[class_id])})")
 
     if classifier_type == "prototypical":
         criterion_p2 = CombinedPhase2LossMulticlass(
@@ -409,10 +415,13 @@ def run_phase2(
         )
     else:
         criterion_p2 = nn.CrossEntropyLoss(
-            weight=class_weights_tensor, label_smoothing=0.1
+            weight=class_weights_tensor,
+            label_smoothing=loss_cfg.get("label_smoothing", 0.1),
         )
 
     trainable_params_p2 = [p for p in model.parameters() if p.requires_grad]
+    if not trainable_params_p2:
+        raise RuntimeError("Phase 2 has no trainable parameters.")
     optimizer_type_p2 = p2_cfg.get("optimizer", "adamw")
     if optimizer_type_p2 == "sgd":
         optimizer_p2 = SGD(trainable_params_p2, lr=lr_p2, weight_decay=wd_p2, momentum=0.9)
@@ -427,14 +436,39 @@ def run_phase2(
     pad_id = resolve_pad_token_id(tokenizer) if tokenizer is not None else 0
     os.environ["TENSORBOARD_LOGGING_DIR"] = logger_p2.tb_dir
 
+    # def compute_metrics_eval(eval_pred):
+    #     preds, labels = eval_pred
+    #     if isinstance(preds, tuple):
+    #         preds = preds[0]
+    #     preds_cls = np.argmax(preds, axis=1) if preds.ndim > 1 else (preds > 0).astype(int)
+    #     acc = accuracy_score(labels, preds_cls)
+    #     f1_mac = f1_score(labels, preds_cls, average="macro", zero_division=0)
+    #     return {"accuracy": acc, "f1_macro": f1_mac}
+
     def compute_metrics_eval(eval_pred):
         preds, labels = eval_pred
+
         if isinstance(preds, tuple):
             preds = preds[0]
-        preds_cls = np.argmax(preds, axis=1) if preds.ndim > 1 else (preds > 0).astype(int)
-        acc = accuracy_score(labels, preds_cls)
-        f1_mac = f1_score(labels, preds_cls, average="macro", zero_division=0)
-        return {"accuracy": acc, "f1_macro": f1_mac}
+
+        if labels.ndim > 1:
+            labels = np.argmax(labels, axis=-1)
+
+        preds_cls = (
+            np.argmax(preds, axis=1)
+            if preds.ndim > 1
+            else (preds > 0).astype(int)
+        )
+
+        return {
+            "accuracy": accuracy_score(labels, preds_cls),
+            "f1_macro": f1_score(
+                labels,
+                preds_cls,
+                average="macro",
+                zero_division=0,
+            ),
+        }
 
     p2_args = SFTConfig(
         output_dir=os.path.dirname(cp_p2) if os.path.dirname(cp_p2) else "./checkpoints",
@@ -447,6 +481,7 @@ def run_phase2(
         save_strategy="epoch",
         logging_strategy="steps",
         logging_steps=10,
+        lr_scheduler_type=p2_cfg.get("scheduler", "cosine"),
         warmup_steps=warmup_steps_p2,
         max_steps=total_steps_p2,
         load_best_model_at_end=True,
@@ -458,7 +493,15 @@ def run_phase2(
         max_grad_norm=1.0,
         dataloader_num_workers=cfg.dataset.num_workers,
         report_to="none",
+        remove_unused_columns=False,
     )
+
+    callbacks = [
+        XBoneTrainerCallback(logger_p2),
+        EarlyStoppingCallback(
+            early_stopping_patience=patience_p2
+        ),
+    ]
 
     trainer_p2 = SFTrainer(
         model=model,
@@ -467,7 +510,7 @@ def run_phase2(
         eval_dataset=val_loader.dataset,
         data_collator=BioMedCLIPDataCollator(pad_token_id=pad_id),
         compute_metrics=compute_metrics_eval,
-        callbacks=[XBoneTrainerCallback(logger_p2), EarlyStoppingCallback(early_stopping_patience=patience_p2), DynamicProtoLossCallback(criterion_p2)],
+        callbacks=callbacks,
         loss_fn=criterion_p2,
         optimizers=(optimizer_p2, None),
         phase="phase2",
@@ -477,7 +520,7 @@ def run_phase2(
 
     trainer_p2.train()
 
-    os.makedirs(os.path.dirname(cp_p2), exist_ok=True)
+    os.makedirs(os.path.dirname(cp_p2) or ".", exist_ok=True)
     best_model_p2 = trainer_p2.model
     torch.save(best_model_p2.state_dict(), cp_p2)
     print(f" [*] Saved best Phase 2 checkpoint: {cp_p2} (eval_f1={trainer_p2.state.best_metric})")
@@ -499,77 +542,185 @@ def run_ood_calibration(
     p2_report_type: str = "clinical",
     fpr_threshold: float = 0.05,
 ) -> None:
-    """Calibrate Mahalanobis-based OOD detector on validation set embeddings.
+    """Fit Mahalanobis OOD statistics using the trained model path.
 
-    Extracts fused embeddings from validation samples, fits class-conditional
-    Gaussian means and shared precision matrix, and saves calibrated parameters.
-
-    Args:
-        model (nn.Module): Trained XBone-Net model in evaluation mode.
-        val_loader: DataLoader for validation split.
-        device (torch.device): Computing device.
-        output_dir (str): Directory where ood_parameters.npz will be stored.
-        p2_report_type (str): Report type for Phase 2 ('xray', 'clinical', 'both').
-        fpr_threshold (float): FPR target for decision threshold calibration.
+    Uses the same backbone, padding masks, high-resolution tiles,
+    cross-attention fusion, and fused representation as Phase 2.
     """
+    import torch.nn.functional as F
+
     print("\n" + "=" * 50)
     print("RUNNING OOD CALIBRATION ON VALIDATION SPLIT")
     print("=" * 50)
 
+    if p2_report_type not in ("xray", "clinical"):
+        raise ValueError(
+            "OOD calibration currently supports only "
+            "p2_report_type='xray' or 'clinical'."
+        )
+
+    if not hasattr(model.head, "prototypes"):
+        raise ValueError(
+            "Learnable-prototype OOD calibration requires "
+            "a prototypical classifier head."
+        )
+
     model.eval()
-    all_image_embeds = []
+
+    all_features = []
     all_labels = []
 
     with torch.no_grad():
         for batch in val_loader:
-            if len(batch) == 4:
-                images, xray_ids, clinical_ids, labels = batch
-                if p2_report_type in ("both", "xray_clinical"):
-                    img_feat, xray_feat = model.backbone(images.to(device), xray_ids.to(device))
-                    _, clinical_feat = model.backbone(images.to(device), clinical_ids.to(device))
-                    text_feat = (xray_feat + clinical_feat) / 2.0
-                elif p2_report_type == "xray":
-                    img_feat, text_feat = model.backbone(images.to(device), xray_ids.to(device))
-                else:
-                    img_feat, text_feat = model.backbone(images.to(device), clinical_ids.to(device))
+            if not isinstance(batch, dict):
+                raise TypeError(
+                    "High-resolution OOD calibration requires "
+                    "dictionary-format batches."
+                )
 
-                if model.fusion is not None:
-                    fused = model.fusion(img_feat, text_feat)
-                else:
-                    fused = img_feat
+            images = batch["pixel_values"].to(device)
+            labels = batch["labels"].to(device)
+
+            if labels.ndim > 1:
+                labels = labels.argmax(dim=-1)
+
+            if p2_report_type == "xray":
+                input_ids = batch["xray_input_ids"].to(device)
+                attention_mask = batch.get(
+                    "xray_attention_mask"
+                )
             else:
-                images, text_ids, labels = batch
-                img_feat, text_feat = model.backbone(images.to(device), text_ids.to(device))
-                if model.fusion is not None:
-                    fused = model.fusion(img_feat, text_feat)
-                else:
-                    fused = img_feat
+                input_ids = batch["clinical_input_ids"].to(device)
+                attention_mask = batch.get(
+                    "clinical_attention_mask"
+                )
 
-            all_image_embeds.append(fused.cpu().numpy())
-            all_labels.append(labels.numpy())
+            if attention_mask is not None:
+                attention_mask = attention_mask.to(device)
 
-    all_image_embeds = np.concatenate(all_image_embeds, axis=0)
-    all_labels = np.concatenate(all_labels, axis=0)
+            tile_values = batch.get("tile_values")
+            tile_mask = batch.get("tile_mask")
+            tile_boxes = batch.get("tile_boxes")
 
-    detector = OODDetector()
-    detector.fit(all_image_embeds, all_labels)
+            if tile_values is not None:
+                tile_values = tile_values.to(device)
 
-    id_scores = detector.score(all_image_embeds, method="mahalanobis")
-    calibrated_threshold = float(np.percentile(id_scores, (1.0 - fpr_threshold) * 100.0))
+            if tile_mask is not None:
+                tile_mask = tile_mask.to(device)
+            if tile_boxes is not None:
+                tile_boxes = tile_boxes.to(device)
 
-    os.makedirs(output_dir, exist_ok=True)
-    np.savez(
-        os.path.join(output_dir, "ood_parameters.npz"),
-        class_means=detector.class_means,
-        shared_cov_inv=detector.shared_cov_inv,
-        calibrated_threshold=calibrated_threshold,
+            outputs = model(
+                images=images,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+                return_features=True,
+            )
+
+            if not (
+                isinstance(outputs, tuple)
+                and len(outputs) == 3
+            ):
+                raise RuntimeError(
+                    "Expected model to return "
+                    "(logits, fused_features, prototypes)."
+                )
+
+            _, fused_features, _ = outputs
+
+            fused_features = F.normalize(
+                fused_features,
+                dim=-1,
+            )
+
+            all_features.append(
+                fused_features.cpu().numpy()
+            )
+            all_labels.append(
+                labels.cpu().numpy()
+            )
+
+    all_features = np.concatenate(
+        all_features,
+        axis=0,
+    )
+    all_labels = np.concatenate(
+        all_labels,
+        axis=0,
     )
 
-    print("Validation OOD Calibration complete!")
-    print(f"  Saved parameters to: {os.path.join(output_dir, 'ood_parameters.npz')}")
-    print(f"  Calibrated OOD Threshold (FPR={fpr_threshold}): {calibrated_threshold:.4f}")
-    print(f"  ID Validation Score Stats — Mean: {id_scores.mean():.4f}, Std: {id_scores.std():.4f}\n")
+    learned_prototypes = F.normalize(
+        model.head.prototypes.detach(),
+        dim=-1,
+    ).cpu().numpy()
 
+    detector = OODDetector()
+
+    # OODDetector đã hỗ trợ optional learned prototypes.
+    detector.fit(
+        embeddings=all_features,
+        labels=all_labels,
+        prototypes=learned_prototypes,
+    )
+
+    id_scores = detector.score(
+        all_features,
+        method="mahalanobis",
+    )
+
+    calibrated_threshold = float(
+        np.percentile(
+            id_scores,
+            (1.0 - fpr_threshold) * 100.0,
+        )
+    )
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    class_ids = np.asarray(
+        sorted(detector.class_means.keys()),
+        dtype=np.int64,
+    )
+
+    class_means = np.stack(
+        [
+            detector.class_means[class_id]
+            for class_id in class_ids
+        ],
+        axis=0,
+    )
+
+    output_path = os.path.join(
+        output_dir,
+        "ood_parameters.npz",
+    )
+
+    np.savez(
+        output_path,
+        class_ids=class_ids,
+        class_means=class_means,
+        shared_cov_inv=detector.shared_cov_inv,
+        learned_prototypes=learned_prototypes,
+        calibrated_threshold=calibrated_threshold,
+        fpr_threshold=float(fpr_threshold),
+        id_scores_mean=float(id_scores.mean()),
+        id_scores_std=float(id_scores.std()),
+    )
+
+    print("Validation OOD calibration complete!")
+    print(f"  Saved parameters to: {output_path}")
+    print(
+        f"  Threshold at ID FPR={fpr_threshold:.2%}: "
+        f"{calibrated_threshold:.4f}"
+    )
+    print(
+        "  ID score statistics — "
+        f"mean={id_scores.mean():.4f}, "
+        f"std={id_scores.std():.4f}"
+    )
 
 # ============================================================
 # Main Orchestrator Entry Point
@@ -608,9 +759,25 @@ def main(cfg: DictConfig) -> None:
     elif use_fp16:
         print(" -> [Config] Enabling FP16 training via PyTorch AMP.")
 
-    if cfg.params.get("gradient_checkpointing", True) and hasattr(model, "gradient_checkpointing_enable"):
+    enable_gradient_checkpointing = cfg.params.get(
+        "gradient_checkpointing",
+        True,
+    )
+
+    supports_gradient_checkpointing = (
+        hasattr(model, "gradient_checkpointing_enable")
+        and hasattr(model.backbone, "model")
+    )
+
+    if enable_gradient_checkpointing and supports_gradient_checkpointing:
         print(" -> [Config] Gradient Checkpointing: True")
         model.gradient_checkpointing_enable()
+
+    elif enable_gradient_checkpointing:
+        print(
+            " -> [Config] Gradient Checkpointing skipped: "
+            f"{cfg.model.backbone_type} does not expose a compatible model interface."
+        )
 
     # --- Initialize DataLoaders ---
     print("\nInitializing DataLoaders...")
@@ -618,6 +785,11 @@ def main(cfg: DictConfig) -> None:
     preprocess_func = getattr(model.backbone, "preprocess", None)
     train_loader = build_dataloader(cfg.dataset, split="train", transform=preprocess_func, tokenizer=tokenizer_func)
     val_loader = build_dataloader(cfg.dataset, split="val", transform=preprocess_func, tokenizer=tokenizer_func)
+    from src.utils.trainer import resolve_pad_token_id, BioMedCLIPDataCollator
+    pad_id = resolve_pad_token_id(tokenizer_func) if tokenizer_func is not None else 0
+    collator = BioMedCLIPDataCollator(pad_token_id=pad_id)
+    train_loader.collate_fn = collator
+    val_loader.collate_fn = collator
 
     # --- Resolve Checkpoint Paths ---
     log_dir = os.path.join(hydra.utils.get_original_cwd(), cfg.params.model_dir)
@@ -669,7 +841,7 @@ def main(cfg: DictConfig) -> None:
             print("\n[Phase 1] Hợp nhất trọng số LoRA vào Base Model...")
             merge_peft_adapters(model)
             if cp_merged:
-                os.makedirs(os.path.dirname(cp_merged), exist_ok=True)
+                os.makedirs(os.path.dirname(cp_merged) or ".", exist_ok=True)
                 torch.save(model.state_dict(), cp_merged)
                 print(f" [*] Đã lưu Merged Phase 1 Checkpoint tại: {cp_merged}")
 
@@ -679,13 +851,17 @@ def main(cfg: DictConfig) -> None:
             print(f"Loading merged Phase 1 checkpoint from: {cp_merged}")
             checkpoint = torch.load(cp_merged, map_location=device)
             state_dict = checkpoint.get("model_state_dict", checkpoint)
-            model.load_state_dict(state_dict, strict=False)
+            load_state_dict_checked(
+                model, state_dict, context="merged Phase 1"
+            )
             print(" -> Merged Phase 1 weights loaded successfully!")
         elif cp_p1 and os.path.exists(cp_p1):
             print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
             checkpoint = torch.load(cp_p1, map_location=device)
             state_dict = checkpoint.get("model_state_dict", checkpoint)
-            model.load_state_dict(state_dict, strict=False)
+            load_state_dict_checked(
+                model, state_dict, context="Phase 1"
+            )
             print(" -> Phase 1 weights loaded successfully!")
             
             # Since we loaded unmerged LoRA weights, merge them now if requested
@@ -708,13 +884,12 @@ def main(cfg: DictConfig) -> None:
 
     # --- Phase 2 Execution ---
     if do_phase2:
-        model, _, _, _ = setup_phase2_modules(model, cfg, device)
+        model, classifier_type, _, _ = setup_phase2_modules(model, cfg, device)
 
         # --- Configure parameter trainability for Phase 2 ---
         is_merged = (do_phase1 and merge_after_p1) or init_from_merged
-        has_adapters = (do_phase1 and not merge_after_p1) or (
-            not do_phase1 and cp_p1 and not init_from_merged
-        )
+        peft_type = str(cfg.model.get("peft", {}).get("type", "none")).lower()
+        has_adapters = peft_type in ("lora", "qlora") and not is_merged
 
         if is_merged:
             for param in model.backbone.parameters():
@@ -748,6 +923,7 @@ def main(cfg: DictConfig) -> None:
             experiment_name=experiment_name,
             use_bf16=use_bf16,
             use_fp16=use_fp16,
+            classifier_type=classifier_type,
         )
 
         do_ood = cfg.params.get("run_ood", False)

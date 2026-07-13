@@ -1,0 +1,20 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/architecture/xbone_highres_phase1_merged
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Architecture Ablation Study: High-Res, LoRA weights merged after Phase 1.
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/architecture/xbone_highres_phase1_merged
+
+# --- Training Hyperparameters ---
+params:
+  phase1:
+    merge_lora_after_training: true
+  phase2:
+    init_from_phase1_merged: true

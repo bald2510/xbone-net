@@ -1,476 +1,556 @@
-"""
-XBone-Net Attention Overlay Visualizer.
-===============================================================================
-Extracts ViT self-attention weights and cross-attention fusion maps, generates
-diagnostic heatmap overlays:
-  - Attention Monkey-Patching: Intercepts last ViT block self-attention matrices.
-  - Cross-Attention Fusion: Extracts image-text cross-attention from fusion module.
-  - Heatmap Rendering: Maps CLS-token attention to 14x14 grid and overlays on X-ray.
-  - Annotation Overlay: Draws ground-truth bounding box/polygon annotations.
-  - Figure Export: Saves to results/visualization and report images folder.
+"""Visualize class-specific bidirectional cross-attention on image and text.
+
+The image panel projects text-to-visual attention through the spatial resampler
+to source-image coordinates. The report panel highlights clinical WordPiece
+tokens using image-to-text attention weighted by the target-class gradient.
 """
 
-import sys
-import os
-sys.path.append(os.path.abspath('.'))
+from __future__ import annotations
 
-import types
-import json
-import shutil
 import argparse
-import torch
-import numpy as np
-from PIL import Image
+import json
+import sys
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import matplotlib.patches as mpatches
+import numpy as np
+import torch
+from matplotlib import colors
 from omegaconf import OmegaConf
+from PIL import Image, ImageDraw
 
-from hydra import compose, initialize_config_dir
-from hydra.core.global_hydra import GlobalHydra
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.models.builder import build_model, setup_phase2_modules
+from evaluate import adapt_state_dict_keys, load_state_dict_checked
 from src.datasets.builder import build_dataloader
-import importlib.util
-
-# Load project's evaluate.py (not pip 'evaluate' package)
-_eval_spec = importlib.util.spec_from_file_location("proj_evaluate", os.path.join(os.path.abspath('.'), "evaluate.py"))
-_eval_module = importlib.util.module_from_spec(_eval_spec)
-_eval_spec.loader.exec_module(_eval_module)
-load_model_checkpoint = _eval_module.load_model_checkpoint
-adapt_state_dict_keys = _eval_module.adapt_state_dict_keys
+from src.models.builder import build_model, setup_phase2_modules
+from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id
 
 
-# ============================================================
-# ViT Self-Attention Forward Hooks
-# ============================================================
-
-captured_attention = []
+ROOT = Path(__file__).resolve().parents[1]
 
 
-def patched_attn_forward(self, x, attn_mask=None, is_causal=False):
-    """Patched self-attention forward method capturing internal attention weights.
-
-    Intercepts the ViT self-attention computation to extract and store the
-    raw attention weight matrix (after softmax, before dropout) for visualization.
-
-    Args:
-        self: timm.models.vision_transformer.Attention instance.
-        x: Input tensor of shape (B, N, C).
-        attn_mask: Optional attention mask (unused).
-        is_causal: Causal mask flag (unused).
-
-    Returns:
-        torch.Tensor: Output tensor of shape (B, N, C).
-    """
-    B, N, C = x.shape
-    qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-    q, k, v = qkv.unbind(0)
-    q, k = self.q_norm(q), self.k_norm(k)
-
-    q = q * self.scale
-    attn = q @ k.transpose(-2, -1)
-    attn = attn.softmax(dim=-1)
-
-    captured_attention.append(attn.detach().cpu())
-
-    attn = self.attn_drop(attn)
-    x = attn @ v
-
-    x = x.transpose(1, 2).reshape(B, N, C)
-    x = self.norm(x)
-    x = self.proj(x)
-    x = self.proj_drop(x)
-    return x
-
-
-# ============================================================
-# Config & Model Loading
-# ============================================================
-
-def load_experiment_config(experiment_path: str) -> OmegaConf:
-    """Load a full Hydra experiment config by path.
-
-    Args:
-        experiment_path: Relative experiment config path (e.g., 'btxrd/proposed/ours_xbone_net').
-
-    Returns:
-        OmegaConf: Fully resolved Hydra config.
-    """
-    config_dir = os.path.abspath("configs")
-    GlobalHydra.instance().clear()
-
-    # Register hydra resolver for standalone usage (outside hydra.main)
-    try:
-        OmegaConf.register_new_resolver("hydra", lambda path: os.getcwd() if "cwd" in path else "")
-    except ValueError:
-        pass  # Already registered
-
-    with initialize_config_dir(config_dir=config_dir, version_base=None):
-        cfg = compose(config_name="config", overrides=[f"+experiment={experiment_path}"])
-
-    # Force-resolve any remaining hydra:runtime.cwd interpolations
+def load_config(path: Path):
+    OmegaConf.register_new_resolver(
+        "hydra",
+        lambda key: str(ROOT) if key == "runtime.cwd" else "",
+        replace=True,
+    )
+    cfg = OmegaConf.load(path)
     OmegaConf.set_struct(cfg, False)
-    cwd = os.getcwd()
-    cfg_dict = OmegaConf.to_container(cfg, resolve=False)
-
-    def resolve_hydra_cwd(obj):
-        if isinstance(obj, str) and "${hydra:runtime.cwd}" in obj:
-            return obj.replace("${hydra:runtime.cwd}", cwd)
-        elif isinstance(obj, dict):
-            return {k: resolve_hydra_cwd(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [resolve_hydra_cwd(v) for v in obj]
-        return obj
-
-    cfg_resolved = resolve_hydra_cwd(cfg_dict)
-    return OmegaConf.create(cfg_resolved)
+    return cfg
 
 
-def build_and_load_model(cfg, device):
-    """Build model from config and load checkpoint.
-
-    Args:
-        cfg: Hydra config with model/dataset/params.
-        device: torch.device.
-
-    Returns:
-        nn.Module: Loaded model in eval mode.
-    """
-    print("Building model from config...")
+def load_model(cfg, checkpoint: Path, device: torch.device):
     model = build_model(cfg.model).to(device)
-    model, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    model, _, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    if fusion_type != "cross_attention":
+        raise ValueError(f"Expected cross_attention fusion, got {fusion_type!r}.")
+    saved = torch.load(checkpoint, map_location=device)
+    state_dict = adapt_state_dict_keys(
+        saved.get("model_state_dict", saved), list(model.state_dict().keys())
+    )
+    load_state_dict_checked(model, state_dict, context="cross-modal visualization")
     model.eval()
-
-    print("Loading checkpoint...")
-    ckpt_loaded = load_model_checkpoint(model, cfg, device, is_zero_shot=False)
-    if not ckpt_loaded:
-        print("[ERROR] Could not load checkpoint!")
-        sys.exit(1)
-
     return model
 
 
-# ============================================================
-# Visualization Functions
-# ============================================================
-
-def generate_attention_overlay(
-    raw_img,
-    attn_map,
-    gt_class_name,
-    pred_class_name,
-    pred_prob,
-    annotation_path=None,
-    output_path=None,
-    cross_attn_info=None,
-):
-    """Generate attention overlay visualization figure.
-
-    Creates a multi-panel figure with the original X-ray, ViT self-attention
-    overlay, and optionally cross-attention fusion visualization.
-
-    Args:
-        raw_img: PIL Image of the original X-ray.
-        attn_map: 2D numpy array of attention weights (14x14).
-        gt_class_name: Ground truth class name string.
-        pred_class_name: Predicted class name string.
-        pred_prob: Prediction probability float.
-        annotation_path: Optional JSON annotation file path.
-        cross_attn_info: Optional dict with cross-attention maps from fusion module.
-        output_path: Output file path for the saved figure.
-
-    Returns:
-        None
-    """
-    has_cross_attn = cross_attn_info is not None
-    ncols = 3 if has_cross_attn else 2
-    fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 5))
-
-    # Panel 1: Original X-ray
-    axes[0].imshow(raw_img)
-    axes[0].set_title("Original X-ray Scan", fontsize=11)
-    axes[0].axis('off')
-
-    # Panel 2: ViT Self-Attention Overlay
-    axes[1].imshow(raw_img)
-    norm_attn = (attn_map - attn_map.min()) / (attn_map.max() - attn_map.min() + 1e-8)
-    axes[1].imshow(
-        norm_attn, cmap='jet', alpha=0.5,
-        extent=(0, raw_img.width, raw_img.height, 0),
-        interpolation='bilinear'
-    )
-    axes[1].set_title("ViT Self-Attention (CLS→patches)", fontsize=11)
-    axes[1].axis('off')
-
-    # Panel 3: Cross-Attention Fusion (if available)
-    if has_cross_attn:
-        # top_attn_weights: Image→Text attention [B, heads, 1, 1] (pooled features are 1-token)
-        # We visualize the attention magnitude per head as a bar chart
-        top_w = cross_attn_info["top_attn_weights"].squeeze().detach().cpu().numpy()
-        bottom_w = cross_attn_info["bottom_attn_weights"].squeeze().detach().cpu().numpy()
-
-        # If both are scalar (1→1 attention), show per-head magnitude comparison
-        if top_w.ndim == 1:
-            # Each head has a single attention weight (image→text for 1-token each)
-            x_pos = np.arange(len(top_w))
-            width = 0.35
-            axes[2].bar(x_pos - width/2, top_w, width, label='Img→Txt', color='#2196F3', alpha=0.8)
-            axes[2].bar(x_pos + width/2, bottom_w, width, label='Txt→Img', color='#FF5722', alpha=0.8)
-            axes[2].set_xlabel('Attention Head', fontsize=10)
-            axes[2].set_ylabel('Attention Weight', fontsize=10)
-            axes[2].set_title('Cross-Attention Fusion\n(per head)', fontsize=11)
-            axes[2].legend(fontsize=9)
-            axes[2].set_xticks(x_pos)
-        else:
-            # Fallback: show as heatmap
-            combined = np.stack([top_w.mean(axis=0), bottom_w.mean(axis=0)])
-            axes[2].imshow(combined, cmap='viridis', aspect='auto')
-            axes[2].set_yticks([0, 1])
-            axes[2].set_yticklabels(['Img→Txt', 'Txt→Img'])
-            axes[2].set_title('Cross-Attention Weights', fontsize=11)
-
-    # Title
-    correct = gt_class_name.lower() == pred_class_name.lower()
-    title_color = '#2E7D32' if correct else '#C62828'
-    status = '✓' if correct else '✗'
-    fig.suptitle(
-        f"{status} GT: {gt_class_name.upper()} | Pred: {pred_class_name.upper()} ({pred_prob*100:.1f}%)",
-        fontsize=13, fontweight='bold', y=0.98, color=title_color
-    )
-
-    # Draw annotations if available
-    if annotation_path and os.path.exists(annotation_path):
-        try:
-            with open(annotation_path, 'r', encoding='utf-8') as f:
-                anno_data = json.load(f)
-            shapes = anno_data.get('shapes', [])
-            for shape in shapes:
-                points = shape.get('points', [])
-                shape_type = shape.get('shape_type', 'polygon')
-                if not points:
-                    continue
-                pts = np.array(points)
-                # Draw on panels 0 and 1 (original + attention)
-                for ax in axes[:2]:
-                    if shape_type == 'rectangle':
-                        x1, y1 = pts[0]
-                        x2, y2 = pts[1]
-                        rect = patches.Rectangle(
-                            (min(x1, x2), min(y1, y2)),
-                            abs(x2 - x1), abs(y2 - y1),
-                            linewidth=2.5, edgecolor='#00FF00',
-                            facecolor='none', linestyle='--'
-                        )
-                        ax.add_patch(rect)
-                    else:
-                        poly = patches.Polygon(
-                            pts, closed=True, linewidth=2.5,
-                            edgecolor='#00FF00', facecolor='none', linestyle='--'
-                        )
-                        ax.add_patch(poly)
-            print(f"  [GT] Drew {len(shapes)} annotation shapes")
-        except Exception as e:
-            print(f"  [Warning] Failed to draw annotation: {e}")
-
-    plt.tight_layout(rect=[0, 0, 1, 0.93])
-    if output_path:
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"  Saved: {output_path}")
-    plt.close()
+def one_sample_batch(sample: dict, tokenizer, device: torch.device) -> dict:
+    collator = BioMedCLIPDataCollator(resolve_pad_token_id(tokenizer))
+    batch = collator([sample])
+    return {
+        key: value.to(device) if isinstance(value, torch.Tensor) else value
+        for key, value in batch.items()
+    }
 
 
-# ============================================================
-# Main Entry Point
-# ============================================================
+def find_annotation(image_id: str) -> Path | None:
+    path = ROOT / "data" / "BTXRD" / "Annotations" / f"{Path(image_id).stem}.json"
+    return path if path.exists() else None
 
-def main():
-    """Run attention visualization pipeline for XBone-Net proposed model."""
-    parser = argparse.ArgumentParser(description="XBone-Net Attention Visualizer")
-    parser.add_argument("--experiment", "-e", type=str,
-                        default="btxrd/proposed/ours_xbone_net",
-                        help="Experiment config path")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--num-samples", "-n", type=int, default=10,
-                        help="Max candidates to scan per class for best prediction")
-    parser.add_argument("--classes", nargs="+", type=str, default=None,
-                        help="Specific class names to visualize (default: all)")
-    parser.add_argument("--output-dir", type=str, default="results/visualization",
-                        help="Output directory for saved figures")
-    args = parser.parse_args()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Device: {device}")
+def load_annotation(path: Path | None):
+    if path is None or not path.exists():
+        return []
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle).get("shapes", [])
 
-    # --- Load config via Hydra ---
-    cfg = load_experiment_config(args.experiment)
 
-    # Disable struct mode to allow overrides
-    OmegaConf.set_struct(cfg, False)
-    cfg.seed = args.seed
+def infer_dataset_index(dataset, image_id: str) -> int:
+    indices = dataset.df.index[
+        dataset.df["image_id"].astype(str) == str(image_id)
+    ].tolist()
+    if not indices:
+        raise ValueError(f"{image_id!r} is not present in the BTXRD test split.")
+    return int(indices[0])
 
-    # Override model_dir for correct checkpoint discovery
-    experiment_name = str(cfg.get("experiment_name", args.experiment))
-    model_dir = os.path.join("checkpoints", experiment_name, f"seed_{args.seed}")
-    if "params" not in cfg:
-        cfg.params = {}
-    cfg.params.model_dir = model_dir
-    cfg.params.seed = args.seed
 
-    # --- Build and load model ---
-    model = build_and_load_model(cfg, device)
-
-    # --- Patch ViT self-attention for extraction ---
-    print("Patching ViT attention layer...")
-    attn_module = model.backbone.model.visual.trunk.blocks[-1].attn
-    attn_module.fused_attn = False
-    attn_module.forward = types.MethodType(patched_attn_forward, attn_module)
-
-    # --- Check if model has cross-attention fusion ---
-    has_cross_attn_fusion = hasattr(model, 'fusion') and hasattr(model.fusion, 'top_cross_attn')
-    if has_cross_attn_fusion:
-        print("[INFO] Model has Cross-Attention fusion — will extract fusion attention maps")
-
-    # --- Build test dataloader ---
-    tokenizer_func = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
-    test_loader = build_dataloader(
-        cfg.dataset, split="test",
-        transform=model.backbone.preprocess,
-        tokenizer=tokenizer_func,
-    )
-    dataset = test_loader.dataset
-
-    # --- Determine target classes ---
-    classes_list = list(cfg.dataset.params.classes)
-    if args.classes:
-        target_classes = {classes_list.index(c): c for c in args.classes if c in classes_list}
-    else:
-        target_classes = {i: c for i, c in enumerate(classes_list)}
-
-    # --- Build candidate sample index per class ---
-    candidates = {c: [] for c in target_classes}
-    for idx in range(len(dataset)):
-        row = dataset.df.iloc[idx]
-        class_id = int(row['class_id'])
-        if class_id in target_classes:
-            candidates[class_id].append(idx)
-
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    # --- Generate visualizations ---
-    print(f"\nGenerating attention maps for {len(target_classes)} classes...\n")
-    for class_id, class_name in target_classes.items():
-        indices = candidates[class_id]
-        if not indices:
-            print(f"[{class_name}] No samples found, skipping.")
+def draw_ground_truth(ax, shapes, sx: float = 1.0, sy: float = 1.0):
+    for shape in shapes:
+        points = np.asarray(shape.get("points", []), dtype=np.float32)
+        if points.size == 0:
             continue
-
-        # Find best correctly-predicted sample
-        selected_idx = None
-        best_prob = 0.0
-
-        print(f"[{class_name}] Scanning {min(len(indices), args.num_samples)} candidates...")
-        for idx in indices[:args.num_samples]:
-            sample = dataset[idx]
-            # Handle both dual-report (4-tuple) and single-report (3-tuple) modes
-            if len(sample) == 4:
-                image_tensor, xray_ids, clinical_ids, labels = sample
-                text_input = clinical_ids  # Use clinical report for evaluation
-            else:
-                image_tensor, text_input, labels = sample
-
-            img_in = image_tensor.unsqueeze(0).to(device)
-            txt_in = text_input.unsqueeze(0).to(device)
-
-            captured_attention.clear()
-            with torch.no_grad():
-                logits = model(img_in, txt_in)
-                probs = torch.softmax(logits, dim=-1).squeeze(0).cpu().numpy()
-
-            pred_class = np.argmax(probs)
-            if pred_class == class_id and probs[class_id] > best_prob:
-                best_prob = probs[class_id]
-                selected_idx = idx
-
-        if selected_idx is None:
-            selected_idx = indices[0]
-            print(f"  [Fallback] No correct prediction. Using index {selected_idx}")
+        points[:, 0] *= sx
+        points[:, 1] *= sy
+        if shape.get("shape_type") == "rectangle" and len(points) >= 2:
+            x1, y1 = points[0]
+            x2, y2 = points[1]
+            patch = mpatches.Rectangle(
+                (min(x1, x2), min(y1, y2)),
+                abs(x2 - x1),
+                abs(y2 - y1),
+                fill=False,
+                edgecolor="#39ff14",
+                linewidth=2.1,
+                linestyle="--",
+            )
         else:
-            print(f"  Selected index {selected_idx}, confidence: {best_prob:.4f}")
+            patch = mpatches.Polygon(
+                points,
+                closed=True,
+                fill=False,
+                edgecolor="#39ff14",
+                linewidth=2.1,
+                linestyle="--",
+            )
+        ax.add_patch(patch)
 
-        # --- Final forward pass on selected sample ---
-        sample = dataset[selected_idx]
-        if len(sample) == 4:
-            image_tensor, xray_ids, clinical_ids, labels = sample
-            text_input = clinical_ids
-        else:
-            image_tensor, text_input, labels = sample
 
-        img_in = image_tensor.unsqueeze(0).to(device)
-        txt_in = text_input.unsqueeze(0).to(device)
+def annotation_mask(shapes, image_size: tuple[int, int], heat_shape: tuple[int, int]):
+    width, height = image_size
+    heat_h, heat_w = heat_shape
+    mask = Image.new("L", (heat_w, heat_h), 0)
+    drawer = ImageDraw.Draw(mask)
+    sx, sy = heat_w / width, heat_h / height
+    for shape in shapes:
+        scaled = [
+            (round(x * sx), round(y * sy))
+            for x, y in shape.get("points", [])
+        ]
+        if shape.get("shape_type") == "rectangle" and len(scaled) >= 2:
+            drawer.rectangle([scaled[0], scaled[1]], fill=1)
+        elif len(scaled) >= 3:
+            drawer.polygon(scaled, fill=1)
+    return np.asarray(mask, dtype=bool)
 
-        captured_attention.clear()
 
-        # Run forward with cross-attention extraction if available
-        cross_attn_info = None
-        with torch.no_grad():
-            if has_cross_attn_fusion:
-                # Manual forward to capture cross-attention
-                img_feats, txt_feats = model.backbone(img_in, txt_in)
-                fused_feats, cross_attn_info = model.fusion(img_feats, txt_feats, return_attn=True)
-                logits = model.head(fused_feats)
-            else:
-                logits = model(img_in, txt_in)
+def _normalize_scores(values: torch.Tensor, mask: torch.Tensor | None = None):
+    values = values.float()
+    if mask is not None:
+        values = values * mask.to(values.dtype)
+    values = torch.relu(values)
+    maximum = values.amax(dim=-1, keepdim=True)
+    return values / maximum.clamp_min(1e-8)
 
-            probs = torch.softmax(logits, dim=-1).squeeze(0).cpu().numpy()
 
-        # --- Extract image path ---
-        row = dataset.df.iloc[selected_idx]
-        image_id = str(row['image_id'])
-        raw_img_path = os.path.join(dataset.img_dir, image_id)
-        raw_img = Image.open(raw_img_path).convert('RGB')
+def _entropy(values: torch.Tensor):
+    distribution = values.detach() / values.detach().sum().clamp_min(1e-8)
+    return float(-(distribution * torch.log(distribution + 1e-8)).sum())
 
-        # --- Extract ViT self-attention map ---
-        if captured_attention:
-            attn_matrix = captured_attention[0].squeeze(0)  # [heads, N, N]
-            cls_attn = attn_matrix[:, 0, 1:].mean(dim=0).numpy()  # Average over heads, CLS→patches
-            attn_map = cls_attn.reshape(14, 14)
-        else:
-            print(f"  [Warning] No ViT attention captured, using zeros")
-            attn_map = np.zeros((14, 14))
 
-        # --- Class info ---
-        gt_class_name = classes_list[class_id]
-        pred_class_id = int(np.argmax(probs))
-        pred_class_name = classes_list[pred_class_id]
-        pred_prob = probs[pred_class_id]
+def cross_modal_attribution(model, batch: dict, target_class: int):
+    """Return class-weighted image and clinical-token cross-attention scores."""
+    model.backbone.explain_mode = True
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
 
-        # --- Annotation path ---
-        file_name_without_ext = os.path.splitext(image_id)[0]
-        annotation_path = os.path.join("data/BTXRD/Annotations", f"{file_name_without_ext}.json")
-
-        # --- Generate and save ---
-        safe_class_name = class_name.replace(" ", "_")
-        output_file = os.path.join(args.output_dir, f"attn_{safe_class_name}.png")
-
-        generate_attention_overlay(
-            raw_img=raw_img,
-            attn_map=attn_map,
-            gt_class_name=gt_class_name,
-            pred_class_name=pred_class_name,
-            pred_prob=pred_prob,
-            annotation_path=annotation_path,
-            output_path=output_file,
-            cross_attn_info=cross_attn_info,
+    with torch.no_grad():
+        _, encoded_text = model.backbone(
+            batch["pixel_values"],
+            batch["clinical_input_ids"],
+            attention_mask=batch["clinical_attention_mask"],
+            tile_values=batch.get("tile_values"),
+            tile_mask=batch.get("tile_mask"),
+            tile_boxes=batch.get("tile_boxes"),
         )
 
-        # Copy to report images
-        report_dest = os.path.join("docs", "report", "images", f"attn_{safe_class_name}.png")
-        os.makedirs(os.path.dirname(report_dest), exist_ok=True)
-        if os.path.exists(output_file):
-            shutil.copy(output_file, report_dest)
-            print(f"  Copied to: {report_dest}")
+    global_feature = model.backbone.last_global_feature.detach()
+    local_tokens = model.backbone.last_local_tokens.detach().requires_grad_(True)
+    local_mask = model.backbone.last_local_mask.detach()
+    local_boxes = model.backbone.last_local_token_boxes.detach()
+    text_tokens = encoded_text.detach().requires_grad_(True)
 
-    print(f"\nAll attention maps saved to {args.output_dir}/")
+    image_tokens = model.backbone.visual_resampler(
+        global_feature,
+        local_tokens,
+        local_mask,
+        local_boxes,
+    )
+    image_padding = torch.zeros(
+        image_tokens.size(0),
+        image_tokens.size(1) - 1,
+        dtype=torch.bool,
+        device=image_tokens.device,
+    )
+    text_padding = batch["clinical_attention_mask"][:, 1:] == 0
+    fused, attention = model.fusion(
+        image_tokens,
+        text_tokens,
+        img_key_padding_mask=image_padding,
+        txt_key_padding_mask=text_padding,
+        return_attn=True,
+    )
+    logits = model.head(fused)
+    image_gradient, text_gradient = torch.autograd.grad(
+        logits[0, target_class],
+        (image_tokens, text_tokens),
+        retain_graph=False,
+    )
+
+    raw_visual = attention["attn_txt_to_img"].mean(dim=1)[:, 0]
+    visual_gradient = torch.relu(
+        (image_tokens[:, 1:] * image_gradient[:, 1:]).sum(dim=-1)
+    )
+    if visual_gradient.sum() <= 1e-10:
+        visual_gradient = (
+            image_tokens[:, 1:] * image_gradient[:, 1:]
+        ).abs().sum(dim=-1)
+    visual_query_scores = _normalize_scores(raw_visual) * _normalize_scores(
+        visual_gradient
+    )
+    if visual_query_scores.sum() <= 1e-10:
+        visual_query_scores = _normalize_scores(raw_visual)
+    visual_query_distribution = visual_query_scores / visual_query_scores.sum(
+        dim=-1, keepdim=True
+    ).clamp_min(1e-8)
+    resampler_attention = model.backbone.visual_resampler.last_attention.to(
+        visual_query_scores.device
+    )
+    local_scores = torch.einsum(
+        "bq,bqn->bn", visual_query_distribution, resampler_attention
+    )
+
+    raw_text = attention["attn_img_to_txt"].mean(dim=1)[:, 0]
+    text_gradient_score = torch.relu(
+        (text_tokens[:, 1:] * text_gradient[:, 1:]).sum(dim=-1)
+    )
+    if text_gradient_score.sum() <= 1e-10:
+        text_gradient_score = (
+            text_tokens[:, 1:] * text_gradient[:, 1:]
+        ).abs().sum(dim=-1)
+    valid_text = ~text_padding
+    text_scores = _normalize_scores(raw_text, valid_text) * _normalize_scores(
+        text_gradient_score, valid_text
+    )
+    text_scores = _normalize_scores(text_scores, valid_text)
+
+    return {
+        "logits": logits.detach(),
+        "local_scores": local_scores[0].detach(),
+        "local_boxes": local_boxes[0].detach(),
+        "text_scores": text_scores[0].detach(),
+        "text_token_ids": batch["clinical_input_ids"][0, 1:].detach(),
+        "text_valid_mask": valid_text[0].detach(),
+        "visual_query_entropy": _entropy(visual_query_distribution[0]),
+        "text_entropy": _entropy(text_scores[0][valid_text[0]]),
+        "raw_visual_attention": raw_visual[0].detach(),
+        "raw_text_attention": raw_text[0].detach(),
+    }
+
+
+def rasterize_scores(
+    boxes: np.ndarray,
+    scores: np.ndarray,
+    image_size: tuple[int, int],
+    max_side: int = 840,
+):
+    width, height = image_size
+    scale = min(1.0, max_side / max(width, height))
+    out_w = max(1, round(width * scale))
+    out_h = max(1, round(height * scale))
+    values = np.zeros((out_h, out_w), dtype=np.float32)
+    counts = np.zeros_like(values)
+    for box, score in zip(boxes, scores):
+        x1, y1 = np.floor(box[:2] * [out_w, out_h]).astype(int)
+        x2, y2 = np.ceil(box[2:] * [out_w, out_h]).astype(int)
+        x1, y1 = np.clip([x1, y1], 0, [out_w - 1, out_h - 1])
+        x2, y2 = np.clip(
+            [x2, y2], [x1 + 1, y1 + 1], [out_w, out_h]
+        )
+        values[y1:y2, x1:x2] += float(score)
+        counts[y1:y2, x1:x2] += 1
+    values /= np.maximum(counts, 1)
+    values -= values.min()
+    return values / (values.max() + 1e-8)
+
+
+def merge_wordpieces(tokenizer, token_ids, scores, valid_mask):
+    hf_tokenizer = getattr(tokenizer, "tokenizer", tokenizer)
+    pieces = hf_tokenizer.convert_ids_to_tokens(token_ids.tolist())
+    special_tokens = set(getattr(hf_tokenizer, "all_special_tokens", []))
+    words: list[str] = []
+    word_scores: list[float] = []
+    for piece, score, valid in zip(pieces, scores.tolist(), valid_mask.tolist()):
+        if not valid or piece in special_tokens:
+            continue
+        if piece.startswith("##") and words:
+            words[-1] += piece[2:]
+            word_scores[-1] = max(word_scores[-1], float(score))
+        else:
+            words.append(piece.replace("▁", ""))
+            word_scores.append(float(score))
+    return words, np.asarray(word_scores, dtype=np.float32)
+
+
+def _wrap_words(words: list[str], max_characters: int = 64):
+    lines: list[list[int]] = [[]]
+    used = 0
+    for index, word in enumerate(words):
+        length = len(word) + 1
+        if lines[-1] and used + length > max_characters:
+            lines.append([])
+            used = 0
+        lines[-1].append(index)
+        used += length
+    return lines
+
+
+def draw_highlighted_report(ax, words, scores, top_count: int = 8):
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    if not words:
+        ax.text(0.02, 0.94, "No valid clinical tokens.", va="top")
+        return []
+
+    normalized = scores / (scores.max() + 1e-8)
+    positive = normalized[normalized > 0]
+    bold_threshold = np.quantile(positive, 0.75) if positive.size else 1.0
+    lines = _wrap_words(words)
+    line_height = min(0.075, 0.82 / max(len(lines), 1))
+    cmap = matplotlib.colormaps["YlOrRd"]
+    for row, line in enumerate(lines):
+        character_position = 0
+        y = 0.93 - row * line_height
+        for index in line:
+            score = float(normalized[index])
+            x = 0.02 + character_position / 66.0
+            ax.text(
+                x,
+                y,
+                words[index],
+                transform=ax.transAxes,
+                ha="left",
+                va="top",
+                family="monospace",
+                fontsize=8.7,
+                fontweight="bold" if score >= bold_threshold and score > 0 else "normal",
+                color="#111111",
+                bbox={
+                    "facecolor": cmap(0.15 + 0.8 * score),
+                    "alpha": 0.12 + 0.78 * score,
+                    "edgecolor": "none",
+                    "pad": 1.3,
+                },
+            )
+            character_position += len(words[index]) + 1
+
+    unique_scores: dict[str, float] = {}
+    for word, score in zip(words, normalized):
+        if score > 0:
+            unique_scores[word] = max(unique_scores.get(word, 0.0), float(score))
+    return sorted(unique_scores.items(), key=lambda item: item[1], reverse=True)[
+        :top_count
+    ]
+
+
+def localization_metrics(heatmap, shapes, image_size):
+    mask = annotation_mask(shapes, image_size, heatmap.shape)
+    if not mask.any():
+        return None, None, None
+    mass = float((heatmap / (heatmap.sum() + 1e-8))[mask].sum())
+    area = float(mask.mean())
+    return mass, area, mass / area if area > 0 else None
+
+
+def render_cross_modal(
+    raw_image: Image.Image,
+    image_id: str,
+    gt_name: str,
+    pred_name: str,
+    confidence: float,
+    heatmap: np.ndarray,
+    shapes,
+    words,
+    word_scores,
+    visual_entropy: float,
+    text_entropy: float,
+    output: Path,
+):
+    heat_h, heat_w = heatmap.shape
+    resized = raw_image.resize((heat_w, heat_h), Image.Resampling.LANCZOS)
+    sx, sy = heat_w / raw_image.width, heat_h / raw_image.height
+    metrics = localization_metrics(heatmap, shapes, raw_image.size)
+
+    fig = plt.figure(figsize=(17, 7), facecolor="white")
+    grid = fig.add_gridspec(1, 3, width_ratios=[0.75, 0.75, 1.65], wspace=0.08)
+    input_ax = fig.add_subplot(grid[0, 0])
+    heat_ax = fig.add_subplot(grid[0, 1])
+    text_ax = fig.add_subplot(grid[0, 2])
+
+    input_ax.imshow(resized, cmap="gray")
+    draw_ground_truth(input_ax, shapes, sx, sy)
+    input_ax.set_title("Input + ground truth", fontsize=11)
+    input_ax.axis("off")
+
+    heat_ax.imshow(resized, cmap="gray")
+    heat_ax.imshow(
+        heatmap,
+        cmap="turbo",
+        alpha=0.54,
+        vmin=0,
+        vmax=1,
+        interpolation="nearest",
+    )
+    draw_ground_truth(heat_ax, shapes, sx, sy)
+    heat_title = "Class-specific text -> image"
+    if metrics[2] is not None:
+        heat_title += f"\nGT mass {metrics[0]:.1%}, lift {metrics[2]:.2f}x"
+    heat_ax.set_title(heat_title, fontsize=11)
+    heat_ax.axis("off")
+
+    top_tokens = draw_highlighted_report(text_ax, words, word_scores)
+    text_ax.set_title(
+        "Clinical report: class-specific image -> text relevance\n"
+        "darker + bold = stronger contribution",
+        fontsize=11,
+        loc="left",
+    )
+    top_text = "Top tokens: " + ", ".join(
+        f"{token} ({score:.2f})" for token, score in top_tokens[:6]
+    )
+    text_ax.text(
+        0.02,
+        0.035,
+        top_text,
+        transform=text_ax.transAxes,
+        ha="left",
+        va="bottom",
+        fontsize=8.5,
+        color="#333333",
+        wrap=True,
+    )
+    text_ax.text(
+        0.02,
+        0.0,
+        f"Visual-query entropy: {visual_entropy:.3f} | "
+        f"Text-token entropy: {text_entropy:.3f}",
+        transform=text_ax.transAxes,
+        ha="left",
+        va="bottom",
+        fontsize=8.5,
+        color="#555555",
+    )
+
+    correct = gt_name == pred_name
+    fig.suptitle(
+        f"{image_id} | GT: {gt_name} | Pred: {pred_name} ({confidence:.1%})",
+        fontsize=14,
+        color="#18732b" if correct else "#a61b1b",
+    )
+    fig.subplots_adjust(top=0.88, bottom=0.05, left=0.02, right=0.99)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=180, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return metrics, top_tokens
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=ROOT / "outputs" / "2026-07-13" / "05-21-15" / ".hydra" / "config.yaml",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=ROOT / "checkpoints" / "btxrd" / "proposed" / "xbone_highres" / "seed_42" / "best_phase2.pth",
+    )
+    parser.add_argument("--image-id", default="IMG000094.jpeg")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "results" / "visualization" / "cross_attention_trained.png",
+    )
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cfg = load_config(args.config.resolve())
+    model = load_model(cfg, args.checkpoint.resolve(), device)
+    loader = build_dataloader(
+        cfg.dataset,
+        split="test",
+        transform=model.backbone.preprocess,
+        tokenizer=model.backbone.tokenizer_obj,
+    )
+    dataset = loader.dataset
+    index = infer_dataset_index(dataset, args.image_id)
+    batch = one_sample_batch(dataset[index], model.backbone.tokenizer_obj, device)
+    target_class = int(batch["labels"].item())
+    attribution = cross_modal_attribution(model, batch, target_class)
+
+    probabilities = torch.softmax(attribution["logits"], dim=-1)[0]
+    prediction = int(probabilities.argmax())
+    classes = list(cfg.dataset.params.classes)
+    raw_image = Image.open(Path(dataset.img_dir) / args.image_id).convert("RGB")
+    shapes = load_annotation(find_annotation(args.image_id))
+    boxes = attribution["local_boxes"].cpu().numpy()
+    heatmap = rasterize_scores(
+        boxes,
+        attribution["local_scores"].cpu().numpy(),
+        raw_image.size,
+    )
+    words, word_scores = merge_wordpieces(
+        model.backbone.tokenizer_obj,
+        attribution["text_token_ids"].cpu(),
+        attribution["text_scores"].cpu(),
+        attribution["text_valid_mask"].cpu(),
+    )
+    metrics, top_tokens = render_cross_modal(
+        raw_image=raw_image,
+        image_id=args.image_id,
+        gt_name=classes[target_class],
+        pred_name=classes[prediction],
+        confidence=float(probabilities[prediction]),
+        heatmap=heatmap,
+        shapes=shapes,
+        words=words,
+        word_scores=word_scores,
+        visual_entropy=attribution["visual_query_entropy"],
+        text_entropy=attribution["text_entropy"],
+        output=args.output.resolve(),
+    )
+
+    summary = {
+        "image_id": args.image_id,
+        "ground_truth": classes[target_class],
+        "prediction": classes[prediction],
+        "confidence": float(probabilities[prediction]),
+        "image_attention": {
+            "gt_mass": metrics[0],
+            "gt_area": metrics[1],
+            "gt_lift": metrics[2],
+            "visual_query_entropy": attribution["visual_query_entropy"],
+        },
+        "text_attention": {
+            "token_entropy": attribution["text_entropy"],
+            "top_tokens": [
+                {"token": token, "score": score} for token, score in top_tokens
+            ],
+        },
+        "num_local_tokens": int(attribution["local_scores"].numel()),
+        "num_text_tokens": len(words),
+        "output": str(args.output.resolve()),
+    }
+    args.output.resolve().with_suffix(".json").write_text(
+        json.dumps(summary, indent=2), encoding="utf-8"
+    )
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

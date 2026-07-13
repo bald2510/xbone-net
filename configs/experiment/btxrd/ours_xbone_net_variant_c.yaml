@@ -1,5 +1,9 @@
 # @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/proposed/ours_xbone_net_variant_c
 # Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Proposed XBone-Net model configuration (OURS_XBONE_NET_VARIANT_C).
+# ===============================================================================
 
 defaults:
   - /model/peft@model.peft: lora
@@ -8,18 +12,19 @@ defaults:
   - /dataset@dataset: btxrd
   - _self_
 
+# --- Model Architecture ---
 model:
   backbone_type: biomedclip
   freeze_backbone: true
 
-experiment_name: btxrd/proposed/ours_xbone_net_variant_a
-seed: 42
+# --- Experiment Identifier ---
+experiment_name: btxrd/proposed/ours_xbone_net_variant_c
 
+# --- Training Hyperparameters ---
 params:
   run_phase1: true
   run_phase2: true
   run_ood: false
-
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
   phase1:
@@ -33,7 +38,7 @@ params:
     loss_type: semantic_matching
     target_similarity: 0.7
     beta: 0.5
-    p1_report_type: clinical
+    p1_report_type: xray
     merge_lora_after_training: true
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
@@ -62,3 +67,6 @@ params:
       use_class_weights: true
       weight_type: effective_num
       effective_num_beta: 0.999
+
+# --- Experiment Identifier ---
+seed: 42

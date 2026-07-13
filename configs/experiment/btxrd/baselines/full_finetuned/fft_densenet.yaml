@@ -1,8 +1,8 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/baselines/finetuned/densenet
-# Backbone: densenet | PEFT: none | Fusion: none | Head: linear
-# Description: Fine-tuned Baseline Model using fully fine-tuned Vision-Only CNN backbone.
+# Experiment Config: btxrd/baselines/finetuned/fft_densenet
+# Backbone: densenet121_imagenet | PEFT: none | Fusion: none | Head: linear
+# Description: Full Fine-Tuned Baseline.
 # ===============================================================================
 
 defaults:
@@ -27,7 +27,6 @@ params:
   run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
-  # --- Phase 2 Hyperparameters ---
   phase2:
     epochs: 50
     lr: 2e-5
@@ -46,5 +45,5 @@ params:
       weight_type: effective_num
       effective_num_beta: 0.999
 
-# --- Global Random Seed ---
+# --- Experiment Identifier ---
 seed: 42

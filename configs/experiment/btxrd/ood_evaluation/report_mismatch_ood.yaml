@@ -1,0 +1,18 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ood_evaluation/report_mismatch_ood
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Out-of-Distribution Evaluation: Report Mismatch OOD (Shuffled/mismatched text reports).
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ood_evaluation/report_mismatch_ood
+
+# --- Dataset Configuration ---
+dataset:
+  params:
+    shuffle_reports: true

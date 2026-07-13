@@ -1,0 +1,21 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/architecture/xbone_highres_phase2_only
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Architecture Ablation Study: High-Res, Supervised Phase 2 Only (No Phase 1 pre-training).
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/architecture/xbone_highres_phase2_only
+
+# --- Training Hyperparameters ---
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    init_from_phase1_merged: false

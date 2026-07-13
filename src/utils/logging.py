@@ -48,6 +48,9 @@ class TrainingLogger:
             use_timestamp: If True, appends timestamp. If False, logs directly into log_dir/logs/phase.
         """
         # --- Create directory ---
+        self.log_dir = log_dir
+        self._trainable_params = None
+
         if use_timestamp:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             run_name = f"{experiment_name}/{phase}_{timestamp}" if phase else f"{experiment_name}/{timestamp}"
@@ -130,6 +133,43 @@ class TrainingLogger:
             self.writer.add_scalar("gpu/memory_reserved_mb", reserved_mb, step)
             self.writer.add_scalar("gpu/memory_peak_mb", max_allocated_mb, step)
 
+    def _get_latest_checkpoint_size(self) -> float:
+        """Find the latest checkpoint directory or file and return its size in MB."""
+        if not hasattr(self, "log_dir") or not self.log_dir or not os.path.exists(self.log_dir):
+            return 0.0
+        
+        checkpoint_dirs = []
+        try:
+            for d in os.listdir(self.log_dir):
+                path = os.path.join(self.log_dir, d)
+                if os.path.isdir(path) and d.startswith("checkpoint-"):
+                    checkpoint_dirs.append(path)
+        except Exception:
+            return 0.0
+            
+        if not checkpoint_dirs:
+            # Look for direct .pth or .safetensors files in log_dir
+            try:
+                pth_files = [os.path.join(self.log_dir, f) for f in os.listdir(self.log_dir) if f.endswith(".pth") or f.endswith(".safetensors")]
+                if not pth_files:
+                    return 0.0
+                latest_file = max(pth_files, key=os.path.getmtime)
+                return os.path.getsize(latest_file) / (1024 ** 2)
+            except Exception:
+                return 0.0
+             
+        try:   
+            latest_dir = max(checkpoint_dirs, key=os.path.getmtime)
+            total_size = 0
+            for root, dirs, files in os.walk(latest_dir):
+                for f in files:
+                    fp = os.path.join(root, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
+            return total_size / (1024 ** 2)
+        except Exception:
+            return 0.0
+
     def start_epoch(self):
         """Record the start timestamp for the current epoch."""
         self._epoch_start_time = time.time()
@@ -137,7 +177,7 @@ class TrainingLogger:
     def log_epoch_metrics(self, metrics: dict, epoch: int):
         """Log epoch summary metrics to TensorBoard and CSV.
 
-        Enriches raw metrics with timing info and GPU stats before recording.
+        Enriches raw metrics with timing info, GPU stats, checkpoint size, and trainable parameters before recording.
 
         Args:
             metrics: Dictionary of metric names to values.
@@ -153,6 +193,15 @@ class TrainingLogger:
             "total_time_sec": round(elapsed, 1),
             **metrics,
         }
+
+        # Add trainable parameters if available
+        if hasattr(self, "_trainable_params") and self._trainable_params is not None:
+            enriched["trainable_params"] = self._trainable_params
+
+        # Compute and add checkpoint size
+        checkpoint_size_mb = self._get_latest_checkpoint_size()
+        if checkpoint_size_mb > 0:
+            enriched["checkpoint_size_mb"] = round(checkpoint_size_mb, 1)
 
         if torch.cuda.is_available():
             enriched["gpu_allocated_mb"] = round(torch.cuda.memory_allocated() / 1024 ** 2, 1)
@@ -170,12 +219,17 @@ class TrainingLogger:
 
         # --- Console output ---
         parts = [f"Epoch {epoch}"]
-        for key in ("train_loss", "eval_loss", "learning_rate"):
+        for key in ("train_loss", "eval_loss", "eval_f1_macro", "f1_macro", "learning_rate"):
             if key in metrics and metrics[key] is not None:
-                parts.append(f"{key}={metrics[key]:.6f}")
+                is_metric = "f1" in key or "accuracy" in key
+                parts.append(f"{key}={metrics[key]:.6f}" if not is_metric else f"{key}={metrics[key]:.4f}")
         parts.append(f"time={epoch_time:.1f}s")
         if torch.cuda.is_available():
-            parts.append(f"gpu={enriched.get('gpu_allocated_mb', 0):.0f}MB")
+            parts.append(f"gpu={enriched.get('gpu_allocated_mb', 0):.0f}MB (peak={enriched.get('gpu_peak_mb', 0):.0f}MB)")
+        if "checkpoint_size_mb" in enriched:
+            parts.append(f"ckpt={enriched['checkpoint_size_mb']:.1f}MB")
+        if "trainable_params" in enriched:
+            parts.append(f"trainable={enriched['trainable_params']:,}")
         print(f"[Logger] {' | '.join(parts)}")
 
         self.writer.flush()
@@ -206,6 +260,8 @@ class TrainingLogger:
         total = sum(p.numel() for p in model.parameters())
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         frozen = total - trainable
+        
+        self._trainable_params = trainable
 
         self.writer.add_scalar("model/total_params", total, 0)
         self.writer.add_scalar("model/trainable_params", trainable, 0)

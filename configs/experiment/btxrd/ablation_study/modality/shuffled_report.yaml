@@ -1,0 +1,18 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/modality/shuffled_report
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Modality Ablation Study: Shuffled Reports (Mismatch Image/Text).
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/modality/shuffled_report
+
+# --- Dataset Configuration ---
+dataset:
+  params:
+    shuffle_reports: true

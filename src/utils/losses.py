@@ -109,8 +109,10 @@ class SoftTargetSemanticMatchingLoss(nn.Module):
             target_similarity: Soft target value for same-class non-diagonal pairs.
         """
         super().__init__()
+        if not 0.0 <= float(target_similarity) <= 1.0:
+            raise ValueError("target_similarity must be in [0, 1].")
         self.logit_scale, _ = get_clip_logit_params(clip_model)
-        self.target_similarity = target_similarity
+        self.target_similarity = float(target_similarity)
 
     def forward(self, image_features, text_features, disease_labels=None):
         """Compute soft-target symmetric contrastive loss.
@@ -123,6 +125,13 @@ class SoftTargetSemanticMatchingLoss(nn.Module):
         Returns:
             Scalar loss tensor.
         """
+        if image_features.ndim != 2 or text_features.ndim != 2:
+            raise ValueError(
+                "Semantic matching expects [B,D] image and text features, got "
+                f"{tuple(image_features.shape)} and {tuple(text_features.shape)}."
+            )
+        if image_features.shape != text_features.shape:
+            raise ValueError("Image and text features must have identical [B,D] shapes.")
         batch_size = image_features.size(0)
         device = image_features.device
         logits_v2t = _pairwise_logits(image_features, text_features, self.logit_scale)
@@ -212,6 +221,15 @@ class PrototypeLossMulticlass(nn.Module):
         if targets.ndim > 1:
             targets = targets.argmax(dim=-1)
 
+        if features.ndim != 2 or prototypes.ndim != 2:
+            raise ValueError("Prototype loss expects features [B,D] and prototypes [C,D].")
+        if features.size(1) != prototypes.size(1):
+            raise ValueError("Feature and prototype dimensions do not match.")
+        if prototypes.size(0) < 2:
+            raise ValueError("Prototype loss requires at least two classes.")
+        if torch.any(targets < 0) or torch.any(targets >= prototypes.size(0)):
+            raise ValueError("Target class index is outside the prototype range.")
+
         normed_f = F.normalize(features, dim=-1)
         normed_p = F.normalize(prototypes, dim=-1)
         cosine_sim = normed_f @ normed_p.T
@@ -232,22 +250,6 @@ class PrototypeLossMulticlass(nn.Module):
 class PrototypeLoss(PrototypeLossMulticlass):
     """Alias for backward compatibility."""
     pass
-
-
-class CombinedPhase2LossMulticlass(nn.Module):
-    """Combined Unweighted Cross-Entropy and Prototype loss for Phase 2.
-
-    Formula:
-        L_total = L_ce + lambda_proto * L_proto
-
-    Attributes:
-        ce (nn.CrossEntropyLoss): Standard unweighted cross-entropy classification loss with label smoothing.
-        proto_loss (PrototypeLossMulticlass): Multi-class prototype distance objective.
-        lambda_proto (float): Weight factor for prototype loss (default: 0.3).
-    """
-
-
-
 
 class CombinedPhase2LossMulticlass(nn.Module):
     """Composite objective for Phase 2 classification training."""

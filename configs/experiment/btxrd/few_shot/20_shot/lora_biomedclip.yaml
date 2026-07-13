@@ -1,18 +1,24 @@
 # @package _global_
 # ===============================================================================
-# Few-Shot Learning Config: 20-shot
-# Inherits from: experiment/btxrd/baselines/peft_finetuned/lora_biomedclip
+# Experiment Config: btxrd/few_shot/20_shot/lora_biomedclip
+# Backbone: biomedclip | PEFT: none | Fusion: none | Head: none
+# Description: Few-Shot Learning Config: few-shot baseline.
 # ===============================================================================
+
+# Few-Shot Learning Config: 20-shot
 
 defaults:
   - /experiment/btxrd/baselines/peft_finetuned/lora_biomedclip
   - _self_
 
+# --- Experiment Identifier ---
 experiment_name: btxrd/few_shot/20_shot/lora_biomedclip
 
+# --- Training Hyperparameters ---
 params:
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
+# --- Dataset Configuration ---
 dataset:
   params:
     k_shot: 20

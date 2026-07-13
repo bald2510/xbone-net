@@ -1,107 +1,115 @@
-"""
-Composite Multi-Modal Architecture for XBone-Net.
-===============================================================================
-Defines XBoneMultiModalModel, the unified composite wrapper that assembles the
-three core modular stages of the XBone-Net architecture:
-  - Stage 1 (Backbone): Foundation vision-language or vision encoder
-  - Stage 2 (Fusion): Multimodal feature mixing (Cross-Attention, Concat, Identity)
-  - Stage 3 (Classifier Head): Classification head (Prototypical, Linear, Identity)
+"""Composite multi-modal architecture for XBone-Net."""
 
-Supports Phase 1 contrastive feature extraction and Phase 2 classification, as well
-as PEFT fine-tuning and gradient checkpointing across diverse backbones.
-"""
+from __future__ import annotations
 
+from typing import Optional
+
+import torch
 import torch.nn as nn
 
 
-# ============================================================
-# XBone Composite Multi-Modal Model
-# ============================================================
-
 class XBoneMultiModalModel(nn.Module):
-    """Unified XBone-Net multi-modal model composing backbone, fusion, and head.
-
-    This class wires the three pluggable components of XBone-Net into a single
-    forward pass. During Phase 1 (contrastive learning), the fusion and head
-    are typically IdentityFusion and IdentityHead pass-throughs. During
-    Phase 2 (classification), they are replaced with a cross-attention fusion
-    module and a prototypical or linear classifier head.
-
-    Attributes:
-        backbone (nn.Module): Foundation model that encodes images and (optionally)
-            text into fixed-dimensional embeddings.
-        fusion (nn.Module): Module that merges image and text feature vectors into a
-            single fused representation.
-        head (nn.Module): Classification head that maps fused features to class logits.
-
-    Example:
-        >>> backbone = BiomedCLIPFoundation(...)
-        >>> fusion = CrossAttentionFusion(embed_dim=512)
-        >>> head = PrototypicalHead(in_features=512, num_classes=5)
-        >>> model = XBoneMultiModalModel(backbone, fusion, head)
-        >>> logits = model(images, input_ids)
-    """
+    """Compose backbone, fusion module, and classification head."""
 
     def __init__(self, backbone: nn.Module, fusion_module: nn.Module, head_module: nn.Module):
-        """Initialize the composite model with specified sub-modules.
-
-        Args:
-            backbone (nn.Module): Foundation encoder whose forward(images, input_ids)
-                returns (image_features, text_features).
-            fusion_module (nn.Module): Multimodal fusion module (e.g., CrossAttentionFusion,
-                ConcatFusion, or IdentityFusion).
-            head_module (nn.Module): Classifier head (e.g., PrototypicalHead,
-                LinearHead, or IdentityHead).
-        """
         super().__init__()
         self.backbone = backbone
         self.fusion = fusion_module
         self.head = head_module
+
+    @staticmethod
+    def _masked_token_mean(
+        features: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        if features.ndim != 3:
+            raise ValueError(f"Expected [B,T,D] features, got {tuple(features.shape)}")
+        if key_padding_mask is None:
+            return features.mean(dim=1)
+        if key_padding_mask.shape != features.shape[:2]:
+            raise ValueError(
+                "Image padding mask and feature sequence have incompatible shapes: "
+                f"{tuple(key_padding_mask.shape)} vs {tuple(features.shape)}"
+            )
+        valid = (~key_padding_mask).unsqueeze(-1).to(features.dtype)
+        denom = valid.sum(dim=1).clamp_min(1.0)
+        return (features * valid).sum(dim=1) / denom
 
     def forward(
         self,
         images,
         input_ids=None,
         attention_mask=None,
+        tile_values=None,
+        tile_mask=None,
+        tile_boxes=None,
         return_features: bool = False,
     ):
         img_feats, txt_feats = self.backbone(
             images,
             input_ids,
             attention_mask=attention_mask,
+            tile_values=tile_values,
+            tile_mask=tile_mask,
+            tile_boxes=tile_boxes,
+        )
+
+        full_img_padding_mask = getattr(
+            self.backbone,
+            "last_image_key_padding_mask",
+            None,
         )
 
         if txt_feats is None:
-            fused_feats = img_feats
+            if img_feats.ndim == 3:
+                fused_feats = self._masked_token_mean(img_feats, full_img_padding_mask)
+            elif img_feats.ndim == 2:
+                fused_feats = img_feats
+            else:
+                raise ValueError(
+                    "Unexpected image feature shape in image-only mode: "
+                    f"{tuple(img_feats.shape)}"
+                )
         else:
             txt_key_padding_mask = None
-            if attention_mask is not None and txt_feats.dim() == 3:
-                # txt_feats[:, 1:, :] được dùng trong cross-attention,
-                # nên mask cũng phải bỏ token đầu.
+            if attention_mask is not None and txt_feats.ndim == 3 and txt_feats.size(1) > 1:
                 txt_key_padding_mask = attention_mask[:, 1:] == 0
+                expected_len = txt_feats.size(1) - 1
+                if txt_key_padding_mask.size(1) != expected_len:
+                    raise ValueError(
+                        "Text attention mask length does not match local text tokens: "
+                        f"{txt_key_padding_mask.size(1)} vs {expected_len}."
+                    )
 
-            try:
+            img_key_padding_mask = None
+            if img_feats.ndim == 3 and img_feats.size(1) > 1 and full_img_padding_mask is not None:
+                img_key_padding_mask = full_img_padding_mask[:, 1:]
+
+            if getattr(self.fusion, "supports_padding_mask", False):
                 fused_feats = self.fusion(
                     img_feats,
                     txt_feats,
+                    img_key_padding_mask=img_key_padding_mask,
                     txt_key_padding_mask=txt_key_padding_mask,
                 )
-            except TypeError:
-                fused_feats = self.fusion(img_feats, txt_feats)
+            else:
+                # Concat/identity fusion operates on one vector per modality.
+                # Pool high-resolution visual tokens and use the text global token.
+                img_vector = (
+                    self._masked_token_mean(img_feats, full_img_padding_mask)
+                    if img_feats.ndim == 3
+                    else img_feats
+                )
+                txt_vector = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
+                fused_feats = self.fusion(img_vector, txt_vector)
 
-        if return_features and hasattr(self.head, "prototypes"):
-            logits, features = self.head(fused_feats, return_features=True)
-            return logits, features, self.head.prototypes
+        logits = self.head(fused_feats)
+        if return_features:
+            prototypes = getattr(self.head, "prototypes", None)
+            return logits, fused_feats, prototypes
+        return logits
 
-        return self.head(fused_feats)
-    
     def print_parameter_summary(self):
-        """Print a human-readable summary of model parameters.
-
-        Outputs total, frozen, and trainable parameter counts for the entire model
-        and breaks them down per sub-module (backbone, fusion, head). Useful for
-        verifying PEFT configurations and freezing settings before training.
-        """
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         frozen_params = total_params - trainable_params
@@ -112,7 +120,8 @@ class XBoneMultiModalModel(nn.Module):
         print(f"Total Parameters     : {total_params:,}")
         print(f"Frozen Parameters    : {frozen_params:,}")
         print(f"Trainable Parameters : {trainable_params:,}")
-        print(f"Trainable Ratio      : {(trainable_params / total_params) * 100:.4f}%\n")
+        ratio = 100.0 * trainable_params / max(total_params, 1)
+        print(f"Trainable Ratio      : {ratio:.4f}%\n")
 
         print("--- Module Breakdown ---")
         for name, module in self.named_children():
@@ -123,7 +132,6 @@ class XBoneMultiModalModel(nn.Module):
         print("=" * 50 + "\n")
 
     def print_encoder_layers(self):
-        """Print structural details of image and text encoders."""
         print("\n" + "=" * 50)
         print("IMAGE ENCODER STRUCTURE")
         print("=" * 50)
@@ -131,7 +139,7 @@ class XBoneMultiModalModel(nn.Module):
             print(self.backbone.model.visual)
         else:
             print("No visual encoder found in backbone.model.visual")
-            
+
         print("\n" + "=" * 50)
         print("TEXT ENCODER STRUCTURE")
         print("=" * 50)
@@ -142,49 +150,33 @@ class XBoneMultiModalModel(nn.Module):
         print("=" * 50 + "\n")
 
     def print_architecture(self, verbose: bool = False):
-        """Print parameter summary and optionally detailed layer-by-layer structure.
-
-        Args:
-            verbose (bool): If True, also outputs the full PyTorch module layer
-                structure for visual and text encoders. Defaults to False.
-        """
         self.print_parameter_summary()
         if verbose:
             print("[Debug Mode] Printing verbose model encoder architecture...")
             self.print_encoder_layers()
 
     def gradient_checkpointing_enable(self, **kwargs):
-        """Enable gradient checkpointing on both vision and text encoders.
+        """Enable checkpointing when the underlying backbone supports it."""
+        backbone_model = getattr(self.backbone, "model", None)
+        if backbone_model is None:
+            print("[XBone Model] Gradient checkpointing is not supported by this backbone.")
+            return
 
-        Vision and text encoders are handled separately due to framework differences:
-          - Visual encoder (OpenCLIP ViT): uses set_grad_checkpointing(True)
-          - Text encoder (HuggingFace Transformers): uses gradient_checkpointing_enable()
-
-        Args:
-            **kwargs: Forwarded to the HuggingFace gradient_checkpointing_enable call.
-        """
         print("[XBone Model] Enabling gradient checkpointing.")
-        # --- Visual encoder (OpenCLIP API) ---
-        if hasattr(self.backbone.model, "set_grad_checkpointing"):
-            self.backbone.model.set_grad_checkpointing(True)
-        elif hasattr(self.backbone.model, "visual") and hasattr(self.backbone.model.visual, "set_grad_checkpointing"):
-            self.backbone.model.visual.set_grad_checkpointing(True)
+        if hasattr(backbone_model, "set_grad_checkpointing"):
+            backbone_model.set_grad_checkpointing(True)
+        elif hasattr(backbone_model, "visual") and hasattr(
+            backbone_model.visual, "set_grad_checkpointing"
+        ):
+            backbone_model.visual.set_grad_checkpointing(True)
 
-        # --- Text encoder (HuggingFace Transformers API) ---
-        text_module = getattr(self.backbone.model, "text", None)
-        if text_module is not None:
-            text_transformer = getattr(text_module, "transformer", None)
-            if text_transformer is not None and hasattr(text_transformer, "gradient_checkpointing_enable"):
-                text_transformer.gradient_checkpointing_enable(**kwargs)
+        text_module = getattr(backbone_model, "text", None)
+        text_transformer = getattr(text_module, "transformer", None) if text_module is not None else None
+        if text_transformer is not None and hasattr(text_transformer, "gradient_checkpointing_enable"):
+            text_transformer.gradient_checkpointing_enable(**kwargs)
 
-        # --- Enable input gradient requirements ---
-        if hasattr(self.backbone.model, "visual"):
-            visual = self.backbone.model.visual
-            if hasattr(visual, "enable_input_require_grads"):
-                visual.enable_input_require_grads()
-        if text_module is not None:
-            text_transformer = getattr(text_module, "transformer", None)
-            if text_transformer is not None and hasattr(text_transformer, "enable_input_require_grads"):
-                text_transformer.enable_input_require_grads()
-
-
+        visual = getattr(backbone_model, "visual", None)
+        if visual is not None and hasattr(visual, "enable_input_require_grads"):
+            visual.enable_input_require_grads()
+        if text_transformer is not None and hasattr(text_transformer, "enable_input_require_grads"):
+            text_transformer.enable_input_require_grads()

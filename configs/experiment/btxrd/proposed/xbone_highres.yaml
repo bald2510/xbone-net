@@ -1,9 +1,11 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/proposed/ours_xbone_net (VARIANT B)
+# Experiment Config: btxrd/ablation/highres/xbone_highres
 # Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
-# Description: Does NOT merge LoRA. Continues training LoRA adapter in Phase 2.
+# Description: Proposed XBone-Net model configuration (xbone_highres).
 # ===============================================================================
+
+# High-Res: uniform grid + BiomedCLIP local patch tokens + learned resampler
 
 defaults:
 - /model/peft@model.peft: lora
@@ -11,33 +13,59 @@ defaults:
 - /model/classifier@model.classifier: prototypical
 - /dataset@dataset: btxrd
 - _self_
+
+# --- Model Architecture ---
 model:
   backbone_type: biomedclip
   freeze_backbone: true
-experiment_name: btxrd/proposed/ours_xbone_net_variant_b
+  num_visual_tokens: 24
+  local_pool_grid: 2
+  tile_encode_chunk_size: 32
+  visual_resampler:
+    num_heads: 8
+    depth: 2
+    dropout: 0.1
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation/highres/xbone_highres
 seed: 42
+
+# --- Dataset Configuration ---
+dataset:
+  params:
+    high_res:
+      enabled: true
+      strategy: uniform_grid
+      tile_size: 224
+      stride: 224
+      max_tiles: 64
+      # Only near-uniform scanner padding is removed; there is no anatomy or
+      # disease proposal heuristic. Images above the budget are downscaled
+      # isotropically just enough for the full grid to remain covered.
+      uniform_std_threshold: 0.01
+
+# --- Training Hyperparameters ---
 params:
   run_phase1: true
   run_phase2: true
-  run_ood: true
+  run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
   phase1:
     enabled: true
-    peft: lora
     epochs: 30
     lr: 5e-5
     weight_decay: 0.0001
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
-    target_similarity: 0.7
-    beta: 0.5
+    target_similarity: 0.95
     p1_report_type: clinical
     merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
     optimizer: adamw
     scheduler: cosine
+    
   phase2:
     enabled: true
     epochs: 50
@@ -54,7 +82,7 @@ params:
     scheduler: cosine
     loss:
       proto_margin: 0.3
-      lambda_proto: 0.0
+      lambda_proto: 0.05
       label_smoothing: 0.1
       use_class_weights: true
       weight_type: effective_num

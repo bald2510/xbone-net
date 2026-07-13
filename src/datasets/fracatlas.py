@@ -15,6 +15,12 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
+from .btxrd import (
+    letterbox_square,
+    make_uniform_grid_tiles,
+    normalize_tile_boxes,
+)
+
 
 # ============================================================
 # FracAtlas Dataset Loader
@@ -89,8 +95,12 @@ class FracAtlasDataset(Dataset):
         # --- Filter split ---
         current_split = 'validate' if split == 'val' else split
         self.df = df_merged[df_merged['split'] == current_split].reset_index(drop=True)
+
+        # --- High-Res Tiling Config ---
+        self.high_res_cfg = kwargs.get('high_res', {})
+        self.use_high_res = self.high_res_cfg.get('enabled', False)
         
-        print(f"[FracAtlasDataset] Loaded '{split.upper()}' split with {len(self.df)} samples.")
+        print(f"[FracAtlasDataset] Loaded '{split.upper()}' split with {len(self.df)} samples. High-Res Tiling: {self.use_high_res}")
 
     def __len__(self):
         """Return the total number of samples in the current split."""
@@ -145,8 +155,29 @@ class FracAtlasDataset(Dataset):
         except FileNotFoundError:
             image = Image.new('RGB', (224, 224), color='black')
             
-        if self.transform:
-            image = self.transform(image)
+        # --- High-Res Tiling Mode ---
+        if self.use_high_res:
+            global_source = letterbox_square(image)
+            global_image = self.transform(global_source) if self.transform else global_source
+
+            tile_size = int(self.high_res_cfg.get('tile_size', 224))
+            raw_tiles, tile_boxes_abs = make_uniform_grid_tiles(
+                image,
+                tile_size=tile_size,
+                stride=int(self.high_res_cfg.get('stride', 224)),
+                max_tiles=int(self.high_res_cfg.get('max_tiles', 96)),
+                uniform_std_threshold=float(
+                    self.high_res_cfg.get('uniform_std_threshold', 0.01)
+                ),
+                return_boxes=True,
+            )
+
+            tiles = [self.transform(t) if self.transform else t for t in raw_tiles]
+            tile_values = torch.stack(tiles) if isinstance(tiles[0], torch.Tensor) else tiles
+            tile_boxes = normalize_tile_boxes(tile_boxes_abs, image.size)
+        else:
+            if self.transform:
+                image = self.transform(image)
             
         # --- Encode label ---
         if self.task_type == "multiclass":
@@ -156,6 +187,13 @@ class FracAtlasDataset(Dataset):
 
         # --- Load text report ---
         input_ids = self._load_and_tokenize(report_path, "no fracture identified.")
+        
+        if self.use_high_res:
+            return {
+                "pixel_values": global_image,
+                "tile_values": tile_values,
+                "tile_boxes": tile_boxes,
+                "input_ids": input_ids,
+                "labels": labels
+            }
         return image, input_ids, labels
-
-

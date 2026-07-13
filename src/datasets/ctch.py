@@ -47,7 +47,7 @@ class CTCHDataset(Dataset):
             img_dir="data/CTCH/images",
             csv_split_path="data/CTCH/ctch-split.csv",
             csv_labels_path="data/CTCH/ctch-labels.csv",
-            classes=["normal", "radius_fracture", ...],
+            classes=["Bình thường", "Gãy xương quay", ...],
             task_type="multiclass",
             xray_report_dir="data/CTCH/reports/xray",
             clinical_report_dir="data/CTCH/reports/clinical",
@@ -120,12 +120,37 @@ class CTCHDataset(Dataset):
 
         # --- Pre-compute class_id for multi-class indexing if missing ---
         if task_type == "multiclass" and "class_id" not in df_merged.columns and self.classes:
+            missing_class_columns = [
+                class_name
+                for class_name in self.classes
+                if class_name not in df_merged.columns
+            ]
+            if missing_class_columns:
+                raise ValueError(
+                    "CTCH label manifest does not match dataset classes. "
+                    f"Missing {len(missing_class_columns)} columns, including "
+                    f"{missing_class_columns[:3]}. Regenerate ctch-labels.csv with "
+                    "data/CTCH/preprocess_ctch.py."
+                )
+
             def _get_class_id(row):
                 for idx_cls, cls_name in enumerate(self.classes):
                     if row.get(cls_name, 0) == 1:
                         return idx_cls
-                return 0
+                raise ValueError("A CTCH sample has no active multiclass label")
             df_merged["class_id"] = df_merged.apply(_get_class_id, axis=1)
+
+        if task_type == "multiclass" and "class_id" in df_merged.columns:
+            class_ids = pd.to_numeric(df_merged["class_id"], errors="coerce")
+            expected_classes = num_classes or len(self.classes)
+            invalid = class_ids.isna() | class_ids.lt(0)
+            if expected_classes:
+                invalid |= class_ids.ge(expected_classes)
+            if invalid.any():
+                raise ValueError(
+                    f"CTCH label manifest contains {int(invalid.sum())} invalid class_id values"
+                )
+            df_merged["class_id"] = class_ids.astype(int)
 
         # --- Filter split and apply subsampling ---
         current_split = "validate" if split == "val" else split

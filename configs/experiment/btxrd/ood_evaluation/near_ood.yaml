@@ -1,0 +1,27 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ood_evaluation/near_ood
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Out-of-Distribution Evaluation: Near-OOD (7 ID classes, 3 OOD classes).
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ood_evaluation/near_ood
+
+# --- Dataset Configuration ---
+dataset:
+  params:
+    num_classes: 7
+    classes: [
+      'normal',                    # 0: Bình thường (không có u)
+      'osteochondroma',            # 1: U xương sụn
+      'osteosarcoma',              # 2: Sarcoma xương (ác tính)
+      'multiple osteochondromas',  # 3: Đa u xương sụn
+      'simple bone cyst',          # 4: Nang xương đơn thuần
+      'other bt',                  # 5: U lành tính khác
+      'giant cell tumor'           # 6: U tế bào khổng lồ
+    ]

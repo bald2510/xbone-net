@@ -1,0 +1,49 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: ctch/baselines/finetuned/fft_densenet
+# Backbone: densenet121_imagenet | PEFT: none | Fusion: none | Head: linear
+# Description: Full Fine-Tuned Baseline.
+# ===============================================================================
+
+defaults:
+  - /model/peft@model.peft: none
+  - /model/fusion@model.fusion: none
+  - /model/classifier@model.classifier: linear
+  - /dataset@dataset: ctch
+  - _self_
+
+# --- Model Architecture ---
+model:
+  backbone_type: densenet121_imagenet
+  freeze_backbone: false
+
+# --- Experiment Identifier ---
+experiment_name: ctch/baselines/finetuned/fft_densenet
+
+# --- Training Hyperparameters ---
+params:
+  run_phase1: false
+  run_phase2: true
+  run_ood: false
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+
+  phase2:
+    epochs: 50
+    lr: 2e-5
+    weight_decay: 1e-4
+    optimizer: adamw
+    scheduler: cosine
+    warmup_ratio: 0.1
+    early_stopping_patience: 5
+    use_text: false
+    p2_report_type: null
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
+
+    loss:
+      label_smoothing: 0.1
+      use_class_weights: true
+      weight_type: effective_num
+      effective_num_beta: 0.999
+
+# --- Experiment Identifier ---
+seed: 42

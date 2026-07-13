@@ -13,9 +13,11 @@ import sys
 import os
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import (confusion_matrix, f1_score, accuracy_score,
-                             precision_score, recall_score, roc_auc_score,
-                             hamming_loss)
+from sklearn.metrics import (
+    confusion_matrix, f1_score, accuracy_score, balanced_accuracy_score,
+    precision_score, recall_score, roc_auc_score, average_precision_score,
+    hamming_loss,
+)
 
 # ============================================================
 # HuggingFace Evaluate Package Import Isolation
@@ -81,108 +83,136 @@ def compute_metrics_multiclass(
     all_gt: np.ndarray,
     class_names: list[str],
 ) -> dict:
-    """Compute evaluation metrics for multi-class (single-label) classification.
+    """Compute robust single-label multiclass metrics with fixed class order."""
+    all_probs = np.asarray(all_probs, dtype=np.float64)
+    all_gt = np.asarray(all_gt)
+    if all_gt.ndim > 1:
+        all_gt = np.argmax(all_gt, axis=-1)
+    all_gt = all_gt.astype(np.int64).reshape(-1)
 
-    Formula:
-        Specificity_i = TN_i / (TN_i + FP_i) (via one-vs-rest confusion matrix)
-
-    Args:
-        all_probs: Predicted class probabilities of shape (N, C).
-        all_gt: Integer ground-truth class indices of shape (N,).
-        class_names: Ordered list of human-readable class names.
-
-    Returns:
-        Dictionary containing auroc_macro, f1_macro, f1_per_class, accuracy,
-        sensitivity, specificity, precision, and confusion_matrix.
-    """
-    # --- Compute predicted class indices and overall accuracy ---
     num_classes = len(class_names)
-    all_preds = np.argmax(all_probs, axis=1)
+    labels_order = np.arange(num_classes, dtype=np.int64)
+    if all_probs.ndim != 2 or all_probs.shape[1] != num_classes:
+        raise ValueError(
+            f"Expected probabilities [N,{num_classes}], got {all_probs.shape}."
+        )
+    if all_probs.shape[0] != all_gt.shape[0]:
+        raise ValueError("Probability and ground-truth sample counts differ.")
+    if np.any(all_gt < 0) or np.any(all_gt >= num_classes):
+        raise ValueError("Ground-truth labels are outside the configured class range.")
+
+    row_sums = all_probs.sum(axis=1, keepdims=True)
+    if np.any(row_sums <= 0):
+        raise ValueError("Every probability row must have a positive sum.")
+    probs = all_probs / row_sums
+    all_preds = np.argmax(probs, axis=1)
 
     acc = float(accuracy_score(all_gt, all_preds))
+    balanced_acc = float(balanced_accuracy_score(all_gt, all_preds))
+    macro_f1 = float(f1_score(
+        all_gt, all_preds, labels=labels_order, average="macro", zero_division=0
+    ))
+    macro_prec = float(precision_score(
+        all_gt, all_preds, labels=labels_order, average="macro", zero_division=0
+    ))
+    macro_rec = float(recall_score(
+        all_gt, all_preds, labels=labels_order, average="macro", zero_division=0
+    ))
 
-    # --- Compute macro and per-class metrics ---
-    macro_f1 = float(f1_score(all_gt, all_preds, average="macro", zero_division=0))
-    macro_prec = float(precision_score(all_gt, all_preds, average="macro", zero_division=0))
-    macro_rec = float(recall_score(all_gt, all_preds, average="macro", zero_division=0))
+    per_class_f1_arr = f1_score(
+        all_gt, all_preds, labels=labels_order, average=None, zero_division=0
+    )
+    per_class_prec_arr = precision_score(
+        all_gt, all_preds, labels=labels_order, average=None, zero_division=0
+    )
+    per_class_rec_arr = recall_score(
+        all_gt, all_preds, labels=labels_order, average=None, zero_division=0
+    )
 
-    per_class_f1_arr = f1_score(all_gt, all_preds, average=None, zero_division=0)
-    per_class_prec_arr = precision_score(all_gt, all_preds, average=None, zero_division=0)
-    per_class_rec_arr = recall_score(all_gt, all_preds, average=None, zero_division=0)
+    auroc_per_class = {}
+    auprc_per_class = {}
+    valid_aurocs = []
+    valid_auprcs = []
+    for class_id, name in enumerate(class_names):
+        binary_gt = (all_gt == class_id).astype(np.int64)
+        if np.unique(binary_gt).size < 2:
+            auroc = float("nan")
+            auprc = float("nan")
+        else:
+            auroc = float(roc_auc_score(binary_gt, probs[:, class_id]))
+            auprc = float(average_precision_score(binary_gt, probs[:, class_id]))
+            valid_aurocs.append(auroc)
+            valid_auprcs.append(auprc)
+        auroc_per_class[name] = auroc
+        auprc_per_class[name] = auprc
 
-    f1_per_class = {}
-    for i, name in enumerate(class_names):
-        if i < len(per_class_f1_arr):
-            f1_per_class[name] = float(per_class_f1_arr[i])
+    macro_auroc = float(np.mean(valid_aurocs)) if valid_aurocs else float("nan")
+    macro_auprc = float(np.mean(valid_auprcs)) if valid_auprcs else float("nan")
 
-    # --- Compute macro AUROC ---
-    try:
-        # Ensure probs columns match the actual number of classes in gt
-        n_unique_classes = len(np.unique(all_gt))
-        probs_for_auc = all_probs
-        if probs_for_auc.shape[1] > n_unique_classes:
-            print(f"  [AUROC Warning] Probs has {probs_for_auc.shape[1]} columns but gt has "
-                  f"{n_unique_classes} unique classes. Trimming to {n_unique_classes} columns.")
-            probs_for_auc = probs_for_auc[:, :n_unique_classes]
-        # Re-normalize so rows sum to 1.0 (required by roc_auc_score)
-        row_sums = probs_for_auc.sum(axis=1, keepdims=True)
-        probs_for_auc = probs_for_auc / (row_sums + 1e-8)
-        macro_auroc = float(roc_auc_score(
-            all_gt, probs_for_auc, average="macro", multi_class="ovr",
-        ))
-    except ValueError as e:
-        print(f"  [AUROC Error] {e} — probs shape: {all_probs.shape}, "
-              f"gt unique: {np.unique(all_gt)}, gt shape: {all_gt.shape}")
-        macro_auroc = float("nan")
-
-    # --- Compute confusion matrix & per-class specificity ---
-    cm = confusion_matrix(all_gt, all_preds)
-
+    cm = confusion_matrix(all_gt, all_preds, labels=labels_order)
     specificities = []
-    for i in range(num_classes):
-        tp = cm[i, i]
-        fn = cm[i, :].sum() - tp
-        fp = cm[:, i].sum() - tp
+    for class_id in labels_order:
+        tp = cm[class_id, class_id]
+        fn = cm[class_id, :].sum() - tp
+        fp = cm[:, class_id].sum() - tp
         tn = cm.sum() - tp - fn - fp
-        spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-        specificities.append(spec)
+        specificities.append(float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0)
     macro_spec = float(np.mean(specificities))
 
-    # --- Print reports ---
+    f1_per_class = {
+        name: float(per_class_f1_arr[i]) for i, name in enumerate(class_names)
+    }
+    precision_per_class = {
+        name: float(per_class_prec_arr[i]) for i, name in enumerate(class_names)
+    }
+    recall_per_class = {
+        name: float(per_class_rec_arr[i]) for i, name in enumerate(class_names)
+    }
+    specificity_per_class = {
+        name: float(specificities[i]) for i, name in enumerate(class_names)
+    }
+
     print("\n=== MULTI-CLASS DETAILED METRICS ===")
     for i, name in enumerate(class_names):
-        prec_i = float(per_class_prec_arr[i]) if i < len(per_class_prec_arr) else 0.0
-        rec_i = float(per_class_rec_arr[i]) if i < len(per_class_rec_arr) else 0.0
-        f1_i = float(per_class_f1_arr[i]) if i < len(per_class_f1_arr) else 0.0
-        spec_i = specificities[i] if i < len(specificities) else 0.0
+        auc_text = (
+            f"{auroc_per_class[name]:.3f}"
+            if not np.isnan(auroc_per_class[name]) else "N/A"
+        )
         print(
-            f"{name:25s} | F1: {f1_i:.3f} | Prec: {prec_i:.3f} | "
-            f"Rec: {rec_i:.3f} | Spec: {spec_i:.3f}"
+            f"{name:25s} | F1: {per_class_f1_arr[i]:.3f} | "
+            f"Prec: {per_class_prec_arr[i]:.3f} | Rec: {per_class_rec_arr[i]:.3f} | "
+            f"Spec: {specificities[i]:.3f} | AUROC: {auc_text}"
         )
 
     print("\n=== OVERALL MULTI-CLASS METRICS ===")
     print(f"Accuracy                      : {acc:.4f}")
+    print(f"Balanced Accuracy             : {balanced_acc:.4f}")
     print(f"Macro AUROC                   : {macro_auroc:.4f}")
+    print(f"Macro AUPRC                   : {macro_auprc:.4f}")
     print(f"Macro F1-Score                : {macro_f1:.4f}")
     print(f"Macro Precision               : {macro_prec:.4f}")
     print(f"Macro Recall (Sensitivity)    : {macro_rec:.4f}")
     print(f"Macro Specificity             : {macro_spec:.4f}")
-
     print("\nConfusion Matrix:")
     print(cm)
 
-    metrics = {
+    return {
         "auroc_macro": macro_auroc,
+        "auroc_per_class": auroc_per_class,
+        "auprc_macro": macro_auprc,
+        "auprc_per_class": auprc_per_class,
         "f1_macro": macro_f1,
         "f1_per_class": f1_per_class,
         "accuracy": acc,
+        "balanced_accuracy": balanced_acc,
         "sensitivity": macro_rec,
         "specificity": macro_spec,
         "precision": macro_prec,
+        "precision_per_class": precision_per_class,
+        "recall_per_class": recall_per_class,
+        "specificity_per_class": specificity_per_class,
         "confusion_matrix": cm.tolist(),
     }
-
-    return metrics
 
 
 def compute_metrics(
@@ -340,83 +370,105 @@ def bootstrap_confidence_intervals(
     seed: int = 42,
     alpha: float = 0.05,
 ) -> dict:
-    """Compute bootstrap confidence intervals for AUROC and F1 metrics.
+    """Compute paired percentile bootstrap confidence intervals.
 
-    Uses paired bootstrap resampling to extract 95% confidence intervals:
-        CI = [percentile(alpha / 2), percentile(1 - alpha / 2)]
-
-    Args:
-        all_probs: Predicted probabilities of shape (N, C).
-        all_ground_truths: Ground-truth labels of shape (N, C) or (N,).
-        pathologies: Ordered list of pathology / class names.
-        is_multilabel: Whether the classification task is multi-label.
-        n_bootstrap: Number of bootstrap iterations (default: 10,000).
-        seed: Random seed for reproducible sampling.
-        alpha: Significance level for CI percentile bounds (default: 0.05).
-
-    Returns:
-        Dictionary mapping metric names ('auroc_macro', 'f1_macro', etc.)
-        to [lower, upper] percentile confidence interval lists.
+    For multiclass tasks, predictions are always obtained with ``argmax`` so the
+    bootstrap statistic matches the reported point estimate.
     """
-    rng = np.random.RandomState(seed)
+    all_probs = np.asarray(all_probs)
+    all_ground_truths = np.asarray(all_ground_truths)
+    if not is_multilabel and all_ground_truths.ndim > 1:
+        all_ground_truths = np.argmax(all_ground_truths, axis=-1)
+
     n = len(all_ground_truths)
+    if n == 0:
+        raise ValueError("Cannot bootstrap an empty dataset.")
+    if n_bootstrap < 1:
+        raise ValueError("n_bootstrap must be >= 1.")
 
-    auroc_boot: dict[str, list[float]] = {p: [] for p in pathologies}
-    f1_boot: dict[str, list[float]] = {p: [] for p in pathologies}
-    auroc_macro_boot: list[float] = []
-    f1_macro_boot: list[float] = []
+    rng = np.random.RandomState(seed)
+    num_classes = len(pathologies)
+    class_order = np.arange(num_classes)
 
-    # --- Bootstrap resampling loop ---
+    auroc_boot = {name: [] for name in pathologies}
+    f1_boot = {name: [] for name in pathologies}
+    auroc_macro_boot = []
+    f1_macro_boot = []
+    accuracy_boot = []
+
     print(f"\nRunning {n_bootstrap:,} bootstrap resamples for 95% CIs...")
     for _ in tqdm(range(n_bootstrap), desc="Bootstrap"):
-        idx = rng.randint(0, n, size=n)
-        boot_gt = all_ground_truths[idx]
-        boot_probs = all_probs[idx]
+        indices = rng.randint(0, n, size=n)
+        boot_gt = all_ground_truths[indices]
+        boot_probs = all_probs[indices]
 
         per_class_aurocs = []
-        per_class_f1s = []
+        if is_multilabel:
+            boot_preds = (boot_probs >= 0.5).astype(np.int64)
+            macro_f1 = f1_score(
+                boot_gt.astype(np.int64), boot_preds, average="macro", zero_division=0
+            )
+            accuracy_value = float(np.mean(np.all(boot_preds == boot_gt, axis=1)))
+            for class_id, name in enumerate(pathologies):
+                binary_gt = boot_gt[:, class_id].astype(np.int64)
+                auc_value = _safe_auroc(binary_gt, boot_probs[:, class_id])
+                f1_value = float(f1_score(
+                    binary_gt, boot_preds[:, class_id], zero_division=0
+                ))
+                auroc_boot[name].append(auc_value)
+                f1_boot[name].append(f1_value)
+                if not np.isnan(auc_value):
+                    per_class_aurocs.append(auc_value)
+        else:
+            boot_gt = boot_gt.astype(np.int64).reshape(-1)
+            boot_preds = np.argmax(boot_probs, axis=1)
+            macro_f1 = f1_score(
+                boot_gt, boot_preds, labels=class_order,
+                average="macro", zero_division=0,
+            )
+            accuracy_value = accuracy_score(boot_gt, boot_preds)
+            per_class_f1 = f1_score(
+                boot_gt, boot_preds, labels=class_order,
+                average=None, zero_division=0,
+            )
+            for class_id, name in enumerate(pathologies):
+                binary_gt = (boot_gt == class_id).astype(np.int64)
+                auc_value = _safe_auroc(binary_gt, boot_probs[:, class_id])
+                f1_value = float(per_class_f1[class_id])
+                auroc_boot[name].append(auc_value)
+                f1_boot[name].append(f1_value)
+                if not np.isnan(auc_value):
+                    per_class_aurocs.append(auc_value)
 
-        for ci, path in enumerate(pathologies):
-            if is_multilabel:
-                gt_col = boot_gt[:, ci]
-            else:
-                gt_col = (boot_gt == ci).astype(int)
-            prob_col = boot_probs[:, ci]
+        auroc_macro_boot.append(
+            float(np.mean(per_class_aurocs)) if per_class_aurocs else float("nan")
+        )
+        f1_macro_boot.append(float(macro_f1))
+        accuracy_boot.append(float(accuracy_value))
 
-            auc_val = _safe_auroc(gt_col, prob_col)
-            f1_val = _safe_f1(gt_col, prob_col)
+    lo = (alpha / 2.0) * 100.0
+    hi = (1.0 - alpha / 2.0) * 100.0
 
-            auroc_boot[path].append(auc_val)
-            f1_boot[path].append(f1_val)
-
-            if not np.isnan(auc_val):
-                per_class_aurocs.append(auc_val)
-            per_class_f1s.append(f1_val)
-
-        auroc_macro_boot.append(float(np.mean(per_class_aurocs)) if per_class_aurocs else float("nan"))
-        f1_macro_boot.append(float(np.mean(per_class_f1s)))
-
-    # --- Percentile bound calculation ---
-    lo = (alpha / 2) * 100
-    hi = (1 - alpha / 2) * 100
-
-    def _ci(values: list[float]) -> list[float]:
-        """Extract [lower, upper] percentile CI, ignoring NaN entries."""
-        arr = np.array([v for v in values if not np.isnan(v)])
-        if len(arr) == 0:
+    def _ci(values):
+        array = np.asarray(values, dtype=float)
+        array = array[~np.isnan(array)]
+        if array.size == 0:
             return [float("nan"), float("nan")]
-        return [float(np.percentile(arr, lo)), float(np.percentile(arr, hi))]
+        return [float(np.percentile(array, lo)), float(np.percentile(array, hi))]
 
-    ci_result: dict = {
+    result = {
         "auroc_macro": _ci(auroc_macro_boot),
         "f1_macro": _ci(f1_macro_boot),
-        "auroc_per_class": {p: _ci(auroc_boot[p]) for p in pathologies},
-        "f1_per_class": {p: _ci(f1_boot[p]) for p in pathologies},
+        "accuracy": _ci(accuracy_boot),
+        "auroc_per_class": {name: _ci(auroc_boot[name]) for name in pathologies},
+        "f1_per_class": {name: _ci(f1_boot[name]) for name in pathologies},
     }
-
-    print(f"  AUROC macro 95% CI: [{ci_result['auroc_macro'][0]:.4f}, {ci_result['auroc_macro'][1]:.4f}]")
-    print(f"  F1 macro 95% CI:    [{ci_result['f1_macro'][0]:.4f}, {ci_result['f1_macro'][1]:.4f}]")
-
-    return ci_result
-
-
+    print(
+        f"  AUROC macro 95% CI: [{result['auroc_macro'][0]:.4f}, "
+        f"{result['auroc_macro'][1]:.4f}]"
+    )
+    print(
+        f"  F1 macro 95% CI:    [{result['f1_macro'][0]:.4f}, "
+        f"{result['f1_macro'][1]:.4f}]"
+    )
+    return result

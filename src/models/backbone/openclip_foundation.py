@@ -203,7 +203,7 @@ class OpenCLIPFoundation(nn.Module):
         """Tokenizer callable alias for interface consistency across backbones."""
         return self.tokenizer
 
-    def forward(self, images, input_ids, attention_mask=None):
+    def forward(self, images, input_ids, attention_mask=None, **kwargs):
         """Extract and L2-normalize image and text embeddings.
 
         Args:

@@ -101,6 +101,39 @@ def adapt_state_dict_keys(
     return state_dict
 
 
+def load_state_dict_checked(model: nn.Module, state_dict: Dict[str, torch.Tensor], context: str):
+    """Load weights and reject missing Phase-2/PEFT modules."""
+    result = model.load_state_dict(state_dict, strict=False)
+    missing = list(result.missing_keys)
+    unexpected = list(result.unexpected_keys)
+
+    model_keys = set(model.state_dict().keys())
+    critical_prefixes = []
+    if any(key.startswith("fusion.") for key in model_keys):
+        critical_prefixes.append("fusion.")
+    if any(key.startswith("head.") for key in model_keys):
+        critical_prefixes.append("head.")
+    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_missing = [
+        key for key in missing
+        if key.startswith(tuple(critical_prefixes))
+        or any(token in key for token in critical_tokens)
+    ]
+
+    print(
+        f" -> [{context}] checkpoint load: missing={len(missing)}, "
+        f"unexpected={len(unexpected)}"
+    )
+    if unexpected:
+        print("    Unexpected examples:", unexpected[:10])
+    if critical_missing:
+        raise RuntimeError(
+            "Critical checkpoint weights were not loaded:\n"
+            + "\n".join(critical_missing[:30])
+        )
+    return result
+
+
 def load_model_checkpoint(
     model: nn.Module,
     cfg: DictConfig,
@@ -157,22 +190,17 @@ def load_model_checkpoint(
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
 
-        # --- Filter out head weights that mismatch config num_classes ---
-        dataset_params = cfg.dataset.get('params', {})
-        classes = dataset_params.get('classes', dataset_params.get('pathologies', []))
-        expected_num_classes = dataset_params.get('num_classes', len(classes))
+        dataset_params = cfg.dataset.get("params", {})
+        classes = dataset_params.get("classes", dataset_params.get("pathologies", []))
+        expected_num_classes = int(dataset_params.get("num_classes", len(classes)))
+        for key, value in state_dict.items():
+            if key.startswith("head.") and value.ndim > 0 and value.shape[0] != expected_num_classes:
+                raise ValueError(
+                    f"Checkpoint head '{key}' has shape {tuple(value.shape)} but "
+                    f"the config expects {expected_num_classes} classes."
+                )
 
-        filtered_state_dict = {}
-        for k, v in state_dict.items():
-            # Only filter classification head keys (head.prototypes, head.fc, etc.)
-            # NOT backbone keys like backbone.model.visual.*.head.proj.*
-            if k.startswith('head.') and v.shape[0] != expected_num_classes:
-                print(f"  [Checkpoint] Skipping '{k}' (shape {v.shape}) — "
-                      f"mismatches expected num_classes={expected_num_classes}")
-                continue
-            filtered_state_dict[k] = v
-
-        model.load_state_dict(filtered_state_dict, strict=False)
+        load_state_dict_checked(model, state_dict, context="evaluation")
         print(" -> Checkpoint loaded successfully!\n")
         return True
     elif is_zero_shot:
@@ -196,39 +224,28 @@ def run_evaluation(
     temperature: float = 0.07,
     image_context: str = "a bone x-ray",
     p2_report_type: str = "clinical",
+    use_text_in_p2: bool = True,
+    is_multilabel: bool = False,
     save_embeddings_flag: bool = False,
 ) -> Dict[str, Any]:
-    """Run model inference over test DataLoader and collect probabilities.
-
-    Operates in classifier mode (forward pass through backbone, fusion, head) or
-    zero-shot mode (cosine similarity against pre-encoded text prompts).
-
-    Args:
-        model (nn.Module): Model instance in evaluation mode.
-        test_loader: DataLoader for test split.
-        pathologies (list[str]): Target class / pathology names.
-        is_classifier (bool): True if using classification head; False if zero-shot.
-        device (torch.device): Computation device.
-        temperature (float): Temperature factor for zero-shot cosine logits (default: 0.07).
-        image_context (str): Context prompt string for text prompts.
-        p2_report_type (str): Report type for Phase 2 ('xray', 'clinical', 'both').
-        save_embeddings_flag (bool): Flag to save intermediate embeddings.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing 'all_probs', 'all_ground_truths',
-            and optional 'image_embeddings' / 'text_embeddings'.
-    """
-    tokenizer = model.backbone.tokenizer
+    """Run evaluation using the same masked forward path as training."""
+    tokenizer = getattr(model.backbone, "tokenizer", None)
     text_features_dict: Dict[str, torch.Tensor] = {}
     text_embeddings_np: Optional[Dict[str, np.ndarray]] = None
 
-    if not is_classifier:
-        print("\nZero-shot mode: Pre-extracting text prompt features using text encoder...")
-        prompt_dict = generate_custom_prompts(pathologies, image_context)
-        print(f"Generated text prompts for classes: {list(prompt_dict.values())}")
+    if p2_report_type in ("both", "xray_clinical"):
+        raise NotImplementedError(
+            "Simultaneous token-level dual-report evaluation is not implemented. "
+            "Use p2_report_type='xray' or 'clinical'."
+        )
 
+    if not is_classifier:
+        if tokenizer is None:
+            raise ValueError("Zero-shot evaluation requires a text tokenizer.")
+        print("\nZero-shot mode: pre-extracting text prompt features...")
+        prompt_dict = generate_custom_prompts(pathologies, image_context)
         with torch.no_grad():
-            for path, pair in prompt_dict.items():
+            for pathology, pair in prompt_dict.items():
                 pos_tokens = tokenizer([pair["positive"]])
                 neg_tokens = tokenizer([pair["negative"]])
                 if isinstance(pos_tokens, torch.Tensor):
@@ -236,98 +253,111 @@ def run_evaluation(
                 if isinstance(neg_tokens, torch.Tensor):
                     neg_tokens = neg_tokens.to(device)
 
-                if hasattr(model.backbone, "encode_text"):
-                    pos_feat = model.backbone.encode_text(pos_tokens)
-                    neg_feat = model.backbone.encode_text(neg_tokens)
-                elif hasattr(model.backbone.model, "encode_text"):
-                    pos_feat = model.backbone.model.encode_text(pos_tokens)
-                    neg_feat = model.backbone.model.encode_text(neg_tokens)
-                else:
-                    raise AttributeError(f"Model backbone {type(model.backbone)} lacks encode_text method.")
-
-                pos_feat = pos_feat / pos_feat.norm(dim=-1, keepdim=True)
-                neg_feat = neg_feat / neg_feat.norm(dim=-1, keepdim=True)
-                text_features_dict[path] = torch.cat([pos_feat, neg_feat], dim=0)
+                encoder = getattr(model.backbone, "encode_text", None)
+                if encoder is None:
+                    encoder = getattr(getattr(model.backbone, "model", None), "encode_text", None)
+                if encoder is None:
+                    raise AttributeError("The backbone does not expose encode_text().")
+                pos_feat = torch.nn.functional.normalize(encoder(pos_tokens), dim=-1)
+                neg_feat = torch.nn.functional.normalize(encoder(neg_tokens), dim=-1)
+                text_features_dict[pathology] = torch.cat([pos_feat, neg_feat], dim=0)
 
         if save_embeddings_flag:
             text_embeddings_np = {
-                path: text_features_dict[path].cpu().numpy()
-                for path in pathologies
+                name: tensor.cpu().numpy() for name, tensor in text_features_dict.items()
             }
 
     all_probs = []
     all_ground_truths = []
-    all_image_embeds = [] if save_embeddings_flag else None
+    all_fused_embeddings = [] if save_embeddings_flag else None
+    all_logits = [] if is_classifier else None
 
     print("\nScanning test dataset...")
     with torch.no_grad():
         for batch in tqdm(test_loader):
-            if len(batch) == 4:
-                images, xray_ids, clinical_ids, labels = batch
-                if p2_report_type in ("both", "xray_clinical"):
-                    input_ids = None
-                elif p2_report_type == "xray":
-                    input_ids = xray_ids
-                else:
-                    input_ids = clinical_ids
-            elif len(batch) == 3:
-                images, input_ids, labels = batch
-                xray_ids, clinical_ids = None, None
-            else:
-                raise ValueError(f"Unexpected batch format of length {len(batch)}")
+            if not isinstance(batch, dict):
+                raise TypeError(
+                    "Evaluation expects dictionary batches from BioMedCLIPDataCollator."
+                )
 
-            images = images.to(device)
-            if input_ids is not None and isinstance(input_ids, torch.Tensor):
-                input_ids = input_ids.to(device)
+            images = batch["pixel_values"].to(device)
+            labels = batch["labels"]
+            tile_values = batch.get("tile_values")
+            tile_mask = batch.get("tile_mask")
+            tile_boxes = batch.get("tile_boxes")
+            if tile_values is not None:
+                tile_values = tile_values.to(device)
+            if tile_mask is not None:
+                tile_mask = tile_mask.to(device)
+            if tile_boxes is not None:
+                tile_boxes = tile_boxes.to(device)
+
+            input_ids = None
+            attention_mask = None
+            if is_classifier and use_text_in_p2:
+                if p2_report_type == "xray":
+                    input_ids = batch["xray_input_ids"].to(device)
+                    attention_mask = batch.get("xray_attention_mask")
+                else:
+                    input_ids = batch["clinical_input_ids"].to(device)
+                    attention_mask = batch.get("clinical_attention_mask")
+                if attention_mask is not None:
+                    attention_mask = attention_mask.to(device)
 
             if is_classifier:
-                if p2_report_type in ("both", "xray_clinical") and len(batch) == 4:
-                    img_feat, xray_feat = model.backbone(images, xray_ids.to(device))
-                    _, clinical_feat = model.backbone(images, clinical_ids.to(device))
-                    text_feat = (xray_feat + clinical_feat) / 2.0
-                    fused = model.fusion(img_feat, text_feat) if model.fusion is not None else img_feat
-                    if save_embeddings_flag:
-                        all_image_embeds.append(fused.cpu().numpy())
-                    logits = model.head(fused)
-                elif save_embeddings_flag:
-                    img_feats, txt_feats = model.backbone(images, input_ids)
-                    fused = model.fusion(img_feats, txt_feats) if model.fusion is not None else img_feats
-                    all_image_embeds.append(fused.cpu().numpy())
-                    logits = model.head(fused)
-                else:
-                    outputs = model(images, input_ids)
-                    logits = outputs[0] if isinstance(outputs, tuple) else outputs
-
-                batch_probs = torch.softmax(logits, dim=-1)
-            else:
-                img_feat = model.backbone.model.encode_image(images)
-                img_feat /= img_feat.norm(dim=-1, keepdim=True)
-
+                logits, fused_features, _ = model(
+                    images=images,
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    tile_values=tile_values,
+                    tile_mask=tile_mask,
+                    tile_boxes=tile_boxes,
+                    return_features=True,
+                )
+                batch_probs = (
+                    torch.sigmoid(logits)
+                    if is_multilabel
+                    else torch.softmax(logits, dim=-1)
+                )
+                all_logits.append(logits.cpu())
                 if save_embeddings_flag:
-                    all_image_embeds.append(img_feat.cpu().numpy())
+                    all_fused_embeddings.append(
+                        torch.nn.functional.normalize(fused_features, dim=-1).cpu().numpy()
+                    )
+            else:
+                image_encoder = getattr(getattr(model.backbone, "model", None), "encode_image", None)
+                if image_encoder is None:
+                    raise AttributeError("Zero-shot evaluation requires encode_image().")
+                img_feat = torch.nn.functional.normalize(image_encoder(images), dim=-1)
+                if save_embeddings_flag:
+                    all_fused_embeddings.append(img_feat.cpu().numpy())
 
-                batch_probs_list = []
-                for path in pathologies:
-                    text_weights = text_features_dict[path]
-                    logits = img_feat @ text_weights.T
-                    probs = torch.softmax(logits / temperature, dim=-1)[:, 0].unsqueeze(1)
-                    batch_probs_list.append(probs)
-                batch_probs = torch.cat(batch_probs_list, dim=1)
+                class_probs = []
+                for pathology in pathologies:
+                    pair_features = text_features_dict[pathology]
+                    pair_logits = img_feat @ pair_features.T
+                    positive_prob = torch.softmax(pair_logits / temperature, dim=-1)[:, 0:1]
+                    class_probs.append(positive_prob)
+                batch_probs = torch.cat(class_probs, dim=1)
 
             all_probs.append(batch_probs.cpu())
             all_ground_truths.append(labels.cpu())
 
-    all_probs_np = torch.cat(all_probs, dim=0).numpy()
-    all_gt_np = torch.cat(all_ground_truths, dim=0).numpy()
-
-    image_embeddings_np = None
-    if save_embeddings_flag and all_image_embeds:
-        image_embeddings_np = np.concatenate(all_image_embeds, axis=0)
+    probs_np = torch.cat(all_probs, dim=0).numpy()
+    ground_truth_np = torch.cat(all_ground_truths, dim=0).numpy()
+    embeddings_np = (
+        np.concatenate(all_fused_embeddings, axis=0)
+        if save_embeddings_flag and all_fused_embeddings
+        else None
+    )
+    logits_np = torch.cat(all_logits, dim=0).numpy() if all_logits else None
 
     return {
-        "all_probs": all_probs_np,
-        "all_ground_truths": all_gt_np,
-        "image_embeddings": image_embeddings_np,
+        "all_probs": probs_np,
+        "all_ground_truths": ground_truth_np,
+        "image_embeddings": embeddings_np,  # backward-compatible key; these are fused features.
+        "fused_embeddings": embeddings_np,
+        "logits": logits_np,
         "text_embeddings": text_embeddings_np,
     }
 
@@ -384,39 +414,34 @@ def export_embeddings(
     text_embeddings: Optional[Dict[str, np.ndarray]],
     labels: np.ndarray,
     output_dir: str,
+    logits: Optional[np.ndarray] = None,
+    probabilities: Optional[np.ndarray] = None,
 ) -> Optional[str]:
-    """Save extracted image and text embeddings to a compressed .npz file.
-
-    Args:
-        image_embeddings (Optional[np.ndarray]): Image embeddings array of shape (N, D).
-        text_embeddings (Optional[Dict[str, np.ndarray]]): Text embeddings dictionary.
-        labels (np.ndarray): Ground-truth labels array.
-        output_dir (str): Output directory.
-
-    Returns:
-        Optional[str]: Saved filepath or None if image_embeddings is None.
-    """
+    """Save fused/image embeddings, labels, and optional logits."""
     if image_embeddings is None:
-        print("[Warning] No image embeddings to save.")
+        print("[Warning] No embeddings to save.")
         return None
 
     os.makedirs(output_dir, exist_ok=True)
     save_path = os.path.join(output_dir, "embeddings.npz")
-
     save_dict = {
         "image_embeddings": image_embeddings,
+        "fused_embeddings": image_embeddings,
         "labels": labels,
     }
-
+    if logits is not None:
+        save_dict["logits"] = logits
+    if probabilities is not None:
+        save_dict["probabilities"] = probabilities
     if text_embeddings is not None:
-        for path_name, emb in text_embeddings.items():
+        for path_name, embedding in text_embeddings.items():
             safe_key = f"text_embeddings_{path_name.replace(' ', '_')}"
-            save_dict[safe_key] = emb
+            save_dict[safe_key] = embedding
 
     np.savez_compressed(save_path, **save_dict)
     print(f"Embeddings saved to: {save_path}")
-    print(f"  Image embeddings shape: {image_embeddings.shape}")
-    print(f"  Labels shape:           {labels.shape}")
+    print(f"  Embeddings shape: {image_embeddings.shape}")
+    print(f"  Labels shape:     {labels.shape}")
     return save_path
 
 
@@ -499,6 +524,9 @@ def main(cfg: DictConfig) -> None:
         transform=model.backbone.preprocess,
         tokenizer=tokenizer_func,
     )
+    from src.utils.trainer import resolve_pad_token_id, BioMedCLIPDataCollator
+    pad_id = resolve_pad_token_id(tokenizer_func) if tokenizer_func is not None else 0
+    test_loader.collate_fn = BioMedCLIPDataCollator(pad_token_id=pad_id)
 
     task_type = cfg.dataset.params.get("task_type", "multiclass")
     is_multilabel = (task_type == "multilabel")
@@ -511,9 +539,9 @@ def main(cfg: DictConfig) -> None:
         device=device,
         temperature=params_cfg.get("temperature", 0.07),
         image_context=params_cfg.get("image_context", "a bone x-ray"),
-        # Always use clinical reports for evaluation to prevent data leakage
-        # (xray reports may contain diagnosis labels)
-        p2_report_type="clinical",
+        p2_report_type=p2_phase_cfg.get("p2_report_type", "clinical"),
+        use_text_in_p2=p2_phase_cfg.get("use_text", True),
+        is_multilabel=is_multilabel,
         save_embeddings_flag=extra_args.save_embeddings,
     )
 
@@ -555,6 +583,8 @@ def main(cfg: DictConfig) -> None:
             text_embeddings=eval_output["text_embeddings"],
             labels=all_gt,
             output_dir=output_dir,
+            logits=eval_output.get("logits"),
+            probabilities=all_probs,
         )
 
     print("\nEvaluation complete!")

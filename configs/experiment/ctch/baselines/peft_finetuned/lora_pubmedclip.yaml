@@ -1,24 +1,23 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/proposed/ours_xbone_net_variant_d
-# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
-# Description: Does NOT merge LoRA. Uses X-ray reports in Phase 1 instead of clinical.
+# Experiment Config: ctch/baselines/peft_finetuned/lora_pubmedclip
+# Backbone: pubmedclip | PEFT: lora | Fusion: concat | Head: linear
+# Description: Two-Phase PEFT Baseline using LoRA.
 # ===============================================================================
 
 defaults:
-  - /model/peft@model.peft: lora
-  - /model/fusion@model.fusion: cross_attention
-  - /model/classifier@model.classifier: prototypical
-  - /dataset@dataset: btxrd
-  - _self_
-
+- /model/peft@model.peft: lora
+- /model/fusion@model.fusion: concat
+- /model/classifier@model.classifier: linear
+- /dataset@dataset: ctch
+- _self_
 # --- Model Architecture ---
 model:
-  backbone_type: biomedclip
+  backbone_type: pubmedclip
   freeze_backbone: true
-
 # --- Experiment Identifier ---
-experiment_name: btxrd/proposed/ours_xbone_net_variant_d
+experiment_name: ctch/baselines/peft_finetuned/lora_pubmedclip
+seed: 42
 
 # --- Training Hyperparameters ---
 params:
@@ -26,49 +25,38 @@ params:
   run_phase2: true
   run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
-
-  # --- Phase 1 Hyperparameters ---
   phase1:
     enabled: true
-    peft: lora
     epochs: 30
     lr: 5e-5
-    weight_decay: 1e-4
+    weight_decay: 0.0001
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
-    target_similarity: 0.7
-    beta: 0.5
-    p1_report_type: xray
+    target_similarity: 0.95
+    p1_report_type: clinical
     merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
     optimizer: adamw
     scheduler: cosine
 
-  # --- Phase 2 Hyperparameters ---
   phase2:
     enabled: true
     epochs: 50
-    lr: 1e-4
-    weight_decay: 1e-4
+    lr: 0.0001
+    weight_decay: 0.0001
     warmup_ratio: 0.1
-    early_stopping_patience: 5
+    early_stopping_patience: 5 
     use_text: true
     p2_report_type: clinical
     init_from_phase1_merged: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    loss_type: weighted_ce_plus_proto
-    optimizer: adamw  
+    loss_type: ce
+    optimizer: adamw
     scheduler: cosine
-
     loss:
-      proto_margin: 0.3
-      lambda_proto: 0.0
       label_smoothing: 0.1
       use_class_weights: true
       weight_type: effective_num
       effective_num_beta: 0.999
-
-# --- Global Random Seed ---
-seed: 42

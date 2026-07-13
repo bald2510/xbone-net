@@ -2,6 +2,7 @@
 # ===============================================================================
 # Experiment Config: btxrd/baselines/zeroshot/pubmedclip_zeroshot
 # Backbone: pubmedclip | PEFT: none | Fusion: none | Head: none
+# Description: Zero-Shot Evaluation Baseline.
 # ===============================================================================
 
 defaults:
@@ -26,5 +27,5 @@ params:
   run_ood: false                 # Set true only for proposed model to calibrate OOD threshold
   model_dir: checkpoints//seed_/
 
-# --- Global Random Seed ---
+# --- Experiment Identifier ---
 seed: 42

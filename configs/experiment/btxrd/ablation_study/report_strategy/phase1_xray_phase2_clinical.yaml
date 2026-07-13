@@ -1,0 +1,20 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/report_strategy/phase1_xray_phase2_clinical
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Report Strategy Ablation Study: Phase 1 on X-ray Findings, Phase 2 on Clinical History.
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/report_strategy/phase1_xray_phase2_clinical
+
+# --- Training Hyperparameters ---
+params:
+  phase1:
+    p1_report_type: xray
+  phase2:
+    p2_report_type: clinical

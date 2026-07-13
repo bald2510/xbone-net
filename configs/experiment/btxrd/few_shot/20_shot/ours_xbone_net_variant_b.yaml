@@ -1,18 +1,24 @@
 # @package _global_
 # ===============================================================================
-# Few-Shot Learning Config: 20-shot
-# Inherits from: experiment/btxrd/proposed/ours_xbone_net_variant_b
+# Experiment Config: btxrd/few_shot/20_shot/ours_xbone_net_variant_b
+# Backbone: biomedclip | PEFT: none | Fusion: none | Head: none
+# Description: Few-Shot Learning Config: few-shot baseline.
 # ===============================================================================
 
+# Few-Shot Learning Config: 20-shot
+
 defaults:
-  - /experiment/btxrd/proposed/ours_xbone_net_variant_b
+  - /experiment/btxrd/proposed/xbone_highres
   - _self_
 
+# --- Experiment Identifier ---
 experiment_name: btxrd/few_shot/20_shot/ours_xbone_net_variant_b
 
+# --- Training Hyperparameters ---
 params:
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
+# --- Dataset Configuration ---
 dataset:
   params:
     k_shot: 20

@@ -1,0 +1,239 @@
+suite_name: xbone_complete_experiment_suite
+
+# Each entry identifies one experiment planned in the thesis.
+# Matching is case-insensitive and relative to --config-root.
+# Add another pattern when your actual filename differs.
+
+experiments:
+  # -------------------------------------------------------------------------
+  # Standard full-fine-tuning baselines
+  # -------------------------------------------------------------------------
+  - id: baseline_fft_densenet121
+    patterns:
+      - "**/baselines/full_finetuned/*densenet*.yaml"
+      - "**/baselines/finetuned/*densenet*.yaml"
+      - "**/baselines/full_finetune/*densenet*.yaml"
+      - "**/baseline/full_finetune/*densenet*.yaml"
+      - "**/full_finetune/*densenet*.yaml"
+
+  - id: baseline_fft_resnet50
+    patterns:
+      - "**/baselines/full_finetuned/*resnet*.yaml"
+      - "**/baselines/finetuned/*resnet*.yaml"
+      - "**/baselines/full_finetune/*resnet*.yaml"
+      - "**/baseline/full_finetune/*resnet*.yaml"
+      - "**/full_finetune/*resnet*.yaml"
+
+  - id: baseline_fft_clip
+    patterns:
+      - "**/baselines/full_finetuned/fft_clip.yaml"
+      - "**/baselines/finetuned/clip.yaml"
+      - "**/baselines/full_finetune/clip.yaml"
+      - "**/baseline/full_finetune/clip.yaml"
+      - "**/full_finetune/fft_clip.yaml"
+      - "**/full_finetune/clip.yaml"
+    exclude_contains: ["biomed", "pubmed", "medclip"]
+
+  - id: baseline_fft_medclip
+    patterns:
+      - "**/baselines/full_finetuned/*medclip*.yaml"
+      - "**/baselines/finetuned/*medclip*.yaml"
+      - "**/baselines/full_finetune/*medclip*.yaml"
+      - "**/baseline/full_finetune/*medclip*.yaml"
+      - "**/full_finetune/*medclip*.yaml"
+    exclude_contains: ["biomed", "pubmed"]
+
+  - id: baseline_fft_pubmedclip
+    patterns:
+      - "**/baselines/full_finetuned/*pubmedclip*.yaml"
+      - "**/baselines/finetuned/*pubmedclip*.yaml"
+      - "**/baselines/full_finetune/*pubmedclip*.yaml"
+      - "**/baseline/full_finetune/*pubmedclip*.yaml"
+      - "**/full_finetune/*pubmedclip*.yaml"
+
+  - id: baseline_fft_biomedclip
+    patterns:
+      - "**/baselines/full_finetuned/*biomedclip*.yaml"
+      - "**/baselines/finetuned/*biomedclip*.yaml"
+      - "**/baselines/full_finetune/*biomedclip*.yaml"
+      - "**/baseline/full_finetune/*biomedclip*.yaml"
+      - "**/full_finetune/*biomedclip*.yaml"
+
+  # -------------------------------------------------------------------------
+  # Phase-matched PEFT baselines
+  # -------------------------------------------------------------------------
+  - id: baseline_lora_pubmedclip
+    patterns:
+      - "**/baselines/peft_finetuned/*lora*pubmedclip*.yaml"
+      - "**/baselines/peft_finetune/*lora*pubmedclip*.yaml"
+      - "**/baseline/peft_finetune/*lora*pubmedclip*.yaml"
+      - "**/peft_finetune/*lora*pubmedclip*.yaml"
+      - "**/lora_pubmedclip*.yaml"
+
+  - id: baseline_lora_biomedclip
+    patterns:
+      - "**/baselines/peft_finetuned/*lora*biomedclip*.yaml"
+      - "**/baselines/peft_finetune/*lora*biomedclip*.yaml"
+      - "**/baseline/peft_finetune/*lora*biomedclip*.yaml"
+      - "**/peft_finetune/*lora*biomedclip*.yaml"
+      - "**/lora_biomedclip*.yaml"
+
+  # -------------------------------------------------------------------------
+  # Main proposed model
+  # -------------------------------------------------------------------------
+  - id: proposed_xbone_highres
+    patterns:
+      - "**/proposed/xbone_highres.yaml"
+      - "**/proposed/ours_xbone_net.yaml"
+      - "**/proposed/*xbone*highres*.yaml"
+      - "**/ours_xbone_net_variant_b_hr.yaml"
+    exclude_contains: ["few", "ablation"]
+
+  # -------------------------------------------------------------------------
+  # Few-shot experiments: 1, 10 and 20 shots
+  # -------------------------------------------------------------------------
+  - id: fewshot_1_lora_pubmedclip
+    patterns:
+      - "**/few-shot/1_shot/*lora*pubmedclip*.yaml"
+      - "**/few_shot/1_shot/*lora*pubmedclip*.yaml"
+      - "**/few-shot/1-shot/*lora*pubmedclip*.yaml"
+
+  - id: fewshot_1_lora_biomedclip
+    patterns:
+      - "**/few-shot/1_shot/*lora*biomedclip*.yaml"
+      - "**/few_shot/1_shot/*lora*biomedclip*.yaml"
+      - "**/few-shot/1-shot/*lora*biomedclip*.yaml"
+
+  - id: fewshot_1_xbone_highres
+    patterns:
+      - "**/few-shot/1_shot/*xbone*.yaml"
+      - "**/few_shot/1_shot/*xbone*.yaml"
+      - "**/few-shot/1-shot/*xbone*.yaml"
+
+  - id: fewshot_10_lora_pubmedclip
+    patterns:
+      - "**/few-shot/10_shot/*lora*pubmedclip*.yaml"
+      - "**/few_shot/10_shot/*lora*pubmedclip*.yaml"
+      - "**/few-shot/10-shot/*lora*pubmedclip*.yaml"
+
+  - id: fewshot_10_lora_biomedclip
+    patterns:
+      - "**/few-shot/10_shot/*lora*biomedclip*.yaml"
+      - "**/few_shot/10_shot/*lora*biomedclip*.yaml"
+      - "**/few-shot/10-shot/*lora*biomedclip*.yaml"
+
+  - id: fewshot_10_xbone_highres
+    patterns:
+      - "**/few-shot/10_shot/*xbone*.yaml"
+      - "**/few_shot/10_shot/*xbone*.yaml"
+      - "**/few-shot/10-shot/*xbone*.yaml"
+
+  - id: fewshot_20_lora_pubmedclip
+    patterns:
+      - "**/few-shot/20_shot/*lora*pubmedclip*.yaml"
+      - "**/few_shot/20_shot/*lora*pubmedclip*.yaml"
+      - "**/few-shot/20-shot/*lora*pubmedclip*.yaml"
+
+  - id: fewshot_20_lora_biomedclip
+    patterns:
+      - "**/few-shot/20_shot/*lora*biomedclip*.yaml"
+      - "**/few_shot/20_shot/*lora*biomedclip*.yaml"
+      - "**/few-shot/20-shot/*lora*biomedclip*.yaml"
+
+  - id: fewshot_20_xbone_highres
+    patterns:
+      - "**/few-shot/20_shot/*xbone*.yaml"
+      - "**/few_shot/20_shot/*xbone*.yaml"
+      - "**/few-shot/20-shot/*xbone*.yaml"
+
+  # -------------------------------------------------------------------------
+  # Resolution and modality ablations
+  # -------------------------------------------------------------------------
+  - id: ablation_resolution_nohighres
+    patterns:
+      - "**/ablation_study/resolution/*nohighres*.yaml"
+      - "**/ablation/resolution/*nohighres*.yaml"
+      - "**/ablation/highres/*nohighres*.yaml"
+      - "**/ablation/**/*no_highres*.yaml"
+
+  - id: ablation_modality_image_only
+    patterns:
+      - "**/ablation_study/modality/image_only.yaml"
+      - "**/ablation_study/modality/img_only.yaml"
+      - "**/ablation/modality/image_only.yaml"
+      - "**/ablation/**/*image_only*.yaml"
+
+  - id: ablation_modality_text_only
+    patterns:
+      - "**/ablation_study/modality/text_only.yaml"
+
+  - id: ablation_modality_shuffled_report
+    patterns:
+      - "**/ablation_study/modality/shuffled_report.yaml"
+
+  - id: ablation_report_xray_to_clinical
+    patterns:
+      - "**/ablation_study/report_strategy/phase1_xray_phase2_clinical.yaml"
+      - "**/ablation/modality/xray_clinical.yaml"
+      - "**/ablation/report_strategy/xray_clinical.yaml"
+      - "**/ablation/**/*xray*clinical*.yaml"
+
+  # -------------------------------------------------------------------------
+  # Fine-tuning strategy ablations
+  # -------------------------------------------------------------------------
+  - id: ablation_finetune_full_ft
+    patterns:
+      - "**/ablation_study/finetune/*full_ft*.yaml"
+      - "**/ablation/finetune/*full_ft*.yaml"
+      - "**/ablation/finetune/*full_finetun*.yaml"
+
+  - id: ablation_finetune_no_ft
+    patterns:
+      - "**/ablation_study/finetune/*no_ft*.yaml"
+      - "**/ablation/finetune/*no_ft*.yaml"
+      - "**/ablation/finetune/*frozen*.yaml"
+
+
+
+  # -------------------------------------------------------------------------
+  # Architecture and training-schedule ablations
+  # -------------------------------------------------------------------------
+  - id: ablation_crossattn_linear
+    patterns:
+      - "**/ablation_study/architecture/*meanpool_linear*.yaml"
+      - "**/ablation_study/architecture/*crossattn_linear*.yaml"
+      - "**/ablation/architecture/*crossattn*linear*.yaml"
+      - "**/ablation/architecture/*cross_attention*linear*.yaml"
+
+  - id: ablation_crossattn_cosine
+    patterns:
+      - "**/ablation_study/architecture/*crossattn_cosine*.yaml"
+      - "**/ablation/architecture/*crossattn*cosine*.yaml"
+      - "**/ablation/architecture/*cross_attention*cosine*.yaml"
+
+  - id: ablation_phase2_only
+    patterns:
+      - "**/ablation_study/architecture/*phase2_only*.yaml"
+      - "**/ablation/architecture/*phase2_only*.yaml"
+      - "**/ablation/**/*phase_2_only*.yaml"
+
+  - id: ablation_phase1_merged
+    patterns:
+      - "**/ablation_study/architecture/*phase1_merged*.yaml"
+      - "**/ablation/architecture/*phase1_merged*.yaml"
+      - "**/ablation/**/*phase_1_merged*.yaml"
+
+  # -------------------------------------------------------------------------
+  # Out-of-distribution evaluation
+  # -------------------------------------------------------------------------
+  - id: ood_near_ood
+    patterns:
+      - "**/ood_evaluation/near_ood.yaml"
+
+  - id: ood_domain_ood
+    patterns:
+      - "**/ood_evaluation/domain_ood.yaml"
+
+  - id: ood_report_mismatch
+    patterns:
+      - "**/ood_evaluation/report_mismatch_ood.yaml"

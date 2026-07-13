@@ -1,0 +1,18 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/modality/image_only
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: prototypical
+# Description: Modality Ablation Study: Image Only (No Text in Phase 2).
+# ===============================================================================
+
+defaults:
+- /experiment/btxrd/proposed/xbone_highres
+- _self_
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/modality/image_only
+
+# --- Training Hyperparameters ---
+params:
+  phase2:
+    use_text: false

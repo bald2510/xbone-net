@@ -11,20 +11,61 @@ params:
   csv_split_path: "${hydra:runtime.cwd}/data/CTCH/ctch-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/CTCH/ctch-labels.csv"
 
-  # Multi-class classification (12 classes, ordered by frequency)
+  # Multi-class classification. This order must match data/CTCH/labels.txt.
   task_type: "multiclass"
-  num_classes: 12
+  num_classes: 53
   classes: [
-    'normal',                # 0: Bình thường
-    'radius_fracture',       # 1: Gãy xương quay
-    'humerus_fracture',      # 2: Gãy xương cánh tay
-    'femur_fracture',        # 3: Gãy xương đùi
-    'lower_leg_fracture',    # 4: Gãy xương cẳng chân
-    'tibia_fracture',        # 5: Gãy xương chày
-    'finger_fracture',       # 6: Gãy xương ngón tay
-    'ankle_fracture',        # 7: Gãy xương cổ chân
-    'forearm_fracture',      # 8: Gãy xương cẳng tay
-    'patella_fracture',      # 9: Gãy xương bánh chè
-    'foot_fracture',         # 10: Gãy xương bàn chân
-    'other',                 # 11: Các bệnh lý khác (< 50 mẫu)
+    'Bình thường',
+    'Gãy xương quay',
+    'Gãy xương cánh tay',
+    'Gãy xương đùi',
+    'Gãy xương ngón tay',
+    'Gãy xương chày',
+    'Gãy xương cẳng tay',
+    'Gãy xương cổ chân',
+    'Gãy xương cẳng chân',
+    'Gãy xương bàn chân',
+    'Gãy xương đòn',
+    'Gãy cột sống thắt lưng',
+    'Gãy xương bàn tay',
+    'Gãy xương ngón chân',
+    'Viêm khớp',
+    'Gãy xương trụ',
+    'Cắt cụt ngón tay',
+    'Gãy xương bánh chè',
+    'Gãy xương gót',
+    'Gãy cột sống ngực',
+    'U xương lành tính',
+    'Gãy xương thuyền',
+    'Trật khớp vai',
+    'Gãy xương mác',
+    'Gãy xương sườn',
+    'Gãy xương vai',
+    'Gãy xương mu',
+    'Trật khớp khuỷu tay',
+    'Trật khớp ngón tay',
+    'Thoái hóa cột sống',
+    'Trật khớp cùng đòn',
+    'U xương ác tính',
+    'Bệnh Gout',
+    'Thoái hóa khớp',
+    'Trật khớp bánh chè',
+    'Viêm tủy xương',
+    'Tiêu xương',
+    'Trật khớp ngón chân',
+    'Trật khớp gối',
+    'Loạn sản xơ xương',
+    'Gãy xương sên',
+    'Lao xương',
+    'Trật khớp cổ tay',
+    'Gãy xương cụt',
+    'Gãy xương ổ cối',
+    'Cắt cụt bàn chân',
+    'Cắt cụt ngón chân',
+    'Trật khớp cổ chân',
+    'Gãy xương chậu',
+    'Gãy cột sống và khung chậu',
+    'Biến dạng xương',
+    'Gãy cột sống cổ',
+    'Viêm cột sống dính khớp',
   ]

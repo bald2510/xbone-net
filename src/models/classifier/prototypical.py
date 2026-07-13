@@ -47,8 +47,12 @@ class PrototypicalHead(nn.Module):
             scale (float): Temperature scaling factor s applied to cosine logits. Defaults to 5.0.
         """
         super().__init__()
-        self.num_classes = num_classes
-        self.scale = scale
+        if feature_dim < 1 or num_classes < 2:
+            raise ValueError("feature_dim must be positive and num_classes must be >= 2.")
+        if scale <= 0:
+            raise ValueError("scale must be positive.")
+        self.num_classes = int(num_classes)
+        self.scale = float(scale)
 
         # --- Learnable class prototypes [K, D] ---
         self.prototypes = nn.Parameter(torch.randn(num_classes, feature_dim))
@@ -67,6 +71,13 @@ class PrototypicalHead(nn.Module):
                 - If return_features is False: logits tensor of shape [B, K].
                 - If return_features is True: tuple (logits, features).
         """
+        if features.ndim != 2:
+            raise ValueError(
+                f"PrototypicalHead expects [B,D] features, got {tuple(features.shape)}."
+            )
+        if features.size(-1) != self.prototypes.size(-1):
+            raise ValueError("Feature dimension does not match prototype dimension.")
+
         # Step 1: L2-normalize features and prototypes onto unit hypersphere
         normed_features = F.normalize(features, dim=-1)
         normed_prototypes = F.normalize(self.prototypes, dim=-1)

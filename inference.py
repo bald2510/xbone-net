@@ -18,6 +18,7 @@ import os
 import types
 import argparse
 import torch
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 import hydra
@@ -25,7 +26,13 @@ from omegaconf import DictConfig
 import matplotlib.pyplot as plt
 
 from src.models.builder import build_model, setup_phase2_modules
+from src.datasets.btxrd import (
+    letterbox_square,
+    make_uniform_grid_tiles,
+    normalize_tile_boxes,
+)
 from src.utils.ood import OODDetector
+from src.utils.trainer import resolve_pad_token_id
 
 
 # ============================================================
@@ -124,6 +131,23 @@ def render_and_save_spatial_attention(raw_img, captured_attn, output_path="resul
         print(f"[Warning] Could not save attention map plot: {e}")
 
 
+def make_tiles(image: Image.Image, tile_size: int, stride: int, max_tiles: int) -> list:
+    """Extract tiles from a PIL image."""
+    w, h = image.size
+    tiles = []
+    for y in range(0, h - tile_size + 1, stride):
+        for x in range(0, w - tile_size + 1, stride):
+            box = (x, y, x + tile_size, y + tile_size)
+            tile = image.crop(box)
+            extrema = tile.convert("L").getextrema()
+            if extrema[0] == extrema[1]:
+                continue
+            tiles.append(tile)
+            if len(tiles) >= max_tiles:
+                return tiles
+    return tiles
+
+
 # ============================================================
 # Helper Functions & Checkpoint Loading
 # ============================================================
@@ -157,6 +181,29 @@ def adapt_state_dict_keys(
             return {"backbone.model." + k: v for k, v in state_dict.items()}
 
     return state_dict
+
+
+def load_state_dict_checked(model, state_dict, context: str):
+    result = model.load_state_dict(state_dict, strict=False)
+    missing = list(result.missing_keys)
+    unexpected = list(result.unexpected_keys)
+    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_prefixes = ("fusion.", "head.")
+    critical_missing = [
+        key for key in missing
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    print(
+        f" -> [{context}] checkpoint load: missing={len(missing)}, "
+        f"unexpected={len(unexpected)}"
+    )
+    if critical_missing:
+        raise RuntimeError(
+            "Critical checkpoint weights were not loaded:\n"
+            + "\n".join(critical_missing[:30])
+        )
+    return result
 
 
 def load_checkpoint_from_dir(
@@ -202,7 +249,7 @@ def load_checkpoint_from_dir(
         checkpoint = torch.load(checkpoint_path, map_location=device)
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
-        model.load_state_dict(state_dict, strict=False)
+        load_state_dict_checked(model, state_dict, "inference")
         print("-> Checkpoint loaded successfully from folder!\n")
         return True
     return False
@@ -230,7 +277,7 @@ def load_model_checkpoint(
         checkpoint = torch.load(custom_checkpoint_path, map_location=device)
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
-        model.load_state_dict(state_dict, strict=False)
+        load_state_dict_checked(model, state_dict, "inference")
         print("-> Checkpoint loaded successfully from custom path!\n")
         return
 
@@ -254,7 +301,7 @@ def load_model_checkpoint(
             checkpoint = torch.load(checkpoint_path, map_location=device)
             state_dict = checkpoint.get("model_state_dict", checkpoint)
             state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
-            model.load_state_dict(state_dict, strict=False)
+            load_state_dict_checked(model, state_dict, "inference")
             print("-> Checkpoint loaded successfully!\n")
         else:
             print("-> [Info] No checkpoint found. Running model with initial/random weights.\n")
@@ -360,13 +407,29 @@ def main(cfg: DictConfig) -> None:
             detector.shared_cov_inv = ood_data["shared_cov_inv"]
 
             detector.class_means = {}
-            if model_prototypes is not None:
+            if "class_means" in ood_data.files:
+                class_means = ood_data["class_means"]
+                class_ids = (
+                    ood_data["class_ids"]
+                    if "class_ids" in ood_data.files
+                    else np.arange(len(class_means))
+                )
+                for class_id, center in zip(class_ids, class_means):
+                    detector.class_means[int(class_id)] = center
+            elif model_prototypes is not None:
                 norms = np.linalg.norm(model_prototypes, axis=1, keepdims=True)
                 normed_prototypes = model_prototypes / (norms + 1e-8)
-                for c, proto in enumerate(normed_prototypes):
-                    detector.class_means[c] = proto
+                for class_id, prototype in enumerate(normed_prototypes):
+                    detector.class_means[class_id] = prototype
+            else:
+                raise ValueError("OOD parameters contain no class centers.")
             detector._fitted = True
-            threshold = float(ood_data["threshold"])
+            if "calibrated_threshold" in ood_data.files:
+                threshold = float(ood_data["calibrated_threshold"])
+            elif "threshold" in ood_data.files:
+                threshold = float(ood_data["threshold"])
+            else:
+                raise KeyError("OOD parameter file contains no calibrated threshold.")
 
             if "id_scores_mean" in ood_data and "id_scores_std" in ood_data:
                 id_scores_mean = float(ood_data["id_scores_mean"])
@@ -405,7 +468,7 @@ def main(cfg: DictConfig) -> None:
             if args.method == "mahalanobis":
                 id_scores = detector.score_mahalanobis(id_embeddings)
             elif args.method == "knn":
-                id_scores = detector.score_knn(id_embeddings, k=5)
+                id_scores = detector.score_knn(id_embeddings, k=5, exclude_self=True)
             elif args.method == "text_anchor":
                 anchors = []
                 tokenizer = model.backbone.tokenizer
@@ -433,17 +496,57 @@ def main(cfg: DictConfig) -> None:
     preprocess = model.backbone.preprocess
     image_tensor = preprocess(image).unsqueeze(0).to(device)
 
+    # --- High-Res Tiling Support ---
+    high_res_cfg = cfg.dataset.get("params", {}).get("high_res", {})
+    use_high_res = high_res_cfg.get("enabled", False)
+
+    tile_values = None
+    tile_mask = None
+    tile_boxes = None
+    if use_high_res:
+        image_tensor = preprocess(letterbox_square(image)).unsqueeze(0).to(device)
+        tile_size = int(high_res_cfg.get('tile_size', 224))
+        raw_tiles, tile_boxes_abs = make_uniform_grid_tiles(
+            image,
+            tile_size=tile_size,
+            stride=int(high_res_cfg.get('stride', 224)),
+            max_tiles=int(high_res_cfg.get('max_tiles', 64)),
+            uniform_std_threshold=float(
+                high_res_cfg.get('uniform_std_threshold', 0.01)
+            ),
+            return_boxes=True,
+        )
+
+        tiles = [preprocess(t) for t in raw_tiles]
+        tile_values = torch.stack(tiles).unsqueeze(0).to(device)
+        tile_mask = torch.ones((1, len(raw_tiles)), dtype=torch.long).to(device)
+        tile_boxes = normalize_tile_boxes(tile_boxes_abs, image.size).unsqueeze(0).to(device)
+        print(
+            f"[High-Res] Created {len(raw_tiles)} uniform grid tiles for inference."
+        )
+
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
-    is_image_only = backbone_type.startswith("resnet50") or backbone_type.startswith("densenet121")
+    phase2_cfg = cfg.get("params", {}).get("phase2", {}) or {}
+    use_text = bool(phase2_cfg.get("use_text", True)) and not (
+        backbone_type.startswith("resnet50")
+        or backbone_type.startswith("densenet121")
+    )
 
     text_tokens = None
-    if not is_image_only:
-        clinical_text = args.clinical_text
-        if not clinical_text:
-            clinical_text = "no abnormal findings or fractures visible"
-            print(f"[Info] No clinical text provided. Using default: '{clinical_text}'")
+    text_attention_mask = None
+    if use_text:
+        if not args.clinical_text.strip():
+            raise ValueError(
+                "This checkpoint requires text input. Provide --clinical-text, "
+                "or evaluate an image-only configuration with phase2.use_text=false."
+            )
+        clinical_text = args.clinical_text.strip()
         tokenizer = model.backbone.tokenizer
-        text_tokens = tokenizer([clinical_text]).to(device)
+        text_tokens = tokenizer([clinical_text])
+        if isinstance(text_tokens, torch.Tensor):
+            text_tokens = text_tokens.to(device)
+            pad_id = resolve_pad_token_id(tokenizer)
+            text_attention_mask = (text_tokens != pad_id).long()
 
     print("Running forward pass...")
     attn_info = None
@@ -457,24 +560,44 @@ def main(cfg: DictConfig) -> None:
             pass
 
     with torch.no_grad():
-        img_feats, txt_feats = model.backbone(image_tensor, text_tokens)
+        logits, fused_feats, _ = model(
+            images=image_tensor,
+            input_ids=text_tokens,
+            attention_mask=text_attention_mask,
+            tile_values=tile_values,
+            tile_mask=tile_mask,
+            tile_boxes=tile_boxes,
+            return_features=True,
+        )
+        test_embed = F.normalize(fused_feats, dim=-1).cpu().numpy()
 
-        if txt_feats is None or is_image_only:
-            fused_feats = img_feats
-        else:
-            if hasattr(model.fusion, "top_cross_attn"):
-                fused_feats, attn_info = model.fusion(img_feats, txt_feats, return_attn=True)
-            else:
-                fused_feats = model.fusion(img_feats, txt_feats)
-
-        test_embed = fused_feats.cpu().numpy()
-        test_embed = test_embed / (np.linalg.norm(test_embed, axis=1, keepdims=True) + 1e-8)
-
-        logits = model.head(fused_feats)
         if is_multilabel:
             probs = torch.sigmoid(logits).cpu().numpy()[0]
         else:
             probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
+
+        # Re-run only the fusion path to expose attention weights for visualization.
+        if use_text and getattr(model.fusion, "supports_padding_mask", False):
+            img_feats, txt_feats = model.backbone(
+                image_tensor,
+                text_tokens,
+                attention_mask=text_attention_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+            )
+            txt_mask = None
+            if text_attention_mask is not None and txt_feats.ndim == 3 and txt_feats.size(1) > 1:
+                txt_mask = text_attention_mask[:, 1:] == 0
+            full_img_mask = getattr(model.backbone, "last_image_key_padding_mask", None)
+            img_mask = full_img_mask[:, 1:] if full_img_mask is not None else None
+            _, attn_info = model.fusion(
+                img_feats,
+                txt_feats,
+                img_key_padding_mask=img_mask,
+                txt_key_padding_mask=txt_mask,
+                return_attn=True,
+            )
 
     is_ood = False
     test_score = None
@@ -490,31 +613,29 @@ def main(cfg: DictConfig) -> None:
 
     render_and_save_spatial_attention(image, captured_spatial_attention, output_path="results/attention_map.png")
     if attn_info is not None:
-        top_attn = attn_info["top_attn_weights"].mean(dim=-1).cpu().squeeze(0).squeeze(-1).numpy()
-        bottom_attn = attn_info["bottom_attn_weights"].mean(dim=-1).cpu().squeeze(0).squeeze(-1).numpy()
+        img_to_txt = attn_info["attn_img_to_txt"]
+        txt_to_img = attn_info["attn_txt_to_img"]
+        top_attn = img_to_txt.mean(dim=(-1, -2)).squeeze(0).cpu().numpy()
+        bottom_attn = txt_to_img.mean(dim=(-1, -2)).squeeze(0).cpu().numpy()
 
-        top_out = attn_info["top_out"]
-        bottom_out = attn_info["bottom_out"]
-
-        top_norm = top_out / (top_out.norm(dim=-1, keepdim=True) + 1e-8)
-        bottom_norm = bottom_out / (bottom_out.norm(dim=-1, keepdim=True) + 1e-8)
-        mutual_affinity = (top_norm @ bottom_norm.T).item()
+        top_context = attn_info["txt_context_for_image"]
+        bottom_context = attn_info["img_context_for_text"]
+        mutual_affinity = F.cosine_similarity(
+            top_context, bottom_context, dim=-1
+        ).mean().item()
 
         print("\n" + "=" * 60)
         print("BI-DIRECTIONAL CROSS-ATTENTION MAP")
         print("=" * 60)
-        print("1. Top Branch (Image Query -> Text Key/Value):")
-        head_str_top = " | ".join([f"H{i+1}: {w:.4f}" for i, w in enumerate(top_attn)])
-        print(f"   - 8 Attention heads : [ {head_str_top} ]")
-        print(f"   - Average attention  : {top_attn.mean():.4f}")
-
-        print("\n2. Bottom Branch (Text Query -> Image Key/Value):")
-        head_str_bottom = " | ".join([f"H{i+1}: {w:.4f}" for i, w in enumerate(bottom_attn)])
-        print(f"   - 8 Attention heads : [ {head_str_bottom} ]")
-        print(f"   - Average attention  : {bottom_attn.mean():.4f}")
-
-        print("\n3. Cross-Modal Mutual Affinity:")
-        print(f"   - Top & Bottom stream alignment: {mutual_affinity:.4f}")
+        print("1. Image query -> text keys/values:")
+        print("   " + " | ".join(
+            f"H{i + 1}: {weight:.4f}" for i, weight in enumerate(top_attn)
+        ))
+        print("2. Text query -> image keys/values:")
+        print("   " + " | ".join(
+            f"H{i + 1}: {weight:.4f}" for i, weight in enumerate(bottom_attn)
+        ))
+        print(f"3. Cross-modal context cosine affinity: {mutual_affinity:.4f}")
         print("=" * 60)
 
     print("\n" + "=" * 60)
@@ -523,12 +644,18 @@ def main(cfg: DictConfig) -> None:
 
     if detector is not None:
         embed_dim = test_embed.shape[-1]
-        norm_score = test_score / embed_dim
-        norm_threshold = threshold / embed_dim
 
         print(f"OOD Method          : {args.method.upper()}")
-        print(f"Raw Score (D²)      : {test_score:10.4f}  (Threshold: {threshold:.4f})")
-        print(f"Dimension-Norm (D²/D): {norm_score:10.4f}  (Threshold: {norm_threshold:.4f})")
+        if args.method == "mahalanobis":
+            norm_score = test_score / embed_dim
+            norm_threshold = threshold / embed_dim
+            print(f"Raw Score (D²)      : {test_score:10.4f}  (Threshold: {threshold:.4f})")
+            print(
+                f"Dimension-Norm (D²/D): {norm_score:10.4f}  "
+                f"(Threshold: {norm_threshold:.4f})"
+            )
+        else:
+            print(f"OOD Score           : {test_score:10.4f}  (Threshold: {threshold:.4f})")
 
         z_str = ""
         if id_scores_mean is not None and id_scores_std is not None and id_scores_std > 0:
@@ -589,4 +716,3 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     main()
-

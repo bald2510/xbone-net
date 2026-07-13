@@ -17,3 +17,7 @@ echo ============================================================
 echo   Training Complete! All checkpoints saved in checkpoints/
 echo   Run 'eval.bat' to evaluate and aggregate metrics.
 echo ============================================================
+echo.
+echo [System] Shutting down the computer in 60 seconds...
+echo [System] To cancel the shutdown, run: shutdown /a
+shutdown /s /f /t 60

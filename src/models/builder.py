@@ -88,7 +88,14 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         backbone = OpenCLIPFoundation(model_key=backbone_type, freeze_base=freeze_base)
         print(f"[Builder] {backbone_type} backbone (frozen={freeze_base})")
     elif backbone_type == "biomedclip":
-        backbone = BiomedCLIPFoundation(freeze_base=freeze_base)
+        num_visual_tokens = cfg.get('num_visual_tokens', 0)
+        backbone = BiomedCLIPFoundation(
+            freeze_base=freeze_base,
+            num_visual_tokens=num_visual_tokens,
+            resampler_cfg=cfg.get('visual_resampler', {}),
+            local_pool_grid=cfg.get('local_pool_grid', 2),
+            tile_encode_chunk_size=cfg.get('tile_encode_chunk_size', 32),
+        )
         print(f"[Builder] BiomedCLIP backbone (frozen={freeze_base})")
     else:
         raise ValueError(
@@ -97,71 +104,138 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         )
     
     # --- Parameter-Efficient Fine-Tuning (PEFT) injection ---
-    peft_cfg = cfg.get('peft', {'type': 'none', 'params': {}})
-    peft_type = peft_cfg.get('type', 'none')
-    
-    # Image-only and MedCLIP backbones lack OpenCLIP .visual/.text interfaces
-    is_non_adapter_backbone = backbone_type.startswith('resnet50') or backbone_type.startswith('densenet121') or backbone_type == 'medclip'
+    peft_cfg = cfg.get("peft", {"type": "none", "params": {}})
+    peft_type = peft_cfg.get("type", "none")
+
+    is_non_adapter_backbone = (
+        backbone_type.startswith("resnet50")
+        or backbone_type.startswith("densenet121")
+        or backbone_type == "medclip"
+    )
+
     if is_non_adapter_backbone:
-        if peft_type not in ('none', 'full_ft'):
-            print(f"[Builder] Warning: PEFT type '{peft_type}' not supported for {backbone_type}. Skipping.")
-        elif peft_type == 'full_ft':
+        # CNN and MedCLIP do not expose OpenCLIP .model.visual/.text
+        if peft_type == "full_ft":
             for param in backbone.parameters():
                 param.requires_grad = True
-    if backbone_type == 'clip' and peft_type == 'qlora':
-        print("[Builder] Warning: OpenAI CLIP uses PyTorch native MultiheadAttention which is incompatible with 4-bit qlora. Automatically falling back to standard lora.")
-        peft_type = 'lora'
+            print(f"[Builder] Full fine-tuning enabled for {backbone_type}")
 
-    elif peft_type in ('lora', 'qlora'):
-        params = peft_cfg.get('params', {})
-        # Separate shared hyper-parameters from encoder-specific target lists
-        common_params = {k: v for k, v in params.items() if k not in ['visual_target_modules', 'text_target_modules']}
+        elif peft_type == "none":
+            # freeze_base already determines trainability
+            print(
+                f"[Builder] No PEFT applied to {backbone_type}; "
+                f"freeze_base={freeze_base}"
+            )
 
-        # Visual encoder PEFT adapter
-        visual_params = common_params.copy()
-        visual_params['target_modules'] = params.get('visual_target_modules', ["qkv", "proj"])
-        backbone.model.visual = apply_peft(
-            module=backbone.model.visual,
-            cfg={'type': peft_type, 'params': visual_params}
-        )
-        
-        # Text encoder PEFT adapter
-        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
-        if text_module is not None:
-            text_params = common_params.copy()
-            if 'text_target_modules' in params:
-                text_params['target_modules'] = params['text_target_modules']
-            
-            target_text_submodule = getattr(text_module, 'transformer', text_module)
-            adapted_text_submodule = apply_peft(
-                module=target_text_submodule,
-                cfg={'type': peft_type, 'params': text_params}
+        else:
+            raise ValueError(
+                f"PEFT type '{peft_type}' is not supported for "
+                f"backbone '{backbone_type}'."
             )
-            if hasattr(text_module, 'transformer'):
-                text_module.transformer = adapted_text_submodule
-            elif hasattr(backbone.model, 'text_model'):
-                backbone.model.text_model = adapted_text_submodule
-    elif peft_type == 'full_ft':
-        backbone.model.visual = apply_peft(
-            module=backbone.model.visual,
-            cfg=peft_cfg
-        )
-        text_module = getattr(backbone.model, 'text', getattr(backbone.model, 'text_model', None))
-        if text_module is not None:
-            target_text_submodule = getattr(text_module, 'transformer', text_module)
-            adapted_text_submodule = apply_peft(
-                module=target_text_submodule,
-                cfg=peft_cfg
-            )
-            if hasattr(text_module, 'transformer'):
-                text_module.transformer = adapted_text_submodule
-            elif hasattr(backbone.model, 'text_model'):
-                backbone.model.text_model = adapted_text_submodule
+
     else:
-        backbone.model.visual = apply_peft(
-            module=backbone.model.visual, 
-            cfg=peft_cfg
-        )
+        # OpenCLIP-compatible backbones only
+        if backbone_type == "clip" and peft_type == "qlora":
+            print(
+                "[Builder] QLoRA is incompatible with this CLIP "
+                "implementation; falling back to LoRA."
+            )
+            peft_type = "lora"
+            try:
+                peft_cfg["type"] = "lora"
+            except Exception:
+                pass
+
+        if peft_type in ("lora", "qlora"):
+            params = peft_cfg.get("params", {})
+
+            common_params = {
+                k: v for k, v in params.items()
+                if k not in ("visual_target_modules", "text_target_modules")
+            }
+
+            visual_params = common_params.copy()
+            visual_params["target_modules"] = params.get(
+                "visual_target_modules",
+                ["qkv", "proj"],
+            )
+
+            backbone.model.visual = apply_peft(
+                module=backbone.model.visual,
+                cfg={
+                    "type": peft_type,
+                    "params": visual_params,
+                },
+            )
+
+            text_module = getattr(
+                backbone.model,
+                "text",
+                getattr(backbone.model, "text_model", None),
+            )
+
+            if text_module is not None:
+                text_params = common_params.copy()
+
+                if "text_target_modules" in params:
+                    text_params["target_modules"] = params[
+                        "text_target_modules"
+                    ]
+
+                target_text_submodule = getattr(
+                    text_module,
+                    "transformer",
+                    text_module,
+                )
+
+                adapted_text_submodule = apply_peft(
+                    module=target_text_submodule,
+                    cfg={
+                        "type": peft_type,
+                        "params": text_params,
+                    },
+                )
+
+                if hasattr(text_module, "transformer"):
+                    text_module.transformer = adapted_text_submodule
+                elif hasattr(backbone.model, "text_model"):
+                    backbone.model.text_model = adapted_text_submodule
+
+        elif peft_type == "full_ft":
+            backbone.model.visual = apply_peft(
+                module=backbone.model.visual,
+                cfg=peft_cfg,
+            )
+
+            text_module = getattr(
+                backbone.model,
+                "text",
+                getattr(backbone.model, "text_model", None),
+            )
+
+            if text_module is not None:
+                target_text_submodule = getattr(
+                    text_module,
+                    "transformer",
+                    text_module,
+                )
+
+                adapted_text_submodule = apply_peft(
+                    module=target_text_submodule,
+                    cfg=peft_cfg,
+                )
+
+                if hasattr(text_module, "transformer"):
+                    text_module.transformer = adapted_text_submodule
+                elif hasattr(backbone.model, "text_model"):
+                    backbone.model.text_model = adapted_text_submodule
+
+        elif peft_type == "none":
+            # Preserve freeze_base configuration
+            pass
+
+        else:
+            raise ValueError(f"Unknown PEFT type: {peft_type}")
         
     # --- Instantiate fusion and classifier head modules ---
     fusion_cfg = cfg.get('fusion', {'type': 'none', 'params': {}})
@@ -208,24 +282,36 @@ def setup_phase2_modules(model, cfg: dict, device):
     p2_phase_cfg = params_cfg.get("phase2", {}) or {}
 
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
-    is_image_only = backbone_type.startswith("resnet50") or backbone_type.startswith("densenet121")
+    use_text_in_p2 = bool(p2_phase_cfg.get("use_text", True))
+    is_image_only = (
+        backbone_type.startswith("resnet50")
+        or backbone_type.startswith("densenet121")
+        or not use_text_in_p2
+    )
 
-    # --- Resolve fusion and head types from Hydra model defaults or Phase 2 params ---
+    # --- Resolve Phase-2 module types. Explicit phase2 settings override model defaults.
     model_fusion_cfg = cfg.model.get("fusion", {}) or {}
     model_head_cfg = cfg.model.get("classifier", {}) or {}
 
     cfg_fusion_type = model_fusion_cfg.get("type", "none")
     cfg_classifier_type = model_head_cfg.get("type", "none")
-
     p2_fusion_type = p2_phase_cfg.get("fusion_type", "none")
     p2_classifier_type = p2_phase_cfg.get("classifier_type", "none")
 
-    run_p2 = params_cfg.get("run_phase2", True)
+    run_p2 = p2_phase_cfg.get(
+        "enabled", params_cfg.get("run_phase2", True)
+    )
     exp_name = str(cfg.get("experiment_name", "")).lower()
     is_zero_shot = (not run_p2) or ("zeroshot" in exp_name)
 
-    fusion_type = cfg_fusion_type if cfg_fusion_type != "none" else p2_fusion_type
-    classifier_type = cfg_classifier_type if cfg_classifier_type != "none" else p2_classifier_type
+    fusion_type = (
+        p2_fusion_type if p2_fusion_type != "none" else cfg_fusion_type
+    )
+    classifier_type = (
+        p2_classifier_type
+        if p2_classifier_type != "none"
+        else cfg_classifier_type
+    )
 
     if is_zero_shot:
         fusion_type = "none"
@@ -234,34 +320,53 @@ def setup_phase2_modules(model, cfg: dict, device):
         fusion_type = "none"
         if classifier_type == "none":
             classifier_type = "linear"
-        print(f"[Builder] Image-only backbone: skipping fusion, using {classifier_type} head")
+        print(
+            f"[Builder] Image-only Phase 2: fusion disabled, "
+            f"using {classifier_type} head"
+        )
     else:
         if fusion_type == "none":
             fusion_type = "cross_attention"
         if classifier_type == "none":
             classifier_type = "prototypical"
 
-    # --- Hot-swap fusion module if uninitialized (0 params) ---
-    fusion_params = sum(p.numel() for p in model.fusion.parameters()) if model.fusion is not None else 0
-    if fusion_params == 0 and fusion_type != "none":
-        fusion_params_dict = dict(model_fusion_cfg.get("params", {}))
-        fusion_params_dict.update({'text_dim': feature_dim, 'img_dim': feature_dim})
-        model.fusion = build_fusion_module({
-            'type': fusion_type,
-            'params': fusion_params_dict
-        }).to(device)
-        print(f"[Builder] Created {fusion_type} fusion ({feature_dim}d)")
+    # Phase-1 fusion/head are frozen and untrained, so always reconstruct the exact
+    # requested Phase-2 modules. This also makes ablation overrides reliable.
+    fusion_params_dict = {}
+    if fusion_type != "none":
+        fusion_params_dict = (
+            dict(model_fusion_cfg.get("params", {}))
+            if fusion_type == cfg_fusion_type
+            else {}
+        )
+        fusion_params_dict.update(dict(p2_phase_cfg.get("fusion_params", {}) or {}))
+        fusion_params_dict.update({"text_dim": feature_dim, "img_dim": feature_dim})
+    model.fusion = build_fusion_module({
+        "type": fusion_type,
+        "params": fusion_params_dict,
+    }).to(device)
+    print(f"[Builder] Phase-2 fusion: {fusion_type} ({feature_dim}d)")
 
-    # --- Hot-swap classifier head if uninitialized (0 params) ---
-    head_params = sum(p.numel() for p in model.head.parameters()) if model.head is not None else 0
-    if head_params == 0 and classifier_type != "none":
-        head_params_dict = dict(model_head_cfg.get("params", {}))
-        head_params_dict.update({'feature_dim': feature_dim, 'num_classes': num_classes})
-        model.head = build_head_module({
-            'type': classifier_type,
-            'params': head_params_dict
-        }).to(device)
-        print(f"[Builder] Created {classifier_type} head ({feature_dim} -> {num_classes} classes)")
+    head_params_dict = {}
+    if classifier_type != "none":
+        head_params_dict = (
+            dict(model_head_cfg.get("params", {}))
+            if classifier_type == cfg_classifier_type
+            else {}
+        )
+        head_params_dict.update(dict(p2_phase_cfg.get("classifier_params", {}) or {}))
+        head_params_dict.update({
+            "feature_dim": feature_dim,
+            "num_classes": num_classes,
+        })
+    model.head = build_head_module({
+        "type": classifier_type,
+        "params": head_params_dict,
+    }).to(device)
+    print(
+        f"[Builder] Phase-2 head: {classifier_type} "
+        f"({feature_dim} -> {num_classes} classes)"
+    )
 
     # --- Enable local feature extraction for bi-directional cross-attention ---
     if hasattr(model.backbone, 'return_local'):
@@ -269,4 +374,3 @@ def setup_phase2_modules(model, cfg: dict, device):
         print(f"[Builder] Set backbone return_local = {model.backbone.return_local}")
 
     return model, classifier_type, fusion_type, num_classes
-

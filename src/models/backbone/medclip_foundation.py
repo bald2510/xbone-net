@@ -247,8 +247,8 @@ class MedCLIPFoundation(nn.Module):
             for param in self._medclip.parameters():
                 param.requires_grad = False
 
-    def forward(self, images, input_ids, attention_mask=None):
-        """Extract and L2-normalize image and text feature embeddings.
+    def forward(self, images, input_ids, attention_mask=None, **kwargs):
+        """Extract and L2-normalize image and text embeddings.
 
         Supports dynamic local feature extraction if self.return_local is True.
 

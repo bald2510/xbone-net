@@ -1,267 +1,185 @@
-"""
-Out-of-Distribution (OOD) Detection for XBone-Net Embeddings.
-===============================================================================
-Provides post-hoc OOD scoring methods operating on XBone-Net feature embeddings:
-  - Mahalanobis distance: Class-conditional Gaussian with shared covariance
-  - Cosine k-NN: Average cosine distance to k-nearest in-distribution neighbors
-  - Energy score: LogSumExp-based energy derived from classification logits
-  - Text-anchor: Zero-shot cosine similarity to VLM text prompts
+"""Post-hoc out-of-distribution detection utilities for XBone-Net."""
 
-Evaluates detection performance via AUROC and FPR@95TPR metrics.
-"""
+from __future__ import annotations
+
+from typing import Optional
 
 import numpy as np
-from sklearn.covariance import EmpiricalCovariance, ShrunkCovariance
-from sklearn.metrics import roc_auc_score
+from sklearn.covariance import LedoitWolf
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
-# ============================================================
-# Post-Hoc OOD Detector Class
-# ============================================================
+def _l2_normalize(array: np.ndarray) -> np.ndarray:
+    array = np.asarray(array, dtype=np.float64)
+    if array.ndim != 2:
+        raise ValueError(f"Expected a 2-D embedding matrix, got {array.shape}.")
+    norms = np.linalg.norm(array, axis=1, keepdims=True)
+    return array / np.maximum(norms, 1e-12)
+
 
 class OODDetector:
-    """Post-hoc OOD detector for XBone-Net feature embeddings.
-
-    Supports multiple scoring strategies operating on latent embeddings,
-    logits, or VLM text anchors to identify out-of-distribution samples.
-
-    Attributes:
-        class_means (dict): Mapping from class index to centroid vector.
-        shared_cov_inv (np.ndarray): Inverse shared covariance matrix for Mahalanobis.
-        ref_embeddings (np.ndarray): In-distribution reference embeddings matrix.
-        ref_labels (np.ndarray): Class labels corresponding to ref_embeddings.
-
-    Example:
-        detector = OODDetector()
-        detector.fit(id_embeddings, id_labels)
-        scores = detector.score(test_embeddings, method="mahalanobis")
-    """
+    """OOD detector supporting Mahalanobis, cosine k-NN, energy, and text anchors."""
 
     def __init__(self):
-        """Initialize empty OODDetector instance."""
-        self.class_means = {}
-        self.shared_cov_inv = None
-        self.ref_embeddings = None
-        self.ref_labels = None
+        self.class_means: dict[int, np.ndarray] = {}
+        self.shared_cov_inv: Optional[np.ndarray] = None
+        self.ref_embeddings: Optional[np.ndarray] = None
+        self.ref_labels: Optional[np.ndarray] = None
         self._fitted = False
 
-    def fit(self, embeddings: np.ndarray, labels: np.ndarray, prototypes: np.ndarray = None):
-        """Fit class-conditional Gaussian model on in-distribution embeddings.
+    def fit(
+        self,
+        embeddings: np.ndarray,
+        labels: np.ndarray,
+        prototypes: Optional[np.ndarray] = None,
+    ):
+        embeddings = _l2_normalize(embeddings)
+        labels = np.asarray(labels)
+        if labels.ndim == 2:
+            labels = np.argmax(labels, axis=1)
+        labels = labels.astype(np.int64).reshape(-1)
+        if len(labels) != len(embeddings):
+            raise ValueError("Embedding and label counts differ.")
+        if len(embeddings) < 2:
+            raise ValueError("At least two reference samples are required.")
 
-        Args:
-            embeddings: ID reference embeddings of shape (N, D).
-            labels: Ground-truth integer labels (N,) or one-hot matrix (N, C).
-            prototypes: Optional learned class prototypes of shape (C, D).
-        """
         self.ref_embeddings = embeddings
         self.ref_labels = labels
+        unique_classes = np.unique(labels)
+        if unique_classes.size < 1:
+            raise ValueError("Reference labels contain no classes.")
 
-        # --- Convert one-hot labels to integer class indices ---
-        if labels.ndim == 2:
-            proxy_labels = np.argmax(labels, axis=1)
-        else:
-            proxy_labels = labels
-
-        unique_classes = np.unique(proxy_labels)
-        self.class_means = {}
-        all_centered = []
-
-        # --- L2-normalize prototypes if available ---
-        normed_prototypes = None
+        normalized_prototypes = None
         if prototypes is not None:
-            norms = np.linalg.norm(prototypes, axis=1, keepdims=True)
-            normed_prototypes = prototypes / (norms + 1e-8)
+            normalized_prototypes = _l2_normalize(prototypes)
 
-        # --- Compute class centroids and centered data ---
-        for c in unique_classes:
-            mask = proxy_labels == c
-            class_embeds = embeddings[mask]
-            if normed_prototypes is not None and c < len(normed_prototypes):
-                self.class_means[c] = normed_prototypes[c]
+        self.class_means = {}
+        centered_parts = []
+        for class_id in unique_classes:
+            class_embeddings = embeddings[labels == class_id]
+            if normalized_prototypes is not None and 0 <= class_id < len(normalized_prototypes):
+                center = normalized_prototypes[class_id]
             else:
-                self.class_means[c] = class_embeds.mean(axis=0)
-            all_centered.append(class_embeds - self.class_means[c])
+                center = class_embeddings.mean(axis=0)
+                center /= max(np.linalg.norm(center), 1e-12)
+            self.class_means[int(class_id)] = center
+            centered_parts.append(class_embeddings - center)
 
-        centered = np.vstack(all_centered)
+        # Learned prototypes can provide centers for classes absent from a small
+        # calibration subset, while covariance is estimated only from observed data.
+        if normalized_prototypes is not None:
+            for class_id, center in enumerate(normalized_prototypes):
+                self.class_means.setdefault(int(class_id), center)
 
-        # --- Estimate shared covariance matrix ---
-        try:
-            cov_estimator = EmpiricalCovariance().fit(centered)
-            self.shared_cov_inv = np.linalg.inv(cov_estimator.covariance_)
-        except np.linalg.LinAlgError:
-            cov_estimator = ShrunkCovariance().fit(centered)
-            self.shared_cov_inv = np.linalg.inv(cov_estimator.covariance_)
-
+        centered = np.vstack(centered_parts)
+        covariance = LedoitWolf().fit(centered).covariance_
+        self.shared_cov_inv = np.linalg.pinv(covariance, hermitian=True)
         self._fitted = True
+        return self
 
     def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
-        """Compute minimum Mahalanobis distance across ID class centroids.
-
-        Formula:
-            d(x) = min_c (x - mu_c)^T Sigma^{-1} (x - mu_c)
-
-        Args:
-            test_embeddings: Test embeddings of shape (M, D).
-
-        Returns:
-            OOD scores of shape (M,) - higher values indicate OOD.
-        """
-        assert self._fitted, "Call fit() first with ID reference embeddings."
-
-        # --- Distance to nearest class centroid ---
-        scores = np.full(len(test_embeddings), np.inf)
-        for c, mean in self.class_means.items():
-            diff = test_embeddings - mean
-            maha = np.sum(diff @ self.shared_cov_inv * diff, axis=1)
-            scores = np.minimum(scores, maha)
-
+        if not self._fitted or self.shared_cov_inv is None:
+            raise RuntimeError("Call fit() before Mahalanobis scoring.")
+        test_embeddings = _l2_normalize(test_embeddings)
+        scores = np.full(test_embeddings.shape[0], np.inf, dtype=np.float64)
+        for center in self.class_means.values():
+            diff = test_embeddings - center
+            distances = np.einsum("ni,ij,nj->n", diff, self.shared_cov_inv, diff)
+            scores = np.minimum(scores, distances)
         return scores
 
-    def score_knn(self, test_embeddings: np.ndarray, k: int = 5) -> np.ndarray:
-        """Compute average cosine distance to the k nearest ID neighbors.
+    def score_knn(
+        self,
+        test_embeddings: np.ndarray,
+        k: int = 5,
+        exclude_self: bool = False,
+    ) -> np.ndarray:
+        if not self._fitted or self.ref_embeddings is None:
+            raise RuntimeError("Call fit() before k-NN scoring.")
+        test_embeddings = _l2_normalize(test_embeddings)
+        similarities = test_embeddings @ self.ref_embeddings.T
+        distances = 1.0 - similarities
 
-        Formula:
-            d(x) = 1/k sum_{i=1}^k (1 - cos(x, r_i))
+        if exclude_self and distances.shape[0] == distances.shape[1]:
+            np.fill_diagonal(distances, np.inf)
 
-        Args:
-            test_embeddings: L2-normalized test embeddings of shape (M, D).
-            k: Number of nearest neighbors to average.
-
-        Returns:
-            OOD scores of shape (M,) - higher values indicate OOD.
-        """
-        assert self._fitted, "Call fit() first with ID reference embeddings."
-
-        # --- Compute cosine distance to reference embeddings ---
-        sim_matrix = test_embeddings @ self.ref_embeddings.T
-        dist_matrix = 1.0 - sim_matrix
-
-        k = min(k, dist_matrix.shape[1])
-        topk_dists = np.partition(dist_matrix, k, axis=1)[:, :k]
-        scores = topk_dists.mean(axis=1)
-
-        return scores
+        n_available = distances.shape[1] - (1 if exclude_self and distances.shape[0] == distances.shape[1] else 0)
+        if n_available < 1:
+            raise ValueError("No reference neighbor is available for k-NN scoring.")
+        k = max(1, min(int(k), n_available))
+        nearest = np.partition(distances, kth=k - 1, axis=1)[:, :k]
+        return nearest.mean(axis=1)
 
     def score_energy(self, logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
-        """Compute energy-based OOD score from classification logits.
-
-        Formula:
-            E(x) = -T * log sum_c exp(f_c(x) / T)
-            score(x) = -E(x)
-
-        Args:
-            logits: Classification logits of shape (M, C).
-            temperature: Temperature scaling factor.
-
-        Returns:
-            OOD scores of shape (M,) - higher values indicate OOD.
-        """
-        # --- Compute log-sum-exp energy ---
+        """Return energy where larger values indicate stronger OOD evidence."""
+        logits = np.asarray(logits, dtype=np.float64)
+        if logits.ndim != 2:
+            raise ValueError("logits must have shape [N,C].")
+        if temperature <= 0:
+            raise ValueError("temperature must be positive.")
         scaled = logits / temperature
-        energy = -temperature * np.log(np.sum(np.exp(scaled - scaled.max(axis=1, keepdims=True)), axis=1) 
-                                        + np.exp(-scaled.max(axis=1)))
-        return -energy
+        row_max = scaled.max(axis=1, keepdims=True)
+        logsumexp = row_max[:, 0] + np.log(np.exp(scaled - row_max).sum(axis=1))
+        return -temperature * logsumexp
 
     def score_text_anchor(
         self,
         test_img_embeddings: np.ndarray,
         anchor_text_embeddings: np.ndarray,
     ) -> np.ndarray:
-        """Compute zero-shot OOD score via text-anchor cosine similarity.
-
-        Formula:
-            score(x) = 1 - max_c cos(x, t_c)
-
-        Args:
-            test_img_embeddings: L2-normalized image embeddings of shape (M, D).
-            anchor_text_embeddings: Text anchor embeddings of shape (A, D).
-
-        Returns:
-            OOD scores of shape (M,) - higher values indicate OOD.
-        """
-        # --- Cosine distance to nearest text anchor ---
-        sim_matrix = test_img_embeddings @ anchor_text_embeddings.T
-        max_sim = sim_matrix.max(axis=1)
-        return 1.0 - max_sim
+        test_img_embeddings = _l2_normalize(test_img_embeddings)
+        anchor_text_embeddings = _l2_normalize(anchor_text_embeddings)
+        return 1.0 - (test_img_embeddings @ anchor_text_embeddings.T).max(axis=1)
 
     def score(self, test_embeddings: np.ndarray, method: str = "mahalanobis", **kwargs) -> np.ndarray:
-        """Unified dispatch for all supported OOD scoring methods.
-
-        Args:
-            test_embeddings: Test embeddings of shape (M, D).
-            method: Scoring strategy ('mahalanobis', 'knn', 'energy', 'text_anchor').
-            **kwargs: Method-specific arguments.
-
-        Returns:
-            OOD scores of shape (M,) - higher values indicate OOD.
-
-        Raises:
-            ValueError: If method is unrecognised.
-        """
         if method == "mahalanobis":
             return self.score_mahalanobis(test_embeddings)
-        elif method == "knn":
-            return self.score_knn(test_embeddings, k=kwargs.get("k", 5))
-        elif method == "energy":
+        if method == "knn":
+            return self.score_knn(
+                test_embeddings,
+                k=kwargs.get("k", 5),
+                exclude_self=kwargs.get("exclude_self", False),
+            )
+        if method == "energy":
             return self.score_energy(kwargs["logits"], kwargs.get("temperature", 1.0))
-        elif method == "text_anchor":
+        if method == "text_anchor":
             return self.score_text_anchor(test_embeddings, kwargs["anchor_text_embeddings"])
-        else:
-            raise ValueError(f"Unknown OOD method: {method}. Choose from: mahalanobis, knn, energy, text_anchor")
+        raise ValueError(
+            f"Unknown OOD method: {method}. Choose mahalanobis, knn, energy, or text_anchor."
+        )
 
 
-# ============================================================
-# OOD Evaluation Metrics
-# ============================================================
+def evaluate_ood(id_scores: np.ndarray, ood_scores: np.ndarray) -> dict:
+    """Evaluate scores under the convention ``higher = more OOD``."""
+    id_scores = np.asarray(id_scores, dtype=np.float64).reshape(-1)
+    ood_scores = np.asarray(ood_scores, dtype=np.float64).reshape(-1)
+    if id_scores.size == 0 or ood_scores.size == 0:
+        raise ValueError("Both ID and OOD score arrays must be non-empty.")
+    if not np.isfinite(id_scores).all() or not np.isfinite(ood_scores).all():
+        raise ValueError("OOD scores contain NaN or infinity.")
 
-def evaluate_ood(
-    id_scores: np.ndarray,
-    ood_scores: np.ndarray,
-) -> dict:
-    """Evaluate OOD detection performance using AUROC and FPR@95TPR.
-
-    Formula:
-        FPR@95TPR = FP / N_id at threshold where TP / N_ood >= 0.95
-
-    Args:
-        id_scores: In-distribution OOD scores of shape (N_id,).
-        ood_scores: Out-of-distribution scores of shape (N_ood,).
-
-    Returns:
-        Dictionary containing auroc, fpr_at_95tpr, n_id, and n_ood.
-    """
-    # --- Prepare labels and scores ---
-    labels = np.concatenate([np.zeros(len(id_scores)), np.ones(len(ood_scores))])
+    labels = np.concatenate(
+        [np.zeros(id_scores.size, dtype=np.int64), np.ones(ood_scores.size, dtype=np.int64)]
+    )
     scores = np.concatenate([id_scores, ood_scores])
+    auroc = float(roc_auc_score(labels, scores))
+    aupr_out = float(average_precision_score(labels, scores))
 
-    auroc = roc_auc_score(labels, scores)
-
-    # --- Sweep threshold for FPR at 95% TPR ---
-    sorted_indices = np.argsort(-scores)
-    sorted_labels = labels[sorted_indices]
-
-    n_ood = int(labels.sum())
-    n_id = len(labels) - n_ood
-
-    tp_target = int(0.95 * n_ood)
-    tp_count = 0
-    fp_count = 0
-
-    for i in range(len(sorted_labels)):
-        if sorted_labels[i] == 1:
-            tp_count += 1
-        else:
-            fp_count += 1
-        if tp_count >= tp_target:
-            break
-
-    fpr_at_95 = fp_count / n_id if n_id > 0 else 0.0
+    fpr, tpr, thresholds = roc_curve(labels, scores, pos_label=1)
+    eligible = np.flatnonzero(tpr >= 0.95)
+    if eligible.size:
+        best = eligible[np.argmin(fpr[eligible])]
+        fpr_at_95 = float(fpr[best])
+        threshold_at_95 = float(thresholds[best])
+    else:
+        fpr_at_95 = 1.0
+        threshold_at_95 = float("nan")
 
     return {
-        "auroc": float(auroc),
-        "fpr_at_95tpr": float(fpr_at_95),
-        "n_id": n_id,
-        "n_ood": n_ood,
+        "auroc": auroc,
+        "aupr_out": aupr_out,
+        "fpr_at_95tpr": fpr_at_95,
+        "threshold_at_95tpr": threshold_at_95,
+        "n_id": int(id_scores.size),
+        "n_ood": int(ood_scores.size),
     }
-
-

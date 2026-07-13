@@ -1,4 +1,10 @@
 # @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/architecture/concat_linear
+# Backbone: biomedclip | PEFT: lora | Fusion: concat | Head: linear
+# Description: Ablation Study configuration.
+# ===============================================================================
+
 defaults:
   - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: concat
@@ -6,13 +12,16 @@ defaults:
   - /dataset@dataset: btxrd
   - _self_
 
+# --- Model Architecture ---
 model:
   backbone_type: biomedclip
   freeze_backbone: true
 
+# --- Experiment Identifier ---
 experiment_name: btxrd/ablation_study/architecture/concat_linear
 seed: 42
 
+# --- Training Hyperparameters ---
 params:
   run_phase1: true
   run_phase2: true

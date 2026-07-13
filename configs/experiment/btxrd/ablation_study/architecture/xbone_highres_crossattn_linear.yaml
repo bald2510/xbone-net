@@ -1,0 +1,74 @@
+# @package _global_
+# ===============================================================================
+# Experiment Config: btxrd/ablation_study/architecture/xbone_highres_crossattn_linear
+# Backbone: biomedclip | PEFT: lora | Fusion: cross_attention | Head: linear
+# Description: Architecture Ablation Study: High-Res, Cross-Attention Fusion, and Linear Head.
+# ===============================================================================
+
+defaults:
+- /model/peft@model.peft: lora
+- /model/fusion@model.fusion: cross_attention
+- /model/classifier@model.classifier: linear
+- /dataset@dataset: btxrd
+- _self_
+
+# --- Model Architecture ---
+model:
+  backbone_type: biomedclip
+  freeze_backbone: true
+  num_visual_tokens: 8
+
+# --- Experiment Identifier ---
+experiment_name: btxrd/ablation_study/architecture/xbone_highres_crossattn_linear
+seed: 42
+
+# --- Dataset Configuration ---
+dataset:
+  params:
+    high_res:
+      enabled: true
+      tile_size: 224
+      stride: 112
+      max_tiles: 16
+
+# --- Training Hyperparameters ---
+params:
+  run_phase1: true
+  run_phase2: true
+  run_ood: false
+  model_dir: checkpoints/${experiment_name}/seed_${seed}/
+  phase1:
+    enabled: true
+    epochs: 30
+    lr: 5e-5
+    weight_decay: 0.0001
+    warmup_ratio: 0.1
+    early_stopping_patience: 3
+    loss_type: semantic_matching
+    target_similarity: 0.95
+    p1_report_type: clinical
+    merge_lora_after_training: false
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
+    merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
+    optimizer: adamw
+    scheduler: cosine
+
+  phase2:
+    enabled: true
+    epochs: 50
+    lr: 0.0001
+    weight_decay: 0.0001
+    warmup_ratio: 0.1
+    early_stopping_patience: 5
+    use_text: true
+    p2_report_type: clinical
+    init_from_phase1_merged: false
+    checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
+    loss_type: ce
+    optimizer: adamw
+    scheduler: cosine
+    loss:
+      label_smoothing: 0.1
+      use_class_weights: true
+      weight_type: effective_num
+      effective_num_beta: 0.999

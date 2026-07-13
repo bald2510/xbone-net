@@ -31,42 +31,39 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
     #     "btxrd/baselines/zeroshot/medclip_zeroshot",
     # ],
-        # --- BTXRD Few-Shot Learning ---
-    "btxrd_few_shot_1": [
-        "btxrd/few_shot/1_shot/lora_pubmedclip",
-        "btxrd/few_shot/1_shot/lora_biomedclip",
-        "btxrd/few_shot/1_shot/ours_xbone_net_variant_b",
-    ],
-    "btxrd_few_shot_10": [
-        "btxrd/few_shot/10_shot/lora_pubmedclip",
-        "btxrd/few_shot/10_shot/lora_biomedclip",
-        "btxrd/few_shot/10_shot/ours_xbone_net_variant_b",
-    ],
-    "btxrd_few_shot_20": [
-        "btxrd/few_shot/20_shot/lora_pubmedclip",
-        "btxrd/few_shot/20_shot/lora_biomedclip",
-        "btxrd/few_shot/20_shot/ours_xbone_net_variant_b",
-    ],
-    #--- BTXRD Proposed Model ---
-    "btxrd_proposed": [
-        "btxrd/proposed/ours_xbone_net_variant_a",
-        "btxrd/proposed/ours_xbone_net_variant_b",
-        "btxrd/proposed/ours_xbone_net_variant_c",
-        "btxrd/proposed/ours_xbone_net_variant_d",
-    ],
     #--- BTXRD Fine-Tuned Baselines ---
     "btxrd_finetuned": [
-        "btxrd/baselines/finetuned/resnet50",
-        "btxrd/baselines/finetuned/densenet",
-        "btxrd/baselines/finetuned/clip", 
-        "btxrd/baselines/finetuned/pubmedclip",
-        "btxrd/baselines/finetuned/medclip",
-        "btxrd/baselines/finetuned/biomedclip",
+        "btxrd/baselines/full_finetuned/fft_resnet50",
+        "btxrd/baselines/full_finetuned/fft_densenet",
+        "btxrd/baselines/full_finetuned/fft_clip", 
+        "btxrd/baselines/full_finetuned/fft_pubmedclip",
+        "btxrd/baselines/full_finetuned/fft_medclip",
+        "btxrd/baselines/full_finetuned/fft_biomedclip",
     ],
     # --- BTXRD PEFT Fine-Tuned Baselines ---
     "btxrd_peft_finetuned": [
-        "btxrd/baselines/peft_finetuned/pubmedclip",
-        "btxrd/baselines/peft_finetuned/biomedclip",
+        "btxrd/baselines/peft_finetuned/lora_pubmedclip",
+        "btxrd/baselines/peft_finetuned/lora_biomedclip",
+    ],
+    # --- BTXRD Few-Shot Learning ---
+    "btxrd_few_shot_1": [
+        "btxrd/few_shot/1_shot/lora_pubmedclip", # done
+        "btxrd/few_shot/1_shot/lora_biomedclip", # done
+        # "btxrd/few_shot/1_shot/ours_xbone_net_variant_b",
+    ],
+    "btxrd_few_shot_10": [
+        "btxrd/few_shot/10_shot/lora_pubmedclip", # done
+        "btxrd/few_shot/10_shot/lora_biomedclip", # done
+        # "btxrd/few_shot/10_shot/ours_xbone_net_variant_b",
+    ],      
+    "btxrd_few_shot_20": [
+        "btxrd/few_shot/20_shot/lora_pubmedclip", # done
+        "btxrd/few_shot/20_shot/lora_biomedclip", # done
+        # "btxrd/few_shot/20_shot/ours_xbone_net_variant_b",
+    ],
+    # --- BTXRD Proposed Model ---
+    "btxrd_proposed": [
+        "btxrd/proposed/xbone_highres",
     ],
     # # --- BTXRD Ablation Studies ---
     # "btxrd_ablation_architecture": [
@@ -79,10 +76,10 @@ EXPERIMENTS = OrderedDict({
     #     "btxrd/ablation_study/finetune/lora_ft",
     #     "btxrd/ablation_study/finetune/no_ft",
     # ],
-     "btxrd_ablation_modality": [
-        "btxrd/ablation_study/modality/xray_only",
-        "btxrd/ablation_study/modality/clinical_only",
-    ],
+    # "btxrd_ablation_modality": [
+    #     "btxrd/ablation_study/modality/xray_only",
+    #     "btxrd/ablation_study/modality/clinical_only",
+    # ],
     # --- CTCH Zero-Shot Baselines ---
     # "ctch_zeroshot": [
     #     "ctch/baselines/zeroshot/biomedclip_zeroshot",
