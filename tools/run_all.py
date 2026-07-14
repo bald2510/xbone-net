@@ -49,12 +49,12 @@ EXPERIMENTS = OrderedDict({
     "btxrd_few_shot_1": [
         # "btxrd/few_shot/1_shot/lora_pubmedclip", # done
         # "btxrd/few_shot/1_shot/lora_biomedclip", # done
-        "btxrd/few_shot/1_shot/ours_xbone_net",
+        # "btxrd/few_shot/1_shot/ours_xbone_net",
     ],
     "btxrd_few_shot_10": [
         # "btxrd/few_shot/10_shot/lora_pubmedclip", # done
         # "btxrd/few_shot/10_shot/lora_biomedclip", # done
-        "btxrd/few_shot/10_shot/ours_xbone_net",
+        # "btxrd/few_shot/10_shot/ours_xbone_net",
     ],      
     "btxrd_few_shot_20": [
         # "btxrd/few_shot/20_shot/lora_pubmedclip", # done
@@ -88,12 +88,12 @@ EXPERIMENTS = OrderedDict({
     "ctch_few_shot_1": [
         # "ctch/few_shot/1_shot/lora_pubmedclip", # done
         # "ctch/few_shot/1_shot/lora_biomedclip", # done
-        "ctch/few_shot/1_shot/ours_xbone_net",
+        # "ctch/few_shot/1_shot/ours_xbone_net",
     ],
     "ctch_few_shot_10": [
         # "ctch/few_shot/10_shot/lora_pubmedclip", # done
         # "ctch/few_shot/10_shot/lora_biomedclip", # done
-        "ctch/few_shot/10_shot/ours_xbone_net",
+        # "ctch/few_shot/10_shot/ours_xbone_net",
     ],
     "ctch_few_shot_20": [
         # "ctch/few_shot/20_shot/lora_pubmedclip", # done
