@@ -52,25 +52,89 @@ class BTXRDDataset(Dataset):
 
         split_frame = pd.read_csv(csv_split_path)
         label_frame = pd.read_csv(csv_labels_path)
-        merged = pd.merge(split_frame, label_frame, on=["image_id"], how="inner")
+        merged = pd.merge(
+            split_frame,
+            label_frame,
+            on=["image_id"],
+            how="inner",
+            validate="one_to_one",
+        )
 
-        if "class_id" not in merged.columns and self.classes:
-            def class_id(row):
-                for index, name in enumerate(self.classes):
-                    if row.get(name, 0) == 1:
-                        return index
-                return 0
-            merged["class_id"] = merged.apply(class_id, axis=1)
+        if self.task_type == "multiclass" and "class_id" not in merged.columns:
+            if not self.classes:
+                raise ValueError(
+                    "BTXRD multiclass loading requires dataset.params.classes when "
+                    "the label manifest has no class_id column."
+                )
+            missing_class_columns = [
+                name for name in self.classes if name not in merged.columns
+            ]
+            if missing_class_columns:
+                raise ValueError(
+                    "BTXRD label manifest does not match dataset classes. "
+                    f"Missing columns: {missing_class_columns}."
+                )
+            label_matrix = merged[self.classes].apply(
+                pd.to_numeric, errors="coerce"
+            )
+            # BTXRD contains hierarchical indicators. A specific subtype is the
+            # multiclass target when both it and its generic parent are active.
+            hierarchical_children = {
+                "osteochondroma": (
+                    "multiple osteochondromas",
+                    "synovial osteochondroma",
+                ),
+            }
+            for parent, children in hierarchical_children.items():
+                present_children = [
+                    child for child in children if child in label_matrix.columns
+                ]
+                if parent in label_matrix.columns and present_children:
+                    child_is_active = label_matrix[present_children].eq(1).any(axis=1)
+                    label_matrix.loc[child_is_active, parent] = 0
+            active_counts = label_matrix.eq(1).sum(axis=1)
+            invalid_rows = label_matrix.isna().any(axis=1) | active_counts.ne(1)
+            if invalid_rows.any():
+                raise ValueError(
+                    "BTXRD multiclass labels must contain exactly one active class "
+                    f"per sample; invalid rows={int(invalid_rows.sum())}."
+                )
+            merged["class_id"] = label_matrix.to_numpy().argmax(axis=1)
+
+        if self.task_type == "multiclass":
+            class_ids = pd.to_numeric(merged["class_id"], errors="coerce")
+            expected_classes = len(self.classes)
+            invalid_ids = class_ids.isna() | class_ids.lt(0)
+            if expected_classes:
+                invalid_ids |= class_ids.ge(expected_classes)
+            if invalid_ids.any():
+                raise ValueError(
+                    "BTXRD label manifest contains "
+                    f"{int(invalid_ids.sum())} invalid class_id values."
+                )
+            merged["class_id"] = class_ids.astype(int)
 
         current_split = "validate" if split == "val" else split
         filtered = merged[merged["split"] == current_split].reset_index(drop=True)
         if current_split == "train" and k_shot is not None:
-            filtered = filtered.groupby("class_id", group_keys=False).apply(
-                lambda group: group.sample(
-                    n=min(len(group), k_shot), random_state=seed
+            if self.task_type != "multiclass" or "class_id" not in filtered.columns:
+                raise ValueError(
+                    "BTXRD k-shot sampling requires multiclass labels in class_id."
                 )
-            ).reset_index(drop=True)
-            print(f"[Dataset] Few-shot learning: {k_shot}-shot (seed={seed}).")
+            if isinstance(k_shot, bool) or not isinstance(k_shot, int) or k_shot < 1:
+                raise ValueError("k_shot must be a positive integer or null.")
+            sampled_groups = [
+                group.sample(n=min(len(group), k_shot), random_state=seed)
+                for _, group in filtered.groupby("class_id", sort=True)
+            ]
+            if not sampled_groups:
+                raise ValueError("BTXRD training split is empty; cannot apply k-shot sampling.")
+            filtered = pd.concat(sampled_groups, ignore_index=True)
+            print(
+                f"[Dataset] BTXRD few-shot learning: requested={k_shot}-shot, "
+                f"classes={filtered['class_id'].nunique()}, "
+                f"samples={len(filtered)}, seed={seed}."
+            )
         elif current_split == "train" and train_ratio < 1.0:
             filtered = filtered.sample(frac=train_ratio, random_state=seed).reset_index(
                 drop=True
