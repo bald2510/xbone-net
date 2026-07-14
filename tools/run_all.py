@@ -25,109 +25,109 @@ import numpy as np
 
 EXPERIMENTS = OrderedDict({
     # --- BTXRD Zero-Shot Baselines --- Done
-    "btxrd_zeroshot": [
-        "btxrd/baselines/zeroshot/biomedclip_zeroshot",
-        "btxrd/baselines/zeroshot/clip_zeroshot",
-        "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
-        "btxrd/baselines/zeroshot/medclip_zeroshot",
-    ],
-    #--- BTXRD Fine-Tuned Baselines --- Done
-    "btxrd_finetuned": [
-        "btxrd/baselines/full_finetuned/fft_resnet50",
-        "btxrd/baselines/full_finetuned/fft_densenet",
-        "btxrd/baselines/full_finetuned/fft_clip", 
-        "btxrd/baselines/full_finetuned/fft_pubmedclip",
-        "btxrd/baselines/full_finetuned/fft_medclip",
-        "btxrd/baselines/full_finetuned/fft_biomedclip",
-    ],
-    # --- BTXRD PEFT Fine-Tuned Baselines ---
-    "btxrd_peft_finetuned": [
-        "btxrd/baselines/peft_finetuned/lora_pubmedclip",
-        "btxrd/baselines/peft_finetuned/lora_biomedclip",
-    ],
+    # "btxrd_zeroshot": [
+    #     "btxrd/baselines/zeroshot/biomedclip_zeroshot",
+    #     "btxrd/baselines/zeroshot/clip_zeroshot",
+    #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
+    #     "btxrd/baselines/zeroshot/medclip_zeroshot",
+    # ],
+    # #--- BTXRD Fine-Tuned Baselines --- Done
+    # "btxrd_finetuned": [
+    #     "btxrd/baselines/full_finetuned/fft_resnet50",
+    #     "btxrd/baselines/full_finetuned/fft_densenet",
+    #     "btxrd/baselines/full_finetuned/fft_clip", 
+    #     "btxrd/baselines/full_finetuned/fft_pubmedclip",
+    #     "btxrd/baselines/full_finetuned/fft_medclip",
+    #     "btxrd/baselines/full_finetuned/fft_biomedclip",
+    # ],
+    # # --- BTXRD PEFT Fine-Tuned Baselines ---
+    # "btxrd_peft_finetuned": [
+    #     "btxrd/baselines/peft_finetuned/lora_pubmedclip",
+    #     "btxrd/baselines/peft_finetuned/lora_biomedclip",
+    # ],
     # --- BTXRD Few-Shot Learning --- Not Done
     "btxrd_few_shot_1": [
-        "btxrd/few_shot/1_shot/lora_pubmedclip", # done
-        "btxrd/few_shot/1_shot/lora_biomedclip", # done
-        # "btxrd/few_shot/1_shot/ours_xbone_net_variant_b",
+        # "btxrd/few_shot/1_shot/lora_pubmedclip", # done
+        # "btxrd/few_shot/1_shot/lora_biomedclip", # done
+        "btxrd/few_shot/1_shot/ours_xbone_net",
     ],
     "btxrd_few_shot_10": [
-        "btxrd/few_shot/10_shot/lora_pubmedclip", # done
-        "btxrd/few_shot/10_shot/lora_biomedclip", # done
-        # "btxrd/few_shot/10_shot/ours_xbone_net_variant_b",
+        # "btxrd/few_shot/10_shot/lora_pubmedclip", # done
+        # "btxrd/few_shot/10_shot/lora_biomedclip", # done
+        "btxrd/few_shot/10_shot/ours_xbone_net",
     ],      
     "btxrd_few_shot_20": [
-        "btxrd/few_shot/20_shot/lora_pubmedclip", # done
-        "btxrd/few_shot/20_shot/lora_biomedclip", # done
-        # "btxrd/few_shot/20_shot/ours_xbone_net_variant_b",
+        # "btxrd/few_shot/20_shot/lora_pubmedclip", # done
+        # "btxrd/few_shot/20_shot/lora_biomedclip", # done
+        "btxrd/few_shot/20_shot/ours_xbone_net",
     ],
     # --- BTXRD Proposed Model ---
     "btxrd_proposed": [
         "btxrd/proposed/ours_xbone_net",
     ],
     # --- CTCH Zero-Shot Baselines ---
-    "ctch_zeroshot": [
-        "ctch/baselines/zeroshot/biomedclip_zeroshot",
-        "ctch/baselines/zeroshot/clip_zeroshot",
-        "ctch/baselines/zeroshot/pubmedclip_zeroshot",
-        "ctch/baselines/zeroshot/medclip_zeroshot",
-    ],
+    # "ctch_zeroshot": [
+    #     "ctch/baselines/zeroshot/biomedclip_zeroshot",
+    #     "ctch/baselines/zeroshot/clip_zeroshot",
+    #     "ctch/baselines/zeroshot/pubmedclip_zeroshot",
+    #     "ctch/baselines/zeroshot/medclip_zeroshot",
+    # ],
     # --- CTCH Fine-Tuned Baselines ---
-    "ctch_finetuned": [
-        "ctch/baselines/full_finetuned/fft_biomedclip",
-        "ctch/baselines/full_finetuned/fft_clip",
-        "ctch/baselines/full_finetuned/fft_pubmedclip",
-        "ctch/baselines/full_finetuned/fft_medclip",
-        "ctch/baselines/full_finetuned/fft_resnet50",
-        "ctch/baselines/full_finetuned/fft_densenet",
-    ],
-    "ctch_peft_finetuned": [
-        "ctch/baselines/peft_finetuned/lora_pubmedclip",
-        "ctch/baselines/peft_finetuned/lora_biomedclip",
-    ],
+    # "ctch_finetuned": [
+    #     "ctch/baselines/full_finetuned/fft_biomedclip",
+    #     "ctch/baselines/full_finetuned/fft_clip",
+    #     "ctch/baselines/full_finetuned/fft_pubmedclip",
+    #     "ctch/baselines/full_finetuned/fft_medclip",
+    #     "ctch/baselines/full_finetuned/fft_resnet50",
+    #     "ctch/baselines/full_finetuned/fft_densenet",
+    # ],
+    # "ctch_peft_finetuned": [
+    #     "ctch/baselines/peft_finetuned/lora_pubmedclip",
+    #     "ctch/baselines/peft_finetuned/lora_biomedclip",
+    # ],
     "ctch_few_shot_1": [
-        "ctch/few_shot/1_shot/lora_pubmedclip", # done
-        "ctch/few_shot/1_shot/lora_biomedclip", # done
-        # "ctch/few_shot/1_shot/ours_xbone_net",
+        # "ctch/few_shot/1_shot/lora_pubmedclip", # done
+        # "ctch/few_shot/1_shot/lora_biomedclip", # done
+        "ctch/few_shot/1_shot/ours_xbone_net",
     ],
     "ctch_few_shot_10": [
-        "ctch/few_shot/10_shot/lora_pubmedclip", # done
-        "ctch/few_shot/10_shot/lora_biomedclip", # done
-        # "ctch/few_shot/10_shot/ours_xbone_net_variant_b",
+        # "ctch/few_shot/10_shot/lora_pubmedclip", # done
+        # "ctch/few_shot/10_shot/lora_biomedclip", # done
+        "ctch/few_shot/10_shot/ours_xbone_net",
     ],
     "ctch_few_shot_20": [
-        "ctch/few_shot/20_shot/lora_pubmedclip", # done
-        "ctch/few_shot/20_shot/lora_biomedclip", # done
-        # "ctch/few_shot/20_shot/ours_xbone_net_variant_b",
+        # "ctch/few_shot/20_shot/lora_pubmedclip", # done
+        # "ctch/few_shot/20_shot/lora_biomedclip", # done
+        "ctch/few_shot/20_shot/ours_xbone_net",
     ],
     # --- CTCH Proposed Model ---
     "ctch_proposed": [
         "ctch/proposed/ours_xbone_net",
     ],
     # --- CTCH Ablation Studies (real-world dataset) ---
-    "ctch_ablation_input": [
-        "ctch/ablation_study/input/resolution/no_highres",
-        "ctch/ablation_study/input/modality/image_only_phase2",
-        "ctch/ablation_study/input/modality/strict_image_only",
-        "ctch/ablation_study/input/modality/text_only",
-        "ctch/ablation_study/input/modality/shuffled_report_train_eval",
-        "ctch/ablation_study/input/modality/test_time_shuffled_report",
-        "ctch/ablation_study/input/modality/phase1_xray_phase2_clinical",
-    ],
-    "ctch_ablation_backbone": [
-        "ctch/ablation_study/backbone/frozen_backbone",
-        "ctch/ablation_study/backbone/full_finetuning",
-        "ctch/ablation_study/backbone/phase1_merged",
-        "ctch/ablation_study/backbone/phase2_only",
-    ],
-    "ctch_ablation_fusion": [
-        "ctch/ablation_study/fusion/concat_empirical_centroid",
-        "ctch/ablation_study/fusion/image_to_text",
-        "ctch/ablation_study/fusion/text_to_image",
-    ],
-    "ctch_ablation_classifier": [
-        "ctch/ablation_study/classifier/linear",
-    ],
+    # "ctch_ablation_input": [
+    #     "ctch/ablation_study/input/resolution/no_highres",
+    #     "ctch/ablation_study/input/modality/image_only_phase2",
+    #     "ctch/ablation_study/input/modality/strict_image_only",
+    #     "ctch/ablation_study/input/modality/text_only",
+    #     "ctch/ablation_study/input/modality/shuffled_report_train_eval",
+    #     "ctch/ablation_study/input/modality/test_time_shuffled_report",
+    #     "ctch/ablation_study/input/modality/phase1_xray_phase2_clinical",
+    # ],
+    # "ctch_ablation_backbone": [
+    #     "ctch/ablation_study/backbone/frozen_backbone",
+    #     "ctch/ablation_study/backbone/full_finetuning",
+    #     "ctch/ablation_study/backbone/phase1_merged",
+    #     "ctch/ablation_study/backbone/phase2_only",
+    # ],
+    # "ctch_ablation_fusion": [
+    #     "ctch/ablation_study/fusion/concat_empirical_centroid",
+    #     "ctch/ablation_study/fusion/image_to_text",
+    #     "ctch/ablation_study/fusion/text_to_image",
+    # ],
+    # "ctch_ablation_classifier": [
+    #     "ctch/ablation_study/classifier/linear",
+    # ],
 })
 
 DEFAULT_SEEDS = [42, 123, 456]

@@ -1,6 +1,6 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/few_shot/1_shot/ours_xbone_net_variant_b
+# Experiment Config: btxrd/few_shot/1_shot/ours_xbone_net
 # Backbone: biomedclip | PEFT: none | Fusion: none | Head: none
 # Description: Few-Shot Learning Config: few-shot baseline.
 # ===============================================================================
@@ -12,7 +12,7 @@ defaults:
   - _self_
 
 # --- Experiment Identifier ---
-experiment_name: btxrd/few_shot/1_shot/ours_xbone_net_variant_b
+experiment_name: btxrd/few_shot/1_shot/ours_xbone_net
 
 # --- Training Hyperparameters ---
 params:
