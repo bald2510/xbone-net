@@ -4,7 +4,8 @@ XBone-Net Single-Sample Inference & OOD Visualizer.
 Executes single-sample CLI inference, attention map visualization, and OOD scoring:
   - Model Loading: Loads model architecture and Phase 2 checkpoint.
   - OOD Detection: Scores sample against ID calibration using Mahalanobis, k-NN, or text-anchor.
-  - Spatial Attention: Captures ViT self-attention and renders 14x14 heatmap overlay on X-ray image.
+  - Spatial Attention: Projects text-to-image attention through the spatial resampler
+    and renders it in the original X-ray coordinate system.
   - Cross-Attention: Analyzes bi-directional cross-attention head weights and cross-modal affinity.
 
 Outputs prediction probabilities, OOD status, and PNG visualization of attention maps.
@@ -15,7 +16,6 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
 import os
-import types
 import argparse
 import torch
 import torch.nn.functional as F
@@ -37,116 +37,111 @@ from src.utils.trainer import resolve_pad_token_id
 
 
 # ============================================================
-# ViT Attention Hooks & Renderers
+# High-Resolution Attention Projection & Rendering
 # ============================================================
 
-# Global buffer for captured ViT self-attention matrices
-captured_spatial_attention = []
+
+def project_visual_attention_to_source(model, visual_attention: torch.Tensor):
+    """Project attention over resampled visual tokens back to source-image boxes."""
+    backbone = getattr(model, "backbone", None)
+    resampler = getattr(backbone, "visual_resampler", None)
+    resampler_attention = getattr(resampler, "last_attention", None)
+    local_boxes = getattr(backbone, "last_local_token_boxes", None)
+    local_mask = getattr(backbone, "last_local_mask", None)
+    if resampler_attention is None or local_boxes is None:
+        raise RuntimeError(
+            "High-resolution spatial attention is unavailable: the backbone did "
+            "not expose resampler attention and local token boxes."
+        )
+
+    visual_attention = visual_attention.to(resampler_attention.device)
+    if visual_attention.ndim != 2 or resampler_attention.ndim != 3:
+        raise ValueError(
+            "Expected visual attention [B,Q] and resampler attention [B,Q,N]."
+        )
+    if visual_attention.shape != resampler_attention.shape[:2]:
+        raise ValueError(
+            "Cross-attention visual keys do not match spatial-resampler queries: "
+            f"{tuple(visual_attention.shape)} vs "
+            f"{tuple(resampler_attention.shape[:2])}."
+        )
+
+    query_distribution = visual_attention / visual_attention.sum(
+        dim=-1, keepdim=True
+    ).clamp_min(1e-8)
+    local_scores = torch.einsum(
+        "bq,bqn->bn", query_distribution, resampler_attention
+    )
+    if local_mask is not None:
+        valid = local_mask.to(device=local_scores.device, dtype=torch.bool)
+        local_scores = local_scores.masked_fill(~valid, 0.0)
+    return local_boxes, local_scores
 
 
-def patched_attn_forward(self, x, attn_mask=None, is_causal=False):
-    """Monkey-patched forward for ViT self-attention to capture attention weights.
-
-    Replaces default fused-attention forward of the last ViT block so that raw attention
-    matrices are appended to captured_spatial_attention.
-
-    Args:
-        self: timm.models.vision_transformer.Attention instance.
-        x: Input tensor of shape (B, N, C).
-        attn_mask: Optional attention mask (unused).
-        is_causal: Causal mask flag (unused).
-
-    Returns:
-        torch.Tensor: Output tensor of shape (B, N, C).
-    """
-    B, N, C = x.shape
-    qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-    q, k, v = qkv.unbind(0)
-    if hasattr(self, "q_norm") and self.q_norm is not None:
-        q, k = self.q_norm(q), self.k_norm(k)
-    q = q * self.scale
-    attn = q @ k.transpose(-2, -1)
-    attn = attn.softmax(dim=-1)
-    captured_spatial_attention.append(attn.detach().cpu())
-    attn = self.attn_drop(attn)
-    x = attn @ v
-    x = x.transpose(1, 2).reshape(B, N, self.attn_dim)
-    if hasattr(self, "norm") and self.norm is not None:
-        x = self.norm(x)
-    x = self.proj(x)
-    x = self.proj_drop(x)
-    return x
+def rasterize_spatial_attention(
+    boxes: np.ndarray,
+    scores: np.ndarray,
+    image_size: tuple[int, int],
+    max_side: int = 840,
+) -> np.ndarray:
+    """Rasterize normalized boxes without introducing letterbox distortion."""
+    width, height = image_size
+    scale = min(1.0, max_side / max(width, height))
+    out_width = max(1, round(width * scale))
+    out_height = max(1, round(height * scale))
+    values = np.zeros((out_height, out_width), dtype=np.float32)
+    counts = np.zeros_like(values)
+    for box, score in zip(boxes, scores):
+        x1, y1 = np.floor(box[:2] * [out_width, out_height]).astype(int)
+        x2, y2 = np.ceil(box[2:] * [out_width, out_height]).astype(int)
+        x1, y1 = np.clip([x1, y1], 0, [out_width - 1, out_height - 1])
+        x2, y2 = np.clip(
+            [x2, y2], [x1 + 1, y1 + 1], [out_width, out_height]
+        )
+        values[y1:y2, x1:x2] += float(score)
+        counts[y1:y2, x1:x2] += 1.0
+    values /= np.maximum(counts, 1.0)
+    values -= values.min()
+    return values / (values.max() + 1e-8)
 
 
-def render_and_save_spatial_attention(raw_img, captured_attn, output_path="results/attention_map.png"):
-    """Render CLS-token spatial attention as a heatmap overlay on the input image.
+def render_high_resolution_attention(
+    raw_img: Image.Image,
+    local_boxes: torch.Tensor,
+    local_scores: torch.Tensor,
+    output_path: str = "results/attention_map.png",
+) -> None:
+    """Render text-to-image high-resolution attention in source coordinates."""
+    boxes = local_boxes[0].detach().float().cpu().numpy()
+    scores = local_scores[0].detach().float().cpu().numpy()
+    spatial_map = rasterize_spatial_attention(boxes, scores, raw_img.size)
 
-    Extracts CLS token attention to spatial patches from the last ViT block, averages
-    across heads, and reshapes into a 14x14 grid. Normalizes map and renders terminal grid
-    and saved side-by-side matplotlib figure.
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].imshow(raw_img)
+    axes[0].set_title("Original X-ray", fontsize=11)
+    axes[0].axis("off")
 
-    Args:
-        raw_img: Original PIL.Image object.
-        captured_attn: List of captured attention tensors.
-        output_path: Output file path for saved PNG figure.
+    axes[1].imshow(raw_img)
+    axes[1].imshow(
+        spatial_map,
+        cmap="jet",
+        alpha=0.5,
+        extent=(0, raw_img.width, raw_img.height, 0),
+        interpolation="bilinear",
+    )
+    axes[1].set_title("Text-to-image high-resolution attention", fontsize=11)
+    axes[1].axis("off")
 
-    Returns:
-        None
-    """
-    if not captured_attn:
-        return
-    attn_matrix = captured_attn[0].squeeze(0)
-    cls_attn = attn_matrix[:, 0, 1:].mean(dim=0).numpy()
-    spatial_map = cls_attn.reshape(14, 14)
-    norm_map = (spatial_map - spatial_map.min()) / (spatial_map.max() - spatial_map.min() + 1e-8)
-
-    chars = ["  ", "░░", "▒▒", "▓▓", "██"]
-    print("\nSPATIAL ATTENTION GRID (14x14 ViT ATTENTION):")
-    print("┌" + "─" * 28 + "┐")
-    for row in norm_map:
-        row_str = ""
-        for val in row:
-            char_idx = min(int(val * len(chars)), len(chars) - 1)
-            row_str += chars[char_idx]
-        print("│" + row_str + "│")
-    print("└" + "─" * 28 + "┘")
-
-    try:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-        axes[0].imshow(raw_img)
-        axes[0].set_title("Original X-ray Scan", fontsize=11)
-        axes[0].axis("off")
-
-        axes[1].imshow(raw_img)
-        axes[1].imshow(norm_map, cmap="jet", alpha=0.5, extent=(0, raw_img.width, raw_img.height, 0), interpolation="bilinear")
-        axes[1].set_title("Attention Heatmap Overlay (Focused ROI)", fontsize=11)
-        axes[1].axis("off")
-
-        plt.suptitle("Visual Spatial Attention Map (BioMedCLIP ViT)", fontsize=13, fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(output_path, dpi=200, bbox_inches="tight")
-        plt.close()
-        print(f"Saved attention map visualization to: {output_path}")
-    except Exception as e:
-        print(f"[Warning] Could not save attention map plot: {e}")
-
-
-def make_tiles(image: Image.Image, tile_size: int, stride: int, max_tiles: int) -> list:
-    """Extract tiles from a PIL image."""
-    w, h = image.size
-    tiles = []
-    for y in range(0, h - tile_size + 1, stride):
-        for x in range(0, w - tile_size + 1, stride):
-            box = (x, y, x + tile_size, y + tile_size)
-            tile = image.crop(box)
-            extrema = tile.convert("L").getextrema()
-            if extrema[0] == extrema[1]:
-                continue
-            tiles.append(tile)
-            if len(tiles) >= max_tiles:
-                return tiles
-    return tiles
+    plt.suptitle(
+        "Cross-attention projected through the spatial resampler",
+        fontsize=13,
+        fontweight="bold",
+    )
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved high-resolution attention map to: {output_path}")
 
 
 # ============================================================
@@ -211,7 +206,7 @@ def load_checkpoint_from_dir(
     model: torch.nn.Module,
     model_dir: str,
     device: torch.device,
-) -> bool:
+) -> str | None:
     """Load checkpoint weights from directory by searching standard filenames.
 
     Args:
@@ -220,16 +215,13 @@ def load_checkpoint_from_dir(
         device: Target torch.device for weight loading.
 
     Returns:
-        bool: True if a checkpoint was found and loaded; False otherwise.
+        Loaded checkpoint path, or None when no Phase-2 checkpoint exists.
     """
     if not os.path.isdir(model_dir):
-        return False
+        return None
 
     checkpoint_filenames = [
         "best_phase2.pth",
-        "best_phase1.pth",
-        "best_semantic_lora.pth",
-        "open_clip_pytorch_model.bin",
     ]
 
     checkpoint_path = None
@@ -239,12 +231,6 @@ def load_checkpoint_from_dir(
             checkpoint_path = path
             break
 
-    if not checkpoint_path:
-        for file in os.listdir(model_dir):
-            if file.endswith((".pth", ".bin")):
-                checkpoint_path = os.path.join(model_dir, file)
-                break
-
     if checkpoint_path:
         print(f"Loading weights from checkpoint folder: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
@@ -252,16 +238,16 @@ def load_checkpoint_from_dir(
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
         load_state_dict_checked(model, state_dict, "inference")
         print("-> Checkpoint loaded successfully from folder!\n")
-        return True
-    return False
+        return checkpoint_path
+    return None
 
 
 def load_model_checkpoint(
     model: torch.nn.Module,
     cfg: DictConfig,
     device: torch.device,
-    custom_checkpoint_path: str = None
-) -> None:
+    custom_checkpoint_path: str = None,
+) -> str:
     """Load model checkpoint weights with fallback search strategy.
 
     Args:
@@ -271,25 +257,29 @@ def load_model_checkpoint(
         custom_checkpoint_path: If provided, used directly.
 
     Returns:
-        None
+        Path of the loaded Phase-2 checkpoint.
     """
-    if custom_checkpoint_path and os.path.exists(custom_checkpoint_path):
+    if custom_checkpoint_path:
+        if not os.path.isfile(custom_checkpoint_path):
+            raise FileNotFoundError(
+                f"Requested checkpoint does not exist: {custom_checkpoint_path}"
+            )
         print(f"Loading weights from custom path: {custom_checkpoint_path}")
         checkpoint = torch.load(custom_checkpoint_path, map_location=device)
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
         load_state_dict_checked(model, state_dict, "inference")
         print("-> Checkpoint loaded successfully from custom path!\n")
-        return
+        return custom_checkpoint_path
 
-    loaded = False
+    loaded_path = None
     params_cfg = cfg.get("params", {}) or {}
     model_dir = params_cfg.get("model_dir", None)
 
     if model_dir:
-        loaded = load_checkpoint_from_dir(model, model_dir, device)
+        loaded_path = load_checkpoint_from_dir(model, model_dir, device)
 
-    if not loaded:
+    if not loaded_path:
         checkpoint_path = cfg.get("checkpoint_path", None)
         if not checkpoint_path:
             checkpoint_path = params_cfg.get("checkpoint_path", None)
@@ -297,15 +287,22 @@ def load_model_checkpoint(
                 phase2_cfg = params_cfg.get("phase2", {}) or {}
                 checkpoint_path = phase2_cfg.get("checkpoint_path", None)
 
-        if checkpoint_path and os.path.exists(checkpoint_path):
+        if checkpoint_path and os.path.isfile(checkpoint_path):
             print(f"Loading weights from config checkpoint: {checkpoint_path}")
             checkpoint = torch.load(checkpoint_path, map_location=device)
             state_dict = checkpoint.get("model_state_dict", checkpoint)
             state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
             load_state_dict_checked(model, state_dict, "inference")
             print("-> Checkpoint loaded successfully!\n")
-        else:
-            print("-> [Info] No checkpoint found. Running model with initial/random weights.\n")
+            loaded_path = checkpoint_path
+
+    if not loaded_path:
+        raise FileNotFoundError(
+            "No trained Phase-2 checkpoint was found. Provide --checkpoint or "
+            "set params.model_dir/params.phase2.checkpoint_path to a valid "
+            "best_phase2.pth file. Inference with random weights is disabled."
+        )
+    return loaded_path
 
 
 # ============================================================
@@ -339,7 +336,7 @@ def parse_args():
     return extra_args
 
 
-args = parse_args()
+args = None
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
@@ -371,7 +368,10 @@ def main(cfg: DictConfig) -> None:
     model.print_architecture(verbose=debug_mode)
 
     model.eval()
-    load_model_checkpoint(model, cfg, device, custom_checkpoint_path=args.checkpoint)
+    checkpoint_path = load_model_checkpoint(
+        model, cfg, device, custom_checkpoint_path=args.checkpoint
+    )
+    print(f"Using trained checkpoint: {checkpoint_path}")
 
     dataset_params = cfg.dataset.get('params', {}) or {}
     classes = dataset_params.get('classes', dataset_params.get('pathologies', []))
@@ -551,14 +551,8 @@ def main(cfg: DictConfig) -> None:
 
     print("Running forward pass...")
     attn_info = None
-    captured_spatial_attention.clear()
-    if hasattr(model.backbone, "model") and hasattr(model.backbone.model, "visual"):
-        try:
-            attn_module = model.backbone.model.visual.trunk.blocks[-1].attn
-            attn_module.fused_attn = False
-            attn_module.forward = types.MethodType(patched_attn_forward, attn_module)
-        except Exception:
-            pass
+    txt_mask = None
+    img_mask = None
 
     with torch.no_grad():
         logits, fused_feats, _ = model(
@@ -612,41 +606,67 @@ def main(cfg: DictConfig) -> None:
 
         is_ood = test_score > threshold
 
-    render_and_save_spatial_attention(image, captured_spatial_attention, output_path="results/attention_map.png")
     if attn_info is not None:
         img_to_txt = attn_info["attn_img_to_txt"]
         txt_to_img = attn_info["attn_txt_to_img"]
-        text_attention = reduce_attention_to_keys(
-            img_to_txt, txt_mask
-        ).squeeze(0)
-        image_attention = reduce_attention_to_keys(
-            txt_to_img, img_mask
-        ).squeeze(0)
+        text_attention = (
+            reduce_attention_to_keys(img_to_txt, txt_mask).squeeze(0)
+            if img_to_txt is not None
+            else None
+        )
+        image_attention = (
+            reduce_attention_to_keys(txt_to_img, img_mask).squeeze(0)
+            if txt_to_img is not None
+            else None
+        )
 
-        top_context = attn_info["txt_context_for_image"]
-        bottom_context = attn_info["img_context_for_text"]
-        mutual_affinity = F.cosine_similarity(
-            top_context, bottom_context, dim=-1
-        ).mean().item()
+        if image_attention is not None and use_high_res:
+            local_boxes, local_scores = project_visual_attention_to_source(
+                model, image_attention.unsqueeze(0)
+            )
+            render_high_resolution_attention(
+                image,
+                local_boxes,
+                local_scores,
+                output_path="results/attention_map.png",
+            )
+        elif use_high_res:
+            print(
+                "[Attention] No text-to-image branch is active; skipping the "
+                "high-resolution spatial map."
+            )
+
+        mutual_affinity = None
+        if img_to_txt is not None and txt_to_img is not None:
+            top_context = attn_info["txt_context_for_image"]
+            bottom_context = attn_info["img_context_for_text"]
+            mutual_affinity = F.cosine_similarity(
+                top_context, bottom_context, dim=-1
+            ).mean().item()
 
         print("\n" + "=" * 60)
-        print("BI-DIRECTIONAL CROSS-ATTENTION MAP")
+        print(
+            f"CROSS-ATTENTION MAP ({attn_info['attention_direction'].upper()})"
+        )
         print("=" * 60)
-        text_top_k = min(10, text_attention.numel())
-        image_top_k = min(10, image_attention.numel())
-        text_weights, text_indices = torch.topk(text_attention, text_top_k)
-        image_weights, image_indices = torch.topk(image_attention, image_top_k)
-        print("1. Image query -> most attended text-token positions:")
-        print("   " + " | ".join(
-            f"T{int(index) + 1}: {float(weight):.4f}"
-            for weight, index in zip(text_weights, text_indices)
-        ))
-        print("2. Text query -> most attended visual-token positions:")
-        print("   " + " | ".join(
-            f"V{int(index) + 1}: {float(weight):.4f}"
-            for weight, index in zip(image_weights, image_indices)
-        ))
-        print(f"3. Cross-modal context cosine affinity: {mutual_affinity:.4f}")
+        if text_attention is not None:
+            text_top_k = min(10, text_attention.numel())
+            text_weights, text_indices = torch.topk(text_attention, text_top_k)
+            print("1. Image query -> most attended text-token positions:")
+            print("   " + " | ".join(
+                f"T{int(index) + 1}: {float(weight):.4f}"
+                for weight, index in zip(text_weights, text_indices)
+            ))
+        if image_attention is not None:
+            image_top_k = min(10, image_attention.numel())
+            image_weights, image_indices = torch.topk(image_attention, image_top_k)
+            print("2. Text query -> most attended visual-token positions:")
+            print("   " + " | ".join(
+                f"V{int(index) + 1}: {float(weight):.4f}"
+                for weight, index in zip(image_weights, image_indices)
+            ))
+        if mutual_affinity is not None:
+            print(f"3. Cross-modal context cosine affinity: {mutual_affinity:.4f}")
         print("=" * 60)
 
     print("\n" + "=" * 60)
@@ -726,4 +746,5 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main()

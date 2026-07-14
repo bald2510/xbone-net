@@ -371,34 +371,16 @@ class SFTrainer(Trainer):
                 text_ids = None
                 text_mask = None
 
-            from src.utils.losses import CombinedPhase2Loss, CombinedPhase2LossMulticlass
-            if isinstance(self.loss_fn, (CombinedPhase2Loss, CombinedPhase2LossMulticlass)):
-                outputs = model(
-                    images,
-                    text_ids,
-                    attention_mask=text_mask,
-                    tile_values=tile_values,
-                    tile_mask=tile_mask,
-                    tile_boxes=tile_boxes,
-                    return_features=True,
-                )
-                if isinstance(outputs, tuple) and len(outputs) == 3:
-                    logits, features, prototypes = outputs
-                    loss = self.loss_fn(logits, labels_for_loss, features=features, prototypes=prototypes)
-                else:
-                    logits = outputs[0] if isinstance(outputs, tuple) else outputs
-                    loss = self.loss_fn(logits, labels_for_loss)
-            else:
-                outputs = model(
-                    images,
-                    text_ids,
-                    attention_mask=text_mask,
-                    tile_values=tile_values,
-                    tile_mask=tile_mask,
-                    tile_boxes=tile_boxes,
-                )
-                logits = outputs[0] if isinstance(outputs, tuple) else outputs
-                loss = self.loss_fn(logits, labels_for_loss)
+            outputs = model(
+                images,
+                text_ids,
+                attention_mask=text_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+            )
+            logits = outputs[0] if isinstance(outputs, tuple) else outputs
+            loss = self.loss_fn(logits, labels_for_loss)
 
         return (loss, outputs) if return_outputs else loss
 

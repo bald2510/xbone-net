@@ -153,14 +153,6 @@ experiments:
     patterns:
       - "**/ablation_study/input/resolution/no_highres.yaml"
 
-  - id: ablation_resampler_no_spatial_coordinates
-    patterns:
-      - "**/ablation_study/input/resolution/no_spatial_coordinates.yaml"
-
-  - id: ablation_resampler_mean_pool
-    patterns:
-      - "**/ablation_study/input/resolution/mean_pool.yaml"
-
   - id: ablation_modality_image_only_phase2
     patterns:
       - "**/ablation_study/input/modality/image_only_phase2.yaml"
@@ -196,10 +188,6 @@ experiments:
     patterns:
       - "**/ablation_study/backbone/frozen_backbone.yaml"
 
-  - id: ablation_backbone_local_tile_no_grad
-    patterns:
-      - "**/ablation_study/backbone/local_tile_no_grad.yaml"
-
 
 
   # -------------------------------------------------------------------------
@@ -209,17 +197,17 @@ experiments:
     patterns:
       - "**/ablation_study/fusion/concat_empirical_centroid.yaml"
 
+  - id: ablation_fusion_image_to_text
+    patterns:
+      - "**/ablation_study/fusion/image_to_text.yaml"
+
+  - id: ablation_fusion_text_to_image
+    patterns:
+      - "**/ablation_study/fusion/text_to_image.yaml"
+
   - id: ablation_classifier_linear
     patterns:
       - "**/ablation_study/classifier/linear.yaml"
-
-  - id: ablation_classifier_learnable_cosine
-    patterns:
-      - "**/ablation_study/classifier/learnable_cosine.yaml"
-
-  - id: ablation_classifier_learnable_cosine_proto_loss
-    patterns:
-      - "**/ablation_study/classifier/learnable_cosine_proto_loss.yaml"
 
   - id: ablation_phase2_only
     patterns:

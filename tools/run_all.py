@@ -107,8 +107,6 @@ EXPERIMENTS = OrderedDict({
     # --- CTCH Ablation Studies (real-world dataset) ---
     "ctch_ablation_input": [
         "ctch/ablation_study/input/resolution/no_highres",
-        "ctch/ablation_study/input/resolution/no_spatial_coordinates",
-        "ctch/ablation_study/input/resolution/mean_pool",
         "ctch/ablation_study/input/modality/image_only_phase2",
         "ctch/ablation_study/input/modality/strict_image_only",
         "ctch/ablation_study/input/modality/text_only",
@@ -121,15 +119,14 @@ EXPERIMENTS = OrderedDict({
         "ctch/ablation_study/backbone/full_finetuning",
         "ctch/ablation_study/backbone/phase1_merged",
         "ctch/ablation_study/backbone/phase2_only",
-        "ctch/ablation_study/backbone/local_tile_no_grad",
     ],
     "ctch_ablation_fusion": [
         "ctch/ablation_study/fusion/concat_empirical_centroid",
+        "ctch/ablation_study/fusion/image_to_text",
+        "ctch/ablation_study/fusion/text_to_image",
     ],
     "ctch_ablation_classifier": [
         "ctch/ablation_study/classifier/linear",
-        "ctch/ablation_study/classifier/learnable_cosine",
-        "ctch/ablation_study/classifier/learnable_cosine_proto_loss",
     ],
 })
 

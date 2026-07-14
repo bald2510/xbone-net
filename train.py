@@ -41,7 +41,11 @@ from sklearn.metrics import accuracy_score, f1_score
 
 from src.models.builder import build_model, setup_phase2_modules
 from src.datasets.builder import build_dataloader
-from src.utils.losses import build_loss, CombinedPhase2LossMulticlass
+from src.utils.losses import (
+    build_loss,
+    build_phase2_loss,
+    resolve_phase2_loss_type,
+)
 from src.utils.trainer import BioMedCLIPDataCollator, SFTrainer, resolve_pad_token_id
 from src.utils.logging import TrainingLogger, XBoneTrainerCallback
 from src.utils.ood import OODDetector
@@ -379,6 +383,12 @@ def run_phase2(
     lr_p2 = p2_cfg.get("lr", 1e-3)
     wd_p2 = p2_cfg.get("weight_decay", 1e-4)
     patience_p2 = int(p2_cfg.get("early_stopping_patience", 5))
+    use_text_p2 = bool(p2_cfg.get("use_text", True))
+    report_type_p2 = str(p2_cfg.get("p2_report_type", "clinical"))
+    uses_empirical_centroids = classifier_type == "empirical_centroid"
+    loss_type_p2 = resolve_phase2_loss_type(
+        p2_cfg.get("loss_type", None), classifier_type
+    )
 
     print("\n" + "=" * 60)
     print("PHASE 2: CLASSIFIER AND FUSION TRAINING")
@@ -415,12 +425,9 @@ def run_phase2(
         "weight_decay": wd_p2,
         "batch_size": cfg.dataset.batch_size,
         "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
+        "loss_type": loss_type_p2,
     })
     logger_p2.log_model_summary(model)
-
-    use_text_p2 = bool(p2_cfg.get("use_text", True))
-    report_type_p2 = str(p2_cfg.get("p2_report_type", "clinical"))
-    uses_empirical_centroids = classifier_type == "empirical_centroid"
 
     # The head has no trainable class vectors. Initialize it from embeddings of
     # the exact training subset before the first optimization/evaluation step.
@@ -501,18 +508,16 @@ def run_phase2(
             name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
             print(f"    {name:30s}: {weight:.3f} (n={int(class_counts[class_id])})")
 
-    if classifier_type in ("prototypical", "learnable_prototype"):
-        criterion_p2 = CombinedPhase2LossMulticlass(
-            class_weights=class_weights_tensor,
-            proto_margin=loss_cfg.get("proto_margin", 0.5),
-            lambda_proto=loss_cfg.get("lambda_proto", 0.3),
-            label_smoothing=loss_cfg.get("label_smoothing", 0.1),
-        )
-    else:
-        criterion_p2 = nn.CrossEntropyLoss(
-            weight=class_weights_tensor,
-            label_smoothing=loss_cfg.get("label_smoothing", 0.1),
-        )
+    criterion_p2 = build_phase2_loss(
+        loss_type=loss_type_p2,
+        classifier_type=classifier_type,
+        class_weights=class_weights_tensor,
+        label_smoothing=loss_cfg.get("label_smoothing", 0.0),
+    )
+    print(
+        f"  [Loss] Phase-2 objective: {loss_type_p2} "
+        f"({criterion_p2.__class__.__name__})"
+    )
 
     trainable_params_p2 = [p for p in model.parameters() if p.requires_grad]
     if not trainable_params_p2:

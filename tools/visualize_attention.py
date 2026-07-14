@@ -202,9 +202,12 @@ def cross_modal_attribution(model, batch: dict, target_class: int):
         retain_graph=False,
     )
 
-    raw_visual = reduce_attention_to_keys(
-        attention["attn_txt_to_img"], image_padding
-    )
+    if attention["attn_txt_to_img"] is None:
+        raw_visual = torch.zeros_like(image_padding, dtype=image_tokens.dtype)
+    else:
+        raw_visual = reduce_attention_to_keys(
+            attention["attn_txt_to_img"], image_padding
+        )
     visual_gradient = torch.relu(
         (image_tokens[:, 1:] * image_gradient[:, 1:]).sum(dim=-1)
     )
@@ -227,9 +230,12 @@ def cross_modal_attribution(model, batch: dict, target_class: int):
         "bq,bqn->bn", visual_query_distribution, resampler_attention
     )
 
-    raw_text = reduce_attention_to_keys(
-        attention["attn_img_to_txt"], text_padding
-    )
+    if attention["attn_img_to_txt"] is None:
+        raw_text = torch.zeros_like(text_padding, dtype=text_tokens.dtype)
+    else:
+        raw_text = reduce_attention_to_keys(
+            attention["attn_img_to_txt"], text_padding
+        )
     text_gradient_score = torch.relu(
         (text_tokens[:, 1:] * text_gradient[:, 1:]).sum(dim=-1)
     )

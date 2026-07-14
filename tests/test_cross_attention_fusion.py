@@ -102,6 +102,60 @@ class CrossAttentionFusionTests(unittest.TestCase):
         self.assertEqual(tuple(output.shape), (2, 8))
         self.assertFalse(hasattr(fusion, "skip_projection"))
 
+    def test_image_to_text_does_not_use_local_image_tokens(self):
+        torch.manual_seed(17)
+        fusion = CrossAttentionFusion(
+            img_dim=8,
+            text_dim=8,
+            embed_dim=8,
+            num_heads=2,
+            dropout=0.0,
+            attention_direction="image_to_text",
+        ).eval()
+        image_a = torch.randn(2, 4, 8)
+        image_b = image_a.clone()
+        image_b[:, 1:] = torch.randn_like(image_b[:, 1:]) * 1000.0
+        text = torch.randn(2, 6, 8)
+
+        output_a, attention = fusion(image_a, text, return_attn=True)
+        output_b = fusion(image_b, text)
+
+        torch.testing.assert_close(output_a, output_b, rtol=1e-5, atol=1e-5)
+        self.assertIsNotNone(attention["attn_img_to_txt"])
+        self.assertIsNone(attention["attn_txt_to_img"])
+
+    def test_text_to_image_does_not_use_local_text_tokens(self):
+        torch.manual_seed(19)
+        fusion = CrossAttentionFusion(
+            img_dim=8,
+            text_dim=8,
+            embed_dim=8,
+            num_heads=2,
+            dropout=0.0,
+            attention_direction="text_to_image",
+        ).eval()
+        image = torch.randn(2, 4, 8)
+        text_a = torch.randn(2, 6, 8)
+        text_b = text_a.clone()
+        text_b[:, 1:] = torch.randn_like(text_b[:, 1:]) * 1000.0
+
+        output_a, attention = fusion(image, text_a, return_attn=True)
+        output_b = fusion(image, text_b)
+
+        torch.testing.assert_close(output_a, output_b, rtol=1e-5, atol=1e-5)
+        self.assertIsNone(attention["attn_img_to_txt"])
+        self.assertIsNotNone(attention["attn_txt_to_img"])
+
+    def test_invalid_attention_direction_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "attention_direction"):
+            CrossAttentionFusion(
+                img_dim=8,
+                text_dim=8,
+                embed_dim=8,
+                num_heads=2,
+                attention_direction="invalid",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,10 +6,8 @@ Implements streamlined objective functions used across both training phases of X
 Phase 1 (Multimodal Contrastive Alignment):
   - SoftTargetSemanticMatchingLoss: Soft-target cross-entropy encoding same-class similarity
 
-Phase 2 (Supervised Classification & Prototype Learning):
-  - PrototypeLossMulticlass: Metric learning cosine distance objective to class prototypes
-  - CombinedPhase2LossMulticlass: Composite loss combining Class-Weighted Cross-Entropy and Prototype loss:
-      L_total = L_CE + lambda_proto * L_proto
+Phase 2 (Supervised Classification):
+  - Validated class-weighted cross-entropy for empirical-centroid or linear logits
 """
 
 import torch
@@ -180,130 +178,51 @@ def build_loss(loss_type: str, clip_model=None, **kwargs):
     return LOSS_REGISTRY[loss_type](clip_model=clip_model, **kwargs)
 
 
-# ============================================================
-# Phase 2: Cross Entropy + Prototype Loss Modules
-# ============================================================
+def resolve_phase2_loss_type(loss_type: str | None, classifier_type: str) -> str:
+    """Resolve and validate the supervised Phase-2 objective.
 
-class PrototypeLossMulticlass(nn.Module):
-    """Multi-class prototype distance objective for metric learning.
-
-    Pulls sample features towards their target class prototype while pushing them
-    away from non-target class prototypes using cosine distance.
-
-    Formula:
-        L_pull = mean(1 - cos(f_i, p_target))
-        L_push = mean(relu(margin - (1 - cos(f_i, p_non_target))))
-
-    Attributes:
-        margin (float): Safety distance margin for non-target prototypes.
+    Empirical centroids are fixed train-set statistics, so their classifier is
+    optimized through cross-entropy over scaled cosine-similarity logits. A
+    distinct name is retained in configuration to make that coupling explicit
+    and to reject accidentally pairing an empirical-centroid objective with a
+    trainable linear head (or vice versa).
     """
-
-    def __init__(self, margin: float = 0.5):
-        """Initialize multi-class prototype loss.
-
-        Args:
-            margin: Safety distance margin for non-target prototypes.
-        """
-        super().__init__()
-        self.margin = margin
-
-    def forward(self, features: torch.Tensor, prototypes: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """Compute multi-class pull-push prototype loss.
-
-        Args:
-            features: Extracted image features of shape (B, D).
-            prototypes: Class prototypes matrix of shape (C, D).
-            targets: Ground-truth class index tensor of shape (B,).
-
-        Returns:
-            Scalar loss value combining positive pull and negative push.
-        """
-        if targets.ndim > 1:
-            targets = targets.argmax(dim=-1)
-
-        if features.ndim != 2 or prototypes.ndim != 2:
-            raise ValueError("Prototype loss expects features [B,D] and prototypes [C,D].")
-        if features.size(1) != prototypes.size(1):
-            raise ValueError("Feature and prototype dimensions do not match.")
-        if prototypes.size(0) < 2:
-            raise ValueError("Prototype loss requires at least two classes.")
-        if torch.any(targets < 0) or torch.any(targets >= prototypes.size(0)):
-            raise ValueError("Target class index is outside the prototype range.")
-
-        normed_f = F.normalize(features, dim=-1)
-        normed_p = F.normalize(prototypes, dim=-1)
-        cosine_sim = normed_f @ normed_p.T
-        dist = 1.0 - cosine_sim
-
-        # Pull positive features towards target prototype
-        pos_dist = dist[torch.arange(len(targets), device=targets.device), targets]
-        pull_loss = pos_dist.mean()
-
-        # Push features away from non-target prototypes
-        mask = torch.ones_like(dist, dtype=torch.bool)
-        mask[torch.arange(len(targets), device=targets.device), targets] = False
-        neg_dist = dist[mask].view(len(targets), -1)
-        push_loss = F.relu(self.margin - neg_dist).mean()
-        return pull_loss + push_loss
+    classifier_type = str(classifier_type).strip().lower()
+    supported_classifiers = {"empirical_centroid", "linear"}
+    if classifier_type not in supported_classifiers:
+        raise ValueError(
+            f"Unsupported Phase-2 classifier_type='{classifier_type}'. "
+            f"Choose from {sorted(supported_classifiers)}."
+        )
+    expected = (
+        "empirical_centroid_ce"
+        if classifier_type == "empirical_centroid"
+        else "ce"
+    )
+    resolved = expected if loss_type is None else str(loss_type).strip().lower()
+    supported = {"ce", "empirical_centroid_ce"}
+    if resolved not in supported:
+        raise ValueError(
+            f"Unsupported Phase-2 loss_type='{resolved}'. "
+            f"Choose from {sorted(supported)}."
+        )
+    if resolved != expected:
+        raise ValueError(
+            f"Phase-2 loss_type='{resolved}' is incompatible with "
+            f"classifier_type='{classifier_type}'. Expected '{expected}'."
+        )
+    return resolved
 
 
-class PrototypeLoss(PrototypeLossMulticlass):
-    """Alias for backward compatibility."""
-    pass
-
-class CombinedPhase2LossMulticlass(nn.Module):
-    """Composite objective for Phase 2 classification training."""
-
-    def __init__(
-        self,
-        class_weights=None,
-        proto_margin: float = 0.5,
-        lambda_proto: float = 0.3,
-        label_smoothing: float = 0.1,
-        **kwargs,
-    ):
-        """Initialize Phase 2 combined Unweighted CE + Proto loss module.
-
-        Args:
-            class_weights: Optional weight tensor for handling class imbalance.
-            proto_margin: Distance margin for prototype loss.
-            lambda_proto: Weight factor for prototype loss.
-            label_smoothing: Label smoothing factor.
-            **kwargs: Unused extra arguments.
-        """
-        super().__init__()
-        self.ce = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=label_smoothing)
-            
-        self.proto_loss = PrototypeLossMulticlass(proto_margin)
-        self.lambda_proto = lambda_proto
-
-    def forward(self, logits, targets, features=None, prototypes=None, **kwargs):
-        """Compute composite Phase 2 training loss.
-
-        Args:
-            logits: Output classification logits of shape (B, C).
-            targets: Ground-truth class index tensor of shape (B,).
-            features: Latent feature vectors of shape (B, D).
-            prototypes: Class prototypes matrix of shape (C, D).
-            **kwargs: Unused extra arguments.
-
-        Returns:
-            Scalar combined loss tensor.
-        """
-        if targets.ndim > 1:
-            targets = targets.argmax(dim=-1)
-
-        l_ce = self.ce(logits, targets)
-
-        if features is not None and prototypes is not None:
-            l_proto = self.proto_loss(features, prototypes, targets)
-            loss = l_ce + self.lambda_proto * l_proto
-        else:
-            loss = l_ce
-
-        return loss
-
-
-class CombinedPhase2Loss(CombinedPhase2LossMulticlass):
-    """Alias for backward compatibility."""
-    pass
+def build_phase2_loss(
+    loss_type: str | None,
+    classifier_type: str,
+    class_weights: torch.Tensor | None = None,
+    label_smoothing: float = 0.0,
+) -> nn.Module:
+    """Build the validated Phase-2 classification loss."""
+    resolve_phase2_loss_type(loss_type, classifier_type)
+    return nn.CrossEntropyLoss(
+        weight=class_weights,
+        label_smoothing=float(label_smoothing),
+    )

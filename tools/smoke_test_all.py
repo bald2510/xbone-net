@@ -401,7 +401,7 @@ def import_project_api():
             SFTrainer,
             resolve_pad_token_id,
         )
-        from src.utils.losses import build_loss, CombinedPhase2LossMulticlass
+        from src.utils.losses import build_loss, build_phase2_loss
         from src.utils.metrics import (
             compute_metrics_multiclass,
             bootstrap_confidence_intervals,
@@ -421,7 +421,7 @@ def import_project_api():
         "SFTrainer": SFTrainer,
         "resolve_pad_token_id": resolve_pad_token_id,
         "build_loss": build_loss,
-        "CombinedPhase2LossMulticlass": CombinedPhase2LossMulticlass,
+        "build_phase2_loss": build_phase2_loss,
         "compute_metrics_multiclass": compute_metrics_multiclass,
         "bootstrap_confidence_intervals": bootstrap_confidence_intervals,
         "OODDetector": OODDetector,
@@ -720,17 +720,12 @@ def smoke_one_experiment(
 
             p2_cfg = cfg.params.phase2
             loss_cfg = p2_cfg.get("loss", {}) or {}
-            if classifier_type == "prototypical":
-                phase2_loss_fn = api["CombinedPhase2LossMulticlass"](
-                    class_weights=None,
-                    proto_margin=float(loss_cfg.get("proto_margin", 0.3)),
-                    lambda_proto=float(loss_cfg.get("lambda_proto", 0.05)),
-                    label_smoothing=float(loss_cfg.get("label_smoothing", 0.1)),
-                )
-            else:
-                phase2_loss_fn = nn.CrossEntropyLoss(
-                    label_smoothing=float(loss_cfg.get("label_smoothing", 0.1))
-                )
+            phase2_loss_fn = api["build_phase2_loss"](
+                loss_type=p2_cfg.get("loss_type", None),
+                classifier_type=classifier_type,
+                class_weights=None,
+                label_smoothing=float(loss_cfg.get("label_smoothing", 0.0)),
+            )
 
             phase2_adapter = make_compute_loss_adapter(
                 api["SFTrainer"],

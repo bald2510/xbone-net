@@ -56,23 +56,38 @@ def fusion_from_tokens(
     text_local = text_features[:, 1:]
     text_padding = text_attention_mask[:, 1:] == 0
 
-    image_from_text, attn_i2t = fusion.img_to_txt_attn(
-        query=image_global,
-        key=text_local,
-        value=text_local,
-        key_padding_mask=text_padding,
-        need_weights=return_attn,
-        average_attn_weights=False,
-    )
-    text_from_image, attn_t2i = fusion.txt_to_img_attn(
-        query=text_global,
-        key=image_local,
-        value=image_local,
-        need_weights=return_attn,
-        average_attn_weights=False,
-    )
-    image_from_text = fusion.norm_img(image_global + fusion.dropout(image_from_text))
-    text_from_image = fusion.norm_txt(text_global + fusion.dropout(text_from_image))
+    direction = getattr(fusion, "attention_direction", "bidirectional")
+    uses_i2t = direction in {"bidirectional", "image_to_text"}
+    uses_t2i = direction in {"bidirectional", "text_to_image"}
+
+    attn_i2t = None
+    image_from_text = fusion.norm_img(image_global)
+    if uses_i2t:
+        image_context, attn_i2t = fusion.img_to_txt_attn(
+            query=image_global,
+            key=text_local,
+            value=text_local,
+            key_padding_mask=text_padding,
+            need_weights=return_attn,
+            average_attn_weights=False,
+        )
+        image_from_text = fusion.norm_img(
+            image_global + fusion.dropout(image_context)
+        )
+
+    attn_t2i = None
+    text_from_image = fusion.norm_txt(text_global)
+    if uses_t2i:
+        text_context, attn_t2i = fusion.txt_to_img_attn(
+            query=text_global,
+            key=image_local,
+            value=image_local,
+            need_weights=return_attn,
+            average_attn_weights=False,
+        )
+        text_from_image = fusion.norm_txt(
+            text_global + fusion.dropout(text_context)
+        )
 
     components = torch.stack(
         [

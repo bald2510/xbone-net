@@ -1,4 +1,5 @@
 type: "cross_attention"
 params:
+  attention_direction: bidirectional
   text_dim: 512    # Khớp với chiều ra của BioMedCLIP Text Encoder
   img_dim: 512     # Khớp với chiều ra của BioMedCLIP Image Encoder
