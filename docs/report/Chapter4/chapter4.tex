@@ -487,6 +487,10 @@ Nhằm đánh giá khả năng tổng quát hóa của mô hình đề xuất tr
 
 Nhóm đã thực hiện các thí nghiệm loại bỏ thành phần để bóc tách đóng góp cụ thể của các mô-đun đề xuất trong kiến trúc XBone-Net.
 
+Pipeline đề xuất được cố định theo Mục \ref{sec:final-pipeline} trước khi đọc kết quả ablation. Vì vậy, ablation không được dùng để tái định nghĩa mô hình đề xuất theo hướng hậu nghiệm. Nếu một cấu hình rút gọn đạt kết quả cao hơn, nghiên cứu báo cáo đầy đủ độ chênh lệch và xem đây là bằng chứng về điểm yếu hoặc sự đánh đổi của thành phần tương ứng (chẳng hạn hiệu năng ID, khả năng phát hiện OOD, chi phí tính toán hoặc độ ổn định giữa các seed). Chỉ khi cấu hình đó được xác nhận lại bằng quy trình lựa chọn trên validation và đánh giá độc lập, nó mới có thể được xem là một phiên bản cải tiến trong nghiên cứu tiếp theo.
+
+Các giá trị ablation hiện có trong chương này được xem là kết quả sơ bộ. Bản báo cáo cuối chỉ sử dụng các lần chạy lại từ config kế thừa pipeline chuẩn, cùng split, seed và quy trình chọn checkpoint; các bảng sẽ được cập nhật sau khi suite thí nghiệm này hoàn tất.
+
 \subsubsection{Đánh giá vai trò của các nguồn thông tin văn bản lâm sàng}
 Mục đích thí nghiệm này là đánh giá tác động của việc tích hợp văn bản lâm sàng và cận lâm sàng đến kết quả chẩn đoán, đồng thời xác định xem có xảy ra hiện tượng rò rỉ nhãn hay không. Nhóm so sánh 4 kịch bản văn bản tại Bảng \ref{tab:ablation_text}.
 

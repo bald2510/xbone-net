@@ -1,0 +1,16 @@
+# @package _global_
+# Input/resolution ablation: remove only the high-resolution local-token branch.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/resolution/no_highres
+
+model:
+  num_visual_tokens: 0
+
+dataset:
+  params:
+    high_res:
+      enabled: false

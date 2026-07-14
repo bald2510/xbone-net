@@ -1,0 +1,15 @@
+# @package _global_
+# Input/modality ablation: use radiology findings for Phase-1 alignment and
+# clinical history for Phase-2 classification.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/modality/phase1_xray_phase2_clinical
+
+params:
+  phase1:
+    p1_report_type: xray
+  phase2:
+    p2_report_type: clinical

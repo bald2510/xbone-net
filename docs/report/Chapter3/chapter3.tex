@@ -5,13 +5,27 @@
 
 Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một hệ thống học sâu đa phương thức nhằm khai thác đồng thời thông tin từ ảnh X-quang và dữ liệu lâm sàng văn bản. Đặc biệt, hệ thống được thiết kế với khả năng học trong điều kiện ít mẫu và phát hiện dữ liệu ngoài phân phối. Cụ thể, kiến trúc bao gồm các thành phần chính như sau:
     \begin{itemize}
-        \item \textbf{Bộ mã hóa ảnh:} Kế thừa lại mô hình ViT-Base của phương pháp BiomedCLIP \cite{BiomedCLIP}
+        \item \textbf{Bộ mã hóa ảnh:} Kế thừa ViT-Base của BiomedCLIP \cite{BiomedCLIP}, kết hợp nhánh ảnh toàn cục và lưới lát cục bộ độ phân giải cao.
         \item \textbf{Bộ mã hóa văn bản:} Kế thừa lại mô hình PubMedBERT của phương pháp BiomedCLIP \cite{BiomedCLIP}
         \item \textbf{Bộ dung hợp dữ liệu:} Kỹ thuật Bidirectional Cross-Attention được xây dựng dựa trên cơ chế cross-attention nhằm học mối quan hệ ngữ nghĩa giữa đặc trưng hình ảnh và đặc trưng văn bản y khoa.
-        \item \textbf{Bộ phân loại:} Dùng phương pháp metric-based few-shot learning với một prototypical network, nhãn được quyết định bởi khoảng cách đến các prototype trong không gian biểu diễn chung, thay vì lớp phân loại truyền thống làm ràng buộc mô hình phân loại vào các nhãn đã biết, giúp phát hiện dữ liệu ngoài phân phối khi khoảng cách đó vượt quá ngưỡng xác định.
+        \item \textbf{Bộ phân loại:} Dùng empirical centroid head không tham số; nhãn được quyết định bởi độ tương đồng cosine với trung tâm lớp tính trực tiếp từ embedding của tập train. Đặc trưng dung hợp đồng thời được dùng để hiệu chuẩn điểm OOD hậu xử lý trên tập validation.
 
     \end{itemize}
 Đồng thời, các trọng số attention được khai thác để trực quan hóa và giải thích kết quả dự đoán.
+
+\section{Pipeline cuối cùng}
+\label{sec:final-pipeline}
+
+Để tránh lựa chọn mô hình hậu nghiệm theo kết quả kiểm thử, nghiên cứu cố định XBone-Net trước khi thực hiện các thí nghiệm rời rạc. Pipeline cuối cùng gồm các bước sau:
+\begin{enumerate}
+    \item \textbf{Tiền xử lý ảnh độ phân giải cao:} ảnh X-quang được phủ kín bằng lưới lát $224\times224$ với stride 224. Chỉ các vùng đệm máy chụp gần như đồng nhất mới bị loại bỏ; pipeline không sử dụng nhãn, hộp tổn thương hay mô hình đề xuất vùng. Khi số lát vượt quá 64, ảnh được thu nhỏ đẳng hướng vừa đủ để toàn bộ trường nhìn vẫn được bao phủ.
+    \item \textbf{Mã hóa đa tỉ lệ:} BiomedCLIP trích xuất một đặc trưng ảnh toàn cục và các patch token cục bộ. Mỗi lát được gộp thành lưới $2\times2$ token; bộ resampler có truy vấn học được và thông tin tọa độ nén toàn bộ token hợp lệ thành 24 visual token. Trong khi huấn luyện, gradient từ nhánh local được truyền vào visual LoRA; activation của từng nhóm tile được tính lại khi backward bằng gradient checkpointing để giới hạn bộ nhớ.
+    \item \textbf{Pha 1 -- căn chỉnh ngữ nghĩa:} Vision Encoder và Text Encoder được thích nghi bằng LoRA với cặp ảnh--bệnh sử lâm sàng. Hàm Semantic Matching Loss sử dụng quan hệ đồng lớp làm mục tiêu mềm. Báo cáo kết quả X-quang không được dùng vì có nguy cơ chứa trực tiếp tên bệnh.
+    \item \textbf{Pha 2 -- dung hợp và phân loại:} các LoRA adapter được giữ ở dạng tách rời và tiếp tục được tối ưu cùng bộ chú ý chéo hai chiều. Đầu empirical centroid được tính từ toàn bộ embedding train và không được cập nhật bởi optimizer. Hàm mục tiêu chỉ là Cross-Entropy có trọng số theo effective number.
+    \item \textbf{Suy luận và phát hiện OOD:} ảnh X-quang và bệnh sử lâm sàng đi qua đúng nhánh tiền xử lý và dung hợp của pha 2. Nhãn ID được xác định bởi empirical centroid có độ tương đồng lớn nhất; điểm OOD được hiệu chuẩn hậu xử lý trên đặc trưng dung hợp của tập validation, không dùng mẫu test để chọn ngưỡng.
+\end{enumerate}
+
+Trọng số LoRA không được hợp nhất vào backbone sau pha 1 trong pipeline cuối cùng, vì thao tác này đồng thời làm mất khả năng tiếp tục thích nghi backbone ở pha 2. Phiên bản hợp nhất và đóng băng được giữ như một thí nghiệm rời rạc về chiến lược tối ưu.
 
 % \section{Đánh giá BioMedCLIP và đề xuất cải tiến}
 % Với việc được tiền huấn luyện trên bộ dữ liệu PMC-15M, đã bao gồm ảnh X-quang, nhóm quyết định sử dụng mô hình BioMedCLIP làm mô hình cơ sở để phát triển hệ thống phân loại. Trước tiên, nhóm thực hiện đánh giá khả năng phân loại ảnh X-quang xương của mô hình BiomedCLIP \cite{BiomedCLIP} thuần túy để đánh giá khả năng phân loại với một tác vụ riêng biệt ở miền ảnh X-Quang xương, yêu cầu một độ chính xác cao với độ nhầm lẫn thấp để đáp ứng với yêu cầu thực tế, đặc biệt là trong lĩnh vực y khoa.
@@ -116,25 +130,25 @@ Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một 
 \section{Giai đoạn huấn luyện}
 Giai đoạn huấn luyện nhằm xây dựng bộ tham số cho mô hình, thiết lập không gian biểu diễn chung và học cách dung hợp giữa đặc trưng hình ảnh X-quang và ngữ nghĩa y khoa.
 
-Giai đoạn huấn luyện gồm 2 công đoạn: Domain-Adaption và Fine-tuning. Trong đó, công đoạn Domain-Adaption nhằm mục đích giúp mô hình thích nghi từ miền dữ liệu tiền huấn luyện lớn sang miền dữ liệu y khoa đích của bài toán, trong khi công đoạn Fine-tuning tập trung vào việc tối ưu hóa khả năng dung hợp dữ liệu và phân loại trên tập dữ liệu mục tiêu.
+Giai đoạn huấn luyện gồm hai công đoạn: thích nghi miền (domain adaptation) và tinh chỉnh có giám sát. Công đoạn thứ nhất giúp mô hình thích nghi từ miền dữ liệu tiền huấn luyện sang ảnh X-quang xương; công đoạn thứ hai tối ưu đồng thời biểu diễn, dung hợp đa phương thức và phân loại trên tập dữ liệu mục tiêu.
 
 \subsection{Học biểu diễn với kỹ thuật LoRA}
 \begin{figure}[H]
 \centering
     \includegraphics[width=1\linewidth]{images/domain-adaption.png}
-    \caption{Sơ đồ chung của hệ thống trong công đoạn học biểu diễ.}
+    \caption{Sơ đồ chung của hệ thống trong công đoạn học biểu diễn.}
     \label{fig:domain-adaption}
 \end{figure}
 
-Trong công đoạn này, mục tiêu chính giúp mô hình học cách biểu diễn sao cho các cặp ảnh và báo cáo ảnh X-Quang nằm gần nhau hơn trong không gian biểu diễn bằng cách tối ưu hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss), mô hình tuân theo framework contrastive learning để căn chỉnh bộ mã hóa BiomedCLIP về miền dữ liệu X-Quang xương được sử dụng, với đầu vào là các cặp ảnh X-quang và phân tích ảnh tương ứng của bác sĩ. Dữ liệu được đưa vào bộ mã hóa tương ứng để trích xuất đặc trưng, sau đó được chiếu vào không gian chung và chuẩn hóa để so sánh và thực hiện điều chỉnh. Kết quả là các cặp hình ảnh và văn bản giống nhau hoặc chung lớp nằm gần nhau hơn gọi là các semantic clusters, trong khi các cặp văn bản khác lớp sẽ nằm xa nhau hơn.
+Trong công đoạn này, mô hình học biểu diễn để các cặp ảnh X-quang và bệnh sử lâm sàng tương ứng nằm gần nhau trong không gian chung bằng hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss). Việc dùng cùng nguồn văn bản clinical ở cả hai pha bảo đảm nhất quán giữa huấn luyện và suy luận, đồng thời loại bỏ báo cáo kết quả X-quang có nguy cơ rò rỉ nhãn. Dữ liệu được đưa vào hai bộ mã hóa, chiếu vào không gian chung và chuẩn hóa trước khi tính độ tương đồng. Các mẫu cùng lớp tạo thành cụm ngữ nghĩa, trong khi các mẫu khác lớp được tách biệt.
 
 Nhóm thực hiện tinh chỉnh (fine-tuning) đồng thời Vision Encoder và Text Encoder bằng kỹ thuật LoRA (Low-Rank Adaptation). LoRA được lựa chọn vì đây là phương pháp tinh chỉnh hiệu quả về tham số, cho phép thích nghi BioMedCLIP với miền ảnh X-quang xương mà vẫn bảo toàn tri thức tiền huấn luyện.
 
 Mặc dù nghiên cứu sử dụng toàn bộ dữ liệu hiện có, nhiều lớp vẫn chỉ chứa số lượng mẫu rất ít. Do đó, bài toán ở cấp độ từng lớp mang đặc tính few-shot, và LoRA giúp hệ thống duy trì khả năng thích nghi tốt trong các trường hợp này. Nghiên cứu lựa chọn LoRA thay vì QLoRA vì mục tiêu chính là thích nghi miền hiệu quả trong điều kiện dữ liệu hạn chế, thay vì tối ưu bộ nhớ cho các mô hình siêu lớn. BioMedCLIP có quy mô tham số vừa phải, cho phép huấn luyện hiệu quả với LoRA trên phần cứng hiện có mà không cần lượng tử hóa. Ngoài ra, việc giữ nguyên trọng số ở độ chính xác đầy đủ giúp bảo toàn các đặc trưng hình ảnh tinh vi của ảnh X-quang xương, vốn rất quan trọng đối với việc nhận diện các tổn thương nhỏ và các lớp hiếm.
 
-Để cập nhật trọng số của ma trận LoRA, nhóm sử dụng \textbf{Hàm mất mát Khớp ngữ nghĩa (Semantic Matching Loss - $\mathcal{L}_{SM}$)} nhằm đồng bộ hóa không gian biểu diễn đa phương thức. Loss tương phản gốc của BioMedCLIP (InfoNCE) giả định quan hệ một-một giữa ảnh và văn bản, do đó chưa phù hợp với dữ liệu X-quang xương, nơi một ảnh có thể tương ứng với nhiều mô tả ngữ nghĩa và nhiều nhãn đồng thời.
+Để cập nhật trọng số của ma trận LoRA, nhóm sử dụng \textbf{Hàm mất mát Khớp ngữ nghĩa (Semantic Matching Loss - $\mathcal{L}_{SM}$)} nhằm đồng bộ hóa không gian biểu diễn đa phương thức. Loss tương phản gốc của BioMedCLIP (InfoNCE) giả định quan hệ một-một giữa ảnh và văn bản. Giả định này chưa phù hợp khi nhiều bệnh nhân thuộc cùng một lớp bệnh có các mô tả lâm sàng khác nhau nhưng vẫn chia sẻ nội dung ngữ nghĩa liên quan đến lớp.
 
-Vì vậy, nghiên cứu thay thế contrastive loss bằng Semantic Matching Loss nhằm khai thác mức độ tương đồng ngữ nghĩa giữa ảnh và văn bản, giảm ảnh hưởng của các cặp âm tính giả và hỗ trợ tốt hơn cho bài toán đa nhãn. Tuy nhiên, Semantic Matching Loss không trực tiếp xử lý mất cân bằng dữ liệu. Do đó, ở giai đoạn phân loại đa nhãn, nghiên cứu kết hợp thêm các hàm mất mát chuyên biệt như Asymmetric Loss để tăng khả năng nhận diện các lớp hiếm.
+Vì vậy, nghiên cứu thay thế mục tiêu một-một bằng Semantic Matching Loss nhằm khai thác quan hệ đồng lớp giữa ảnh và văn bản, qua đó giảm ảnh hưởng của các cặp âm tính giả. Semantic Matching Loss không trực tiếp xử lý mất cân bằng dữ liệu; ở pha phân loại đa lớp, nghiên cứu sử dụng Cross-Entropy có trọng số theo effective number và label smoothing để tăng ảnh hưởng của các lớp hiếm.
 
 Mức độ tương đồng Cosine giữa đặc trưng ảnh $z_i^I$ và đặc trưng văn bản $z_j^T$:
     \begin{equation}
@@ -147,83 +161,53 @@ Hàm mất mát được sử dụng là Semantic Matching Loss $\mathcal{L}_{\m
     \end{equation}
 trong đó, $N$ là kích thước mini-batch, $s_{ij}$ là ma trận mục tiêu xác định các mẫu chung lớp, và $\tau$ là siêu tham số nhiệt độ (temperature) giúp điều chỉnh độ nhạy của hàm phạt đối với các mẫu âm tính (negative samples). Bằng cách tối ưu $\mathcal{L}_{SM}$, mô hình đẩy các đặc trưng giải phẫu X-quang cục bộ hội tụ chặt chẽ về đúng định nghĩa y khoa của chúng trong không gian chung.
 
-Công đoạn Domain-Adaption giúp mô hình học cách biểu diễn sao cho các cặp ảnh và báo cáo khám tổng quát chung lớp nằm gần nhau hơn trong không gian biểu diễn, Semantic Matching Loss giúp các dữ liệu chung lớp nằm gần nhau thay vì ràng buộc như contrastive learning truyền thống rằng các cặp ảnh và báo cáo chung lớp dù không tương ứng dù nằm chung lớp vẫn phải nằm cách xa nhau ra. Điều này cực quan trọng với bài toán dữ liệu còn hạn chế, giúp tránh trường hợp dữ liệu nằm chung nhóm không hội tụ. Trong quá trình huấn luyện, đạo hàm từ hàm mất mát $\mathcal{L}_{SM}$ chỉ chảy qua và cập nhật ma trận $A \in \mathrm{R}^{r \times k}$ và $B \in \mathrm{R}^{d \times r}$ (với hạng $r \ll \min(d, k)$) của LoRA. Tổng số tham số cần học (learnable parameters) chiếm dưới 5\% toàn mạng.
+Công đoạn thích nghi miền giúp các cặp ảnh và bệnh sử lâm sàng cùng lớp hội tụ trong không gian biểu diễn, thay vì xem mọi cặp không trùng chỉ số là âm tính như mục tiêu tương phản một-một. Trong pha 1, đạo hàm từ $\mathcal{L}_{SM}$ cập nhật các ma trận $A \in \mathrm{R}^{r \times k}$ và $B \in \mathrm{R}^{d \times r}$ (với hạng $r \ll \min(d, k)$) của LoRA. Sang pha 2, các adapter này không bị hợp nhất hay đóng băng mà tiếp tục được tối ưu cùng mô-đun dung hợp và bộ phân loại.
 
 
-\subsection{Học phân loại đa nhãn với mạng nguyên mẫu}
+\subsection{Học phân loại đa lớp với empirical centroid head}
 \begin{figure}[H]
 \centering
     \includegraphics[width=1\linewidth]{images/fusion-learning.png}
-    \caption{Sơ đồ chung của hệ thống trong công đoạn học phân loại đa nhãn.}
+    \caption{Sơ đồ chung của hệ thống trong công đoạn học phân loại đa lớp.}
     \label{fig:fusion-learning}
 \end{figure}
-Trong công đoạn này, nhóm tối ưu khả năng khai thác và dung hợp dữ liệu bằng cách sử dụng kỹ thuật chú ý chéo hai chiều để học các mối liên hệ giữa đặc trưng đặc trưng toàn cục của ảnh X-Quang với đặc trưng cục bộ của báo cáo khám tổng quát và ngược lại.
+Trong công đoạn này, nhóm tối ưu khả năng khai thác và dung hợp dữ liệu bằng kỹ thuật chú ý chéo hai chiều để học liên hệ giữa đặc trưng toàn cục của ảnh X-quang với token cục bộ của bệnh sử lâm sàng và giữa đặc trưng toàn cục của văn bản với token ảnh cục bộ.
 
-Để mô phỏng sát với quá trình học phân tích ảnh thực tế của bác sĩ, dữ liệu đầu vào của công đoạn này là các cặp ảnh X-quang và báo cáo khám tổng quát. Các dữ liệu này được đưa vào bộ mã hóa tương ứng để trích xuất đặc trưng. Kỹ thuật chú ý chéo được sử dụng để học các mối liên hệ giữa các đặc trưng này. Đặc trưng toàn cục của ảnh X-quang được sử dụng để tìm các đặc trưng cục bộ của báo cáo khám tổng quát có liên quan và ngược lại, đặc trưng toàn cục của văn bản được sử dụng để tìm các đặc trưng cục bộ của ảnh X-quang có liên quan. Sau đó, các đặc trưng có liên quan được đưa vào một khối Transformer, nơi chúng được kết hợp một lần nữa thông qua cơ chế attention để học sự phụ thuộc giữa các đặc trưng, tương quan ngữ nghĩa ở mức độ sâu hơn trước khi được đưa vào bộ phân loại cuối cùng để dự đoán nhãn bệnh lý. Sự khác biệt của dự đoán với nhãn thực tế sẽ được tính toán và sử dụng để cập nhật tham số của các khối Cross-Attention, Linear Projection và Transformer cũng như Classifier.
+Đầu vào của công đoạn này là các cặp ảnh X-quang và bệnh sử lâm sàng. Hai hướng cross-attention lần lượt dùng token ảnh toàn cục làm query trên chuỗi token văn bản và token văn bản toàn cục làm query trên chuỗi token ảnh. Mỗi output attention được cộng residual với global query tương ứng rồi chuẩn hóa để tạo hai nhánh tăng cường $h_I$ và $h_T$. Chỉ $[h_I;h_T]$ được nối và đưa qua MLP dung hợp $1024\rightarrow512\rightarrow512$ cùng LayerNorm để tạo vector 512 chiều trước đầu phân loại; raw global embeddings không được nối lại và không có learned skip ở tầng fusion cuối. Sai khác giữa dự đoán và nhãn thực tế cập nhật LoRA adapter, các phép chiếu, hai khối cross-attention và MLP dung hợp; các centroid không nhận gradient.
 
-Trong bài toán phân loại đa lớp, hàm mất mát Cross-Entropy được sử dụng để tối ưu khả năng phân loại thông qua việc tăng xác suất dự đoán của lớp đúng. Tuy nhiên, Cross-Entropy chỉ tập trung vào ranh giới quyết định giữa các lớp mà chưa ràng buộc trực tiếp cấu trúc của không gian đặc trưng. Do đó, nghiên cứu kết hợp \textbf{Prototypical Loss} nhằm học không gian biểu diễn có tính phân biệt cao hơn bằng cách giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Việc kết hợp giữa Cross-Entropy và Prototypical Loss giúp mô hình vừa đạt hiệu quả phân loại tốt, vừa xây dựng được không gian đặc trưng phù hợp cho giai đoạn phát hiện dữ liệu ngoài phân phối dựa trên khoảng cách Mahalanobis.
+Sau quá trình dung hợp đa phương thức, mỗi mẫu train được biểu diễn bởi vector đặc trưng $z_i\in\mathbb{R}^{D}$. Với lớp $k$ có $N_k$ mẫu, trung tâm thực nghiệm được tính trực tiếp bằng trung bình embedding:
 
-\begin{figure}[H]
-\centering
-    \includegraphics[width=1\linewidth]{images/prototypical_network.png}
-    \caption{Kiến trúc Prototypical Network sử dụng prototype học được.}
-    \label{fig:prototypical-network}
-\end{figure}
+\begin{equation}
+c_k=\frac{1}{N_k}\sum_{i:y_i=k}z_i.
+\end{equation}
 
-Khác với Prototypical Network truyền thống, trong đó prototype của mỗi lớp được tính bằng trung bình các embedding của tập hỗ trợ, nghiên cứu sử dụng kiến trúc \textit{Parametric Prototypical Network}, trong đó các prototype $c_k$ được khởi tạo như các tham số có thể học được (\textit{learnable parameters}) và được cập nhật trực tiếp thông qua thuật toán lan truyền ngược trong quá trình huấn luyện. Cách tiếp cận này giúp các prototype thích nghi tốt hơn với phân bố đặc trưng của dữ liệu và không phụ thuộc vào việc tính toán lại prototype sau mỗi lần cập nhật mô hình.
+Các $c_k$ được lưu dưới dạng buffer, không phải \textit{learnable parameter} và không nhận gradient. Centroid được khởi tạo từ toàn bộ tập train trước pha 2, tính lại sau mỗi epoch bằng encoder hiện tại trước khi đánh giá validation, và tính lại một lần cuối từ checkpoint encoder tốt nhất trước khi lưu mô hình. Trong từng epoch, centroid được giữ cố định để gradient của hàm phân loại chỉ cập nhật LoRA adapter và mô-đun dung hợp. Cách xây dựng này là empirical centroid classifier đúng nghĩa mà không yêu cầu episodic training.
 
-Sau quá trình dung hợp đa phương thức, mỗi mẫu đầu vào được biểu diễn bởi vector đặc trưng $z_i$. Để thực hiện phân loại, mức độ tương đồng giữa $z_i$ và từng prototype được tính bằng độ tương đồng Cosine trên các vector đã được chuẩn hóa theo chuẩn $L_2$:
+Mức độ tương đồng giữa embedding $z_i$ và từng centroid được tính bằng cosine trên các vector chuẩn hóa $L_2$:
 
 \begin{equation}
 s(z_i,c_k)=\frac{z_i\cdot c_k}{\|z_i\|_2\|c_k\|_2}.
 \end{equation}
 
-Điểm tương đồng được nhân với hệ số nhiệt độ $\tau$ nhằm điều chỉnh độ sắc nét của phân bố xác suất, sau đó đưa qua hàm Softmax để thu được xác suất dự đoán:
+Điểm tương đồng được nhân với hệ số tỷ lệ cố định $\alpha=15$ nhằm điều chỉnh độ sắc nét của phân bố xác suất, sau đó đưa qua Softmax:
 
 \begin{equation}
 p_{ik}=
-\frac{\exp(\tau s(z_i,c_k))}
-{\sum_{j=1}^{K}\exp(\tau s(z_i,c_j))}.
+\frac{\exp(\alpha\,s(z_i,c_k))}
+{\sum_{j=1}^{K}\exp(\alpha\,s(z_i,c_j))}.
 \end{equation}
 
-Trong bài toán phân loại đa lớp, nghiên cứu sử dụng hàm mất mát Cross-Entropy làm hàm mất mát phân loại chính:
+Hàm mất mát duy nhất trong pha 2 là Cross-Entropy có trọng số lớp:
 
 \begin{equation}
-\mathcal{L}_{\mathrm{CE}}
+\mathcal{L}_{\mathrm{P2}}
 =
 -\frac{1}{N}
 \sum_{i=1}^{N}
-\log p_{i,y_i},
+w_{y_i}\log p_{i,y_i},
 \end{equation}
 
-trong đó $y_i$ là nhãn đúng của mẫu thứ $i$.
-
-Bên cạnh đó, nhằm học không gian đặc trưng có tính phân biệt cao hơn, Prototypical Loss được sử dụng theo cơ chế Kéo - Đẩy (Pull - Push). Nó kéo embedding của mỗi mẫu tiến gần prototype của lớp mục tiêu và tách xa prototype của các lớp không phải mục tiêu với một ngưỡng an toàn (margin) $m$:
-
-Trước tiên, khoảng cách giữa đặc trưng $z_i$ và nguyên mẫu $c_k$ được tính thông qua độ đo nghịch đảo của Cosine:
-\begin{equation}
-d(z_i, c_k) = 1 - \frac{z_i \cdot c_k}{\|z_i\|_2\|c_k\|_2}
-\end{equation}
-Sau đó, hàm mất mát Prototypical được định nghĩa như sau:
-\begin{equation}
-\mathcal{L}_{\mathrm{Proto}} = \frac{1}{N} \sum_{i=1}^{N} d(z_i, c_{y_i}) + \frac{1}{N(K-1)} \sum_{i=1}^{N} \sum_{k \neq y_i} \max(0, m - d(z_i, c_k))
-\end{equation}
-trong đó $y_i$ là nhãn đúng của mẫu thứ $i$, $K$ là tổng số lớp, và $m$ là siêu tham số margin (được chọn là $0.5$). Việc tối ưu hàm mất mát này giúp xây dựng một không gian đặc trưng có cấu trúc phân biệt cao, hỗ trợ rất tốt cho giai đoạn phát hiện dữ liệu ngoài phân phối bằng khoảng cách Mahalanobis.
-
-Hàm mất mát tổng thể của mô hình được xác định bởi:
-
-\begin{equation}
-\mathcal{L}
-=
-\mathcal{L}_{\mathrm{CE}}
-+
-\lambda
-\mathcal{L}_{\mathrm{Proto}},
-\end{equation}
-
-trong đó $\lambda$ là hệ số cân bằng giữa nhiệm vụ phân loại và nhiệm vụ học biểu diễn.
-
-Việc kết hợp Cross-Entropy và Prototypical Loss cho phép mô hình đồng thời tối ưu khả năng phân loại và xây dựng không gian đặc trưng có tính phân biệt cao thông qua việc giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Không gian đặc trưng này sau đó được sử dụng trong giai đoạn phát hiện dữ liệu ngoài phân phối bằng khoảng cách Mahalanobis theo cơ chế \textit{post-hoc}, được trình bày ở mục tiếp theo.
+trong đó $y_i$ là nhãn đúng và $w_k$ tỷ lệ nghịch với effective number $(1-\beta^{N_k})/(1-\beta)$ của lớp $k$, sau đó được chuẩn hóa để trung bình trọng số của các lớp hiện diện bằng 1. Pipeline cuối cùng dùng $\beta=0{,}999$ và không dùng label smoothing. Pull--push Prototypical Loss, margin và hệ số $\lambda$ bị loại bỏ vì chúng tối ưu các prototype tham số thay vì phản ánh đúng định nghĩa empirical centroid. Mỗi lớp cấu hình phải xuất hiện trong train subset; với few-shot, bộ chia dữ liệu phải lấy đúng $k$ mẫu cho từng lớp trước khi tính centroid.
 
 \section{Giai đoạn online}
 \begin{figure}[H]
@@ -233,15 +217,15 @@ Việc kết hợp Cross-Entropy và Prototypical Loss cho phép mô hình đồ
     \label{fig:online}
 \end{figure}
 
-Sơ đồ của hệ thống trong giai đoạn online được trình bày trong Hình \ref{fig:online}. Gần tương ứng với công đoạn Fine-tuning, ảnh X-Quang cùng báo cáo tổng quát gồm lời khai của bệnh nhân và tiền sử bệnh lý sau tiền xử lí được đưa vào bộ mã hóa tương ứng để trích xuất đặc trưng. Các đặc trưng này được đưa vào khối Cross-Attention để học các mối liên hệ tương tác giữa đặc trưng toàn cục với các đặc trưng cục bộ, sau đó được đưa vào khối Transformer để hợp nhất đặc trưng đa phương thức ở mức độ sâu hơn trước khi được đưa vào mạng prototypical để dự đoán nhãn bệnh lý, ở đây, nhãn được lựa chọn dựa trên khoảng cách đến các prototype, nếu khoảng cách đến prototype gần nhất vượt quá ngưỡng nhất định, mô hình sẽ đánh dấu là không chắc chắn. Ngoài ra, các trọng số attention được khai thác để trực quan hóa và giải thích kết quả dự đoán. Cụ thể, mô hình có thể tạo ra các bản đồ nhiệt trực quan hóa trên ảnh X-quang dựa trên các trọng số attention để giải thích dự đoán của mô hình.
+Sơ đồ của hệ thống trong giai đoạn online được trình bày trong Hình \ref{fig:online}. Ảnh X-quang được đưa qua cùng nhánh ảnh toàn cục và lưới lát độ phân giải cao như khi huấn luyện; bệnh sử lâm sàng được mã hóa bởi nhánh văn bản. Hai nguồn đặc trưng được dung hợp bằng cross-attention hai chiều và MLP trước khi so sánh với các empirical centroid đã lưu để dự đoán nhãn bệnh lý. Song song, đặc trưng dung hợp được chấm điểm OOD bằng bộ phát hiện đã hiệu chuẩn trên tập validation; mẫu vượt ngưỡng được đánh dấu là ngoài phân phối thay vì chỉ dựa vào xác suất Softmax. Các trọng số attention có thể được chiếu ngược về tọa độ ảnh nguồn để tạo bản đồ nhiệt hỗ trợ giải thích dự đoán.
 
 \section{Đóng góp của phương pháp}
 \begin{itemize}
     \item \textbf{Cơ chế Cross-Attention có hướng dẫn tri thức:} Việc sử dụng cơ chế Cross-Attention có hướng dẫn tri thức giúp mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý,
 thay vì các vùng nền không liên quan. Điều này không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
-    \item \textbf{Cơ chế fusion ở nhiều cấp độ:} Việc kết hợp đặc trưng toàn cục và cục bộ thông qua Cross-Attention và khối Transformer giúp mô hình khai thác tối đa dữ liệu
+    \item \textbf{Cơ chế fusion ở nhiều cấp độ:} Việc kết hợp đặc trưng toàn cục và cục bộ thông qua Cross-Attention hai chiều và MLP dung hợp giúp mô hình khai thác tối đa dữ liệu
 và học được các mối liên hệ phức tạp giữa hai nguồn dữ liệu, từ đó cải thiện hiệu suất phân loại và khả năng giải thích của mô hình.
     \item \textbf{Giảm nguy cơ suy giảm không gian ngữ nghĩa trong bối cảnh dữ liệu hạn chế:}
 Cơ chế cập nhật tham số bằng LoRA giúp các bộ mã hóa thích nghi với dữ liệu y khoa đích mà không làm mất mát các tri thức đã học. Điều này giúp hạn chế hiện tượng overfitting và giảm độ phức tạp tính toán.
-    \item \textbf{Cơ chế phát hiện dữ liệu ngoài phân phối:} Mô hình có khả năng phát hiện dữ liệu ngoài phân phối với mạng prototypical.
+    \item \textbf{Cơ chế phát hiện dữ liệu ngoài phân phối:} Empirical centroid cung cấp tâm lớp nhất quán với embedding train, còn ngưỡng OOD được hiệu chuẩn hậu xử lý trên tập validation mà không sử dụng dữ liệu test.
 \end{itemize}

@@ -68,6 +68,7 @@ class TrainingLogger:
         self._csv_file = None
         self._csv_writer = None
         self._csv_fields_written = False
+        self._csv_fieldnames = []
 
         self._start_time = time.time()
         self._epoch_start_time = None
@@ -235,7 +236,7 @@ class TrainingLogger:
         self.writer.flush()
 
     def _write_csv_row(self, row: dict):
-        """Append a single row to the CSV metrics file.
+        """Append a row and expand the CSV schema when new metrics appear.
 
         Args:
             row: Column-name to value mapping for one epoch.
@@ -244,9 +245,39 @@ class TrainingLogger:
             self._csv_file = open(self.csv_path, "w", newline="", encoding="utf-8")
 
         if not self._csv_fields_written:
-            self._csv_writer = csv.DictWriter(self._csv_file, fieldnames=list(row.keys()))
+            self._csv_fieldnames = list(row.keys())
+            self._csv_writer = csv.DictWriter(
+                self._csv_file,
+                fieldnames=self._csv_fieldnames,
+            )
             self._csv_writer.writeheader()
             self._csv_fields_written = True
+
+        new_fields = [
+            field for field in row.keys() if field not in self._csv_fieldnames
+        ]
+        if new_fields:
+            # DictWriter has a fixed schema. Preserve prior epochs by reading
+            # them back, extending the header, and rebuilding the small
+            # per-epoch CSV before appending the current row.
+            self._csv_file.flush()
+            self._csv_file.close()
+            with open(self.csv_path, "r", newline="", encoding="utf-8") as handle:
+                existing_rows = list(csv.DictReader(handle))
+
+            self._csv_fieldnames.extend(new_fields)
+            self._csv_file = open(
+                self.csv_path,
+                "w",
+                newline="",
+                encoding="utf-8",
+            )
+            self._csv_writer = csv.DictWriter(
+                self._csv_file,
+                fieldnames=self._csv_fieldnames,
+            )
+            self._csv_writer.writeheader()
+            self._csv_writer.writerows(existing_rows)
 
         self._csv_writer.writerow(row)
         self._csv_file.flush()
@@ -361,5 +392,3 @@ class XBoneTrainerCallback(TrainerCallback):
     def on_train_end(self, args, state, control, **kwargs):
         """Callback triggered at end of training."""
         self.logger.writer.flush()
-
-

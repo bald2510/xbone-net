@@ -1,0 +1,12 @@
+# @package _global_
+# Backbone/PEFT ablation: keep high-resolution local inputs but prevent local
+# tile features from updating visual LoRA.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/backbone/local_tile_no_grad
+
+model:
+  local_tile_grad_enabled: false

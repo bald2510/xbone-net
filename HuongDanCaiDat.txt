@@ -1,0 +1,174 @@
+HƯỚNG DẪN CÀI ĐẶT XBone-Net
+============================
+
+1. MỤC ĐÍCH
+------------
+Tài liệu này hướng dẫn chuẩn bị công cụ, môi trường phát triển và thư viện để
+huấn luyện, đánh giá và suy luận XBone-Net trên Windows hoặc Linux.
+
+
+2. YÊU CẦU HỆ THỐNG
+-------------------
+- Hệ điều hành: Windows 10/11 64-bit.
+- Python: phiên bản 3.10 được khuyến nghị.
+- RAM và dung lượng đĩa: tùy kích thước dữ liệu và checkpoint.
+- GPU NVIDIA hỗ trợ CUDA được khuyến nghị cho huấn luyện. Có thể chạy kiểm tra
+  và một số tác vụ trên CPU nhưng sẽ chậm hơn đáng kể.
+- Kết nối Internet cần thiết trong lần đầu tải pretrained weights từ Hugging
+  Face/OpenCLIP/MedCLIP. Sau khi đã cache weights có thể chạy ngoại tuyến.
+
+
+3. CÔNG CỤ CẦN CÀI
+------------------
+3.1. Git
+Tải từ: https://git-scm.com/downloads
+
+Kiểm tra:
+  git --version
+
+3.2. Miniconda hoặc Anaconda
+Khuyến nghị Miniconda để quản lý môi trường Python độc lập.
+Tải từ: https://docs.conda.io/projects/miniconda/en/latest/
+
+Kiểm tra:
+  conda --version
+
+3.3. Trình điều khiển NVIDIA (nếu dùng GPU)
+Cài driver phù hợp với GPU và kiểm tra bằng:
+  nvidia-smi
+
+PyTorch wheel đã chứa CUDA runtime cần thiết; thông thường không phải cài riêng
+CUDA Toolkit nếu không biên dịch CUDA extension tùy chỉnh.
+
+3.4. Môi trường phát triển (tùy chọn)
+- Visual Studio Code và extension Python.
+- Git Bash hoặc Windows Terminal/PowerShell.
+
+
+4. LẤY MÃ NGUỒN
+----------------
+Nếu chưa có repository:
+  git clone <DIA_CHI_REPOSITORY_XBONE_NET>
+  cd xbone-net
+
+Nếu đã có mã nguồn, mở PowerShell/Terminal tại thư mục gốc chứa train.py.
+
+
+5. TẠO MÔI TRƯỜNG PYTHON
+------------------------
+  conda create -n Thesis python=3.10 -y
+  conda activate Thesis
+  python -m pip install --upgrade pip setuptools wheel
+
+Kiểm tra đúng Python của môi trường:
+  python --version
+  where.exe python    (Windows PowerShell/CMD)
+  which python        (Linux)
+
+
+6. CÀI PYTORCH
+--------------
+Chọn một trong hai phương án.
+
+6.1. GPU NVIDIA, CUDA 12.8 (khớp môi trường đã kiểm thử)
+  python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
+
+6.2. Chỉ dùng CPU
+  python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cpu
+
+Nếu máy dùng CUDA khác, lấy lệnh phù hợp tại https://pytorch.org/get-started/locally/
+nhưng giữ cặp phiên bản torch/torchvision tương thích với nhau.
+
+
+7. CÀI THƯ VIỆN CỦA DỰ ÁN
+-------------------------
+Tại thư mục gốc xbone-net:
+  python -m pip install -r requirements.txt
+
+MedCLIP phải cài riêng vì metadata của MedCLIP 0.0.3 yêu cầu Transformers cũ,
+trong khi XBone-Net có lớp tương thích cho Transformers hiện tại:
+  python -m pip install --no-deps MedCLIP==0.0.3
+
+Không bỏ tùy chọn --no-deps, nếu không pip có thể hạ hoặc gây xung đột phiên bản
+Transformers.
+
+
+8. KIỂM TRA CÀI ĐẶT
+-------------------
+8.1. Kiểm tra PyTorch và GPU
+  python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+
+8.2. Kiểm tra các module chính
+  python -c "import hydra, numpy, pandas, sklearn, torch, torchvision, transformers; print('Core libraries: OK')"
+
+8.3. Kiểm tra MedCLIP
+  python -c "from src.models.backbone.medclip_foundation import MedCLIPFoundation; print('MedCLIP: OK')"
+
+8.4. Kiểm tra requirements.txt còn đồng bộ với source code
+  python tools/generate_requirements.py --check
+
+8.5. Chạy smoke test
+GPU:
+  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cuda --batch-size 2
+
+CPU:
+  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cpu --batch-size 2
+
+
+9. CHUẨN BỊ DỮ LIỆU
+--------------------
+Các đường dẫn mặc định được đọc tương đối từ thư mục gốc repository.
+
+9.1. BTXRD
+  data/BTXRD/images/
+  data/BTXRD/reports/
+  data/BTXRD/reports/clinical_v2/
+  data/BTXRD/btxrd-split.csv
+  data/BTXRD/btxrd-labels.csv
+
+9.2. CTCH
+  data/CTCH/images/
+  data/CTCH/reports/xray/
+  data/CTCH/reports/clinical/
+  data/CTCH/ctch-split.csv
+  data/CTCH/ctch-labels.csv
+  data/CTCH/labels.txt
+
+Nếu dữ liệu đặt ở vị trí khác, sửa đường dẫn trong:
+  configs/dataset/btxrd.yaml
+  configs/dataset/ctch.yaml
+
+
+10. CẬP NHẬT REQUIREMENTS.TXT
+-----------------------------
+Sau khi thêm hoặc xóa import trong mã nguồn, kích hoạt đúng môi trường rồi chạy:
+  python tools/generate_requirements.py
+
+Xem trước mà không ghi file:
+  python tools/generate_requirements.py --dry-run --verbose
+
+Kiểm tra trong CI:
+  python tools/generate_requirements.py --check
+
+Không nên dùng pip freeze để thay thế vì pip freeze đưa cả các dependency gián
+tiếp và package không được repository sử dụng vào requirements.txt.
+
+
+11. LỖI CÀI ĐẶT THƯỜNG GẶP
+--------------------------
+- torch.cuda.is_available() trả về False:
+  Kiểm tra nvidia-smi, driver NVIDIA và đúng loại PyTorch wheel CUDA.
+
+- Lỗi MedCLIP/Transformers khi pip install:
+  Cài requirements.txt trước, sau đó dùng đúng lệnh:
+  python -m pip install --no-deps MedCLIP==0.0.3
+
+- Không tìm thấy pretrained weights:
+  Kiểm tra Internet, quyền ghi cache Hugging Face và dung lượng đĩa.
+
+- ModuleNotFoundError:
+  Kiểm tra đã chạy conda activate Thesis và terminal đang ở thư mục xbone-net.
+
+- Hết bộ nhớ GPU:
+  Giảm dataset.batch_size hoặc model.tile_encode_chunk_size bằng Hydra override,
+  ví dụ: dataset.batch_size=4 model.tile_encode_chunk_size=8.

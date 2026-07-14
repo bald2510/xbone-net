@@ -1,0 +1,15 @@
+# @package _global_
+# Backbone/PEFT ablation: merge LoRA after Phase 1 instead of retaining
+# trainable adapters during Phase 2.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/backbone/phase1_merged
+
+params:
+  phase1:
+    merge_lora_after_training: true
+  phase2:
+    init_from_phase1_merged: true

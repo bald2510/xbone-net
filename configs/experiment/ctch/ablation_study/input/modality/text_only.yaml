@@ -1,0 +1,12 @@
+# @package _global_
+# Input/modality ablation: replace every image with a constant black image.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/modality/text_only
+
+dataset:
+  params:
+    text_only: true

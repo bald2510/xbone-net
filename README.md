@@ -1,15 +1,16 @@
 # XBone-Net: Multimodal Bone Tumor Classification and Out-of-Distribution Detection
 
-XBone-Net is a state-of-the-art multimodal vision-language framework designed for bone tumor classification and Out-of-Distribution (OOD) anomaly detection on musculoskeletal radiographs. It addresses the clinical challenge of label leakage by decoupling xray reports at training from historical clinical data at inference, and deploys a learnable Prototypical network to construct robust, clinically explainable decision boundaries.
+XBone-Net is a multimodal vision-language framework for bone-tumor classification and out-of-distribution (OOD) detection on musculoskeletal radiographs. The canonical pipeline uses radiographs and pre-imaging clinical history in both training phases; radiology findings are excluded because they can contain the target diagnosis and cause label leakage.
 
 ---
 
 ## 1. Key Features
 
-- **Asymmetric Two-Stage Training:**
-  - **Phase 1 (Contrastive Alignment):** Align image embeddings with text embeddings using PEFT (QLoRA) and Semantic Matching Contrastive Loss.
-  - **Phase 2 (Multimodal Classification):** Fuse image and text (clinical history) features using a Cross-Attention Transformer and classify via a learnable Prototypical Head.
-- **Label Leakage Prevention:** Compels the model to use **only clinical history text** at inference, preventing cheating from pre-existing X-ray reports.
+- **High-resolution image path:** Cover the full radiograph with a deterministic 224-pixel grid, pool local patch tokens, and compress them with a coordinate-aware learned resampler. Local tiles propagate gradients to visual LoRA adapters during training, with chunk-level activation checkpointing to control memory.
+- **Two-stage training:**
+  - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
+  - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention. Classification uses cosine similarity to empirical class centroids recomputed from the training embeddings and effective-number weighted cross-entropy.
+- **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
 - **Robust OOD Detection:** Supports 4 OOD scoring algorithms (Mahalanobis Distance, Cosine-KNN, Energy Score, and Text-Anchor Distance) to identify anomalous radiographs.
 - **Explainability:** Built-in cross-attention map extraction to visualize which regions of the X-ray image align with specific clinical keywords.
 
@@ -25,7 +26,7 @@ xbone-net/
 │   └── experiment/         # Grouped experiment configs (Baselines & Ours)
 ├── src/                    # Consolidated Python source code package
 │   ├── datasets/           # PyTorch Dataset loaders for BTXRD and CTCH
-│   ├── models/             # PyTorch Modules (Backbones, Fusion, Prototypical Head)
+│   ├── models/             # PyTorch modules (backbones, fusion, centroid/ablation heads)
 │   └── utils/              # Helper utilities (losses, metrics, prompts, etc.)
 ├── tools/                  # Script utilities, training execution runners, and plotting
 ├── train.py                # Main two-stage training script
@@ -50,6 +51,21 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
 # 3. Install other required packages
 pip install -r requirements.txt
+
+# Required only for experiments using the MedCLIP backbone. Its upstream
+# metadata pins an obsolete Transformers version; XBone-Net provides the
+# compatibility layer, so install the package without its dependency pins.
+python -m pip install --no-deps MedCLIP==0.0.3
+```
+
+`requirements.txt` is generated from direct imports in the repository. After
+adding or removing a dependency, regenerate it from the active environment:
+
+```bash
+python tools/generate_requirements.py
+
+# CI/read-only validation: exits with code 1 when the file is stale
+python tools/generate_requirements.py --check
 ```
 
 ---
@@ -105,7 +121,7 @@ Once you have saved the ID embeddings using `evaluate.py`, run OOD detection aga
 
 ```bash
 python evaluate_ood.py \
-    --id-path checkpoints/ours_xbone_net/seed_42/test_embeddings.npz \
+    --id-path checkpoints/btxrd/proposed/ours_xbone_net/seed_42/test_embeddings.npz \
     --ood-path checkpoints/fracatlas/seed_42/test_embeddings.npz \
     --method mahalanobis
 ```
@@ -117,4 +133,20 @@ To run all organized experiment groups (Zero-shot, Fine-tuned Baselines, Propose
 python tools/run_all.py --group zero_shot_baselines
 python tools/run_all.py --group finetuned_baselines
 python tools/run_all.py --group proposed
+```
+
+### 5.5. Canonical Pipeline and Ablations
+
+BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into exactly four groups: `input` (resolution and modality), `backbone` (PEFT and backbone adaptation), `fusion`, and `classifier`. Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The LoRA adapters are intentionally not merged after Phase 1 so that they remain trainable during Phase 2; adapter merging/freezing is treated as a backbone/PEFT ablation.
+
+The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
+
+### 5.6. CTCH Few-Shot Experiments
+
+CTCH follows the same per-class sampling rule as BTXRD: retain at most `k_shot` training samples from each available class with deterministic sampling by `seed`; validation and test remain unchanged. Configurations are provided for 1, 10, and 20 shots with LoRA-BiomedCLIP, LoRA-PubMedCLIP, and XBone-Net. For example:
+
+```bash
+python train.py +experiment=ctch/few_shot/1_shot/ours_xbone_net
+python train.py +experiment=ctch/few_shot/10_shot/lora_biomedclip
+python train.py +experiment=ctch/few_shot/20_shot/lora_pubmedclip
 ```

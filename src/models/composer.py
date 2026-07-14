@@ -35,7 +35,7 @@ class XBoneMultiModalModel(nn.Module):
         denom = valid.sum(dim=1).clamp_min(1.0)
         return (features * valid).sum(dim=1) / denom
 
-    def forward(
+    def encode_fused(
         self,
         images,
         input_ids=None,
@@ -43,8 +43,8 @@ class XBoneMultiModalModel(nn.Module):
         tile_values=None,
         tile_mask=None,
         tile_boxes=None,
-        return_features: bool = False,
-    ):
+    ) -> torch.Tensor:
+        """Encode a batch into the fused representation before classification."""
         img_feats, txt_feats = self.backbone(
             images,
             input_ids,
@@ -102,6 +102,32 @@ class XBoneMultiModalModel(nn.Module):
                 )
                 txt_vector = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
                 fused_feats = self.fusion(img_vector, txt_vector)
+
+        if fused_feats.ndim != 2:
+            raise ValueError(
+                "Fusion module must return one [D] embedding per sample, "
+                f"got {tuple(fused_feats.shape)}."
+            )
+        return fused_feats
+
+    def forward(
+        self,
+        images,
+        input_ids=None,
+        attention_mask=None,
+        tile_values=None,
+        tile_mask=None,
+        tile_boxes=None,
+        return_features: bool = False,
+    ):
+        fused_feats = self.encode_fused(
+            images,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            tile_values=tile_values,
+            tile_mask=tile_mask,
+            tile_boxes=tile_boxes,
+        )
 
         logits = self.head(fused_feats)
         if return_features:

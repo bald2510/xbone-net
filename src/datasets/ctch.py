@@ -17,6 +17,8 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
+from .high_resolution import prepare_high_resolution_inputs
+
 
 # ============================================================
 # CTCH Dataset Loader
@@ -67,6 +69,8 @@ class CTCHDataset(Dataset):
         num_classes: int = None,
         split: str = "train",
         train_ratio: float = 1.0,
+        k_shot: int = None,
+        seed: int = 42,
         transform=None,
         tokenizer=None,
         max_text_len=256,
@@ -75,6 +79,7 @@ class CTCHDataset(Dataset):
         clinical_report_dir: str = None,
         # Backward compatibility: single report_dir
         report_dir: str = None,
+        high_res: dict = None,
         **kwargs,
     ):
         """Initialize the CTCH dataset.
@@ -89,12 +94,15 @@ class CTCHDataset(Dataset):
             num_classes: Optional explicit class count for external reference.
             split: Data split ('train', 'val', or 'test').
             train_ratio: Fraction of training samples to keep (0.0 to 1.0).
+            k_shot: Maximum number of training samples retained per class.
+            seed: Random seed used for deterministic per-class sampling.
             transform: torchvision.transforms pipeline for image preprocessing.
             tokenizer: Text tokenizer callable returning token-ID tensors.
             max_text_len: Maximum token sequence length.
             xray_report_dir: Path to directory containing X-ray findings reports.
             clinical_report_dir: Path to directory containing clinical history reports.
             report_dir: Single report directory for both report types (backward compatibility).
+            high_res: Uniform-grid high-resolution preprocessing configuration.
             **kwargs: Extra unused arguments for backward compatibility.
         """
         self.img_dir = img_dir
@@ -103,6 +111,15 @@ class CTCHDataset(Dataset):
         self.transform = transform
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
+        self.high_res_cfg = high_res or {}
+        self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
+        self.text_only = bool(kwargs.get("text_only", False))
+        self.shuffle_reports_all_splits = bool(kwargs.get("shuffle_reports", False))
+        configured_shuffle_splits = kwargs.get("shuffle_report_splits", []) or []
+        self.shuffle_report_splits = {
+            "validate" if str(name).lower() == "val" else str(name).lower()
+            for name in configured_shuffle_splits
+        }
 
         # --- Resolve report directories ---
         if report_dir and not xray_report_dir and not clinical_report_dir:
@@ -156,18 +173,55 @@ class CTCHDataset(Dataset):
         current_split = "validate" if split == "val" else split
         filtered_df = df_merged[df_merged["split"] == current_split].reset_index(drop=True)
 
-        if current_split == "train" and train_ratio < 1.0:
+        if current_split == "train" and k_shot is not None:
+            if task_type != "multiclass" or "class_id" not in filtered_df.columns:
+                raise ValueError(
+                    "CTCH k-shot sampling requires multiclass labels in class_id."
+                )
+            if isinstance(k_shot, bool) or not isinstance(k_shot, int) or k_shot < 1:
+                raise ValueError("k_shot must be a positive integer or null.")
+
+            sampled_groups = [
+                group.sample(n=min(len(group), k_shot), random_state=seed)
+                for _, group in filtered_df.groupby("class_id", sort=True)
+            ]
+            filtered_df = pd.concat(sampled_groups, ignore_index=True)
+            print(
+                f"[Dataset] CTCH few-shot learning: requested={k_shot}-shot, "
+                f"classes={filtered_df['class_id'].nunique()}, "
+                f"samples={len(filtered_df)}, seed={seed}."
+            )
+        elif current_split == "train" and train_ratio < 1.0:
             filtered_df = filtered_df.sample(
-                frac=train_ratio, random_state=42
+                frac=train_ratio, random_state=seed
             ).reset_index(drop=True)
-            print(f"[Dataset] Subsampling enabled: using {train_ratio * 100:.1f}% of training data.")
+            print(
+                "[Dataset] Subsampling enabled: using "
+                f"{train_ratio * 100:.1f}% of training data (seed={seed})."
+            )
 
         self.df = filtered_df
+        self.shuffle_reports = (
+            self.shuffle_reports_all_splits
+            or current_split in self.shuffle_report_splits
+        )
+        if self.shuffle_reports:
+            import numpy as np
+
+            self.shuffled_report_indices = np.random.default_rng(seed).permutation(
+                len(self.df)
+            )
+        else:
+            self.shuffled_report_indices = None
 
         # --- Detect dual report availability ---
         has_dual = bool(self.xray_report_dir and self.clinical_report_dir)
-        print(f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
-              f"Task: {task_type}, Dual reports: {has_dual}")
+        print(
+            f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
+            f"Task: {task_type}, Dual reports: {has_dual}, Uniform high-res grid: "
+            f"{self.use_high_res}, Text-only: {self.text_only}, Reports shuffled: "
+            f"{self.shuffle_reports}."
+        )
 
     def __len__(self):
         """Return the total number of samples in the current split."""
@@ -214,29 +268,44 @@ class CTCHDataset(Dataset):
             idx: Integer index into dataset.
 
         Returns:
-            tuple: (image, xray_ids, clinical_ids, labels) where:
-                - image: Transformed image tensor
-                - xray_ids: Tokenized X-ray findings report tensor
-                - clinical_ids: Tokenized clinical history report tensor
-                - labels: torch.LongTensor class index (multiclass) or
-                          torch.FloatTensor binary vector (multilabel)
+            A dictionary with global image, local tiles, normalized tile boxes,
+            dual-report token IDs, and labels when high-resolution mode is
+            enabled. Otherwise returns the backward-compatible tuple
+            ``(image, xray_ids, clinical_ids, labels)``.
         """
         row = self.df.iloc[idx]
         image_id = str(row["image_id"])
 
         # --- Load image ---
         img_path = os.path.join(self.img_dir, image_id)
-        try:
-            image = Image.open(img_path).convert("RGB")
-        except FileNotFoundError:
+        if self.text_only:
             image = Image.new("RGB", (224, 224), color="black")
+        else:
+            try:
+                image = Image.open(img_path).convert("RGB")
+            except FileNotFoundError:
+                image = Image.new("RGB", (224, 224), color="black")
 
-        if self.transform:
-            image = self.transform(image)
+        if self.use_high_res:
+            high_res_fields = prepare_high_resolution_inputs(
+                image, self.transform, self.high_res_cfg
+            )
+        else:
+            high_res_fields = {}
+            if self.transform:
+                image = self.transform(image)
 
         # --- Load and tokenize dual text reports ---
-        xray_text = self._load_report(self.xray_report_dir, image_id)
-        clinical_text = self._load_report(self.clinical_report_dir, image_id)
+        report_image_id = image_id
+        if self.shuffled_report_indices is not None:
+            report_image_id = str(
+                self.df.iloc[self.shuffled_report_indices[idx]]["image_id"]
+            )
+
+        xray_text = self._load_report(self.xray_report_dir, report_image_id)
+        clinical_text = self._load_report(
+            self.clinical_report_dir, report_image_id
+        )
 
         xray_ids = self._tokenize(xray_text)
         clinical_ids = self._tokenize(clinical_text)
@@ -257,4 +326,11 @@ class CTCHDataset(Dataset):
                 label_vals.append(0.0 if pd.isna(val) else float(val))
             labels = torch.tensor(label_vals, dtype=torch.float32)
 
+        if self.use_high_res:
+            return {
+                **high_res_fields,
+                "xray_input_ids": xray_ids,
+                "clinical_input_ids": clinical_ids,
+                "labels": labels,
+            }
         return image, xray_ids, clinical_ids, labels

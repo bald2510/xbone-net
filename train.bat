@@ -20,4 +20,4 @@ echo ============================================================
 echo.
 echo [System] Shutting down the computer in 60 seconds...
 echo [System] To cancel the shutdown, run: shutdown /a
-shutdown /s /f /t 60
+rem shutdown /s /f /t 60

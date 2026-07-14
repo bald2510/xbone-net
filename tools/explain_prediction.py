@@ -33,8 +33,6 @@ from tools.visualize_attention import (
 
 
 COMPONENT_NAMES = [
-    "Image global",
-    "Text global",
     "Image <- text context",
     "Text <- image context",
 ]
@@ -45,15 +43,15 @@ def fusion_from_tokens(
     image_tokens: torch.Tensor,
     text_tokens: torch.Tensor,
     text_attention_mask: torch.Tensor,
-    component_gate: torch.Tensor | None = None,
+    component_mask: torch.Tensor | None = None,
     return_attn: bool = False,
 ):
-    """Run the exact trained fusion while exposing its four classifier inputs."""
+    """Run the exact trained fusion while exposing its two enhanced branches."""
     fusion = model.fusion
-    image_features = fusion.img_proj(image_tokens)
-    text_features = fusion.txt_proj(text_tokens)
-    image_global = image_features[:, :1]
-    text_global = text_features[:, :1]
+    image_features = fusion.img_proj(fusion.img_input_norm(image_tokens))
+    text_features = fusion.txt_proj(fusion.txt_input_norm(text_tokens))
+    image_global = fusion.norm_img_global(image_features[:, :1])
+    text_global = fusion.norm_txt_global(text_features[:, :1])
     image_local = image_features[:, 1:]
     text_local = text_features[:, 1:]
     text_padding = text_attention_mask[:, 1:] == 0
@@ -78,15 +76,15 @@ def fusion_from_tokens(
 
     components = torch.stack(
         [
-            image_global[:, 0],
-            text_global[:, 0],
             image_from_text[:, 0],
             text_from_image[:, 0],
         ],
         dim=1,
     )
-    if component_gate is not None:
-        components = components * component_gate.view(1, 4, 1)
+    if component_mask is not None:
+        components = components * component_mask.view(
+            1, len(COMPONENT_NAMES), 1
+        )
     fused = fusion.norm_fuse(fusion.fusion_mlp(components.flatten(1)))
     logits = model.head(fused)
     return logits, components, {"i2t": attn_i2t, "t2i": attn_t2i}
@@ -100,7 +98,7 @@ def forward_from_local(
     local_boxes: torch.Tensor,
     text_tokens: torch.Tensor,
     text_attention_mask: torch.Tensor,
-    component_gate: torch.Tensor | None = None,
+    component_mask: torch.Tensor | None = None,
     return_attn: bool = False,
 ):
     image_tokens = model.backbone.visual_resampler(
@@ -114,7 +112,7 @@ def forward_from_local(
         image_tokens,
         text_tokens,
         text_attention_mask,
-        component_gate=component_gate,
+        component_mask=component_mask,
         return_attn=return_attn,
     )
     return logits, components, attention, image_tokens
@@ -126,11 +124,13 @@ def branch_ablation(model, cached: dict, target_class: int):
         full_prob = torch.softmax(full_logits, dim=-1)[0, target_class]
         full_logit = full_logits[0, target_class]
         logit_drops, probability_drops = [], []
-        for index in range(4):
-            gate = torch.ones(4, device=full_logits.device)
-            gate[index] = 0
+        for index in range(len(COMPONENT_NAMES)):
+            component_mask = torch.ones(
+                len(COMPONENT_NAMES), device=full_logits.device
+            )
+            component_mask[index] = 0
             logits, _, _, _ = forward_from_local(
-                model, **cached, component_gate=gate
+                model, **cached, component_mask=component_mask
             )
             probability = torch.softmax(logits, dim=-1)[0, target_class]
             logit_drops.append(float(full_logit - logits[0, target_class]))

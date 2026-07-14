@@ -5,8 +5,8 @@ Executes the streamlined two-phase training workflow for bone X-ray classificati
 
   - Phase 1 (Contrastive Alignment): Fine-tunes VLM backbones (e.g., BiomedCLIP)
     using soft-target semantic matching loss to align image and text embeddings.
-  - Phase 2 (Classification & Prototype Learning): Attaches cross-attention fusion
-    and prototypical head to train with Unweighted Cross-Entropy + Prototype Loss.
+  - Phase 2 (Classification): Attaches cross-attention fusion and an empirical
+    centroid head trained with class-weighted cross-entropy.
   - OOD Calibration: Fits a Mahalanobis-based OOD detector on validation set
     embeddings to calibrate the decision threshold at a target FPR (e.g., 5%).
 
@@ -36,8 +36,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from torch.optim import AdamW, SGD
 import torch.nn.functional as F
-from trl import SFTConfig
-from transformers import EarlyStoppingCallback
+from transformers import EarlyStoppingCallback, TrainingArguments
 from sklearn.metrics import accuracy_score, f1_score
 
 from src.models.builder import build_model, setup_phase2_modules
@@ -46,6 +45,10 @@ from src.utils.losses import build_loss, CombinedPhase2LossMulticlass
 from src.utils.trainer import BioMedCLIPDataCollator, SFTrainer, resolve_pad_token_id
 from src.utils.logging import TrainingLogger, XBoneTrainerCallback
 from src.utils.ood import OODDetector
+from src.utils.centroids import (
+    EmpiricalCentroidUpdateCallback,
+    compute_empirical_centroids,
+)
 
 
 # ============================================================
@@ -124,6 +127,72 @@ def extract_class_ids(dataset) -> np.ndarray:
         "Cannot extract class IDs. Expected df['class_id'], labels, targets, "
         "or a Subset wrapper around one of these datasets."
     )
+
+
+def compute_class_weights(
+    class_ids: np.ndarray,
+    num_classes: int,
+    weight_type: str = "effective_num",
+    effective_num_beta: float = 0.999,
+    max_class_weight: float = 10.0,
+) -> tuple[np.ndarray, np.ndarray, list[int]]:
+    """Compute finite weights while preserving absent configured classes.
+
+    Absent classes receive weight zero. Present-class weights are normalized to
+    mean one; weighted cross-entropy only indexes the target class, so zero
+    weights for classes with no training targets are safe and explicit.
+    """
+    class_ids = np.asarray(class_ids, dtype=np.int64).reshape(-1)
+    if num_classes < 2:
+        raise ValueError("num_classes must be at least 2.")
+    if class_ids.size == 0:
+        raise ValueError(
+            "Cannot compute class weights from an empty training subset."
+        )
+    if np.any(class_ids < 0) or np.any(class_ids >= num_classes):
+        invalid = np.unique(
+            class_ids[(class_ids < 0) | (class_ids >= num_classes)]
+        ).tolist()
+        raise ValueError(
+            f"Training labels outside configured range [0, {num_classes - 1}]: "
+            f"{invalid}"
+        )
+
+    class_counts = np.bincount(class_ids, minlength=num_classes).astype(float)
+    present_mask = class_counts > 0
+    missing_classes = np.flatnonzero(~present_mask).tolist()
+    raw_weights = np.zeros(num_classes, dtype=np.float64)
+
+    if weight_type == "effective_num":
+        beta = float(effective_num_beta)
+        if not 0.0 <= beta < 1.0:
+            raise ValueError("effective_num_beta must be in [0, 1).")
+        present_counts = class_counts[present_mask]
+        effective_num = (1.0 - np.power(beta, present_counts)) / max(
+            1.0 - beta, 1e-12
+        )
+        raw_weights[present_mask] = 1.0 / np.maximum(effective_num, 1e-8)
+    elif weight_type in ("inverse", "inverse_frequency", "inv_freq"):
+        present_count = int(present_mask.sum())
+        raw_weights[present_mask] = class_counts.sum() / (
+            present_count * class_counts[present_mask]
+        )
+        raw_weights[present_mask] = np.minimum(
+            raw_weights[present_mask], float(max_class_weight)
+        )
+    else:
+        raise ValueError(
+            f"Unknown class weight_type='{weight_type}'. "
+            "Use effective_num or inverse_frequency."
+        )
+
+    present_weight_sum = raw_weights[present_mask].sum()
+    if not np.isfinite(present_weight_sum) or present_weight_sum <= 0:
+        raise ValueError(
+            "Class-weight computation produced invalid present-class weights."
+        )
+    raw_weights[present_mask] *= present_mask.sum() / present_weight_sum
+    return raw_weights, class_counts, missing_classes
 
 
 # ============================================================
@@ -219,7 +288,7 @@ def run_phase1(
     tokenizer_p1 = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
     pad_id = resolve_pad_token_id(tokenizer_p1) if tokenizer_p1 is not None else 0
 
-    p1_args = SFTConfig(
+    p1_args = TrainingArguments(
         output_dir=os.path.dirname(cp_p1) if os.path.dirname(cp_p1) else "./checkpoints",
         num_train_epochs=epochs_p1,
         learning_rate=lr_p1,
@@ -271,7 +340,7 @@ def run_phase1(
 
 
 # ============================================================
-# Phase 2: Classification & Prototype Learning
+# Phase 2: Classification & Empirical Centroid Learning
 # ============================================================
 
 def run_phase2(
@@ -285,9 +354,9 @@ def run_phase2(
     experiment_name: str,
     use_bf16: bool,
     use_fp16: bool,
-    classifier_type: str = "prototypical",
+    classifier_type: str = "empirical_centroid",
 ) -> nn.Module:
-    """Execute Phase 2 supervised classification and prototype training.
+    """Execute Phase 2 supervised classification training.
 
     Args:
         cfg (DictConfig): Complete Hydra configuration.
@@ -349,6 +418,25 @@ def run_phase2(
     })
     logger_p2.log_model_summary(model)
 
+    use_text_p2 = bool(p2_cfg.get("use_text", True))
+    report_type_p2 = str(p2_cfg.get("p2_report_type", "clinical"))
+    uses_empirical_centroids = classifier_type == "empirical_centroid"
+
+    # The head has no trainable class vectors. Initialize it from embeddings of
+    # the exact training subset before the first optimization/evaluation step.
+    if uses_empirical_centroids:
+        initial_counts = compute_empirical_centroids(
+            model,
+            train_loader,
+            device,
+            use_text=use_text_p2,
+            report_type=report_type_p2,
+        )
+        print(
+            "  [Centroids] Initialized from the training subset; "
+            f"class counts={initial_counts.tolist()}"
+        )
+
     # --- Loss Criterion ---
     loss_cfg = p2_cfg.get("loss", {}) or {}
     use_class_weights = loss_cfg.get("use_class_weights", False)
@@ -368,36 +456,43 @@ def run_phase2(
             )
         )
         num_classes = configured_num_classes
-        class_counts = np.bincount(class_ids, minlength=num_classes).astype(float)
+        weight_type = loss_cfg.get("weight_type", "effective_num")
+        beta = float(loss_cfg.get("effective_num_beta", 0.999))
+        max_weight = float(loss_cfg.get("max_class_weight", 10.0))
+        raw_weights, class_counts, missing_classes = compute_class_weights(
+            class_ids=class_ids,
+            num_classes=num_classes,
+            weight_type=weight_type,
+            effective_num_beta=beta,
+            max_class_weight=max_weight,
+        )
 
-        if np.any(class_counts == 0):
-            missing_classes = np.flatnonzero(class_counts == 0).tolist()
+        missing_policy = str(
+            dataset_params.get("missing_train_class_policy", "error")
+        ).lower()
+        if missing_classes and missing_policy == "error":
             raise ValueError(
                 "Class-weighted training requires every configured class to be "
-                f"present in the training subset. Missing classes: {missing_classes}"
+                f"present in the training subset. Missing classes: {missing_classes}. "
+                "Set dataset.params.missing_train_class_policy=zero_weight only "
+                "when unseen classes are intentional and will be reported."
+            )
+        if missing_classes and missing_policy == "zero_weight":
+            print(
+                "  [Loss][WARNING] Configured classes absent from the training "
+                f"subset: {missing_classes}. Their target weights are zero; "
+                "evaluation must report them as unseen classes."
+            )
+        elif missing_classes:
+            raise ValueError(
+                f"Unknown missing_train_class_policy='{missing_policy}'. "
+                "Use error or zero_weight."
             )
 
-        weight_type = loss_cfg.get("weight_type", "effective_num")
         if weight_type == "effective_num":
-            beta = float(loss_cfg.get("effective_num_beta", 0.999))
-            if not 0.0 <= beta < 1.0:
-                raise ValueError("effective_num_beta must be in [0, 1).")
-            effective_num = (1.0 - np.power(beta, class_counts)) / max(1.0 - beta, 1e-12)
-            raw_weights = 1.0 / np.maximum(effective_num, 1e-8)
-            raw_weights *= num_classes / raw_weights.sum()
             print(f"  [Loss] Effective-number class weights (beta={beta}):")
-        elif weight_type in ("inverse", "inverse_frequency", "inv_freq"):
-            total = class_counts.sum()
-            raw_weights = total / (num_classes * class_counts)
-            max_weight = float(loss_cfg.get("max_class_weight", 10.0))
-            raw_weights = np.minimum(raw_weights, max_weight)
-            raw_weights *= num_classes / raw_weights.sum()
-            print(f"  [Loss] Inverse-frequency class weights (cap={max_weight}):")
         else:
-            raise ValueError(
-                f"Unknown class weight_type='{weight_type}'. "
-                "Use effective_num or inverse_frequency."
-            )
+            print(f"  [Loss] Inverse-frequency class weights (cap={max_weight}):")
 
         class_weights_tensor = torch.tensor(
             raw_weights, dtype=torch.float32, device=device
@@ -406,7 +501,7 @@ def run_phase2(
             name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
             print(f"    {name:30s}: {weight:.3f} (n={int(class_counts[class_id])})")
 
-    if classifier_type == "prototypical":
+    if classifier_type in ("prototypical", "learnable_prototype"):
         criterion_p2 = CombinedPhase2LossMulticlass(
             class_weights=class_weights_tensor,
             proto_margin=loss_cfg.get("proto_margin", 0.5),
@@ -470,7 +565,7 @@ def run_phase2(
             ),
         }
 
-    p2_args = SFTConfig(
+    p2_args = TrainingArguments(
         output_dir=os.path.dirname(cp_p2) if os.path.dirname(cp_p2) else "./checkpoints",
         num_train_epochs=epochs_p2,
         learning_rate=lr_p2,
@@ -502,6 +597,20 @@ def run_phase2(
             early_stopping_patience=patience_p2
         ),
     ]
+    if uses_empirical_centroids:
+        centroid_cfg = p2_cfg.get("centroid", {}) or {}
+        callbacks.append(
+            EmpiricalCentroidUpdateCallback(
+                model=model,
+                data_loader=train_loader,
+                device=device,
+                use_text=use_text_p2,
+                report_type=report_type_p2,
+                interval_epochs=int(
+                    centroid_cfg.get("update_interval_epochs", 1)
+                ),
+            )
+        )
 
     trainer_p2 = SFTrainer(
         model=model,
@@ -514,20 +623,34 @@ def run_phase2(
         loss_fn=criterion_p2,
         optimizers=(optimizer_p2, None),
         phase="phase2",
-        use_text_in_p2=p2_cfg.get("use_text", True),
-        p2_report_type=p2_cfg.get("p2_report_type", "clinical"),
+        use_text_in_p2=use_text_p2,
+        p2_report_type=report_type_p2,
     )
 
     trainer_p2.train()
 
     os.makedirs(os.path.dirname(cp_p2) or ".", exist_ok=True)
     best_model_p2 = trainer_p2.model
+    if uses_empirical_centroids:
+        # load_best_model_at_end restores the best encoder checkpoint. Recompute
+        # its centroids so the exported checkpoint is internally consistent.
+        final_counts = compute_empirical_centroids(
+            best_model_p2,
+            train_loader,
+            device,
+            use_text=use_text_p2,
+            report_type=report_type_p2,
+        )
+        print(
+            "  [Centroids] Recomputed for the best Phase-2 encoder; "
+            f"class counts={final_counts.tolist()}"
+        )
     torch.save(best_model_p2.state_dict(), cp_p2)
     print(f" [*] Saved best Phase 2 checkpoint: {cp_p2} (eval_f1={trainer_p2.state.best_metric})")
 
     logger_p2.close()
     print("Phase 2 complete!\n")
-    return model
+    return best_model_p2
 
 
 # ============================================================
@@ -561,8 +684,8 @@ def run_ood_calibration(
 
     if not hasattr(model.head, "prototypes"):
         raise ValueError(
-            "Learnable-prototype OOD calibration requires "
-            "a prototypical classifier head."
+            "OOD calibration requires a classifier head that exposes "
+            "class centers."
         )
 
     model.eval()
@@ -626,7 +749,7 @@ def run_ood_calibration(
             ):
                 raise RuntimeError(
                     "Expected model to return "
-                    "(logits, fused_features, prototypes)."
+                    "(logits, fused_features, class_centers)."
                 )
 
             _, fused_features, _ = outputs

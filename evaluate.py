@@ -493,10 +493,23 @@ def main(cfg: DictConfig) -> None:
     debug_mode = extra_args.debug or params_cfg.get("debug", cfg.get("debug", False))
     model.print_architecture(verbose=debug_mode)
 
-    pathologies = cfg.dataset.params.get("classes", cfg.dataset.params.get("pathologies", []))
+    pathologies = list(cfg.dataset.params.get("classes", cfg.dataset.params.get("pathologies", [])))
     is_classifier = classifier_type != "none"
     exp_name = str(params_cfg.get("experiment_name", cfg.get("experiment_name", ""))).lower()
     is_zero_shot = (not is_classifier) or ("zeroshot" in exp_name)
+
+    # Dataset labels may intentionally remain in their source language because
+    # they are also CSV keys and metric display names.  Zero-shot VLMs should
+    # instead receive the index-aligned English medical terms when provided.
+    prompt_pathologies = pathologies
+    if is_zero_shot:
+        prompt_pathologies = list(cfg.dataset.params.get("prompt_classes", pathologies))
+        if len(prompt_pathologies) != len(pathologies):
+            raise ValueError(
+                "dataset.params.prompt_classes must contain exactly one English "
+                f"prompt label per dataset class ({len(pathologies)} expected, "
+                f"got {len(prompt_pathologies)})."
+            )
 
     if is_zero_shot:
         backbone_type = cfg.model.get("backbone_type", "biomedclip")
@@ -534,7 +547,7 @@ def main(cfg: DictConfig) -> None:
     eval_output = run_evaluation(
         model=model,
         test_loader=test_loader,
-        pathologies=list(pathologies),
+        pathologies=prompt_pathologies,
         is_classifier=is_classifier,
         device=device,
         temperature=params_cfg.get("temperature", 0.07),
@@ -549,16 +562,16 @@ def main(cfg: DictConfig) -> None:
     all_gt = eval_output["all_ground_truths"]
 
     if is_multilabel:
-        metrics = compute_metrics(all_probs, all_gt, list(pathologies), is_multilabel)
+        metrics = compute_metrics(all_probs, all_gt, pathologies, is_multilabel)
     else:
-        metrics = compute_metrics_multiclass(all_probs, all_gt, list(pathologies))
+        metrics = compute_metrics_multiclass(all_probs, all_gt, pathologies)
 
     ci_95 = None
     if extra_args.bootstrap:
         ci_95 = bootstrap_confidence_intervals(
             all_probs,
             all_gt,
-            pathologies=list(pathologies),
+            pathologies=pathologies,
             is_multilabel=is_multilabel,
             n_bootstrap=extra_args.n_bootstrap,
             seed=seed_val,

@@ -8,8 +8,33 @@ import torch
 import torch.nn as nn
 
 
+def reduce_attention_to_keys(
+    attention: torch.Tensor,
+    key_padding_mask: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """Average heads/queries while preserving the key-token distribution."""
+    if attention.ndim != 4:
+        raise ValueError(
+            "attention must have shape [B,H,Q,K], "
+            f"got {tuple(attention.shape)}."
+        )
+    key_scores = attention.mean(dim=(1, 2))
+    if key_padding_mask is not None:
+        key_padding_mask = key_padding_mask.to(
+            device=key_scores.device,
+            dtype=torch.bool,
+        )
+        if key_padding_mask.shape != key_scores.shape:
+            raise ValueError(
+                "key_padding_mask must match reduced attention shape "
+                f"{tuple(key_scores.shape)}, got {tuple(key_padding_mask.shape)}."
+            )
+        key_scores = key_scores.masked_fill(key_padding_mask, 0.0)
+    return key_scores / key_scores.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+
+
 class CrossAttentionFusion(nn.Module):
-    """Fuse global image/text tokens through two cross-attention directions."""
+    """Compact fusion of two cross-attention-enhanced modality branches."""
 
     supports_padding_mask = True
 
@@ -29,6 +54,8 @@ class CrossAttentionFusion(nn.Module):
         if embed_dim % num_heads != 0:
             raise ValueError("embed_dim must be divisible by num_heads.")
 
+        self.img_input_norm = nn.LayerNorm(img_dim)
+        self.txt_input_norm = nn.LayerNorm(text_dim)
         self.img_proj = nn.Linear(img_dim, embed_dim)
         self.txt_proj = nn.Linear(text_dim, embed_dim)
         self.img_to_txt_attn = nn.MultiheadAttention(
@@ -46,13 +73,15 @@ class CrossAttentionFusion(nn.Module):
 
         self.norm_img = nn.LayerNorm(embed_dim)
         self.norm_txt = nn.LayerNorm(embed_dim)
+        self.norm_img_global = nn.LayerNorm(embed_dim)
+        self.norm_txt_global = nn.LayerNorm(embed_dim)
         self.norm_fuse = nn.LayerNorm(embed_dim)
         self.dropout = nn.Dropout(dropout)
         self.fusion_mlp = nn.Sequential(
-            nn.Linear(embed_dim * 4, embed_dim * 2),
+            nn.Linear(embed_dim * 2, embed_dim),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(embed_dim * 2, embed_dim),
+            nn.Linear(embed_dim, embed_dim),
         )
 
     @staticmethod
@@ -61,10 +90,11 @@ class CrossAttentionFusion(nn.Module):
         batch_size: int,
         seq_len: int,
         name: str,
+        device: torch.device,
     ) -> Optional[torch.Tensor]:
         if mask is None:
             return None
-        mask = mask.to(dtype=torch.bool)
+        mask = mask.to(device=device, dtype=torch.bool)
         if mask.shape != (batch_size, seq_len):
             raise ValueError(
                 f"{name} must have shape {(batch_size, seq_len)}, got {tuple(mask.shape)}"
@@ -89,12 +119,17 @@ class CrossAttentionFusion(nn.Module):
             raise ValueError("Cross-attention expects [B,T,D] or [B,D] inputs.")
         if img_feats.size(0) != txt_feats.size(0):
             raise ValueError("Image and text batch sizes must match.")
+        if img_feats.device != txt_feats.device:
+            raise ValueError(
+                "Image and text features must be on the same device: "
+                f"{img_feats.device} vs {txt_feats.device}."
+            )
 
-        img_feats = self.img_proj(img_feats)
-        txt_feats = self.txt_proj(txt_feats)
+        img_feats = self.img_proj(self.img_input_norm(img_feats))
+        txt_feats = self.txt_proj(self.txt_input_norm(txt_feats))
 
-        img_global = img_feats[:, 0:1, :]
-        txt_global = txt_feats[:, 0:1, :]
+        img_global = self.norm_img_global(img_feats[:, 0:1, :])
+        txt_global = self.norm_txt_global(txt_feats[:, 0:1, :])
         img_local = img_feats[:, 1:, :]
         txt_local = txt_feats[:, 1:, :]
 
@@ -112,15 +147,17 @@ class CrossAttentionFusion(nn.Module):
             batch_size,
             img_local.size(1),
             "img_key_padding_mask",
+            img_feats.device,
         )
         txt_key_padding_mask = self._validate_mask(
             txt_key_padding_mask,
             batch_size,
             txt_local.size(1),
             "txt_key_padding_mask",
+            txt_feats.device,
         )
 
-        txt_ctx, attn_i2t = self.img_to_txt_attn(
+        image_from_text, attn_i2t = self.img_to_txt_attn(
             query=img_global,
             key=txt_local,
             value=txt_local,
@@ -128,7 +165,7 @@ class CrossAttentionFusion(nn.Module):
             need_weights=return_attn,
             average_attn_weights=False,
         )
-        img_ctx, attn_t2i = self.txt_to_img_attn(
+        text_from_image, attn_t2i = self.txt_to_img_attn(
             query=txt_global,
             key=img_local,
             value=img_local,
@@ -137,19 +174,23 @@ class CrossAttentionFusion(nn.Module):
             average_attn_weights=False,
         )
 
-        txt_ctx = self.norm_img(img_global + self.dropout(txt_ctx))
-        img_ctx = self.norm_txt(txt_global + self.dropout(img_ctx))
+        image_enhanced = self.norm_img(
+            img_global + self.dropout(image_from_text)
+        )
+        text_enhanced = self.norm_txt(
+            txt_global + self.dropout(text_from_image)
+        )
 
-        fused = torch.cat(
+        # Raw global embeddings are already retained by the residuals above.
+        # Only enhanced branches enter the compact fusion MLP.
+        joint = torch.cat(
             [
-                img_global.squeeze(1),
-                txt_global.squeeze(1),
-                txt_ctx.squeeze(1),
-                img_ctx.squeeze(1),
+                image_enhanced.squeeze(1),
+                text_enhanced.squeeze(1),
             ],
             dim=-1,
         )
-        fused = self.norm_fuse(self.fusion_mlp(fused))
+        fused = self.norm_fuse(self.fusion_mlp(joint))
 
         if return_attn:
             return fused, {
@@ -157,7 +198,7 @@ class CrossAttentionFusion(nn.Module):
                 "attn_txt_to_img": attn_t2i,
                 "img_global": img_global.squeeze(1),
                 "txt_global": txt_global.squeeze(1),
-                "txt_context_for_image": txt_ctx.squeeze(1),
-                "img_context_for_text": img_ctx.squeeze(1),
+                "txt_context_for_image": image_enhanced.squeeze(1),
+                "img_context_for_text": text_enhanced.squeeze(1),
             }
         return fused

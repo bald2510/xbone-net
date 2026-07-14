@@ -147,81 +147,87 @@ experiments:
       - "**/few-shot/20-shot/*xbone*.yaml"
 
   # -------------------------------------------------------------------------
-  # Resolution and modality ablations
+  # Input ablations: resolution and modality
   # -------------------------------------------------------------------------
   - id: ablation_resolution_nohighres
     patterns:
-      - "**/ablation_study/resolution/*nohighres*.yaml"
-      - "**/ablation/resolution/*nohighres*.yaml"
-      - "**/ablation/highres/*nohighres*.yaml"
-      - "**/ablation/**/*no_highres*.yaml"
+      - "**/ablation_study/input/resolution/no_highres.yaml"
 
-  - id: ablation_modality_image_only
+  - id: ablation_resampler_no_spatial_coordinates
     patterns:
-      - "**/ablation_study/modality/image_only.yaml"
-      - "**/ablation_study/modality/img_only.yaml"
-      - "**/ablation/modality/image_only.yaml"
-      - "**/ablation/**/*image_only*.yaml"
+      - "**/ablation_study/input/resolution/no_spatial_coordinates.yaml"
+
+  - id: ablation_resampler_mean_pool
+    patterns:
+      - "**/ablation_study/input/resolution/mean_pool.yaml"
+
+  - id: ablation_modality_image_only_phase2
+    patterns:
+      - "**/ablation_study/input/modality/image_only_phase2.yaml"
 
   - id: ablation_modality_text_only
     patterns:
-      - "**/ablation_study/modality/text_only.yaml"
+      - "**/ablation_study/input/modality/text_only.yaml"
 
-  - id: ablation_modality_shuffled_report
+  - id: ablation_modality_strict_image_only
     patterns:
-      - "**/ablation_study/modality/shuffled_report.yaml"
+      - "**/ablation_study/input/modality/strict_image_only.yaml"
+
+  - id: ablation_modality_shuffled_report_train_eval
+    patterns:
+      - "**/ablation_study/input/modality/shuffled_report_train_eval.yaml"
+
+  - id: ablation_modality_test_time_shuffled_report
+    patterns:
+      - "**/ablation_study/input/modality/test_time_shuffled_report.yaml"
 
   - id: ablation_report_xray_to_clinical
     patterns:
-      - "**/ablation_study/report_strategy/phase1_xray_phase2_clinical.yaml"
-      - "**/ablation/modality/xray_clinical.yaml"
-      - "**/ablation/report_strategy/xray_clinical.yaml"
-      - "**/ablation/**/*xray*clinical*.yaml"
+      - "**/ablation_study/input/modality/phase1_xray_phase2_clinical.yaml"
 
   # -------------------------------------------------------------------------
-  # Fine-tuning strategy ablations
+  # Backbone / PEFT ablations
   # -------------------------------------------------------------------------
-  - id: ablation_finetune_full_ft
+  - id: ablation_training_full_finetuning
     patterns:
-      - "**/ablation_study/finetune/*full_ft*.yaml"
-      - "**/ablation/finetune/*full_ft*.yaml"
-      - "**/ablation/finetune/*full_finetun*.yaml"
+      - "**/ablation_study/backbone/full_finetuning.yaml"
 
-  - id: ablation_finetune_no_ft
+  - id: ablation_training_frozen_backbone
     patterns:
-      - "**/ablation_study/finetune/*no_ft*.yaml"
-      - "**/ablation/finetune/*no_ft*.yaml"
-      - "**/ablation/finetune/*frozen*.yaml"
+      - "**/ablation_study/backbone/frozen_backbone.yaml"
+
+  - id: ablation_backbone_local_tile_no_grad
+    patterns:
+      - "**/ablation_study/backbone/local_tile_no_grad.yaml"
 
 
 
   # -------------------------------------------------------------------------
-  # Architecture and training-schedule ablations
+  # Fusion and classifier ablations
   # -------------------------------------------------------------------------
-  - id: ablation_crossattn_linear
+  - id: ablation_fusion_concat_empirical_centroid
     patterns:
-      - "**/ablation_study/architecture/*meanpool_linear*.yaml"
-      - "**/ablation_study/architecture/*crossattn_linear*.yaml"
-      - "**/ablation/architecture/*crossattn*linear*.yaml"
-      - "**/ablation/architecture/*cross_attention*linear*.yaml"
+      - "**/ablation_study/fusion/concat_empirical_centroid.yaml"
 
-  - id: ablation_crossattn_cosine
+  - id: ablation_classifier_linear
     patterns:
-      - "**/ablation_study/architecture/*crossattn_cosine*.yaml"
-      - "**/ablation/architecture/*crossattn*cosine*.yaml"
-      - "**/ablation/architecture/*cross_attention*cosine*.yaml"
+      - "**/ablation_study/classifier/linear.yaml"
+
+  - id: ablation_classifier_learnable_cosine
+    patterns:
+      - "**/ablation_study/classifier/learnable_cosine.yaml"
+
+  - id: ablation_classifier_learnable_cosine_proto_loss
+    patterns:
+      - "**/ablation_study/classifier/learnable_cosine_proto_loss.yaml"
 
   - id: ablation_phase2_only
     patterns:
-      - "**/ablation_study/architecture/*phase2_only*.yaml"
-      - "**/ablation/architecture/*phase2_only*.yaml"
-      - "**/ablation/**/*phase_2_only*.yaml"
+      - "**/ablation_study/backbone/phase2_only.yaml"
 
   - id: ablation_phase1_merged
     patterns:
-      - "**/ablation_study/architecture/*phase1_merged*.yaml"
-      - "**/ablation/architecture/*phase1_merged*.yaml"
-      - "**/ablation/**/*phase_1_merged*.yaml"
+      - "**/ablation_study/backbone/phase1_merged.yaml"
 
   # -------------------------------------------------------------------------
   # Out-of-distribution evaluation

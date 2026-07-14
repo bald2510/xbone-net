@@ -2,147 +2,19 @@
 
 from __future__ import annotations
 
-import math
 import os
 
 import pandas as pd
 import torch
-from PIL import Image, ImageStat
+from PIL import Image
 from torch.utils.data import Dataset
 
-
-def letterbox_square(image: Image.Image) -> Image.Image:
-    """Pad an image to a square without changing its aspect ratio."""
-    image = image.convert("RGB")
-    side = max(image.size)
-    canvas = Image.new("RGB", (side, side), color="black")
-    canvas.paste(image, ((side - image.width) // 2, (side - image.height) // 2))
-    return canvas
-
-
-def _axis_positions(length: int, tile_size: int, stride: int) -> list[int]:
-    """Return deterministic positions including an end-aligned border tile."""
-    if length <= tile_size:
-        return [0]
-    positions = list(range(0, length - tile_size + 1, stride))
-    last = length - tile_size
-    if positions[-1] != last:
-        positions.append(last)
-    return positions
-
-
-def _grid_count(width: int, height: int, tile_size: int, stride: int) -> int:
-    return len(_axis_positions(width, tile_size, stride)) * len(
-        _axis_positions(height, tile_size, stride)
-    )
-
-
-def _fit_to_tile_budget(
-    image: Image.Image,
-    tile_size: int,
-    stride: int,
-    max_tiles: int,
-) -> tuple[Image.Image, float]:
-    """Downscale only when needed so a full-coverage grid fits the tile budget."""
-    source = image.convert("RGB")
-    if max_tiles <= 0:
-        return source, 1.0
-
-    width, height = source.size
-    count = _grid_count(max(width, tile_size), max(height, tile_size), tile_size, stride)
-    if count <= max_tiles:
-        return source, 1.0
-
-    scale = min(1.0, math.sqrt(max_tiles / count))
-    while True:
-        resized_width = max(1, round(width * scale))
-        resized_height = max(1, round(height * scale))
-        if _grid_count(
-            max(resized_width, tile_size),
-            max(resized_height, tile_size),
-            tile_size,
-            stride,
-        ) <= max_tiles:
-            break
-        scale *= 0.97
-
-    resized = source.resize(
-        (resized_width, resized_height),
-        resample=Image.Resampling.LANCZOS,
-    )
-    return resized, scale
-
-
-def make_uniform_grid_tiles(
-    image: Image.Image,
-    tile_size: int = 224,
-    stride: int = 224,
-    max_tiles: int = 96,
-    uniform_std_threshold: float = 0.01,
-    return_boxes: bool = False,
-):
-    """Cover the full radiograph with uniform tiles and remove only blank crops.
-
-    No anatomy mask, disease score, proposal ranking, or ground truth is used.
-    When an image exceeds ``max_tiles``, it is isotropically downscaled just
-    enough for the complete grid to fit the budget.
-    """
-    if tile_size < 1 or stride < 1:
-        raise ValueError("tile_size and stride must be positive.")
-    if uniform_std_threshold < 0:
-        raise ValueError("uniform_std_threshold must be non-negative.")
-
-    original = image.convert("RGB")
-    tiled_source, scale = _fit_to_tile_budget(
-        original, tile_size, stride, int(max_tiles)
-    )
-    source_width, source_height = tiled_source.size
-    canvas_width = max(source_width, tile_size)
-    canvas_height = max(source_height, tile_size)
-    if (canvas_width, canvas_height) != tiled_source.size:
-        canvas = Image.new("RGB", (canvas_width, canvas_height), color="black")
-        canvas.paste(tiled_source, (0, 0))
-        tiled_source = canvas
-
-    x_positions = _axis_positions(canvas_width, tile_size, stride)
-    y_positions = _axis_positions(canvas_height, tile_size, stride)
-    threshold = float(uniform_std_threshold) * 255.0
-    tiles: list[Image.Image] = []
-    boxes: list[tuple[int, int, int, int]] = []
-
-    for top in y_positions:
-        for left in x_positions:
-            crop_box = (left, top, left + tile_size, top + tile_size)
-            tile = tiled_source.crop(crop_box)
-            if ImageStat.Stat(tile.convert("L")).stddev[0] < threshold:
-                continue
-
-            original_box = (
-                max(0, round(left / scale)),
-                max(0, round(top / scale)),
-                min(original.width, round((left + tile_size) / scale)),
-                min(original.height, round((top + tile_size) / scale)),
-            )
-            if original_box[2] <= original_box[0] or original_box[3] <= original_box[1]:
-                continue
-            tiles.append(tile)
-            boxes.append(original_box)
-
-    if not tiles:
-        tiles = [letterbox_square(original).resize((tile_size, tile_size))]
-        boxes = [(0, 0, original.width, original.height)]
-
-    return (tiles, boxes) if return_boxes else tiles
-
-
-def normalize_tile_boxes(
-    boxes: list[tuple[int, int, int, int]],
-    image_size: tuple[int, int],
-) -> torch.Tensor:
-    """Normalize source-image XYXY boxes to [0, 1]."""
-    width, height = image_size
-    scale = torch.tensor([width, height, width, height], dtype=torch.float32)
-    return torch.tensor(boxes, dtype=torch.float32) / scale.clamp_min(1.0)
+from .high_resolution import (
+    letterbox_square,
+    make_uniform_grid_tiles,
+    normalize_tile_boxes,
+    prepare_high_resolution_inputs,
+)
 
 
 class BTXRDDataset(Dataset):
@@ -166,6 +38,7 @@ class BTXRDDataset(Dataset):
         clinical_subdir: str = "clinical_v2",
         k_shot: int | None = None,
         seed: int = 42,
+        high_res: dict | None = None,
         **kwargs,
     ):
         del num_classes
@@ -211,7 +84,7 @@ class BTXRDDataset(Dataset):
             self.clinical_dir
         )
 
-        self.high_res_cfg = kwargs.get("high_res", {}) or {}
+        self.high_res_cfg = high_res or {}
         self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
         self.text_only = bool(kwargs.get("text_only", False))
         self.shuffle_reports = bool(kwargs.get("shuffle_reports", False))
@@ -272,26 +145,9 @@ class BTXRDDataset(Dataset):
         labels = self._label(row)
         high_res_fields = {}
         if self.use_high_res:
-            global_source = letterbox_square(image)
-            global_image = self.transform(global_source) if self.transform else global_source
-            raw_tiles, absolute_boxes = make_uniform_grid_tiles(
-                image,
-                tile_size=int(self.high_res_cfg.get("tile_size", 224)),
-                stride=int(self.high_res_cfg.get("stride", 224)),
-                max_tiles=int(self.high_res_cfg.get("max_tiles", 96)),
-                uniform_std_threshold=float(
-                    self.high_res_cfg.get("uniform_std_threshold", 0.01)
-                ),
-                return_boxes=True,
+            high_res_fields = prepare_high_resolution_inputs(
+                image, self.transform, self.high_res_cfg
             )
-            tiles = [self.transform(tile) if self.transform else tile for tile in raw_tiles]
-            high_res_fields = {
-                "pixel_values": global_image,
-                "tile_values": torch.stack(tiles)
-                if isinstance(tiles[0], torch.Tensor)
-                else tiles,
-                "tile_boxes": normalize_tile_boxes(absolute_boxes, image.size),
-            }
         else:
             image = self.transform(image) if self.transform else image
 

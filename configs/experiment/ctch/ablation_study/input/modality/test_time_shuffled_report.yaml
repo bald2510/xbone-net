@@ -1,0 +1,14 @@
+# @package _global_
+# Input/modality robustness: train and validate with paired reports, then
+# shuffle reports only in the test split.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/modality/test_time_shuffled_report
+
+dataset:
+  params:
+    shuffle_report_splits:
+      - test

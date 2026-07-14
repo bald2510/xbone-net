@@ -1,0 +1,13 @@
+# @package _global_
+# Input/resolution ablation: retain learned-query resampling but remove the
+# normalized tile-coordinate embeddings.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/resolution/no_spatial_coordinates
+
+model:
+  visual_resampler:
+    use_spatial_coordinates: false

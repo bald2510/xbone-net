@@ -1,7 +1,7 @@
 # @package _global_
 
 name: 'ctch'
-batch_size: 32
+batch_size: 16
 num_workers: 0
 
 params:
@@ -10,10 +10,12 @@ params:
   clinical_report_dir: "${hydra:runtime.cwd}/data/CTCH/reports/clinical"
   csv_split_path: "${hydra:runtime.cwd}/data/CTCH/ctch-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/CTCH/ctch-labels.csv"
+  k_shot: null
+  seed: ${seed}
 
   # Multi-class classification. This order must match data/CTCH/labels.txt.
   task_type: "multiclass"
-  num_classes: 53
+  num_classes: 22
   classes: [
     'Bình thường',
     'Gãy xương quay',
@@ -24,8 +26,8 @@ params:
     'Gãy xương cẳng tay',
     'Gãy xương cổ chân',
     'Gãy xương cẳng chân',
+    'Gãy xương vùng vai',
     'Gãy xương bàn chân',
-    'Gãy xương đòn',
     'Gãy cột sống thắt lưng',
     'Gãy xương bàn tay',
     'Gãy xương ngón chân',
@@ -35,37 +37,34 @@ params:
     'Gãy xương bánh chè',
     'Gãy xương gót',
     'Gãy cột sống ngực',
-    'U xương lành tính',
     'Gãy xương thuyền',
-    'Trật khớp vai',
-    'Gãy xương mác',
-    'Gãy xương sườn',
-    'Gãy xương vai',
-    'Gãy xương mu',
-    'Trật khớp khuỷu tay',
-    'Trật khớp ngón tay',
-    'Thoái hóa cột sống',
-    'Trật khớp cùng đòn',
-    'U xương ác tính',
-    'Bệnh Gout',
-    'Thoái hóa khớp',
-    'Trật khớp bánh chè',
-    'Viêm tủy xương',
-    'Tiêu xương',
-    'Trật khớp ngón chân',
-    'Trật khớp gối',
-    'Loạn sản xơ xương',
-    'Gãy xương sên',
-    'Lao xương',
-    'Trật khớp cổ tay',
-    'Gãy xương cụt',
-    'Gãy xương ổ cối',
-    'Cắt cụt bàn chân',
-    'Cắt cụt ngón chân',
-    'Trật khớp cổ chân',
-    'Gãy xương chậu',
-    'Gãy cột sống và khung chậu',
-    'Biến dạng xương',
-    'Gãy cột sống cổ',
-    'Viêm cột sống dính khớp',
+    'Gãy xương vùng chậu',
+  ]
+
+  # English medical names used only to construct zero-shot text prompts.
+  # Keep this list index-aligned with `classes`; Vietnamese names remain the
+  # canonical CSV/class-ID labels used by the dataset and reported metrics.
+  prompt_classes: [
+    'Normal',
+    'Radius fracture',
+    'Humerus fracture',
+    'Femur fracture',
+    'Finger phalanx fracture',
+    'Tibia fracture',
+    'Forearm fracture',
+    'Ankle fracture',
+    'Lower leg fracture',
+    'Shoulder girdle fracture',
+    'Foot bone fracture',
+    'Lumbar vertebral fracture',
+    'Metacarpal fracture',
+    'Toe phalanx fracture',
+    'Arthritis',
+    'Ulna fracture',
+    'Finger amputation',
+    'Patella fracture',
+    'Calcaneus fracture',
+    'Thoracic vertebral fracture',
+    'Scaphoid fracture',
+    'Pelvic fracture',
   ]

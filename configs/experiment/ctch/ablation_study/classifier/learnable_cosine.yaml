@@ -1,0 +1,20 @@
+# @package _global_
+# Replace empirical class means with learnable cosine prototypes. The loss is
+# weighted CE only (lambda_proto=0), isolating head parameterization.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/classifier/learnable_cosine
+
+params:
+  phase2:
+    classifier_type: learnable_prototype
+    classifier_params:
+      scale: 15.0
+    loss_type: weighted_ce_plus_proto
+    loss:
+      proto_margin: 0.3
+      lambda_proto: 0.0
+      label_smoothing: 0.0

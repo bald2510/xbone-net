@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluate import adapt_state_dict_keys, load_state_dict_checked
 from src.datasets.builder import build_dataloader
 from src.models.builder import build_model, setup_phase2_modules
+from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id
 
 
@@ -201,7 +202,9 @@ def cross_modal_attribution(model, batch: dict, target_class: int):
         retain_graph=False,
     )
 
-    raw_visual = attention["attn_txt_to_img"].mean(dim=1)[:, 0]
+    raw_visual = reduce_attention_to_keys(
+        attention["attn_txt_to_img"], image_padding
+    )
     visual_gradient = torch.relu(
         (image_tokens[:, 1:] * image_gradient[:, 1:]).sum(dim=-1)
     )
@@ -224,7 +227,9 @@ def cross_modal_attribution(model, batch: dict, target_class: int):
         "bq,bqn->bn", visual_query_distribution, resampler_attention
     )
 
-    raw_text = attention["attn_img_to_txt"].mean(dim=1)[:, 0]
+    raw_text = reduce_attention_to_keys(
+        attention["attn_img_to_txt"], text_padding
+    )
     text_gradient_score = torch.relu(
         (text_tokens[:, 1:] * text_gradient[:, 1:]).sum(dim=-1)
     )

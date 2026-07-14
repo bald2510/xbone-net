@@ -1,0 +1,192 @@
+HƯỚNG DẪN SỬ DỤNG XBone-Net
+===========================
+
+1. ĐIỀU KIỆN TRƯỚC KHI CHẠY
+---------------------------
+- Đã hoàn thành các bước trong HuongDanCaiDat.txt.
+- Đã kích hoạt môi trường:
+  conda activate Thesis
+- Terminal đang ở thư mục gốc xbone-net.
+- Dữ liệu BTXRD hoặc CTCH đã được đặt đúng cấu trúc.
+
+
+2. BIÊN DỊCH/KIỂM TRA MÃ NGUỒN
+------------------------------
+XBone-Net được viết bằng Python nên không cần biên dịch thành file thực thi như
+C/C++. Bước tương đương là biên dịch bytecode để phát hiện lỗi cú pháp:
+
+  python -m compileall -q train.py evaluate.py evaluate_ood.py inference.py src tools
+
+Lệnh thành công sẽ không in lỗi. Có thể kiểm tra thêm dependency:
+  python tools/generate_requirements.py --check
+
+Chạy kiểm tra nhanh toàn bộ cấu hình:
+GPU:
+  run_smoke_test.bat
+
+Hoặc chạy trực tiếp:
+  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cuda --batch-size 2
+
+CPU:
+  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cpu --batch-size 2
+
+
+3. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT
+-----------------------------
+3.1. BTXRD
+  python train.py +experiment=btxrd/proposed/ours_xbone_net
+
+3.2. CTCH
+  python train.py +experiment=ctch/proposed/ours_xbone_net
+
+Chạy với seed cụ thể:
+  python train.py +experiment=btxrd/proposed/ours_xbone_net ++seed=123
+
+Giảm batch size khi thiếu VRAM:
+  python train.py +experiment=btxrd/proposed/ours_xbone_net dataset.batch_size=4 model.tile_encode_chunk_size=8
+
+Checkpoint mặc định được lưu tại:
+  checkpoints/<dataset>/<nhom_thi_nghiem>/<ten_thi_nghiem>/seed_<seed>/
+
+Các file quan trọng:
+  best_phase1.pth
+  best_phase2.pth
+
+Log TensorBoard/CSV được lưu trong runs/ và kết quả Hydra được lưu trong outputs/.
+
+
+4. ĐÁNH GIÁ MÔ HÌNH ĐÃ HUẤN LUYỆN
+---------------------------------
+4.1. Đánh giá BTXRD
+  python evaluate.py +experiment=btxrd/proposed/ours_xbone_net
+
+4.2. Đánh giá CTCH
+  python evaluate.py +experiment=ctch/proposed/ours_xbone_net
+
+4.3. Đánh giá với bootstrap CI 95% và lưu embedding
+  python evaluate.py +experiment=btxrd/proposed/ours_xbone_net --bootstrap --n-bootstrap 10000 --save-embeddings
+
+Chỉ định thư mục kết quả:
+  python evaluate.py +experiment=btxrd/proposed/ours_xbone_net --output-dir results/btxrd/proposed/ours_xbone_net/seed_42
+
+Kết quả gồm metrics.json và, khi dùng --save-embeddings, file embeddings.npz.
+
+
+5. CHẠY ZERO-SHOT BASELINE
+--------------------------
+Zero-shot không cần train và kết quả là xác định đối với cùng model, dữ liệu và
+prompt; không cần chạy nhiều seed để ước lượng phương sai huấn luyện.
+
+BTXRD:
+  python evaluate.py +experiment=btxrd/baselines/zeroshot/biomedclip_zeroshot
+  python evaluate.py +experiment=btxrd/baselines/zeroshot/clip_zeroshot
+  python evaluate.py +experiment=btxrd/baselines/zeroshot/pubmedclip_zeroshot
+  python evaluate.py +experiment=btxrd/baselines/zeroshot/medclip_zeroshot
+
+CTCH:
+  python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot
+  python evaluate.py +experiment=ctch/baselines/zeroshot/clip_zeroshot
+  python evaluate.py +experiment=ctch/baselines/zeroshot/pubmedclip_zeroshot
+  python evaluate.py +experiment=ctch/baselines/zeroshot/medclip_zeroshot
+
+MedCLIP phải được cài theo HuongDanCaiDat.txt trước khi chạy cấu hình tương ứng.
+
+
+6. CHẠY FEW-SHOT
+----------------
+Ví dụ CTCH:
+  python train.py +experiment=ctch/few_shot/1_shot/ours_xbone_net
+  python train.py +experiment=ctch/few_shot/10_shot/lora_biomedclip
+  python train.py +experiment=ctch/few_shot/20_shot/lora_pubmedclip
+
+Ví dụ BTXRD:
+  python train.py +experiment=btxrd/few_shot/1_shot/lora_biomedclip
+  python train.py +experiment=btxrd/few_shot/10_shot/lora_pubmedclip
+  python train.py +experiment=btxrd/few_shot/20_shot/ours_xbone_net_variant_b
+
+Tập validation và test không bị few-shot sampling; chỉ tập train được lấy tối
+đa k mẫu cho mỗi lớp theo seed.
+
+
+7. CHẠY NHIỀU SEED/TOÀN BỘ NHÓM THÍ NGHIỆM
+-------------------------------------------
+Chạy một cấu hình trực tiếp với ba seed:
+  python tools/run_all.py --group btxrd/proposed/ours_xbone_net --seeds 42 123 456
+
+Chỉ train:
+  python tools/run_all.py --group btxrd/proposed/ours_xbone_net --seeds 42 123 456 --train-only
+
+Chỉ evaluate checkpoint đã có:
+  python tools/run_all.py --group btxrd/proposed/ours_xbone_net --seeds 42 123 456 --eval-only
+
+Chỉ in bảng kết quả đã lưu:
+  python tools/run_all.py --group btxrd/proposed/ours_xbone_net --seeds 42 123 456 --table
+
+Trên Windows có thể dùng:
+  train.bat --group btxrd/proposed/ours_xbone_net --seeds 42 123 456
+  eval.bat --group btxrd/proposed/ours_xbone_net --seeds 42 123 456
+
+Lưu ý: nếu gọi theo tên nhóm như proposed, zeroshot hoặc ablation thì chỉ các
+thí nghiệm đang được khai báo/không bị comment trong EXPERIMENTS của
+tools/run_all.py mới được chạy. Truyền đường dẫn cấu hình trực tiếp như các lệnh
+trên sẽ không phụ thuộc danh sách nhóm đó.
+
+
+8. SUY LUẬN MỘT ẢNH
+-------------------
+Ví dụ BTXRD:
+  python inference.py +experiment=btxrd/proposed/ours_xbone_net --image data/BTXRD/images/<TEN_ANH>.png --clinical-text "Nội dung tiền sử lâm sàng" --checkpoint checkpoints/btxrd/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
+
+Ví dụ CTCH:
+  python inference.py +experiment=ctch/proposed/ours_xbone_net --image data/CTCH/images/<TEN_ANH>.png --clinical-text "Nội dung tiền sử lâm sàng" --checkpoint checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
+
+Đổi --device cpu nếu không có GPU. Không sử dụng nội dung kết luận X-quang làm
+clinical-text trong pipeline chính vì có thể gây label leakage.
+
+Suy luận kèm OOD reference embeddings:
+  python inference.py +experiment=btxrd/proposed/ours_xbone_net --image <ANH.png> --clinical-text "<TIEN_SU>" --checkpoint <best_phase2.pth> --id-embeddings <embeddings.npz> --method mahalanobis
+
+Các phương pháp --method hỗ trợ: mahalanobis, knn, text_anchor.
+
+
+9. ĐÁNH GIÁ OOD
+----------------
+Bước 1: tạo ID embeddings bằng evaluate.py --save-embeddings.
+Bước 2: chuẩn bị OOD embeddings có cùng schema.
+Bước 3: chạy:
+
+  python evaluate_ood.py --id-embeddings <ID_EMBEDDINGS.npz> --ood-embeddings <OOD_EMBEDDINGS.npz> --methods mahalanobis,knn,energy --seed 42 --output-dir results/ood
+
+Nếu có tập reference ID tách biệt:
+  python evaluate_ood.py --id-embeddings <ID_TEST.npz> --ref-embeddings <ID_REFERENCE.npz> --ood-embeddings <OOD.npz> --methods mahalanobis,knn,energy --output-dir results/ood
+
+Với text_anchor cần thêm config/checkpoint và danh sách pathology phù hợp; xem:
+  python evaluate_ood.py --help
+
+
+10. XEM LOG HUẤN LUYỆN
+----------------------
+  tensorboard --logdir runs
+
+Sau đó mở địa chỉ TensorBoard được in trên terminal, thường là:
+  http://localhost:6006
+
+
+11. VỊ TRÍ KẾT QUẢ
+------------------
+- checkpoints/: trọng số Phase 1 và Phase 2.
+- results/: metrics.json, embeddings.npz, kết quả tổng hợp và OOD.
+- runs/: TensorBoard event và CSV log.
+- outputs/: cấu hình và log do Hydra tạo.
+
+
+12. DỪNG VÀ TIẾP TỤC
+--------------------
+- Dừng tiến trình đang chạy: Ctrl+C.
+- Đánh giá lại không cần train: dùng evaluate.py hoặc --eval-only.
+- Chạy riêng Phase 2 qua runner khi đã có checkpoint phù hợp:
+  python tools/run_all.py --group <DUONG_DAN_CONFIG> --phase2-only
+
+Không xóa checkpoint hoặc thay đổi thứ tự lớp trong file dataset config giữa
+train và evaluate.
+

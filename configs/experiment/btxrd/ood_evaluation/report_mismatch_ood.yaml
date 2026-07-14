@@ -6,7 +6,7 @@
 # ===============================================================================
 
 defaults:
-- /experiment/btxrd/proposed/xbone_highres
+- /experiment/btxrd/proposed/ours_xbone_net
 - _self_
 
 # --- Experiment Identifier ---

@@ -1,0 +1,10 @@
+# @package _global_
+defaults:
+  - /experiment/ctch/baselines/peft_finetuned/lora_biomedclip
+  - _self_
+
+experiment_name: ctch/few_shot/1_shot/lora_biomedclip
+
+dataset:
+  params:
+    k_shot: 1

@@ -1,0 +1,5 @@
+type: "empirical_centroid"
+params:
+  feature_dim: 512
+  num_classes: 10
+  scale: 15.0

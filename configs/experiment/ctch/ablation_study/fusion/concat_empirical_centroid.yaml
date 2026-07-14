@@ -1,0 +1,13 @@
+# @package _global_
+# Replace cross-attention with masked visual-token mean + global-text concat.
+# The empirical-centroid head and both training phases are unchanged.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/fusion/concat_empirical_centroid
+
+params:
+  phase2:
+    fusion_type: concat

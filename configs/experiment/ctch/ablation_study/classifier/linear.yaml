@@ -1,0 +1,13 @@
+# @package _global_
+# Replace only the empirical-centroid classifier with a trainable linear head.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/classifier/linear
+
+params:
+  phase2:
+    classifier_type: linear
+    loss_type: ce

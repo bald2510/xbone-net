@@ -26,6 +26,7 @@ from omegaconf import DictConfig
 import matplotlib.pyplot as plt
 
 from src.models.builder import build_model, setup_phase2_modules
+from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.datasets.btxrd import (
     letterbox_square,
     make_uniform_grid_tiles,
@@ -391,7 +392,7 @@ def main(cfg: DictConfig) -> None:
     model_prototypes = None
     if hasattr(model, 'head') and hasattr(model.head, 'prototypes'):
         model_prototypes = model.head.prototypes.detach().cpu().numpy()
-        print("Successfully extracted trained class prototypes from Prototypical Head for OOD centering.")
+        print("Successfully extracted classifier class centers for OOD centering.")
 
     detector = None
     threshold = None
@@ -615,8 +616,12 @@ def main(cfg: DictConfig) -> None:
     if attn_info is not None:
         img_to_txt = attn_info["attn_img_to_txt"]
         txt_to_img = attn_info["attn_txt_to_img"]
-        top_attn = img_to_txt.mean(dim=(-1, -2)).squeeze(0).cpu().numpy()
-        bottom_attn = txt_to_img.mean(dim=(-1, -2)).squeeze(0).cpu().numpy()
+        text_attention = reduce_attention_to_keys(
+            img_to_txt, txt_mask
+        ).squeeze(0)
+        image_attention = reduce_attention_to_keys(
+            txt_to_img, img_mask
+        ).squeeze(0)
 
         top_context = attn_info["txt_context_for_image"]
         bottom_context = attn_info["img_context_for_text"]
@@ -627,13 +632,19 @@ def main(cfg: DictConfig) -> None:
         print("\n" + "=" * 60)
         print("BI-DIRECTIONAL CROSS-ATTENTION MAP")
         print("=" * 60)
-        print("1. Image query -> text keys/values:")
+        text_top_k = min(10, text_attention.numel())
+        image_top_k = min(10, image_attention.numel())
+        text_weights, text_indices = torch.topk(text_attention, text_top_k)
+        image_weights, image_indices = torch.topk(image_attention, image_top_k)
+        print("1. Image query -> most attended text-token positions:")
         print("   " + " | ".join(
-            f"H{i + 1}: {weight:.4f}" for i, weight in enumerate(top_attn)
+            f"T{int(index) + 1}: {float(weight):.4f}"
+            for weight, index in zip(text_weights, text_indices)
         ))
-        print("2. Text query -> image keys/values:")
+        print("2. Text query -> most attended visual-token positions:")
         print("   " + " | ".join(
-            f"H{i + 1}: {weight:.4f}" for i, weight in enumerate(bottom_attn)
+            f"V{int(index) + 1}: {float(weight):.4f}"
+            for weight, index in zip(image_weights, image_indices)
         ))
         print(f"3. Cross-modal context cosine affinity: {mutual_affinity:.4f}")
         print("=" * 60)

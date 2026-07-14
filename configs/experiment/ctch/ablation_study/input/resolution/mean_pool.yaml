@@ -1,0 +1,13 @@
+# @package _global_
+# Input/resolution ablation: replace 24 learned resampler queries with one
+# masked-mean local token while retaining coordinate embeddings.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/input/resolution/mean_pool
+
+model:
+  visual_resampler:
+    aggregation: mean_pool

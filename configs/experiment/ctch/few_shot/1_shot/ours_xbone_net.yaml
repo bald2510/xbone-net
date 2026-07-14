@@ -1,0 +1,10 @@
+# @package _global_
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/few_shot/1_shot/ours_xbone_net
+
+dataset:
+  params:
+    k_shot: 1

@@ -5,7 +5,7 @@ Implements the builder pattern for assembling the complete XBone-Net pipeline:
   - Backbone selection (BiomedCLIP, OpenCLIP, ResNet-50, DenseNet-121, MedCLIP)
   - Parameter-Efficient Fine-Tuning (PEFT): LoRA, QLoRA, Full FT
   - Multimodal fusion module wiring (Cross-Attention, Concat, Identity)
-  - Classifier head instantiation (Prototypical, Linear, Identity)
+  - Classifier head instantiation (Empirical centroid, prototype ablation, linear)
   - Phase 2 module hot-swapping (transitioning from Phase 1 to Phase 2)
 """
 
@@ -33,7 +33,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         1. Instantiate the backbone encoder based on backbone_type.
         2. Apply PEFT (LoRA, QLoRA, or full fine-tuning) to visual and text encoders.
         3. Build the fusion module (identity, cross-attention, or concat).
-        4. Build the classifier head (identity, linear, or prototypical).
+        4. Build the classifier head (identity, linear, or empirical centroid).
         5. Wrap sub-modules inside XBoneMultiModalModel composite.
 
     Args:
@@ -95,6 +95,10 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             resampler_cfg=cfg.get('visual_resampler', {}),
             local_pool_grid=cfg.get('local_pool_grid', 2),
             tile_encode_chunk_size=cfg.get('tile_encode_chunk_size', 32),
+            local_tile_grad_enabled=cfg.get('local_tile_grad_enabled', True),
+            local_tile_gradient_checkpointing=cfg.get(
+                'local_tile_gradient_checkpointing', True
+            ),
         )
         print(f"[Builder] BiomedCLIP backbone (frozen={freeze_base})")
     else:
@@ -236,6 +240,22 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
 
         else:
             raise ValueError(f"Unknown PEFT type: {peft_type}")
+
+    if backbone_type == "biomedclip" and hasattr(backbone, "visual_resampler"):
+        trainable_visual = sum(
+            parameter.numel()
+            for parameter in backbone.model.visual.parameters()
+            if parameter.requires_grad
+        )
+        local_grad_active = (
+            backbone.local_tile_grad_enabled and trainable_visual > 0
+        )
+        print(
+            "[Builder] High-res local tile gradients: "
+            f"{'enabled' if local_grad_active else 'disabled'} "
+            f"(checkpointing={backbone.local_tile_gradient_checkpointing}, "
+            f"trainable_visual={trainable_visual:,})"
+        )
         
     # --- Instantiate fusion and classifier head modules ---
     fusion_cfg = cfg.get('fusion', {'type': 'none', 'params': {}})
@@ -260,7 +280,7 @@ def setup_phase2_modules(model, cfg: dict, device):
 
     Phase 1 contrastive learning uses identity pass-through modules. When transitioning
     to Phase 2, this function swaps uninitialized placeholder modules with configured
-    fusion (e.g., cross-attention) and head (e.g., prototypical) modules in-place.
+    fusion (e.g., cross-attention) and head (e.g., empirical centroid) modules in-place.
 
     Args:
         model (XBoneMultiModalModel): Pre-constructed composite model (modified in-place).
@@ -328,7 +348,7 @@ def setup_phase2_modules(model, cfg: dict, device):
         if fusion_type == "none":
             fusion_type = "cross_attention"
         if classifier_type == "none":
-            classifier_type = "prototypical"
+            classifier_type = "empirical_centroid"
 
     # Phase-1 fusion/head are frozen and untrained, so always reconstruct the exact
     # requested Phase-2 modules. This also makes ablation overrides reliable.

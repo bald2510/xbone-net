@@ -8,6 +8,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 from open_clip import create_model_and_transforms, get_tokenizer
 
 
@@ -63,13 +64,24 @@ class SpatialTokenResampler(nn.Module):
         num_heads: int = 8,
         depth: int = 2,
         dropout: float = 0.1,
+        use_spatial_coordinates: bool = True,
+        aggregation: str = "learned_queries",
     ):
         super().__init__()
         if num_tokens < 1 or depth < 1:
             raise ValueError("num_tokens and depth must be positive.")
+        if aggregation not in {"learned_queries", "mean_pool"}:
+            raise ValueError(
+                "aggregation must be 'learned_queries' or 'mean_pool'."
+            )
         self.num_tokens = int(num_tokens)
-        self.queries = nn.Parameter(torch.empty(1, self.num_tokens, dim))
-        nn.init.trunc_normal_(self.queries, std=0.02)
+        self.use_spatial_coordinates = bool(use_spatial_coordinates)
+        self.aggregation = aggregation
+        if aggregation == "learned_queries":
+            self.queries = nn.Parameter(torch.empty(1, self.num_tokens, dim))
+            nn.init.trunc_normal_(self.queries, std=0.02)
+        else:
+            self.register_parameter("queries", None)
         spatial_dim = max(dim // 4, 32)
         self.spatial_projection = nn.Sequential(
             nn.Linear(4, spatial_dim),
@@ -78,6 +90,8 @@ class SpatialTokenResampler(nn.Module):
         )
         self.layers = nn.ModuleList(
             [_ResamplerLayer(dim, num_heads, dropout) for _ in range(depth)]
+            if aggregation == "learned_queries"
+            else []
         )
         self.last_attention: Optional[torch.Tensor] = None
         self.last_local_boxes: Optional[torch.Tensor] = None
@@ -102,7 +116,28 @@ class SpatialTokenResampler(nn.Module):
 
         local_mask = local_mask.to(device=local_tokens.device, dtype=torch.bool)
         local_boxes = local_boxes.to(device=local_tokens.device, dtype=local_tokens.dtype)
-        positioned_tokens = local_tokens + self.spatial_projection(local_boxes)
+        positioned_tokens = local_tokens
+        if self.use_spatial_coordinates:
+            positioned_tokens = positioned_tokens + self.spatial_projection(
+                local_boxes
+            )
+
+        if self.aggregation == "mean_pool":
+            valid = local_mask.unsqueeze(-1).to(positioned_tokens.dtype)
+            pooled = (positioned_tokens * valid).sum(dim=1) / valid.sum(
+                dim=1
+            ).clamp_min(1.0)
+            normalized_weights = local_mask.to(positioned_tokens.dtype)
+            normalized_weights = normalized_weights / normalized_weights.sum(
+                dim=1, keepdim=True
+            ).clamp_min(1.0)
+            self.last_attention = normalized_weights.unsqueeze(1).detach()
+            self.last_local_boxes = local_boxes.detach()
+            self.last_attention_layers_raw = []
+            return torch.cat(
+                [global_feature.unsqueeze(1), pooled.unsqueeze(1)], dim=1
+            )
+
         queries = self.queries.expand(local_tokens.size(0), -1, -1)
         queries = queries + global_feature.unsqueeze(1)
 
@@ -120,7 +155,7 @@ class SpatialTokenResampler(nn.Module):
 
 
 class BiomedCLIPFoundation(nn.Module):
-    """BiomedCLIP global encoder plus frozen local patch encoder."""
+    """BiomedCLIP global encoder plus a configurable local-tile encoder."""
 
     def __init__(self, freeze_base: bool = True, **kwargs):
         super().__init__()
@@ -131,8 +166,16 @@ class BiomedCLIPFoundation(nn.Module):
         self.num_visual_tokens = int(kwargs.get("num_visual_tokens", 0))
         self.local_pool_grid = int(kwargs.get("local_pool_grid", 2))
         self.tile_encode_chunk_size = int(kwargs.get("tile_encode_chunk_size", 32))
+        self.local_tile_grad_enabled = bool(
+            kwargs.get("local_tile_grad_enabled", True)
+        )
+        self.local_tile_gradient_checkpointing = bool(
+            kwargs.get("local_tile_gradient_checkpointing", True)
+        )
         if self.local_pool_grid < 1:
             raise ValueError("local_pool_grid must be positive.")
+        if self.tile_encode_chunk_size < 1:
+            raise ValueError("tile_encode_chunk_size must be positive.")
         if self.num_visual_tokens > 0:
             resampler_cfg = kwargs.get("resampler_cfg", {}) or {}
             self.visual_resampler = SpatialTokenResampler(
@@ -191,6 +234,50 @@ class BiomedCLIPFoundation(nn.Module):
         )
         return pooled.flatten(2).transpose(1, 2)
 
+    def _encode_local_tile_chunk(self, tile_chunk: torch.Tensor) -> torch.Tensor:
+        """Encode one tile chunk while preserving gradients when requested."""
+        patch_features = self.model.visual.trunk.forward_features(tile_chunk)
+        projected = self.model.visual.head(patch_features)
+        return self._pool_patch_tokens(projected)
+
+    def _encode_valid_local_tiles(
+        self,
+        valid_tiles: torch.Tensor,
+        track_gradients: bool,
+    ) -> torch.Tensor:
+        """Encode valid tiles in bounded chunks with optional recomputation."""
+        if valid_tiles.size(0) == 0:
+            raise ValueError("At least one valid high-resolution tile is required.")
+
+        encoded_chunks = []
+        for start in range(0, valid_tiles.size(0), self.tile_encode_chunk_size):
+            tile_chunk = valid_tiles[start:start + self.tile_encode_chunk_size]
+            if track_gradients:
+                if self.local_tile_gradient_checkpointing:
+                    encoded = checkpoint(
+                        self._encode_local_tile_chunk,
+                        tile_chunk,
+                        use_reentrant=False,
+                    )
+                else:
+                    encoded = self._encode_local_tile_chunk(tile_chunk)
+            else:
+                with torch.no_grad():
+                    encoded = self._encode_local_tile_chunk(tile_chunk)
+            encoded_chunks.append(encoded)
+        return torch.cat(encoded_chunks, dim=0)
+
+    def _should_track_local_tile_gradients(self) -> bool:
+        """Enable local gradients only when training and visual weights can update."""
+        if not self.local_tile_grad_enabled or not self.training:
+            return False
+        if not torch.is_grad_enabled():
+            return False
+        return any(
+            parameter.requires_grad
+            for parameter in self.model.visual.parameters()
+        )
+
     def _expand_local_boxes(self, tile_boxes: torch.Tensor) -> torch.Tensor:
         """Split each tile box into the same GxG layout as pooled patch tokens."""
         grid = self.local_pool_grid
@@ -239,15 +326,10 @@ class BiomedCLIPFoundation(nn.Module):
         flat_tiles = tile_values.reshape(-1, channels, height, width)
         valid_flat = tile_mask.flatten()
         valid_tiles = flat_tiles[valid_flat]
-        encoded_chunks = []
-        with torch.no_grad():
-            for start in range(0, valid_tiles.size(0), self.tile_encode_chunk_size):
-                patch_features = self.model.visual.trunk.forward_features(
-                    valid_tiles[start:start + self.tile_encode_chunk_size]
-                )
-                projected = self.model.visual.head(patch_features)
-                encoded_chunks.append(self._pool_patch_tokens(projected))
-        valid_local = torch.cat(encoded_chunks, dim=0)
+        valid_local = self._encode_valid_local_tiles(
+            valid_tiles,
+            track_gradients=self._should_track_local_tile_gradients(),
+        )
 
         tokens_per_tile = self.local_pool_grid ** 2
         local_tokens = torch.zeros(
@@ -269,7 +351,9 @@ class BiomedCLIPFoundation(nn.Module):
             # the large frozen tile encoder does not need to retain its graph.
             local_tokens = local_tokens.detach().requires_grad_(True)
         self.last_global_feature = global_feature.detach()
-        self.last_local_tokens = local_tokens
+        self.last_local_tokens = (
+            local_tokens if self.explain_mode else local_tokens.detach()
+        )
         self.last_local_mask = local_mask.detach()
         self.visual_resampler.capture_explanations = self.explain_mode
 
