@@ -124,7 +124,7 @@ EXPERIMENTS = OrderedDict({
     ],
 })
 
-DEFAULT_SEEDS = [456]
+DEFAULT_SEEDS = [42, 123, 456]
 
 METRIC_KEYS = [
     "f1_macro", "accuracy", "sensitivity", "specificity",
