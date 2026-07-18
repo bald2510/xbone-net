@@ -1,0 +1,16 @@
+# @package _global_
+# Modality ablation: remove text from both training phases.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/modality/image_only
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    use_text: false
+    init_from_phase1_merged: false

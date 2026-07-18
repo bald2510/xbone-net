@@ -102,7 +102,7 @@ Ví dụ CTCH:
 Ví dụ BTXRD:
   python train.py +experiment=btxrd/few_shot/1_shot/lora_biomedclip
   python train.py +experiment=btxrd/few_shot/10_shot/lora_pubmedclip
-  python train.py +experiment=btxrd/few_shot/20_shot/ours_xbone_net_variant_b
+  python train.py +experiment=btxrd/few_shot/20_shot/ours_xbone_net
 
 Tập validation và test không bị few-shot sampling; chỉ tập train được lấy tối
 đa k mẫu cho mỗi lớp theo seed.
@@ -126,10 +126,35 @@ Trên Windows có thể dùng:
   train.bat --group btxrd/proposed/ours_xbone_net --seeds 42 123 456
   eval.bat --group btxrd/proposed/ours_xbone_net --seeds 42 123 456
 
-Lưu ý: nếu gọi theo tên nhóm như proposed, zeroshot hoặc ablation thì chỉ các
-thí nghiệm đang được khai báo/không bị comment trong EXPERIMENTS của
-tools/run_all.py mới được chạy. Truyền đường dẫn cấu hình trực tiếp như các lệnh
-trên sẽ không phụ thuộc danh sách nhóm đó.
+Registry hiện chứa đầy đủ các config classification. Chạy toàn bộ 59 config:
+  python tools/run_all.py --seeds 42 123 456 --bootstrap
+
+Các config có huấn luyện dùng đủ ba seed. Zero-shot là deterministic nên
+run_all chỉ evaluate một lần; lặp ba nhãn seed sẽ là pseudo-replication.
+
+Chạy các config cần so sánh training time trên cùng một GPU:
+  python tools/run_all.py --group training_time --seeds 42 123 456
+
+Chạy 48 config còn lại (không trùng nhóm timing) trên RTX 5090:
+  python tools/run_all.py --group non_timing --seeds 42 123 456 --bootstrap
+
+Trước tiên thử batch vật lý mặc định = 16. Nếu RTX 5060 Ti 16GB không đủ VRAM,
+chọn micro-batch lớn nhất chạy được với config nặng nhất, rồi dùng đúng cùng
+thiết lập đó cho toàn bộ nhóm timing. Ví dụ fallback:
+  python tools/run_all.py --group training_time --seeds 42 123 456 --batch-size 2 --gradient-accumulation-steps 8
+
+Lưu ý: accumulation giữ optimizer effective batch = 16 nhưng Phase 1 contrastive
+vẫn chỉ thấy 2 mẫu trong mỗi forward. Không trộn hiệu năng Phase 1 của giao thức
+này với kết quả batch vật lý 16; chỉ dùng cho timing hoặc chạy lại mọi mô hình
+contrastive với cùng micro-batch.
+
+Có thể tách theo dataset:
+  python tools/run_all.py --group ctch_training_time --seeds 42 123 456
+  python tools/run_all.py --group btxrd_training_time --seeds 42 123 456
+
+Mỗi seed tạo training_summary.json cạnh checkpoint. Chỉ so sánh thời gian giữa
+các run có cùng GPU, precision, micro-batch, gradient accumulation và software
+environment.
 
 
 8. SUY LUẬN MỘT ẢNH
@@ -143,25 +168,27 @@ Ví dụ CTCH:
 Đổi --device cpu nếu không có GPU. Không sử dụng nội dung kết luận X-quang làm
 clinical-text trong pipeline chính vì có thể gây label leakage.
 
-Suy luận kèm OOD reference embeddings:
-  python inference.py +experiment=btxrd/proposed/ours_xbone_net --image <ANH.png> --clinical-text "<TIEN_SU>" --checkpoint <best_phase2.pth> --id-embeddings <embeddings.npz> --method mahalanobis
+Suy luận CTCH kèm OOD reference embeddings:
+  python inference.py +experiment=ctch/proposed/ours_xbone_net --image <ANH.png> --clinical-text "<TIEN_SU>" --checkpoint <best_phase2.pth> --id-embeddings <embeddings.npz> --method mahalanobis
 
 Các phương pháp --method hỗ trợ: mahalanobis, knn, text_anchor.
 
 
 9. ĐÁNH GIÁ OOD
 ----------------
-Bước 1: tạo ID embeddings bằng evaluate.py --save-embeddings.
-Bước 2: chuẩn bị OOD embeddings có cùng schema.
-Bước 3: chạy:
+OOD và explainability chỉ chạy trên proposed được train bằng CTCH. Chạy toàn bộ
+pipeline khóa sẵn (export feature, OOD, explainability, aggregate 3 seed):
+  python tools/run_ctch_analysis.py
 
-  python evaluate_ood.py --id-embeddings <ID_EMBEDDINGS.npz> --ood-embeddings <OOD_EMBEDDINGS.npz> --methods mahalanobis,knn,energy --seed 42 --output-dir results/ood
+Chỉ chạy OOD:
+  python tools/run_ctch_analysis.py --analyses ood
 
-Nếu có tập reference ID tách biệt:
-  python evaluate_ood.py --id-embeddings <ID_TEST.npz> --ref-embeddings <ID_REFERENCE.npz> --ood-embeddings <OOD.npz> --methods mahalanobis,knn,energy --output-dir results/ood
+Chỉ xuất feature hoặc chỉ dựng lại bảng từ kết quả hiện có:
+  python tools/run_ctch_analysis.py --feature-only
+  python tools/run_ctch_analysis.py --table
 
-Với text_anchor cần thêm config/checkpoint và danh sách pathology phù hợp; xem:
-  python evaluate_ood.py --help
+Không gọi evaluate_ood.py trực tiếp với checkpoint BTXRD hoặc protocol tự tạo;
+xem docs/ctch_ood_explainability.md để biết các scenario và ràng buộc thống kê.
 
 
 10. XEM LOG HUẤN LUYỆN
@@ -190,3 +217,46 @@ Sau đó mở địa chỉ TensorBoard được in trên terminal, thường là
 Không xóa checkpoint hoặc thay đổi thứ tự lớp trong file dataset config giữa
 train và evaluate.
 
+
+13. ĐO HIỆU QUẢ TÍNH TOÁN
+-------------------------
+Đo nhanh proposed model với batch size 1:
+
+  python tools/benchmark_efficiency.py +experiment=btxrd/proposed/ours_xbone_net ++seed=42 --device cuda --batch-size 1 --num-batches 1 --warmup 10 --repeats 50
+
+Đo nhiều ảnh hơn để lấy số liệu dùng trong báo cáo:
+
+  python tools/benchmark_efficiency.py +experiment=btxrd/proposed/ours_xbone_net ++seed=42 --device cuda --precision fp32 --batch-size 1 --num-batches 20 --warmup 10 --repeats 10
+
+Thay đường dẫn sau +experiment= để đo baseline hoặc cấu hình CTCH. Có thể dùng
+--precision fp16 nếu tất cả phương pháp được đo với cùng precision. Kết quả mặc
+định được lưu tại:
+
+  results/<experiment_name>/seed_<seed>/efficiency.json
+
+File JSON chứa total/trainable params, params theo module, GFLOPs được PyTorch hỗ
+trợ, latency mean/p50/p95, throughput, peak CUDA memory, số tile và số text token
+thực tế. Latency chỉ tính model forward, không tính dataloader, preprocessing và
+truyền dữ liệu từ CPU sang GPU. Với mô hình zero-shot, embedding của prompt được
+tính trước và không đưa vào latency suy luận mỗi ảnh.
+
+
+14. TRỰC QUAN HÓA EMPIRICAL CENTROIDS
+------------------------------------
+Trước tiên export fused embeddings của test set:
+
+  python evaluate.py +experiment=btxrd/proposed/ours_xbone_net ++seed=42 --save-embeddings
+
+Sau đó tạo các biểu đồ centroid:
+
+  python tools/visualize_centroids.py +experiment=btxrd/proposed/ours_xbone_net ++seed=42
+
+Có thể chỉ định đường dẫn tường minh:
+
+  python tools/visualize_centroids.py +experiment=btxrd/proposed/ours_xbone_net ++seed=42 --checkpoint checkpoints/btxrd/proposed/ours_xbone_net/seed_42/best_phase2.pth --embeddings results/btxrd/proposed/ours_xbone_net/seed_42/embeddings.npz --output-dir results/btxrd/proposed/ours_xbone_net/seed_42/centroid_visualization
+
+Nếu chưa có embeddings.npz, công cụ vẫn tạo projection và diagnostic chỉ từ
+centroids trong checkpoint. Kết quả gồm centroid_projection.png,
+centroid_similarity_heatmap.png, centroid_diagnostics.png,
+centroid_metrics.csv và centroid_summary.json. Tất cả vector được L2-normalize
+trước khi phân tích để khớp với cosine classifier của empirical centroid head.

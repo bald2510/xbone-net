@@ -1,0 +1,32 @@
+# Locked batch explainability protocol for CTCH proposed checkpoints.
+source_experiment: "ctch/proposed/ours_xbone_net"
+seeds: [42, 123, 456]
+train_features: "ctch_train"
+test_features: "ctch_test"
+
+target: "predicted_class"
+sampling: "stratified_by_ground_truth_class"
+selection_seed: 1907
+per_class: 2
+max_samples: 44
+
+integrated_gradients_steps: 24
+integrated_gradients_baseline: "global_image_embedding_repeated_as_local_tokens"
+clinical_token_intervention_baseline: "clinical_cls_embedding_repeated_over_removed_tokens"
+random_deletion_trials: 16
+stability_repeats: 2
+stability_steps: 8
+stability_noise_scale: 0.01
+classifier_randomization_samples: 5
+render_samples: 6
+
+representation_spaces:
+  - fused_embeddings
+  - visual_global_embeddings
+  - visual_local_summary_embeddings
+  - text_global_embeddings
+  - image_from_text_embeddings
+  - text_from_image_embeddings
+
+limitations:
+  spatial_localization: "Not reported unless CTCH lesion-region annotations are supplied."

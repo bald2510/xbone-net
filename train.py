@@ -16,6 +16,8 @@ Configuration is managed via Hydra (configs in configs/). Logging to TensorBoard
 import os
 import sys
 import math
+import json
+import time
 import warnings
 from typing import Optional
 
@@ -39,7 +41,11 @@ import torch.nn.functional as F
 from transformers import EarlyStoppingCallback, TrainingArguments
 from sklearn.metrics import accuracy_score, f1_score
 
-from src.models.builder import build_model, setup_phase2_modules
+from src.models.builder import (
+    build_model,
+    resolve_phase_enabled,
+    setup_phase2_modules,
+)
 from src.datasets.builder import build_dataloader
 from src.utils.losses import (
     build_loss,
@@ -199,6 +205,29 @@ def compute_class_weights(
     return raw_weights, class_counts, missing_classes
 
 
+def phase_training_stats(
+    trainer_metrics: dict,
+    wall_clock_seconds: float,
+    device: torch.device,
+) -> dict:
+    """Normalize Trainer runtime metrics and capture peak CUDA memory."""
+    stats = {
+        key: float(value) if isinstance(value, (int, float, np.number)) else value
+        for key, value in trainer_metrics.items()
+    }
+    stats["wall_clock_seconds"] = float(wall_clock_seconds)
+    stats["gpu_hours"] = float(wall_clock_seconds / 3600.0) if device.type == "cuda" else 0.0
+    if device.type == "cuda":
+        divisor = 1024.0 ** 2
+        stats["peak_allocated_mb"] = float(
+            torch.cuda.max_memory_allocated(device) / divisor
+        )
+        stats["peak_reserved_mb"] = float(
+            torch.cuda.max_memory_reserved(device) / divisor
+        )
+    return stats
+
+
 # ============================================================
 # Phase 1: Multimodal Contrastive Alignment
 # ============================================================
@@ -214,7 +243,7 @@ def run_phase1(
     experiment_name: str,
     use_bf16: bool,
     use_fp16: bool,
-) -> nn.Module:
+) -> tuple[nn.Module, dict]:
     """Execute Phase 1 contrastive image-text alignment training.
 
     Args:
@@ -230,13 +259,29 @@ def run_phase1(
         use_fp16 (bool): Flag to enable FP16 precision.
 
     Returns:
-        nn.Module: Model updated with Phase 1 fine-tuned weights.
+        tuple: Updated model and serializable Phase-1 runtime statistics.
     """
     p1_cfg = cfg.params.phase1
     epochs_p1 = p1_cfg.get("epochs", 50)
     lr_p1 = p1_cfg.get("lr", 2e-4)
     wd_p1 = p1_cfg.get("weight_decay", 1e-2)
     patience_p1 = int(p1_cfg.get("early_stopping_patience", 5))
+    gradient_accumulation_p1 = int(
+        p1_cfg.get(
+            "gradient_accumulation_steps",
+            cfg.params.get("gradient_accumulation_steps", 1),
+        )
+    )
+    if gradient_accumulation_p1 < 1:
+        raise ValueError("Phase-1 gradient_accumulation_steps must be positive.")
+    if gradient_accumulation_p1 > 1:
+        print(
+            "[Protocol warning] Phase-1 gradient accumulation preserves the "
+            "optimizer effective batch, but the semantic-matching loss still "
+            "sees only the physical micro-batch as its in-batch comparison "
+            "set. Keep the physical batch size identical across runs whose "
+            "Phase-1 performance is compared."
+        )
     loss_type_p1 = p1_cfg.get("loss_type", "semantic_matching")
     p1_report_type = p1_cfg.get("p1_report_type", "clinical")
 
@@ -265,6 +310,15 @@ def run_phase1(
         "weight_decay": wd_p1,
         "loss_type": loss_type_p1,
         "batch_size": cfg.dataset.batch_size,
+        "micro_batch_size": cfg.dataset.batch_size,
+        "gradient_accumulation_steps": gradient_accumulation_p1,
+        "effective_batch_size": (
+            int(cfg.dataset.batch_size) * gradient_accumulation_p1
+        ),
+        "optimizer_effective_batch_size": (
+            int(cfg.dataset.batch_size) * gradient_accumulation_p1
+        ),
+        "contrastive_in_batch_size": int(cfg.dataset.batch_size),
         "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
     })
     logger_p1.log_model_summary(model)
@@ -284,9 +338,27 @@ def run_phase1(
     ]
     if not trainable_params_p1:
         raise RuntimeError("Phase 1 has no trainable backbone parameters.")
-    optimizer_p1 = AdamW(trainable_params_p1, lr=lr_p1, weight_decay=wd_p1)
+    optimizer_type_p1 = str(p1_cfg.get("optimizer", "adamw")).lower()
+    if optimizer_type_p1 == "sgd":
+        optimizer_p1 = SGD(
+            trainable_params_p1,
+            lr=lr_p1,
+            weight_decay=wd_p1,
+            momentum=0.9,
+        )
+    elif optimizer_type_p1 == "adamw":
+        optimizer_p1 = AdamW(
+            trainable_params_p1, lr=lr_p1, weight_decay=wd_p1
+        )
+    else:
+        raise ValueError(f"Unsupported Phase-1 optimizer: {optimizer_type_p1}")
 
-    steps_per_epoch_p1 = math.ceil(len(train_loader.dataset) / cfg.dataset.batch_size)
+    batches_per_epoch_p1 = math.ceil(
+        len(train_loader.dataset) / cfg.dataset.batch_size
+    )
+    steps_per_epoch_p1 = math.ceil(
+        batches_per_epoch_p1 / gradient_accumulation_p1
+    )
     total_steps_p1 = steps_per_epoch_p1 * epochs_p1
     warmup_steps_p1 = int(p1_cfg.get("warmup_ratio", 0.1) * total_steps_p1)
     tokenizer_p1 = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
@@ -299,6 +371,7 @@ def run_phase1(
         weight_decay=wd_p1,
         per_device_train_batch_size=cfg.dataset.batch_size,
         per_device_eval_batch_size=cfg.dataset.batch_size,
+        gradient_accumulation_steps=gradient_accumulation_p1,
         eval_strategy="epoch",
         save_strategy="epoch",
         logging_strategy="steps",
@@ -314,6 +387,8 @@ def run_phase1(
         fp16=use_fp16,
         max_grad_norm=1.0,
         dataloader_num_workers=cfg.dataset.num_workers,
+        seed=int(cfg.get("seed", 42)),
+        data_seed=int(cfg.get("seed", 42)),
         report_to="none",
         remove_unused_columns=False,
     )
@@ -331,7 +406,28 @@ def run_phase1(
         p1_report_type=p1_report_type,
     )
 
-    trainer_p1.train()
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    phase_started = time.perf_counter()
+    train_output = trainer_p1.train()
+    phase_stats = phase_training_stats(
+        train_output.metrics,
+        time.perf_counter() - phase_started,
+        device,
+    )
+    phase_stats["gradient_accumulation_steps"] = gradient_accumulation_p1
+    phase_stats["micro_batch_size"] = int(cfg.dataset.batch_size)
+    phase_stats["effective_batch_size"] = (
+        int(cfg.dataset.batch_size) * gradient_accumulation_p1
+    )
+    phase_stats["optimizer_effective_batch_size"] = (
+        int(cfg.dataset.batch_size) * gradient_accumulation_p1
+    )
+    phase_stats["contrastive_in_batch_size"] = int(cfg.dataset.batch_size)
+    phase_stats["batch_protocol_note"] = (
+        "Gradient accumulation does not enlarge the Phase-1 in-batch "
+        "contrastive comparison set."
+    )
 
     os.makedirs(os.path.dirname(cp_p1) or ".", exist_ok=True)
     best_model_p1 = trainer_p1.model
@@ -340,7 +436,7 @@ def run_phase1(
 
     logger_p1.close()
     print("Phase 1 complete!\n")
-    return model
+    return model, phase_stats
 
 
 # ============================================================
@@ -359,7 +455,7 @@ def run_phase2(
     use_bf16: bool,
     use_fp16: bool,
     classifier_type: str = "empirical_centroid",
-) -> nn.Module:
+) -> tuple[nn.Module, dict]:
     """Execute Phase 2 supervised classification training.
 
     Args:
@@ -376,13 +472,21 @@ def run_phase2(
         classifier_type (str): Resolved classifier head type.
 
     Returns:
-        nn.Module: Model updated with Phase 2 fine-tuned weights.
+        tuple: Updated model and serializable Phase-2 runtime statistics.
     """
     p2_cfg = cfg.params.phase2
     epochs_p2 = p2_cfg.get("epochs", 50)
     lr_p2 = p2_cfg.get("lr", 1e-3)
     wd_p2 = p2_cfg.get("weight_decay", 1e-4)
     patience_p2 = int(p2_cfg.get("early_stopping_patience", 5))
+    gradient_accumulation_p2 = int(
+        p2_cfg.get(
+            "gradient_accumulation_steps",
+            cfg.params.get("gradient_accumulation_steps", 1),
+        )
+    )
+    if gradient_accumulation_p2 < 1:
+        raise ValueError("Phase-2 gradient_accumulation_steps must be positive.")
     use_text_p2 = bool(p2_cfg.get("use_text", True))
     report_type_p2 = str(p2_cfg.get("p2_report_type", "clinical"))
     uses_empirical_centroids = classifier_type == "empirical_centroid"
@@ -404,10 +508,12 @@ def run_phase2(
 
     if n_backbone == 0:
         backbone_status = "FROZEN"
-    elif peft_type in ("lora", "qlora"):
+    elif peft_type == "lora":
         backbone_status = "BASE FROZEN, ADAPTERS TRAINABLE"
-    else:
+    elif peft_type == "full_ft":
         backbone_status = "TRAINABLE (FULL FINE-TUNING)"
+    else:
+        backbone_status = "FOUNDATION FROZEN, AUXILIARY MODULES TRAINABLE"
     print(f"  Backbone    : {backbone_status}")
     print(f"  Trainable Parameters:")
     print(f"    Backbone  : {n_backbone:>12,}")
@@ -424,6 +530,14 @@ def run_phase2(
         "learning_rate": lr_p2,
         "weight_decay": wd_p2,
         "batch_size": cfg.dataset.batch_size,
+        "micro_batch_size": cfg.dataset.batch_size,
+        "gradient_accumulation_steps": gradient_accumulation_p2,
+        "effective_batch_size": (
+            int(cfg.dataset.batch_size) * gradient_accumulation_p2
+        ),
+        "optimizer_effective_batch_size": (
+            int(cfg.dataset.batch_size) * gradient_accumulation_p2
+        ),
         "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
         "loss_type": loss_type_p2,
     })
@@ -528,7 +642,12 @@ def run_phase2(
     else:
         optimizer_p2 = AdamW(trainable_params_p2, lr=lr_p2, weight_decay=wd_p2)
 
-    steps_per_epoch_p2 = math.ceil(len(train_loader.dataset) / cfg.dataset.batch_size)
+    batches_per_epoch_p2 = math.ceil(
+        len(train_loader.dataset) / cfg.dataset.batch_size
+    )
+    steps_per_epoch_p2 = math.ceil(
+        batches_per_epoch_p2 / gradient_accumulation_p2
+    )
     total_steps_p2 = steps_per_epoch_p2 * epochs_p2
     warmup_steps_p2 = int(p2_cfg.get("warmup_ratio", 0.1) * total_steps_p2)
 
@@ -577,6 +696,7 @@ def run_phase2(
         weight_decay=wd_p2,
         per_device_train_batch_size=cfg.dataset.batch_size,
         per_device_eval_batch_size=cfg.dataset.batch_size,
+        gradient_accumulation_steps=gradient_accumulation_p2,
         eval_strategy="epoch",
         save_strategy="epoch",
         logging_strategy="steps",
@@ -592,6 +712,8 @@ def run_phase2(
         fp16=use_fp16,
         max_grad_norm=1.0,
         dataloader_num_workers=cfg.dataset.num_workers,
+        seed=int(cfg.get("seed", 42)),
+        data_seed=int(cfg.get("seed", 42)),
         report_to="none",
         remove_unused_columns=False,
     )
@@ -632,7 +754,23 @@ def run_phase2(
         p2_report_type=report_type_p2,
     )
 
-    trainer_p2.train()
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    phase_started = time.perf_counter()
+    train_output = trainer_p2.train()
+    phase_stats = phase_training_stats(
+        train_output.metrics,
+        time.perf_counter() - phase_started,
+        device,
+    )
+    phase_stats["gradient_accumulation_steps"] = gradient_accumulation_p2
+    phase_stats["micro_batch_size"] = int(cfg.dataset.batch_size)
+    phase_stats["effective_batch_size"] = (
+        int(cfg.dataset.batch_size) * gradient_accumulation_p2
+    )
+    phase_stats["optimizer_effective_batch_size"] = (
+        int(cfg.dataset.batch_size) * gradient_accumulation_p2
+    )
 
     os.makedirs(os.path.dirname(cp_p2) or ".", exist_ok=True)
     best_model_p2 = trainer_p2.model
@@ -655,7 +793,7 @@ def run_phase2(
 
     logger_p2.close()
     print("Phase 2 complete!\n")
-    return best_model_p2
+    return best_model_p2, phase_stats
 
 
 # ============================================================
@@ -861,14 +999,17 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg (DictConfig): Complete Hydra configuration object.
     """
-    seed_everything(cfg.seed)
+    seed_everything(int(cfg.seed))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}\n")
 
     # Resolve phase control flags
-    do_phase1 = cfg.params.get("phase1", {}).get("enabled", cfg.params.get("run_phase1", True))
-    do_phase2 = cfg.params.get("phase2", {}).get("enabled", cfg.params.get("run_phase2", True))
+    do_phase1 = resolve_phase_enabled(cfg.params, "phase1", default=True)
+    do_phase2 = resolve_phase_enabled(cfg.params, "phase2", default=True)
     init_from_merged = cfg.params.get("phase2", {}).get("init_from_phase1_merged", False)
+    init_from_phase1 = cfg.params.get("phase2", {}).get(
+        "init_from_phase1_checkpoint", False
+    )
 
     if not do_phase1 and do_phase2 and init_from_merged:
         print(" -> [Config] Khởi tạo từ checkpoint đã gộp (Merged Phase 1). Tắt khởi tạo PEFT.")
@@ -933,6 +1074,8 @@ def main(cfg: DictConfig) -> None:
     cp_p2 = p2_cfg.get("checkpoint_path", "")
 
     merge_after_p1 = p1_cfg.get("merge_lora_after_training", False)
+    phase_runtime: dict[str, dict] = {}
+    training_window_started = time.perf_counter()
 
     # --- Phase 1 Execution ---
     if do_phase1:
@@ -943,7 +1086,7 @@ def main(cfg: DictConfig) -> None:
         for param in model.head.parameters():
             param.requires_grad = False
 
-        model = run_phase1(
+        model, phase_runtime["phase1"] = run_phase1(
             cfg=cfg,
             model=model,
             train_loader=train_loader,
@@ -983,7 +1126,7 @@ def main(cfg: DictConfig) -> None:
                 model, state_dict, context="merged Phase 1"
             )
             print(" -> Merged Phase 1 weights loaded successfully!")
-        elif cp_p1 and os.path.exists(cp_p1):
+        elif init_from_phase1 and cp_p1 and os.path.exists(cp_p1):
             print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
             checkpoint = torch.load(cp_p1, map_location=device)
             state_dict = checkpoint.get("model_state_dict", checkpoint)
@@ -1008,7 +1151,10 @@ def main(cfg: DictConfig) -> None:
             else:
                 print("\n[Chuyển đổi] Giữ nguyên LoRA adapters (KHÔNG hợp nhất) cho Phase 2.")
         else:
-            print(f"\n[Warning] No Phase 1 checkpoint found. Using initial weights.")
+            print(
+                "\n[Phase 2 Setup] Phase 1 was skipped and no Phase-1 "
+                "initialization was requested; using configured foundation weights."
+            )
 
     # --- Phase 2 Execution ---
     if do_phase2:
@@ -1017,7 +1163,7 @@ def main(cfg: DictConfig) -> None:
         # --- Configure parameter trainability for Phase 2 ---
         is_merged = (do_phase1 and merge_after_p1) or init_from_merged
         peft_type = str(cfg.model.get("peft", {}).get("type", "none")).lower()
-        has_adapters = peft_type in ("lora", "qlora") and not is_merged
+        has_adapters = peft_type == "lora" and not is_merged
 
         if is_merged:
             for param in model.backbone.parameters():
@@ -1036,11 +1182,36 @@ def main(cfg: DictConfig) -> None:
                 param.requires_grad = True
             print("\n[Phase 2 Setup] Backbone Base FROZEN, LoRA TRAINABLE | Fusion + Head UNFROZEN")
         else:
-            print("\n[Phase 2 Setup] Backbone TRAINABLE (full fine-tuning)")
+            trainable_backbone = sum(
+                parameter.numel()
+                for parameter in model.backbone.parameters()
+                if parameter.requires_grad
+            )
+            if peft_type == "full_ft":
+                status = "Backbone TRAINABLE (full fine-tuning)"
+            elif trainable_backbone:
+                status = (
+                    "Foundation encoders FROZEN; auxiliary backbone modules "
+                    f"TRAINABLE ({trainable_backbone:,} parameters)"
+                )
+            else:
+                status = "Backbone FROZEN"
+            print(f"\n[Phase 2 Setup] {status}")
+
+        if not bool(p2_cfg.get("use_image", True)):
+            visual = getattr(getattr(model.backbone, "model", None), "visual", None)
+            if visual is not None:
+                for parameter in visual.parameters():
+                    parameter.requires_grad = False
+            visual_resampler = getattr(model.backbone, "visual_resampler", None)
+            if visual_resampler is not None:
+                for parameter in visual_resampler.parameters():
+                    parameter.requires_grad = False
+            print("[Phase 2 Setup] Visual encoder/resampler disabled for text-only mode")
 
         model = model.to(device)
 
-        model = run_phase2(
+        model, phase_runtime["phase2"] = run_phase2(
             cfg=cfg,
             model=model,
             train_loader=train_loader,
@@ -1064,6 +1235,50 @@ def main(cfg: DictConfig) -> None:
                 p2_report_type=cfg.params.phase2.get("p2_report_type", "clinical"),
             )
 
+    total_wall_seconds = time.perf_counter() - training_window_started
+    phase_seconds = sum(
+        float(stats.get("wall_clock_seconds", 0.0))
+        for stats in phase_runtime.values()
+    )
+    runtime_summary = {
+        "experiment_name": str(experiment_name),
+        "seed": int(seed_val),
+        "scope": (
+            "Training phases, validation, checkpointing, centroid updates and "
+            "phase transition; excludes model download/build and dataloader construction."
+        ),
+        "dataset": str(cfg.dataset.name),
+        "train_samples": int(len(train_loader.dataset)),
+        "validation_samples": int(len(val_loader.dataset)),
+        "batch_size_per_device": int(cfg.dataset.batch_size),
+        "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
+        "phase_enabled": {"phase1": bool(do_phase1), "phase2": bool(do_phase2)},
+        "phases": phase_runtime,
+        "phase_runtime_seconds": float(phase_seconds),
+        "orchestration_wall_clock_seconds": float(total_wall_seconds),
+        "gpu_hours": float(phase_seconds / 3600.0) if device.type == "cuda" else 0.0,
+        "hardware": {
+            "device": str(device),
+            "device_name": (
+                torch.cuda.get_device_name(device) if device.type == "cuda" else "CPU"
+            ),
+            "cuda_version": torch.version.cuda,
+            "torch_version": torch.__version__,
+            "visible_cuda_devices": int(torch.cuda.device_count()),
+        },
+        "comparison_note": (
+            "Compare wall-clock training time only between runs produced on the "
+            "same GPU model, software environment, precision, physical "
+            "micro-batch and gradient-accumulation protocol. For Phase 1, "
+            "gradient accumulation does not reproduce a larger in-batch "
+            "contrastive comparison set."
+        ),
+    }
+    os.makedirs(str(cfg.params.model_dir), exist_ok=True)
+    runtime_path = os.path.join(str(cfg.params.model_dir), "training_summary.json")
+    with open(runtime_path, "w", encoding="utf-8") as handle:
+        json.dump(runtime_summary, handle, indent=2, ensure_ascii=False)
+    print(f"Training runtime summary saved to: {runtime_path}")
     print("Training process completed successfully!")
 
 

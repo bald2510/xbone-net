@@ -5,11 +5,9 @@ Defines the registry and factory functions for applying parameter-efficient fine
   - none: Pass-through without modification
   - full_ft: Unfreezes all module parameters for full fine-tuning
   - lora: Low-Rank Adaptation (LoRA) via HuggingFace peft library
-  - qlora: Quantized 4-bit Low-Rank Adaptation (QLoRA) via bitsandbytes
 """
 
 import torch.nn as nn
-from .qlora import inject_qlora
 from .lora import inject_lora
 
 
@@ -53,7 +51,6 @@ PEFT_REGISTRY = {
     'none': apply_none,
     'full_ft': apply_full_ft,
     'lora': inject_lora,
-    'qlora': inject_qlora,
 }
 
 
@@ -80,6 +77,6 @@ def apply_peft(module: nn.Module, cfg: dict) -> nn.Module:
     peft_type = cfg.get('type', 'none')
     if peft_type not in PEFT_REGISTRY:
         raise ValueError(f"PEFT '{peft_type}' not supported. Choose from {list(PEFT_REGISTRY.keys())}")
-        
-    return PEFT_REGISTRY[peft_type](module=module, **cfg.get('params', {}))
-
+
+    return PEFT_REGISTRY[peft_type](module=module, **(cfg.get('params', {}) or {}))
+

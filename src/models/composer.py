@@ -16,6 +16,7 @@ class XBoneMultiModalModel(nn.Module):
         self.backbone = backbone
         self.fusion = fusion_module
         self.head = head_module
+        self.use_image_in_fusion = True
 
     @staticmethod
     def _masked_token_mean(
@@ -45,13 +46,14 @@ class XBoneMultiModalModel(nn.Module):
         tile_boxes=None,
     ) -> torch.Tensor:
         """Encode a batch into the fused representation before classification."""
+        use_image = bool(getattr(self, "use_image_in_fusion", True))
         img_feats, txt_feats = self.backbone(
-            images,
+            images if use_image else None,
             input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values,
-            tile_mask=tile_mask,
-            tile_boxes=tile_boxes,
+            tile_values=tile_values if use_image else None,
+            tile_mask=tile_mask if use_image else None,
+            tile_boxes=tile_boxes if use_image else None,
         )
 
         full_img_padding_mask = getattr(
@@ -60,7 +62,11 @@ class XBoneMultiModalModel(nn.Module):
             None,
         )
 
-        if txt_feats is None:
+        if img_feats is None:
+            if txt_feats is None:
+                raise ValueError("Text-only mode requires text input features.")
+            fused_feats = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
+        elif txt_feats is None:
             if img_feats.ndim == 3:
                 fused_feats = self._masked_token_mean(img_feats, full_img_padding_mask)
             elif img_feats.ndim == 2:

@@ -25,13 +25,13 @@ import hydra
 from omegaconf import DictConfig
 import matplotlib.pyplot as plt
 
-from src.models.builder import build_model, setup_phase2_modules
-from src.models.fusion.cross_attention import reduce_attention_to_keys
-from src.datasets.btxrd import (
-    letterbox_square,
-    make_uniform_grid_tiles,
-    normalize_tile_boxes,
+from src.models.builder import (
+    build_model,
+    checkpoint_model_config,
+    setup_phase2_modules,
 )
+from src.models.fusion.cross_attention import reduce_attention_to_keys
+from src.datasets.high_resolution import prepare_high_resolution_inputs
 from src.utils.ood import OODDetector
 from src.utils.trainer import resolve_pad_token_id
 
@@ -359,7 +359,7 @@ def main(cfg: DictConfig) -> None:
     print(f"Using device: {device}")
 
     print("Building model architecture...")
-    model = build_model(cfg.model).to(device)
+    model = build_model(checkpoint_model_config(cfg)).to(device)
 
     _, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
 
@@ -495,9 +495,8 @@ def main(cfg: DictConfig) -> None:
 
     image = Image.open(args.image).convert("RGB")
     preprocess = model.backbone.preprocess
-    image_tensor = preprocess(image).unsqueeze(0).to(device)
 
-    # --- High-Res Tiling Support ---
+    # --- Fixed-budget sparse high-resolution support ---
     high_res_cfg = cfg.dataset.get("params", {}).get("high_res", {})
     use_high_res = high_res_cfg.get("enabled", False)
 
@@ -505,26 +504,21 @@ def main(cfg: DictConfig) -> None:
     tile_mask = None
     tile_boxes = None
     if use_high_res:
-        image_tensor = preprocess(letterbox_square(image)).unsqueeze(0).to(device)
-        tile_size = int(high_res_cfg.get('tile_size', 224))
-        raw_tiles, tile_boxes_abs = make_uniform_grid_tiles(
+        high_res_fields = prepare_high_resolution_inputs(
             image,
-            tile_size=tile_size,
-            stride=int(high_res_cfg.get('stride', 224)),
-            max_tiles=int(high_res_cfg.get('max_tiles', 64)),
-            uniform_std_threshold=float(
-                high_res_cfg.get('uniform_std_threshold', 0.01)
-            ),
-            return_boxes=True,
+            preprocess,
+            high_res_cfg,
         )
-
-        tiles = [preprocess(t) for t in raw_tiles]
-        tile_values = torch.stack(tiles).unsqueeze(0).to(device)
-        tile_mask = torch.ones((1, len(raw_tiles)), dtype=torch.long).to(device)
-        tile_boxes = normalize_tile_boxes(tile_boxes_abs, image.size).unsqueeze(0).to(device)
+        image_tensor = high_res_fields["pixel_values"].unsqueeze(0).to(device)
+        tile_values = high_res_fields["tile_values"].unsqueeze(0).to(device)
+        tile_count = tile_values.shape[1]
+        tile_mask = torch.ones((1, tile_count), dtype=torch.long, device=device)
+        tile_boxes = high_res_fields["tile_boxes"].unsqueeze(0).to(device)
         print(
-            f"[High-Res] Created {len(raw_tiles)} uniform grid tiles for inference."
+            f"[High-Res] Created {tile_count} sparse focal tiles for inference."
         )
+    else:
+        image_tensor = preprocess(image).unsqueeze(0).to(device)
 
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
     phase2_cfg = cfg.get("params", {}).get("phase2", {}) or {}

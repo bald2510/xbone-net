@@ -3,7 +3,7 @@ Dataset builder factory for XBone-Net architecture.
 ============================================================
 Implements a factory pattern to instantiate PyTorch DataLoaders from configuration
 dictionaries, supporting multi-modal data loading (images + text reports) for both
-Stage 1 (contrastive learning) and Stage 2 (prototypical classification) of XBone-Net.
+Stage 1 contrastive learning and Stage 2 classification of XBone-Net.
 
 Overview:
   - Dynamically resolves PyTorch Dataset classes via DATASET_REGISTRY
@@ -83,4 +83,4 @@ def build_dataloader(cfg: dict, split: str = "train", transform=None, tokenizer=
         num_workers=cfg.get('num_workers', 4),
         pin_memory=True  # Speeds up host-to-device transfer on CUDA
     )
-
+

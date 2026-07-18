@@ -1,0 +1,12 @@
+# @package _global_
+# Fusion ablation: replace cross-attention with concatenation and projection.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/fusion/concat
+
+params:
+  phase2:
+    fusion_type: concat

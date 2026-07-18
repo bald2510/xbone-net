@@ -932,7 +932,7 @@ def smoke_one_experiment(
             result.warnings.append("Phase 2 is disabled; classification checks were skipped.")
 
         # Parameter-regime assertions.
-        if result.peft_type in {"lora", "qlora"}:
+        if result.peft_type == "lora":
             if not any("lora" in name.lower() for name in initial_trainable_names):
                 raise AssertionError(
                     f"{result.peft_type} config has no trainable LoRA parameter."

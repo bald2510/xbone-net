@@ -9,6 +9,10 @@ Implements the builder pattern for assembling the complete XBone-Net pipeline:
   - Phase 2 module hot-swapping (transitioning from Phase 1 to Phase 2)
 """
 
+from copy import deepcopy
+
+from omegaconf import OmegaConf
+
 from .backbone.biomedclip import BiomedCLIPFoundation
 from .backbone.openclip_foundation import OpenCLIPFoundation
 from .backbone.resnet50 import ResNet50Foundation
@@ -20,6 +24,52 @@ from .composer import XBoneMultiModalModel
 
 # Backbone keys that are loaded via the unified OpenCLIPFoundation wrapper
 OPENCLIP_BACKBONE_TYPES = {"clip", "pubmedclip"}
+
+
+def resolve_phase_enabled(
+    params_cfg: dict,
+    phase_name: str,
+    default: bool = True,
+) -> bool:
+    """Resolve legacy and nested phase switches without silent precedence.
+
+    A phase runs only when both ``run_<phase>`` and ``<phase>.enabled`` allow
+    it. Either switch can therefore disable a phase, including Hydra overrides
+    issued by ``tools/run_all.py --phase2-only``.
+    """
+    params_cfg = params_cfg or {}
+    phase_cfg = params_cfg.get(phase_name, {}) or {}
+    run_enabled = bool(params_cfg.get(f"run_{phase_name}", default))
+    nested_enabled = bool(phase_cfg.get("enabled", True))
+    return run_enabled and nested_enabled
+
+
+def uses_merged_phase1_checkpoint(cfg: dict) -> bool:
+    """Return whether the final checkpoint contains merged non-PEFT weights."""
+    params_cfg = cfg.get("params", {}) or {}
+    phase1_cfg = params_cfg.get("phase1", {}) or {}
+    phase2_cfg = params_cfg.get("phase2", {}) or {}
+    return bool(
+        phase1_cfg.get("merge_lora_after_training", False)
+        or phase2_cfg.get("init_from_phase1_merged", False)
+    )
+
+
+def checkpoint_model_config(cfg: dict) -> dict:
+    """Return a checkpoint-compatible copy of an experiment's model config.
+
+    ``merge_and_unload`` removes LoRA modules from serialized checkpoints. The
+    evaluation architecture must consequently be rebuilt without PEFT wrappers
+    or it will expect missing ``lora_A``/``lora_B`` keys.
+    """
+    model_cfg = cfg.get("model", {}) or {}
+    if OmegaConf.is_config(model_cfg):
+        resolved = OmegaConf.to_container(model_cfg, resolve=True)
+    else:
+        resolved = deepcopy(dict(model_cfg))
+    if uses_merged_phase1_checkpoint(cfg):
+        resolved["peft"] = {"type": "none", "params": {}}
+    return resolved
 
 
 # ============================================================
@@ -56,7 +106,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         ...     'freeze_backbone': True,
         ...     'peft': {'type': 'lora', 'params': {'r': 16, 'alpha': 32}},
         ...     'fusion': {'type': 'cross_attention', 'params': {'img_dim': 512}},
-        ...     'classifier': {'type': 'prototypical', 'params': {'num_classes': 4}},
+        ...     'classifier': {'type': 'empirical_centroid', 'params': {'num_classes': 4}},
         ... }
         >>> model = build_model(cfg)
     """
@@ -94,6 +144,9 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             num_visual_tokens=num_visual_tokens,
             resampler_cfg=cfg.get('visual_resampler', {}),
             local_pool_grid=cfg.get('local_pool_grid', 2),
+            single_view_pool_shape=cfg.get('single_view_pool_shape', None),
+            include_local_cls_token=cfg.get('include_local_cls_token', False),
+            contrastive_local_weight=cfg.get('contrastive_local_weight', 0.25),
             tile_encode_chunk_size=cfg.get('tile_encode_chunk_size', 32),
             local_tile_grad_enabled=cfg.get('local_tile_grad_enabled', True),
             local_tile_gradient_checkpointing=cfg.get(
@@ -139,18 +192,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
 
     else:
         # OpenCLIP-compatible backbones only
-        if backbone_type == "clip" and peft_type == "qlora":
-            print(
-                "[Builder] QLoRA is incompatible with this CLIP "
-                "implementation; falling back to LoRA."
-            )
-            peft_type = "lora"
-            try:
-                peft_cfg["type"] = "lora"
-            except Exception:
-                pass
-
-        if peft_type in ("lora", "qlora"):
+        if peft_type == "lora":
             params = peft_cfg.get("params", {})
 
             common_params = {
@@ -303,11 +345,13 @@ def setup_phase2_modules(model, cfg: dict, device):
 
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
     use_text_in_p2 = bool(p2_phase_cfg.get("use_text", True))
+    use_image_in_p2 = bool(p2_phase_cfg.get("use_image", True))
     is_image_only = (
         backbone_type.startswith("resnet50")
         or backbone_type.startswith("densenet121")
         or not use_text_in_p2
     )
+    is_text_only = use_text_in_p2 and not use_image_in_p2
 
     # --- Resolve Phase-2 module types. Explicit phase2 settings override model defaults.
     model_fusion_cfg = cfg.model.get("fusion", {}) or {}
@@ -318,9 +362,7 @@ def setup_phase2_modules(model, cfg: dict, device):
     p2_fusion_type = p2_phase_cfg.get("fusion_type", "none")
     p2_classifier_type = p2_phase_cfg.get("classifier_type", "none")
 
-    run_p2 = p2_phase_cfg.get(
-        "enabled", params_cfg.get("run_phase2", True)
-    )
+    run_p2 = resolve_phase_enabled(params_cfg, "phase2", default=True)
     exp_name = str(cfg.get("experiment_name", "")).lower()
     is_zero_shot = (not run_p2) or ("zeroshot" in exp_name)
 
@@ -342,6 +384,14 @@ def setup_phase2_modules(model, cfg: dict, device):
             classifier_type = "linear"
         print(
             f"[Builder] Image-only Phase 2: fusion disabled, "
+            f"using {classifier_type} head"
+        )
+    elif is_text_only:
+        fusion_type = "none"
+        if classifier_type == "none":
+            classifier_type = "linear"
+        print(
+            f"[Builder] Text-only Phase 2: visual path disabled, "
             f"using {classifier_type} head"
         )
     else:
@@ -392,5 +442,7 @@ def setup_phase2_modules(model, cfg: dict, device):
     if hasattr(model.backbone, 'return_local'):
         model.backbone.return_local = (fusion_type == "cross_attention")
         print(f"[Builder] Set backbone return_local = {model.backbone.return_local}")
+
+    model.use_image_in_fusion = use_image_in_p2
 
     return model, classifier_type, fusion_type, num_classes

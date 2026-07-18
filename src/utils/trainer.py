@@ -339,19 +339,30 @@ class SFTrainer(Trainer):
                 tile_boxes=tile_boxes,
             )
 
-            # Semantic matching requires one vector per image. Use a masked mean
-            # so padded visual-token slots do not change feature magnitude.
+            # Semantic matching requires one vector per image. High-resolution
+            # backbones may provide a global-anchored local residual pooler;
+            # generic backbones retain the masked-mean fallback.
             if image_features.dim() == 3:
-                image_padding_mask = getattr(
-                    model.backbone, "last_image_key_padding_mask", None
+                contrastive_pooler = getattr(
+                    model.backbone,
+                    "pool_contrastive_image_features",
+                    None,
                 )
-                if image_padding_mask is None:
-                    image_features = image_features.mean(dim=1)
+                if callable(contrastive_pooler):
+                    image_features = contrastive_pooler(image_features)
                 else:
-                    valid = (~image_padding_mask).unsqueeze(-1).to(image_features.dtype)
-                    image_features = (image_features * valid).sum(dim=1) / valid.sum(
-                        dim=1
-                    ).clamp_min(1.0)
+                    image_padding_mask = getattr(
+                        model.backbone, "last_image_key_padding_mask", None
+                    )
+                    if image_padding_mask is None:
+                        image_features = image_features.mean(dim=1)
+                    else:
+                        valid = (~image_padding_mask).unsqueeze(-1).to(
+                            image_features.dtype
+                        )
+                        image_features = (image_features * valid).sum(
+                            dim=1
+                        ) / valid.sum(dim=1).clamp_min(1.0)
                 
             loss = self.loss_fn(image_features, text_features, labels_for_loss)
             outputs = {"image_features": image_features, "text_features": text_features}

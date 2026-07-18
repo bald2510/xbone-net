@@ -1,6 +1,6 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/baselines/finetuned/fft_resnet50
+# Experiment Config: btxrd/baselines/full_finetuned/fft_resnet50
 # Backbone: resnet50_imagenet | PEFT: none | Fusion: none | Head: linear
 # Description: Full Fine-Tuned Baseline.
 # ===============================================================================
@@ -18,7 +18,7 @@ model:
   freeze_backbone: false
 
 # --- Experiment Identifier ---
-experiment_name: btxrd/baselines/finetuned/fft_resnet50
+experiment_name: btxrd/baselines/full_finetuned/fft_resnet50
 
 # --- Training Hyperparameters ---
 params:

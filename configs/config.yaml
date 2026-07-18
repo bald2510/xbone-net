@@ -8,5 +8,6 @@ params:
   run_phase1: true
   run_phase2: true
   gradient_checkpointing: true
+  gradient_accumulation_steps: 1
 
 seed: 42

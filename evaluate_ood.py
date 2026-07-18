@@ -1,346 +1,444 @@
-"""Evaluate XBone-Net out-of-distribution detection without reference leakage."""
+"""Leakage-free OOD evaluation for CTCH proposed-model feature archives.
+
+Protocol:
+  * fit density scores on CTCH train only;
+  * calibrate deployment thresholds on CTCH validation ID only;
+  * evaluate once on CTCH test versus the requested OOD scenario.
+
+Every feature archive is provenance-checked and must come from the same locked
+``ctch/proposed/ours_xbone_net`` checkpoint seed.
+"""
 
 from __future__ import annotations
 
 import argparse
 import datetime
 import json
-import os
 import sys
-from typing import Optional
-
-if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+from pathlib import Path
+from typing import Any
 
 import numpy as np
-import torch
-from sklearn.model_selection import train_test_split
 
-from src.utils.ood import OODDetector, evaluate_ood
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 
-
-def load_embeddings(path: str) -> dict:
-    data = np.load(path, allow_pickle=True)
-    embedding_key = "fused_embeddings" if "fused_embeddings" in data.files else "image_embeddings"
-    result = {
-        "image_embeddings": data[embedding_key],
-        "labels": data["labels"],
-    }
-    if "logits" in data.files:
-        result["logits"] = data["logits"]
-    if "probabilities" in data.files:
-        result["probabilities"] = data["probabilities"]
-    text_keys = [key for key in data.files if key.startswith("text_embeddings_")]
-    if text_keys:
-        result["text_embeddings"] = {
-            key.replace("text_embeddings_", ""): data[key] for key in text_keys
-        }
-    return result
+from src.utils.analysis import SOURCE_EXPERIMENT, load_feature_archive
+from src.utils.ood import (
+    OODDetector,
+    bootstrap_ood_metrics,
+    calibrate_ood_threshold,
+    evaluate_ood,
+)
 
 
-def _integer_labels(labels: np.ndarray) -> np.ndarray:
-    labels = np.asarray(labels)
-    if labels.ndim == 2:
-        labels = np.argmax(labels, axis=1)
-    return labels.astype(np.int64).reshape(-1)
+SCENARIO_FEATURES = {
+    "semantic_ood": "fused_embeddings",
+    "domain_ood": "visual_global_embeddings",
+    "report_mismatch_cross_class": "fused_embeddings",
+    "report_mismatch_same_class": "fused_embeddings",
+}
+SUPPORTED_METHODS = (
+    "mahalanobis",
+    "knn",
+    "msp",
+    "entropy",
+    "energy",
+    "max_logit",
+)
 
 
-def _normalize_embeddings(embeddings: np.ndarray) -> np.ndarray:
-    embeddings = np.asarray(embeddings, dtype=np.float64)
-    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-    return embeddings / np.maximum(norms, 1e-12)
+def _labels(values: np.ndarray) -> np.ndarray:
+    values = np.asarray(values)
+    if values.ndim == 2:
+        values = values.argmax(axis=1)
+    return values.astype(np.int64).reshape(-1)
 
 
-def split_reference_and_id_test(
-    embeddings: np.ndarray,
-    labels: np.ndarray,
-    logits: Optional[np.ndarray] = None,
-    ref_fraction: float = 0.5,
-    seed: int = 42,
-):
-    """Create disjoint stratified reference and ID-test sets."""
-    labels = _integer_labels(labels)
-    counts = np.bincount(labels)
-    present_counts = counts[counts > 0]
-    if present_counts.size == 0 or np.any(present_counts < 2):
+def _validate_archive(
+    arrays: dict[str, np.ndarray],
+    provenance: dict[str, Any],
+    expected_seed: int,
+    expected_scenario: str,
+) -> None:
+    if provenance.get("source_experiment") != SOURCE_EXPERIMENT:
+        raise ValueError("OOD archives must come from the locked CTCH proposed model.")
+    if int(provenance.get("seed", -1)) != int(expected_seed):
         raise ValueError(
-            "A leakage-free stratified split requires at least two samples per present class."
+            f"Archive seed {provenance.get('seed')} does not match --seed {expected_seed}."
         )
-    if not 0.0 < ref_fraction < 1.0:
-        raise ValueError("ref_fraction must be between 0 and 1.")
+    if provenance.get("scenario") != expected_scenario:
+        raise ValueError(
+            f"Expected scenario {expected_scenario!r}, got "
+            f"{provenance.get('scenario')!r}."
+        )
+    required = {"labels", "logits", "image_id"}
+    missing = required - arrays.keys()
+    if missing:
+        raise ValueError(f"Feature archive is missing {sorted(missing)}.")
+    count = len(arrays["labels"])
+    for key, value in arrays.items():
+        if value.ndim > 0 and len(value) != count:
+            raise ValueError(
+                f"Archive field {key!r} has {len(value)} rows, expected {count}."
+            )
 
-    indices = np.arange(len(labels))
-    ref_idx, test_idx = train_test_split(
-        indices,
-        train_size=ref_fraction,
-        random_state=seed,
-        stratify=labels,
-    )
+
+def _check_shared_checkpoint(provenances: list[dict[str, Any]]) -> str:
+    checksums = {item.get("checkpoint_sha256") for item in provenances}
+    if None in checksums or len(checksums) != 1:
+        raise ValueError("All feature archives must share one checkpoint SHA-256.")
+    config_checksums = {item.get("config_sha256") for item in provenances}
+    if None in config_checksums or len(config_checksums) != 1:
+        raise ValueError("All feature archives must share one resolved config SHA-256.")
+    return str(next(iter(checksums)))
+
+
+def _subset_rows(arrays: dict[str, np.ndarray], indices: np.ndarray) -> dict[str, np.ndarray]:
+    count = len(arrays["labels"])
     return {
-        "ref_embeddings": embeddings[ref_idx],
-        "ref_labels": labels[ref_idx],
-        "id_test_embeddings": embeddings[test_idx],
-        "id_test_labels": labels[test_idx],
-        "id_test_logits": logits[test_idx] if logits is not None else None,
+        key: value[indices] if value.ndim > 0 and len(value) == count else value
+        for key, value in arrays.items()
     }
 
 
-def stratified_reference_subset(
-    embeddings: np.ndarray,
-    labels: np.ndarray,
-    n_ref: int,
-    seed: int = 42,
-):
-    labels = _integer_labels(labels)
-    if n_ref <= 0 or n_ref >= len(labels):
-        return embeddings, labels
-    n_classes = len(np.unique(labels))
-    if n_ref < n_classes:
-        raise ValueError(
-            f"n_ref={n_ref} is smaller than the {n_classes} reference classes."
-        )
-    indices = np.arange(len(labels))
-    subset_idx, _ = train_test_split(
-        indices,
-        train_size=n_ref,
-        random_state=seed,
-        stratify=labels,
-    )
-    return embeddings[subset_idx], labels[subset_idx]
-
-
-def load_prototypes_from_checkpoint(checkpoint_path: Optional[str]):
-    if not checkpoint_path or not os.path.exists(checkpoint_path):
-        return None
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    state_dict = checkpoint.get("model_state_dict", checkpoint)
-    for key, value in state_dict.items():
-        if key.endswith("head.prototypes") or "head.prototypes" in key:
-            prototypes = value.detach().cpu().numpy()
-            print(f"Loaded prototypes {prototypes.shape} from '{key}'.")
-            return prototypes
-    print("[Warning] No prototype tensor was found in the checkpoint.")
-    return None
-
-
-def encode_text_anchors(
-    checkpoint_path: str,
-    config_path: str,
-    pathologies: list[str],
-    device: torch.device,
-    image_context: str = "a bone x-ray",
-) -> np.ndarray:
-    """Encode anchors using the exact model/PEFT configuration used in training."""
-    from omegaconf import OmegaConf
-    from src.models.builder import build_model
-
-    if not config_path or not os.path.exists(config_path):
-        raise FileNotFoundError(
-            "Text-anchor evaluation requires --config pointing to the training YAML."
-        )
-    cfg = OmegaConf.load(config_path)
-    model_cfg = cfg.model if "model" in cfg else cfg
-    model = build_model(model_cfg).to(device)
-
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    state_dict = checkpoint.get("model_state_dict", checkpoint)
-    result = model.load_state_dict(state_dict, strict=False)
-    critical_missing = [
-        key for key in result.missing_keys
-        if "lora_A" in key or "lora_B" in key
+def align_paired_id(
+    id_arrays: dict[str, np.ndarray],
+    ood_arrays: dict[str, np.ndarray],
+) -> dict[str, np.ndarray]:
+    """Align native ID rows to report-mismatch recipient IDs."""
+    native_ids = id_arrays["image_id"].astype(str)
+    if len(np.unique(native_ids)) != len(native_ids):
+        raise ValueError("CTCH ID test archive contains duplicate image_id values.")
+    lookup = {image_id: index for index, image_id in enumerate(native_ids)}
+    missing = [
+        image_id
+        for image_id in ood_arrays["image_id"].astype(str)
+        if image_id not in lookup
     ]
-    if critical_missing:
-        raise RuntimeError(
-            "Text-anchor model did not load PEFT weights:\n"
-            + "\n".join(critical_missing[:20])
-        )
-
-    model.eval()
-    tokenizer = getattr(model.backbone, "tokenizer", None)
-    encoder = getattr(getattr(model.backbone, "model", None), "encode_text", None)
-    if tokenizer is None or encoder is None:
-        raise RuntimeError("The configured backbone cannot encode text anchors.")
-
-    anchors = []
-    with torch.no_grad():
-        for pathology in pathologies:
-            prompt = (
-                f"this is an image of {image_context}; "
-                f"{pathology.lower()} presented in image"
-            )
-            tokens = tokenizer([prompt])
-            if isinstance(tokens, torch.Tensor):
-                tokens = tokens.to(device)
-            feature = torch.nn.functional.normalize(encoder(tokens), dim=-1)
-            anchors.append(feature.cpu().numpy())
-    return np.vstack(anchors)
+    if missing:
+        raise ValueError(f"Mismatch recipients are absent from ID test: {missing[:5]}")
+    indices = np.asarray(
+        [lookup[image_id] for image_id in ood_arrays["image_id"].astype(str)],
+        dtype=np.int64,
+    )
+    aligned = _subset_rows(id_arrays, indices)
+    if not np.array_equal(
+        aligned["image_id"].astype(str), ood_arrays["image_id"].astype(str)
+    ):
+        raise RuntimeError("Failed to align paired report-mismatch samples.")
+    return aligned
 
 
-def run_ood_evaluation(
-    ref_embeddings: np.ndarray,
-    ref_labels: np.ndarray,
-    id_test_embeddings: np.ndarray,
-    ood_embeddings: np.ndarray,
+def _score_method(
+    method: str,
+    detector: OODDetector,
+    arrays: dict[str, np.ndarray],
+    feature_key: str,
+    knn_k: int,
+    temperature: float,
+) -> np.ndarray:
+    if method == "mahalanobis":
+        return detector.score_mahalanobis(arrays[feature_key])
+    if method == "knn":
+        return detector.score_knn(arrays[feature_key], k=knn_k)
+    logits = arrays["logits"]
+    if method == "msp":
+        return detector.score_msp(logits)
+    if method == "entropy":
+        return detector.score_entropy(logits)
+    if method == "energy":
+        return detector.score_energy(logits, temperature=temperature)
+    if method == "max_logit":
+        return detector.score_max_logit(logits)
+    raise ValueError(f"Unsupported OOD method: {method}")
+
+
+def run_protocol(
+    train: dict[str, np.ndarray],
+    calibration: dict[str, np.ndarray],
+    id_test: dict[str, np.ndarray],
+    ood: dict[str, np.ndarray],
     methods: list[str],
-    n_ref_sizes: list[int],
-    id_test_logits: Optional[np.ndarray] = None,
-    ood_logits: Optional[np.ndarray] = None,
-    text_anchor_embeddings: Optional[np.ndarray] = None,
-    prototypes: Optional[np.ndarray] = None,
-    seed: int = 42,
-) -> dict:
-    results = {}
-    for n_ref in n_ref_sizes:
-        current_ref, current_labels = stratified_reference_subset(
-            ref_embeddings, ref_labels, n_ref, seed=seed
-        )
-        ref_key = "full" if n_ref <= 0 or n_ref >= len(ref_embeddings) else f"n{len(current_ref)}"
+    feature_key: str,
+    target_id_fpr: float,
+    knn_k: int,
+    temperature: float,
+    n_bootstrap: int,
+    bootstrap_seed: int,
+    paired: bool,
+) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+    for name, arrays in {
+        "train": train,
+        "calibration": calibration,
+        "id_test": id_test,
+        "ood": ood,
+    }.items():
+        if feature_key not in arrays:
+            raise ValueError(f"{name} archive has no feature {feature_key!r}.")
+    train_labels = _labels(train["labels"])
+    if np.any(train_labels < 0):
+        raise ValueError("CTCH train labels must be valid ID class indices.")
+    detector = OODDetector().fit(train[feature_key], train_labels)
 
-        detector = OODDetector().fit(
-            current_ref,
-            current_labels,
-            prototypes=prototypes,
-        )
+    id_labels = _labels(id_test["labels"])
+    id_correct = id_test["logits"].argmax(axis=1) == id_labels
+    results: dict[str, Any] = {}
+    score_archive: dict[str, np.ndarray] = {
+        "id_image_id": id_test["image_id"].astype(str),
+        "ood_image_id": ood["image_id"].astype(str),
+        "id_correct": id_correct.astype(np.int8),
+    }
+    id_groups = id_test.get("patient_id")
+    if id_groups is not None and np.all(id_groups.astype(str) == ""):
+        id_groups = None
+    ood_groups = ood.get("patient_id")
+    if ood_groups is not None and np.all(ood_groups.astype(str) == ""):
+        ood_groups = None
 
-        for method in methods:
-            key = f"{method}_{ref_key}"
-            if method == "mahalanobis":
-                id_scores = detector.score_mahalanobis(id_test_embeddings)
-                ood_scores = detector.score_mahalanobis(ood_embeddings)
-            elif method == "knn":
-                id_scores = detector.score_knn(id_test_embeddings, k=5)
-                ood_scores = detector.score_knn(ood_embeddings, k=5)
-            elif method == "text_anchor":
-                if text_anchor_embeddings is None:
-                    print("  [Skip] text_anchor requires --checkpoint, --config, and --id-pathologies.")
-                    continue
-                id_scores = detector.score_text_anchor(id_test_embeddings, text_anchor_embeddings)
-                ood_scores = detector.score_text_anchor(ood_embeddings, text_anchor_embeddings)
-            elif method == "energy":
-                if id_test_logits is None or ood_logits is None:
-                    print("  [Skip] energy requires logits in both embedding archives.")
-                    continue
-                id_scores = detector.score_energy(id_test_logits)
-                ood_scores = detector.score_energy(ood_logits)
-            else:
-                print(f"  [Warning] Unknown method: {method}")
+    for method_index, method in enumerate(methods):
+        calibration_scores = _score_method(
+            method, detector, calibration, feature_key, knn_k, temperature
+        )
+        id_scores = _score_method(
+            method, detector, id_test, feature_key, knn_k, temperature
+        )
+        ood_scores = _score_method(
+            method, detector, ood, feature_key, knn_k, temperature
+        )
+        threshold = calibrate_ood_threshold(
+            calibration_scores, target_id_fpr=target_id_fpr
+        )
+        metrics = evaluate_ood(
+            id_scores,
+            ood_scores,
+            calibrated_threshold=threshold,
+            id_correct=id_correct,
+        )
+        metrics["ci_95"] = bootstrap_ood_metrics(
+            id_scores,
+            ood_scores,
+            calibrated_threshold=threshold,
+            id_correct=id_correct,
+            n_bootstrap=n_bootstrap,
+            seed=bootstrap_seed + method_index,
+            paired=paired,
+            id_groups=None if paired else id_groups,
+            ood_groups=None if paired else ood_groups,
+        )
+        metrics["bootstrap_units"] = (
+            {"id": "paired_image", "ood": "paired_image"}
+            if paired
+            else {
+                "id": "patient_cluster" if id_groups is not None else "sample",
+                "ood": "patient_cluster" if ood_groups is not None else "sample",
+            }
+        )
+        metrics["calibration_id_count"] = int(len(calibration_scores))
+        metrics["target_calibration_id_fpr"] = float(target_id_fpr)
+        metrics["score_direction"] = "higher_is_more_ood"
+        metrics["score_input"] = (
+            feature_key
+            if method in {"mahalanobis", "knn"}
+            else "fused_classifier_logits"
+        )
+        results[method] = metrics
+        score_archive[f"{method}_calibration"] = calibration_scores
+        score_archive[f"{method}_id"] = id_scores
+        score_archive[f"{method}_ood"] = ood_scores
+        score_archive[f"{method}_threshold"] = np.asarray(threshold)
+
+    groups = ood.get("group")
+    if groups is not None and len(np.unique(groups.astype(str))) > 1:
+        subgroup_results: dict[str, Any] = {}
+        for group in sorted(np.unique(groups.astype(str))):
+            mask = groups.astype(str) == group
+            if int(mask.sum()) < 2:
                 continue
+            subgroup_results[group] = {
+                method: evaluate_ood(
+                    score_archive[f"{method}_id"],
+                    score_archive[f"{method}_ood"][mask],
+                    calibrated_threshold=float(
+                        score_archive[f"{method}_threshold"].item()
+                    ),
+                    id_correct=id_correct,
+                )
+                for method in methods
+            }
+        if subgroup_results:
+            results["subgroups"] = subgroup_results
+    return results, score_archive
 
-            metrics = evaluate_ood(id_scores, ood_scores)
-            results[key] = metrics
-            print(
-                f"  {key:30s} | AUROC: {metrics['auroc']:.4f} | "
-                f"AUPR-Out: {metrics['aupr_out']:.4f} | "
-                f"FPR@95: {metrics['fpr_at_95tpr']:.4f}"
-            )
-    return results
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Leakage-free OOD detection evaluation")
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--scenario", choices=tuple(SCENARIO_FEATURES), required=True)
+    parser.add_argument("--train-embeddings", type=Path, required=True)
+    parser.add_argument("--calibration-embeddings", type=Path, required=True)
+    parser.add_argument("--id-test-embeddings", type=Path, required=True)
+    parser.add_argument("--ood-embeddings", type=Path, required=True)
+    parser.add_argument("--feature-key", default=None)
     parser.add_argument(
-        "--id-embeddings",
-        required=True,
-        help="ID test embeddings, or an ID pool that will be split when --ref-embeddings is omitted.",
+        "--methods", nargs="+", choices=SUPPORTED_METHODS, default=list(SUPPORTED_METHODS)
     )
     parser.add_argument(
-        "--ref-embeddings",
+        "--primary-methods",
+        nargs="+",
+        choices=SUPPORTED_METHODS,
         default=None,
-        help="Optional disjoint ID reference/calibration embeddings.",
+        help="Methods designated primary by the locked scenario config.",
     )
-    parser.add_argument("--ood-embeddings", required=True)
-    parser.add_argument("--methods", default="mahalanobis,knn,text_anchor,energy")
-    parser.add_argument("--n-ref", default="0")
-    parser.add_argument("--ref-fraction", type=float, default=0.5)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--checkpoint", default=None)
-    parser.add_argument("--config", default=None, help="Training YAML required for text anchors.")
-    parser.add_argument("--id-pathologies", default=None)
-    parser.add_argument("--image-context", default="a bone x-ray")
-    parser.add_argument("--output-dir", default="results/ood/")
+    parser.add_argument(
+        "--scenario-role",
+        choices=("primary", "secondary"),
+        default="primary",
+    )
+    parser.add_argument(
+        "--paired-by-image-id",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    parser.add_argument("--target-id-fpr", type=float, default=0.05)
+    parser.add_argument("--knn-k", type=int, default=5)
+    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--n-bootstrap", type=int, default=2000)
+    parser.add_argument("--bootstrap-seed", type=int, default=3107)
+    parser.add_argument(
+        "--allow-incomplete-ood",
+        action="store_true",
+        help="Accept an explicitly exploratory CTCH-OOD archive with coverage below 100 percent.",
+    )
+    parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
-    methods = [value.strip() for value in args.methods.split(",") if value.strip()]
-    n_ref_sizes = [int(value.strip()) for value in args.n_ref.split(",")]
-
-    id_data = load_embeddings(args.id_embeddings)
-    id_embeddings = _normalize_embeddings(id_data["image_embeddings"])
-    id_labels = _integer_labels(id_data["labels"])
-    id_logits = id_data.get("logits")
-
-    if args.ref_embeddings:
-        ref_data = load_embeddings(args.ref_embeddings)
-        ref_embeddings = _normalize_embeddings(ref_data["image_embeddings"])
-        ref_labels = _integer_labels(ref_data["labels"])
-        id_test_embeddings = id_embeddings
-        id_test_logits = id_logits
-    else:
-        split = split_reference_and_id_test(
-            id_embeddings,
-            id_labels,
-            logits=id_logits,
-            ref_fraction=args.ref_fraction,
-            seed=args.seed,
-        )
-        ref_embeddings = split["ref_embeddings"]
-        ref_labels = split["ref_labels"]
-        id_test_embeddings = split["id_test_embeddings"]
-        id_test_logits = split["id_test_logits"]
-        print(
-            "[Info] --ref-embeddings was omitted; created a disjoint stratified "
-            f"split: reference={len(ref_embeddings)}, ID-test={len(id_test_embeddings)}."
-        )
-
-    ood_data = load_embeddings(args.ood_embeddings)
-    ood_embeddings = _normalize_embeddings(ood_data["image_embeddings"])
-    ood_logits = ood_data.get("logits")
-
-    text_anchors = None
-    if "text_anchor" in methods:
-        if args.checkpoint and args.config and args.id_pathologies:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            pathologies = [value.strip() for value in args.id_pathologies.split(",")]
-            text_anchors = encode_text_anchors(
-                args.checkpoint,
-                args.config,
-                pathologies,
-                device,
-                args.image_context,
-            )
-        else:
-            print("[Warning] text_anchor requested without checkpoint/config/pathology names.")
-
-    prototypes = load_prototypes_from_checkpoint(args.checkpoint)
-    results = run_ood_evaluation(
-        ref_embeddings=ref_embeddings,
-        ref_labels=ref_labels,
-        id_test_embeddings=id_test_embeddings,
-        ood_embeddings=ood_embeddings,
-        methods=methods,
-        n_ref_sizes=n_ref_sizes,
-        id_test_logits=id_test_logits,
-        ood_logits=ood_logits,
-        text_anchor_embeddings=text_anchors,
-        prototypes=prototypes,
-        seed=args.seed,
+    expected_scenarios = (
+        "ctch_train",
+        "ctch_val",
+        "ctch_test",
+        {
+            "semantic_ood": "ctch_ood",
+            "domain_ood": "fracatlas_test",
+            "report_mismatch_cross_class": "report_mismatch_cross_class",
+            "report_mismatch_same_class": "report_mismatch_same_class",
+        }[args.scenario],
     )
+    loaded = [
+        load_feature_archive(path)
+        for path in (
+            args.train_embeddings,
+            args.calibration_embeddings,
+            args.id_test_embeddings,
+            args.ood_embeddings,
+        )
+    ]
+    arrays = [item[0] for item in loaded]
+    provenances = [item[1] for item in loaded]
+    for archive_arrays, provenance, expected in zip(
+        arrays, provenances, expected_scenarios
+    ):
+        _validate_archive(archive_arrays, provenance, args.seed, expected)
+    checkpoint_sha256 = _check_shared_checkpoint(provenances)
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    if args.scenario == "semantic_ood":
+        coverage = provenances[-1].get("coverage", {})
+        incomplete = int(coverage.get("missing_rows", 0)) > 0
+        if incomplete and not args.allow_incomplete_ood:
+            raise RuntimeError(
+                "Refusing to report semantic-OOD metrics from an incomplete archive. "
+                "Use --allow-incomplete-ood only for exploratory analysis."
+            )
+
+    train, calibration, id_test, ood = arrays
+    paired = (
+        args.scenario.startswith("report_mismatch_")
+        if args.paired_by_image_id is None
+        else bool(args.paired_by_image_id)
+    )
+    if paired:
+        id_test = align_paired_id(id_test, ood)
+        if np.any(ood["image_id"].astype(str) == ood["report_source_id"].astype(str)):
+            raise ValueError("Report-mismatch archive contains fixed report assignments.")
+
+    feature_key = args.feature_key or SCENARIO_FEATURES[args.scenario]
+    results, score_archive = run_protocol(
+        train=train,
+        calibration=calibration,
+        id_test=id_test,
+        ood=ood,
+        methods=list(args.methods),
+        feature_key=feature_key,
+        target_id_fpr=args.target_id_fpr,
+        knn_k=args.knn_k,
+        temperature=args.temperature,
+        n_bootstrap=args.n_bootstrap,
+        bootstrap_seed=args.bootstrap_seed,
+        paired=paired,
+    )
+    primary_methods = (
+        list(args.primary_methods)
+        if args.primary_methods is not None
+        else (
+            ["mahalanobis", "knn"]
+            if args.scenario == "domain_ood"
+            else list(args.methods)
+        )
+    )
+    unknown_primary = sorted(set(primary_methods) - set(args.methods))
+    if unknown_primary:
+        raise ValueError(
+            f"Primary methods were not evaluated: {unknown_primary}."
+        )
+    scenario_is_primary = args.scenario_role == "primary"
+    for method in args.methods:
+        results[method]["primary_analysis"] = (
+            scenario_is_primary and method in primary_methods
+        )
+
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(args.output_dir / "ood_scores.npz", **score_archive)
     output = {
-        "type": "ood_evaluation",
-        "reference_source": args.ref_embeddings or "stratified split from id_source",
-        "id_source": args.id_embeddings,
-        "ood_source": args.ood_embeddings,
-        "methods": methods,
-        "n_ref_sizes": n_ref_sizes,
-        "seed": args.seed,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "type": "locked_ctch_ood_evaluation",
+        "source_experiment": SOURCE_EXPERIMENT,
+        "seed": int(args.seed),
+        "checkpoint_sha256": checkpoint_sha256,
+        "scenario": args.scenario,
+        "feature_key": feature_key,
+        "paired_by_image_id": paired,
+        "protocol": {
+            "fit": "ctch_train",
+            "threshold_calibration": "ctch_val_id_only",
+            "id_test": "ctch_test",
+            "ood_test": expected_scenarios[-1],
+            "target_id_fpr": args.target_id_fpr,
+            "knn_k": args.knn_k,
+            "temperature": args.temperature,
+            "n_bootstrap": args.n_bootstrap,
+            "primary_methods": primary_methods,
+            "scenario_role": args.scenario_role,
+        },
+        "counts": {
+            "train": int(len(train["labels"])),
+            "calibration": int(len(calibration["labels"])),
+            "id_test": int(len(id_test["labels"])),
+            "ood_test": int(len(ood["labels"])),
+        },
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "results": results,
     }
-    json_path = os.path.join(args.output_dir, "ood_metrics.json")
-    with open(json_path, "w", encoding="utf-8") as file:
-        json.dump(output, file, indent=2, ensure_ascii=False)
-    print(f"\nOOD results saved to: {json_path}")
+    destination = args.output_dir / "ood_metrics.json"
+    destination.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    for method in args.methods:
+        metrics = results[method]
+        print(
+            f"{method:12s} AUROC={metrics['auroc']:.4f} "
+            f"AUPR-Out={metrics['aupr_out']:.4f} "
+            f"FPR@95={metrics['fpr_at_95tpr']:.4f}"
+        )
+    print(f"Saved: {destination}")
 
 
 if __name__ == "__main__":

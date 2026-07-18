@@ -1,0 +1,14 @@
+# @package _global_
+# Phase ablation: merge Phase-1 LoRA adapters before Phase 2.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/phase/phase1_merged
+
+params:
+  phase1:
+    merge_lora_after_training: true
+  phase2:
+    init_from_phase1_merged: true

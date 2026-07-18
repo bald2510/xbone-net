@@ -1,0 +1,38 @@
+# Locked post-hoc OOD protocol for the canonical CTCH proposed model.
+source_experiment: "ctch/proposed/ours_xbone_net"
+seeds: [42, 123, 456]
+
+fit_split: "ctch_train"
+calibration_split: "ctch_val"
+id_test_split: "ctch_test"
+target_id_fpr: 0.05
+knn_k: 5
+temperature: 1.0
+methods: [mahalanobis, knn, msp, entropy, energy, max_logit]
+n_bootstrap: 2000
+bootstrap_seed: 3107
+
+scenarios:
+  semantic_ood:
+    archive: "ctch_ood"
+    feature_key: "fused_embeddings"
+    primary_methods: [mahalanobis, knn, msp, entropy, energy, max_logit]
+    primary: true
+  domain_ood:
+    archive: "fracatlas_test"
+    feature_key: "visual_global_embeddings"
+    primary_methods: [mahalanobis, knn]
+    primary: true
+    rationale: "Visual density scores are primary; fused-logit confidence scores are secondary because target report schema and label space differ."
+  report_mismatch_cross_class:
+    archive: "report_mismatch_cross_class"
+    feature_key: "fused_embeddings"
+    primary_methods: [mahalanobis, knn, msp, entropy, energy, max_logit]
+    paired_by_image_id: true
+    primary: true
+  report_mismatch_same_class:
+    archive: "report_mismatch_same_class"
+    feature_key: "fused_embeddings"
+    primary_methods: [mahalanobis, knn, msp, entropy, energy, max_logit]
+    paired_by_image_id: true
+    primary: false

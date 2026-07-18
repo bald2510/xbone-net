@@ -5,12 +5,10 @@ Defines the registry and factory function for instantiating classification heads
   - IdentityHead: Pass-through features (Phase 1 contrastive pre-training)
   - LinearHead: Standard linear layer mapping features to class logits
   - EmpiricalCentroidHead: Non-parametric cosine classifier from train-set means
-  - PrototypicalHead: Legacy learnable-prototype head retained for ablations
 """
 
 from .identity import IdentityHead
 from .linear import LinearHead
-from .prototypical import PrototypicalHead
 from .empirical_centroid import EmpiricalCentroidHead
 
 # ============================================================
@@ -20,8 +18,6 @@ from .empirical_centroid import EmpiricalCentroidHead
 HEAD_REGISTRY = {
     'none': IdentityHead,
     'linear': LinearHead,
-    'prototypical': PrototypicalHead,
-    'learnable_prototype': PrototypicalHead,
     'empirical_centroid': EmpiricalCentroidHead,
 }
 

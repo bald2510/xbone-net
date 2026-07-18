@@ -1,0 +1,13 @@
+# @package _global_
+# Fusion ablation: image global token attends to text tokens only.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/fusion/image_to_text
+
+params:
+  phase2:
+    fusion_params:
+      attention_direction: image_to_text

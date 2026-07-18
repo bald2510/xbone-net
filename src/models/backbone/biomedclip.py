@@ -50,11 +50,14 @@ class _ResamplerLayer(nn.Module):
 
 
 class SpatialTokenResampler(nn.Module):
-    """Compress all local patch tokens with learned coordinate-aware queries.
+    """Adapt local patch tokens to a bounded coordinate-aware visual sequence.
 
-    Unlike hard Top-K selection, every valid high-resolution patch can
-    contribute through soft attention. The final attention matrix is retained
-    so fused attention can later be projected back to source-image coordinates.
+    ``passthrough`` is the parameter-efficient path used with fixed-budget
+    sparse-focal views. It preserves every selected local token and therefore
+    avoids relearning an information bottleneck from a few labelled examples.
+    ``learned_queries`` remains available for experiments with larger or
+    variable token sets. The final token-to-source mapping is retained so fused
+    attention can later be projected back to source-image coordinates.
     """
 
     def __init__(
@@ -66,14 +69,18 @@ class SpatialTokenResampler(nn.Module):
         dropout: float = 0.1,
         use_spatial_coordinates: bool = True,
         aggregation: str = "learned_queries",
+        spatial_coordinate_scale_init: float = 0.1,
     ):
         super().__init__()
         if num_tokens < 1 or depth < 1:
             raise ValueError("num_tokens and depth must be positive.")
-        if aggregation not in {"learned_queries", "mean_pool"}:
+        if aggregation not in {"learned_queries", "mean_pool", "passthrough"}:
             raise ValueError(
-                "aggregation must be 'learned_queries' or 'mean_pool'."
+                "aggregation must be 'learned_queries', 'mean_pool', or "
+                "'passthrough'."
             )
+        if spatial_coordinate_scale_init < 0:
+            raise ValueError("spatial_coordinate_scale_init must be non-negative.")
         self.num_tokens = int(num_tokens)
         self.use_spatial_coordinates = bool(use_spatial_coordinates)
         self.aggregation = aggregation
@@ -88,6 +95,13 @@ class SpatialTokenResampler(nn.Module):
             nn.GELU(),
             nn.Linear(spatial_dim, dim),
         )
+        # A normalized spatial embedding previously had an initial norm several
+        # times larger than a unit-normalized BiomedCLIP token. A scalar tanh
+        # gate keeps coordinates bounded while still allowing training to tune
+        # their contribution.
+        self.spatial_gate = nn.Parameter(
+            torch.tensor(float(spatial_coordinate_scale_init))
+        )
         self.layers = nn.ModuleList(
             [_ResamplerLayer(dim, num_heads, dropout) for _ in range(depth)]
             if aggregation == "learned_queries"
@@ -97,6 +111,7 @@ class SpatialTokenResampler(nn.Module):
         self.last_local_boxes: Optional[torch.Tensor] = None
         self.capture_explanations = False
         self.last_attention_layers_raw: list[torch.Tensor] = []
+        self.last_output_mask: Optional[torch.Tensor] = None
 
     def forward(
         self,
@@ -118,8 +133,32 @@ class SpatialTokenResampler(nn.Module):
         local_boxes = local_boxes.to(device=local_tokens.device, dtype=local_tokens.dtype)
         positioned_tokens = local_tokens
         if self.use_spatial_coordinates:
-            positioned_tokens = positioned_tokens + self.spatial_projection(
-                local_boxes
+            spatial_tokens = F.normalize(
+                self.spatial_projection(local_boxes), dim=-1, eps=1e-6
+            )
+            positioned_tokens = F.normalize(
+                F.normalize(positioned_tokens, dim=-1, eps=1e-6)
+                + torch.tanh(self.spatial_gate) * spatial_tokens,
+                dim=-1,
+                eps=1e-6,
+            )
+        positioned_tokens = positioned_tokens * local_mask.unsqueeze(-1).to(
+            positioned_tokens.dtype
+        )
+
+        if self.aggregation == "passthrough":
+            if local_tokens.size(1) > self.num_tokens:
+                raise ValueError(
+                    "passthrough received more local tokens than its configured "
+                    f"budget: {local_tokens.size(1)} > {self.num_tokens}."
+                )
+            identity = torch.diag_embed(local_mask.to(positioned_tokens.dtype))
+            self.last_attention = identity.detach()
+            self.last_local_boxes = local_boxes.detach()
+            self.last_attention_layers_raw = []
+            self.last_output_mask = local_mask.detach()
+            return torch.cat(
+                [global_feature.unsqueeze(1), positioned_tokens], dim=1
             )
 
         if self.aggregation == "mean_pool":
@@ -134,6 +173,12 @@ class SpatialTokenResampler(nn.Module):
             self.last_attention = normalized_weights.unsqueeze(1).detach()
             self.last_local_boxes = local_boxes.detach()
             self.last_attention_layers_raw = []
+            self.last_output_mask = torch.ones(
+                local_tokens.size(0),
+                1,
+                dtype=torch.bool,
+                device=local_tokens.device,
+            )
             return torch.cat(
                 [global_feature.unsqueeze(1), pooled.unsqueeze(1)], dim=1
             )
@@ -151,6 +196,12 @@ class SpatialTokenResampler(nn.Module):
         self.last_attention = weights.mean(dim=1).detach()
         self.last_local_boxes = local_boxes.detach()
         self.last_attention_layers_raw = raw_weights
+        self.last_output_mask = torch.ones(
+            local_tokens.size(0),
+            self.num_tokens,
+            dtype=torch.bool,
+            device=local_tokens.device,
+        )
         return torch.cat([global_feature.unsqueeze(1), queries], dim=1)
 
 
@@ -165,6 +216,23 @@ class BiomedCLIPFoundation(nn.Module):
 
         self.num_visual_tokens = int(kwargs.get("num_visual_tokens", 0))
         self.local_pool_grid = int(kwargs.get("local_pool_grid", 2))
+        single_view_pool_shape = kwargs.get("single_view_pool_shape", None)
+        if single_view_pool_shape is None:
+            self.single_view_pool_shape = None
+        else:
+            if len(single_view_pool_shape) != 2:
+                raise ValueError("single_view_pool_shape must contain [rows, columns].")
+            self.single_view_pool_shape = tuple(
+                int(value) for value in single_view_pool_shape
+            )
+            if any(value < 1 for value in self.single_view_pool_shape):
+                raise ValueError("single_view_pool_shape values must be positive.")
+        self.include_local_cls_token = bool(
+            kwargs.get("include_local_cls_token", False)
+        )
+        self.contrastive_local_weight = float(
+            kwargs.get("contrastive_local_weight", 0.25)
+        )
         self.tile_encode_chunk_size = int(kwargs.get("tile_encode_chunk_size", 32))
         self.local_tile_grad_enabled = bool(
             kwargs.get("local_tile_grad_enabled", True)
@@ -174,8 +242,18 @@ class BiomedCLIPFoundation(nn.Module):
         )
         if self.local_pool_grid < 1:
             raise ValueError("local_pool_grid must be positive.")
+        if self.contrastive_local_weight < 0:
+            raise ValueError("contrastive_local_weight must be non-negative.")
         if self.tile_encode_chunk_size < 1:
             raise ValueError("tile_encode_chunk_size must be positive.")
+        if self.single_view_pool_shape is not None:
+            pooled_tokens = math.prod(self.single_view_pool_shape)
+            if self.num_visual_tokens != pooled_tokens:
+                raise ValueError(
+                    "single_view_pool_shape must produce exactly "
+                    f"num_visual_tokens ({pooled_tokens} != "
+                    f"{self.num_visual_tokens})."
+                )
         if self.num_visual_tokens > 0:
             resampler_cfg = kwargs.get("resampler_cfg", {}) or {}
             self.visual_resampler = SpatialTokenResampler(
@@ -220,19 +298,38 @@ class BiomedCLIPFoundation(nn.Module):
             raise RuntimeError("BiomedCLIP text projection was not found.")
         return projection(hidden)
 
-    def _pool_patch_tokens(self, patch_tokens: torch.Tensor) -> torch.Tensor:
-        """Pool a 14x14 BiomedCLIP patch grid to GxG spatial tokens."""
-        patch_tokens = patch_tokens[:, 1:, :]
-        side = int(math.sqrt(patch_tokens.size(1)))
-        if side * side != patch_tokens.size(1):
+    @staticmethod
+    def _pool_spatial_patch_tokens(
+        patch_tokens: torch.Tensor,
+        pool_shape: tuple[int, int],
+    ) -> torch.Tensor:
+        """Deterministically pool a square ViT patch grid to rows x columns."""
+        if patch_tokens.ndim != 3 or patch_tokens.size(1) < 2:
+            raise ValueError(
+                "BiomedCLIP visual tokens must have shape [B,1+P,D]."
+            )
+        spatial_tokens = patch_tokens[:, 1:, :]
+        side = int(math.sqrt(spatial_tokens.size(1)))
+        if side * side != spatial_tokens.size(1):
             raise RuntimeError("BiomedCLIP patch tokens do not form a square grid.")
-        grid = patch_tokens.transpose(1, 2).reshape(
-            patch_tokens.size(0), patch_tokens.size(2), side, side
+        grid = spatial_tokens.transpose(1, 2).reshape(
+            spatial_tokens.size(0), spatial_tokens.size(2), side, side
         )
         pooled = F.adaptive_avg_pool2d(
-            grid, (self.local_pool_grid, self.local_pool_grid)
+            grid, pool_shape
+        ).flatten(2).transpose(1, 2)
+        return pooled
+
+    def _pool_patch_tokens(self, patch_tokens: torch.Tensor) -> torch.Tensor:
+        """Keep the semantic tile CLS and pool its 14x14 patch grid to GxG."""
+        cls_token = patch_tokens[:, :1, :]
+        pooled = self._pool_spatial_patch_tokens(
+            patch_tokens,
+            (self.local_pool_grid, self.local_pool_grid),
         )
-        return pooled.flatten(2).transpose(1, 2)
+        if self.include_local_cls_token:
+            return torch.cat([cls_token, pooled], dim=1)
+        return pooled
 
     def _encode_local_tile_chunk(self, tile_chunk: torch.Tensor) -> torch.Tensor:
         """Encode one tile chunk while preserving gradients when requested."""
@@ -279,12 +376,14 @@ class BiomedCLIPFoundation(nn.Module):
         )
 
     def _expand_local_boxes(self, tile_boxes: torch.Tensor) -> torch.Tensor:
-        """Split each tile box into the same GxG layout as pooled patch tokens."""
+        """Match tile boxes to the optional CLS plus GxG pooled-token layout."""
         grid = self.local_pool_grid
         left, top, right, bottom = tile_boxes.unbind(dim=-1)
         width = right - left
         height = bottom - top
         boxes = []
+        if self.include_local_cls_token:
+            boxes.append(tile_boxes)
         for row in range(grid):
             for column in range(grid):
                 boxes.append(
@@ -299,6 +398,96 @@ class BiomedCLIPFoundation(nn.Module):
                     )
                 )
         return torch.stack(boxes, dim=2).flatten(1, 2)
+
+    @staticmethod
+    def _grid_boxes(
+        batch_size: int,
+        pool_shape: tuple[int, int],
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        """Create normalized boxes for a deterministic pooled token grid."""
+        rows, columns = pool_shape
+        boxes = []
+        for row in range(rows):
+            for column in range(columns):
+                boxes.append(
+                    [
+                        column / columns,
+                        row / rows,
+                        (column + 1) / columns,
+                        (row + 1) / rows,
+                    ]
+                )
+        return torch.tensor(boxes, device=device, dtype=dtype).unsqueeze(0).expand(
+            batch_size, -1, -1
+        )
+
+    def _encode_single_view_image(self, images: torch.Tensor) -> torch.Tensor:
+        """Encode one global view into the same fixed visual-token budget as XBone.
+
+        The no-high-resolution and letterbox ablations use one encoder pass and
+        deterministic 2-D average pooling over the pretrained ViT patch grid.
+        They therefore expose exactly ``1 + num_visual_tokens`` tokens to the
+        fusion module, matching the proposed model without inventing local tile
+        views or a second visual encoder path.
+        """
+        if self.single_view_pool_shape is None:
+            raise RuntimeError("single_view_pool_shape is not configured.")
+        if not hasattr(self, "visual_resampler"):
+            raise RuntimeError("Matched single-view tokens require a visual resampler.")
+
+        patch_features = self.model.visual.trunk.forward_features(images)
+        projected = self.model.visual.head(patch_features)
+        local_tokens = self._pool_spatial_patch_tokens(
+            projected, self.single_view_pool_shape
+        )
+        global_feature = F.normalize(projected[:, 0], dim=-1, eps=1e-6)
+        local_tokens = F.normalize(local_tokens, dim=-1, eps=1e-6)
+        local_mask = torch.ones(
+            local_tokens.shape[:2],
+            dtype=torch.bool,
+            device=local_tokens.device,
+        )
+        local_boxes = self._grid_boxes(
+            local_tokens.size(0),
+            self.single_view_pool_shape,
+            local_tokens.device,
+            local_tokens.dtype,
+        )
+
+        if self.explain_mode:
+            local_tokens = local_tokens.detach().requires_grad_(True)
+        self.last_global_feature = global_feature.detach()
+        self.last_local_tokens = (
+            local_tokens if self.explain_mode else local_tokens.detach()
+        )
+        self.last_local_mask = local_mask.detach()
+        self.visual_resampler.capture_explanations = self.explain_mode
+
+        image_tokens = self.visual_resampler(
+            global_feature,
+            local_tokens,
+            local_mask,
+            local_boxes,
+        )
+        self.last_local_token_boxes = local_boxes.detach()
+        output_local_mask = getattr(
+            self.visual_resampler, "last_output_mask", local_mask
+        )
+        self.last_image_key_padding_mask = torch.cat(
+            [
+                torch.zeros(
+                    local_tokens.size(0),
+                    1,
+                    dtype=torch.bool,
+                    device=local_tokens.device,
+                ),
+                ~output_local_mask.to(device=local_tokens.device, dtype=torch.bool),
+            ],
+            dim=1,
+        )
+        return image_tokens
 
     def _encode_high_res_image(
         self,
@@ -331,7 +520,9 @@ class BiomedCLIPFoundation(nn.Module):
             track_gradients=self._should_track_local_tile_gradients(),
         )
 
-        tokens_per_tile = self.local_pool_grid ** 2
+        tokens_per_tile = self.local_pool_grid ** 2 + int(
+            self.include_local_cls_token
+        )
         local_tokens = torch.zeros(
             batch_size * tile_count,
             tokens_per_tile,
@@ -364,13 +555,78 @@ class BiomedCLIPFoundation(nn.Module):
             local_boxes,
         )
         self.last_local_token_boxes = local_boxes.detach()
-        self.last_image_key_padding_mask = torch.zeros(
-            batch_size,
-            image_tokens.size(1),
-            dtype=torch.bool,
-            device=image_tokens.device,
+        output_local_mask = getattr(
+            self.visual_resampler, "last_output_mask", None
+        )
+        if (
+            output_local_mask is None
+            or output_local_mask.shape != (batch_size, image_tokens.size(1) - 1)
+        ):
+            output_local_mask = torch.ones(
+                batch_size,
+                image_tokens.size(1) - 1,
+                dtype=torch.bool,
+                device=image_tokens.device,
+            )
+        self.last_image_key_padding_mask = torch.cat(
+            [
+                torch.zeros(
+                    batch_size, 1, dtype=torch.bool, device=image_tokens.device
+                ),
+                ~output_local_mask.to(device=image_tokens.device, dtype=torch.bool),
+            ],
+            dim=1,
         )
         return image_tokens
+
+    def pool_contrastive_image_features(
+        self,
+        image_features: torch.Tensor,
+    ) -> torch.Tensor:
+        """Build one Phase-1 image vector without diluting the global token.
+
+        A uniform mean gives the pretrained global feature weight ``1/T`` and
+        lets newly initialized local modules dominate few-shot alignment. This
+        residual summary keeps the global embedding as the anchor and adds a
+        bounded amount of local evidence.
+        """
+        if image_features.ndim == 2:
+            return F.normalize(image_features, dim=-1)
+        if image_features.ndim != 3 or image_features.size(1) < 1:
+            raise ValueError(
+                "image_features must have shape [B,D] or [B,T,D]."
+            )
+
+        global_feature = F.normalize(image_features[:, 0], dim=-1, eps=1e-6)
+        if image_features.size(1) == 1 or self.contrastive_local_weight == 0:
+            return global_feature
+
+        local_features = image_features[:, 1:]
+        padding_mask = self.last_image_key_padding_mask
+        if padding_mask is None:
+            valid = torch.ones(
+                local_features.shape[:2],
+                dtype=torch.bool,
+                device=local_features.device,
+            )
+        else:
+            if padding_mask.shape != image_features.shape[:2]:
+                raise ValueError(
+                    "Image padding mask does not match the visual-token sequence."
+                )
+            valid = ~padding_mask[:, 1:].to(
+                device=local_features.device, dtype=torch.bool
+            )
+        weights = valid.unsqueeze(-1).to(local_features.dtype)
+        local_summary = (local_features * weights).sum(dim=1) / weights.sum(
+            dim=1
+        ).clamp_min(1.0)
+        local_summary = F.normalize(local_summary, dim=-1, eps=1e-6)
+        return F.normalize(
+            global_feature + self.contrastive_local_weight * local_summary,
+            dim=-1,
+            eps=1e-6,
+        )
 
     def forward(
         self,
@@ -393,17 +649,21 @@ class BiomedCLIPFoundation(nn.Module):
         else:
             text_features = self.model.encode_text(input_ids)
 
-        if tile_values is not None:
+        if images is None:
+            image_features = None
+        elif tile_values is not None:
             image_features = self._encode_high_res_image(
                 images, tile_values, tile_mask, tile_boxes
             )
+        elif self.single_view_pool_shape is not None:
+            image_features = self._encode_single_view_image(images)
         elif return_local:
             patch_features = self.model.visual.trunk.forward_features(images)
             image_features = self.model.visual.head(patch_features)
         else:
             image_features = self.model.encode_image(images)
 
-        if image_features.ndim == 2:
+        if image_features is not None and image_features.ndim == 2:
             image_features = F.normalize(image_features, dim=-1)
         if text_features is not None and text_features.ndim == 2:
             text_features = F.normalize(text_features, dim=-1)

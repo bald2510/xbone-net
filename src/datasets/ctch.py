@@ -17,7 +17,8 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
-from .high_resolution import prepare_high_resolution_inputs
+from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
+from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
 # ============================================================
@@ -80,6 +81,7 @@ class CTCHDataset(Dataset):
         # Backward compatibility: single report_dir
         report_dir: str = None,
         high_res: dict = None,
+        preprocess: dict = None,
         **kwargs,
     ):
         """Initialize the CTCH dataset.
@@ -102,7 +104,8 @@ class CTCHDataset(Dataset):
             xray_report_dir: Path to directory containing X-ray findings reports.
             clinical_report_dir: Path to directory containing clinical history reports.
             report_dir: Single report directory for both report types (backward compatibility).
-            high_res: Uniform-grid high-resolution preprocessing configuration.
+            high_res: Fixed-budget sparse focal preprocessing configuration.
+            preprocess: Global-image preprocessing used when high-resolution mode is disabled.
             **kwargs: Extra unused arguments for backward compatibility.
         """
         self.img_dir = img_dir
@@ -113,8 +116,16 @@ class CTCHDataset(Dataset):
         self.max_text_len = max_text_len
         self.high_res_cfg = high_res or {}
         self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
+        self.cache_high_res_selection = bool(
+            self.high_res_cfg.get("cache_selection", True)
+        )
+        self._high_res_selection_cache = {}
+        self.preprocess_cfg = preprocess or {}
         self.text_only = bool(kwargs.get("text_only", False))
         self.shuffle_reports_all_splits = bool(kwargs.get("shuffle_reports", False))
+        self.shuffle_report_mode = str(
+            kwargs.get("shuffle_report_mode", "derangement")
+        ).lower()
         configured_shuffle_splits = kwargs.get("shuffle_report_splits", []) or []
         self.shuffle_report_splits = {
             "validate" if str(name).lower() == "val" else str(name).lower()
@@ -206,11 +217,22 @@ class CTCHDataset(Dataset):
             or current_split in self.shuffle_report_splits
         )
         if self.shuffle_reports:
-            import numpy as np
-
-            self.shuffled_report_indices = np.random.default_rng(seed).permutation(
-                len(self.df)
-            )
+            if self.shuffle_report_mode == "cross_class":
+                if "class_id" not in self.df.columns:
+                    raise ValueError(
+                        "shuffle_report_mode='cross_class' requires class_id."
+                    )
+                self.shuffled_report_indices = cross_class_donor_indices(
+                    self.df["class_id"].to_numpy(), seed
+                )
+            elif self.shuffle_report_mode == "derangement":
+                self.shuffled_report_indices = deranged_donor_indices(
+                    len(self.df), seed
+                )
+            else:
+                raise ValueError(
+                    "shuffle_report_mode must be 'cross_class' or 'derangement'."
+                )
         else:
             self.shuffled_report_indices = None
 
@@ -218,7 +240,7 @@ class CTCHDataset(Dataset):
         has_dual = bool(self.xray_report_dir and self.clinical_report_dir)
         print(
             f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
-            f"Task: {task_type}, Dual reports: {has_dual}, Uniform high-res grid: "
+            f"Task: {task_type}, Dual reports: {has_dual}, Sparse high-res views: "
             f"{self.use_high_res}, Text-only: {self.text_only}, Reports shuffled: "
             f"{self.shuffle_reports}."
         )
@@ -287,13 +309,24 @@ class CTCHDataset(Dataset):
                 image = Image.new("RGB", (224, 224), color="black")
 
         if self.use_high_res:
-            high_res_fields = prepare_high_resolution_inputs(
-                image, self.transform, self.high_res_cfg
+            cache_key = "__text_only__" if self.text_only else image_id
+            cached_selection = self._high_res_selection_cache.get(cache_key)
+            high_res_fields, selection = prepare_high_resolution_inputs(
+                image,
+                self.transform,
+                self.high_res_cfg,
+                selection=cached_selection,
+                return_selection=True,
             )
+            if self.cache_high_res_selection and cached_selection is None:
+                self._high_res_selection_cache[cache_key] = selection
         else:
             high_res_fields = {}
-            if self.transform:
-                image = self.transform(image)
+            image = prepare_global_image(
+                image,
+                self.transform,
+                self.preprocess_cfg,
+            )
 
         # --- Load and tokenize dual text reports ---
         report_image_id = image_id

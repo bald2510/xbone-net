@@ -1,0 +1,13 @@
+# @package _global_
+# Classifier ablation: replace the empirical-centroid head with a linear head.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/classifier/linear
+
+params:
+  phase2:
+    classifier_type: linear
+    loss_type: ce

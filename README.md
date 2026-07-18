@@ -6,7 +6,7 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
 
 ## 1. Key Features
 
-- **High-resolution image path:** Cover the full radiograph with a deterministic 224-pixel grid, pool local patch tokens, and compress them with a coordinate-aware learned resampler. Local tiles propagate gradients to visual LoRA adapters during training, with chunk-level activation checkpointing to control memory.
+- **High-resolution image path:** Conservatively crop scanner padding, retain an aspect-preserving 224-pixel global view, and select exactly four 224-pixel local views using image-only coverage and focal texture scores. Each local view contributes its pretrained CLS token and one patch summary; a lightweight coordinate-gated passthrough adapter preserves the fixed eight-token budget without changing BiomedCLIP.
 - **Two-stage training:**
   - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
   - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention. Classification uses cosine similarity to empirical class centroids recomputed from the training embeddings and effective-number weighted cross-entropy.
@@ -114,32 +114,87 @@ To evaluate a trained model checkpoint and calculate metrics (Accuracy, F1-macro
 ```bash
 python evaluate.py +experiment=btxrd/proposed/ours_xbone_net --bootstrap --save-embeddings
 ```
-*(Using `--save-embeddings` saves the test embeddings and probabilities to an `.npz` file, which is required for running OOD detection).*
+`--save-embeddings` is optional for ordinary classification evaluation.
 
 ### 5.3. Out-of-Distribution (OOD) Detection
-Once you have saved the ID embeddings using `evaluate.py`, run OOD detection against an OOD dataset (e.g., using `fracatlas` as OOD):
+OOD and explainability are locked to the proposed model trained on CTCH. The
+orchestrator exports the required feature archives, fits detectors only on CTCH
+train/validation data, and evaluates all configured scenarios for three seeds:
 
 ```bash
-python evaluate_ood.py \
-    --id-path checkpoints/btxrd/proposed/ours_xbone_net/seed_42/test_embeddings.npz \
-    --ood-path checkpoints/fracatlas/seed_42/test_embeddings.npz \
-    --method mahalanobis
+python tools/run_ctch_analysis.py
 ```
 
+See `docs/ctch_ood_explainability.md` for feature-only, OOD-only,
+explainability-only, and table-generation commands. `evaluate_ood.py` is an
+internal stage of this locked workflow and should not be invoked with unrelated
+BTXRD checkpoints.
+
 ### 5.4. Running the Entire Experiment Suite
-To run all organized experiment groups (Zero-shot, Fine-tuned Baselines, Proposed Model):
+The registry contains every classification config (BTXRD/CTCH baselines,
+few-shot, proposed, and CTCH ablations). Run all configs with the canonical
+three seeds, optionally enabling sample-level bootstrap CIs:
 
 ```bash
+python tools/run_all.py --seeds 42 123 456 --bootstrap
 python tools/run_all.py --group zero_shot_baselines
 python tools/run_all.py --group finetuned_baselines
 python tools/run_all.py --group proposed
+python tools/run_all.py --group ablation
 ```
+
+Trainable experiments use every requested seed. Deterministic zero-shot configs
+are evaluated once because repeating them under different seed labels would be
+pseudo-replication; their uncertainty is estimated by test-sample bootstrap.
+
+For wall-clock comparisons, run the locked efficiency subset on one fixed GPU:
+
+```bash
+python tools/run_all.py --group training_time --seeds 42 123 456
+```
+
+Run the disjoint complement (all other registered experiments) on the faster
+performance GPU:
+
+```bash
+python tools/run_all.py --group non_timing --seeds 42 123 456 --bootstrap
+```
+
+First try the configured physical batch size of 16. If a 16 GB GPU runs out of
+memory, choose the largest physical micro-batch that fits the most demanding
+timing configuration and apply the same override to the complete timing group.
+For example:
+
+```bash
+python tools/run_all.py --group training_time --seeds 42 123 456 --batch-size 2 --gradient-accumulation-steps 8
+```
+
+This fallback preserves the optimizer effective batch, but it is **not**
+mathematically equivalent to physical batch 16 in Phase 1: the contrastive loss
+sees only two in-batch candidates. Therefore, do not mix its Phase-1 performance
+with batch-16 results; either use it as a timing-only protocol or rerun every
+contrastive performance comparison with the same physical batch.
+
+Each trained seed writes `training_summary.json` beside its checkpoint with
+per-phase runtime, GPU-hours, peak CUDA memory, precision, GPU model, and
+software versions. Compare wall-clock values only when GPU model, precision,
+physical batch size, gradient accumulation, and software environment match.
 
 ### 5.5. Canonical Pipeline and Ablations
 
-BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into exactly four groups: `input` (resolution and modality), `backbone` (PEFT and backbone adaptation), `fusion`, and `classifier`. Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The LoRA adapters are intentionally not merged after Phase 1 so that they remain trainable during Phase 2; adapter merging/freezing is treated as a backbone/PEFT ablation.
+BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into `modality`, `finetune`, and `architecture` (`preprocess`, `phase`, `fusion`, and `classifier`). Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split. The `xbone_nohighres` and `xbone_letterbox` controls use one encoder view but preserve the proposed fusion budget of one global plus eight pooled visual tokens.
 
 The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
+
+Validate the materialized CTCH manifests and exact cross-split image hashes
+without changing data:
+
+```bash
+python tools/validate_ctch_split.py
+```
+
+Patient-level disjointness is certified only when `ctch-split.csv` contains a
+non-empty `patient_key` column.
 
 ### 5.6. CTCH Few-Shot Experiments
 

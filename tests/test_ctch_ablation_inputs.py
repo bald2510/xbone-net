@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 import pandas as pd
+from PIL import Image
 
 from src.datasets.ctch import CTCHDataset
 
@@ -69,6 +70,31 @@ class CTCHAblationInputTests(unittest.TestCase):
             image, _, _, _ = dataset[0]
             self.assertEqual(image.size, (224, 224))
             self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
+
+    def test_letterbox_preprocessing_preserves_aspect_ratio(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            images_dir = root / "images"
+            images_dir.mkdir()
+            for index in range(3):
+                Image.new("RGB", (80, 40), color="white").save(
+                    images_dir / f"case_{index}.png"
+                )
+
+            dataset = self._make_dataset(
+                root,
+                "train",
+                preprocess={
+                    "strategy": "letterbox",
+                    "target_size": 224,
+                    "pad_value": "black",
+                },
+            )
+
+            image, _, _, _ = dataset[0]
+            self.assertEqual(image.size, (224, 224))
+            self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
+            self.assertEqual(image.getpixel((112, 112)), (255, 255, 255))
 
 
 if __name__ == "__main__":

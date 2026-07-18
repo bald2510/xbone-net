@@ -1,0 +1,14 @@
+# @package _global_
+# Fine-tuning ablation: retain XBone high-resolution inputs and update all backbone weights.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/finetune/xbone_highres_full_ft
+
+model:
+  freeze_backbone: false
+  peft:
+    type: full_ft
+    params: null

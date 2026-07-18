@@ -223,7 +223,7 @@ Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thốn
 \textbf{Về kiến trúc pipeline:} Hệ thống được thiết kế theo kiến trúc hai giai đoạn :
 \begin{itemize}
   \item \textbf{Giai đoạn 1 -- Căn chỉnh tương phản:} Chỉ huấn luyện backbone (BiomedCLIP thông qua LoRA) bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
-  \item \textbf{Giai đoạn 2 -- Huấn luyện dung hợp và phân loại:} Backbone được đóng băng hoàn toàn, chỉ huấn luyện mô-đun dung hợp đa phương thức (cross-attention) và bộ phân loại (prototypical head). Thiết kế này tách biệt quá trình thích ứng backbone khỏi quá trình học phân loại, giảm thiểu rủi ro quá khớp.
+  \item \textbf{Giai đoạn 2 -- Huấn luyện dung hợp và phân loại:} Trọng số nền của BiomedCLIP được giữ đóng băng, trong khi các adapter LoRA, spatial resampler và mô-đun dung hợp cross-attention tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
 \end{itemize}
 
 Kiến trúc chi tiết của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày trong Chương 3.

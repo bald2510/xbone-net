@@ -57,6 +57,13 @@ def _safe_auroc(labels: np.ndarray, scores: np.ndarray) -> float:
     return float(roc_auc_score(labels, scores))
 
 
+def _safe_auprc(labels: np.ndarray, scores: np.ndarray) -> float:
+    """Compute binary AUPRC safely for bootstrap samples."""
+    if len(np.unique(labels)) < 2:
+        return float("nan")
+    return float(average_precision_score(labels, scores))
+
+
 def _safe_f1(labels: np.ndarray, scores: np.ndarray) -> float:
     """Compute binary F1 from probabilities with a 0.5 decision threshold.
 
@@ -72,6 +79,60 @@ def _safe_f1(labels: np.ndarray, scores: np.ndarray) -> float:
     """
     preds = (scores >= 0.5).astype(int)
     return float(f1_score(labels, preds, zero_division=0))
+
+
+def multiclass_calibration_metrics(
+    probabilities: np.ndarray,
+    labels: np.ndarray,
+    n_bins: int = 15,
+) -> dict[str, float]:
+    """Compute top-label ECE, adaptive ECE, NLL, and multiclass Brier score."""
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+    if probabilities.ndim != 2 or len(probabilities) != len(labels):
+        raise ValueError("Calibration inputs must have shapes [N,C] and [N].")
+    if len(labels) == 0 or n_bins < 1:
+        raise ValueError("Calibration metrics require samples and positive n_bins.")
+    row_sums = probabilities.sum(axis=1, keepdims=True)
+    if np.any(row_sums <= 0):
+        raise ValueError("Every probability row must have a positive sum.")
+    probabilities = probabilities / row_sums
+    if np.any(labels < 0) or np.any(labels >= probabilities.shape[1]):
+        raise ValueError("Calibration labels are outside the probability columns.")
+
+    predictions = probabilities.argmax(axis=1)
+    confidence = probabilities.max(axis=1)
+    correct = (predictions == labels).astype(np.float64)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    for index in range(n_bins):
+        lower, upper = edges[index], edges[index + 1]
+        mask = (confidence > lower) & (confidence <= upper)
+        if index == 0:
+            mask |= confidence == 0.0
+        if np.any(mask):
+            ece += float(mask.mean()) * abs(
+                float(correct[mask].mean()) - float(confidence[mask].mean())
+            )
+
+    adaptive_ece = 0.0
+    for indices in np.array_split(np.argsort(confidence), min(n_bins, len(labels))):
+        if len(indices):
+            adaptive_ece += (len(indices) / len(labels)) * abs(
+                float(correct[indices].mean())
+                - float(confidence[indices].mean())
+            )
+
+    clipped_true = np.clip(
+        probabilities[np.arange(len(labels)), labels], 1e-12, 1.0
+    )
+    one_hot = np.eye(probabilities.shape[1], dtype=np.float64)[labels]
+    return {
+        "ece_15": float(ece),
+        "adaptive_ece_15": float(adaptive_ece),
+        "nll": float(-np.log(clipped_true).mean()),
+        "brier_score": float(np.square(probabilities - one_hot).sum(axis=1).mean()),
+    }
 
 
 # ============================================================
@@ -106,6 +167,7 @@ def compute_metrics_multiclass(
         raise ValueError("Every probability row must have a positive sum.")
     probs = all_probs / row_sums
     all_preds = np.argmax(probs, axis=1)
+    calibration = multiclass_calibration_metrics(probs, all_gt, n_bins=15)
 
     acc = float(accuracy_score(all_gt, all_preds))
     balanced_acc = float(balanced_accuracy_score(all_gt, all_preds))
@@ -193,6 +255,10 @@ def compute_metrics_multiclass(
     print(f"Macro Precision               : {macro_prec:.4f}")
     print(f"Macro Recall (Sensitivity)    : {macro_rec:.4f}")
     print(f"Macro Specificity             : {macro_spec:.4f}")
+    print(f"ECE (15 equal-width bins)     : {calibration['ece_15']:.4f}")
+    print(f"Adaptive ECE (15 bins)        : {calibration['adaptive_ece_15']:.4f}")
+    print(f"Negative Log-Likelihood       : {calibration['nll']:.4f}")
+    print(f"Multiclass Brier Score        : {calibration['brier_score']:.4f}")
     print("\nConfusion Matrix:")
     print(cm)
 
@@ -212,6 +278,7 @@ def compute_metrics_multiclass(
         "recall_per_class": recall_per_class,
         "specificity_per_class": specificity_per_class,
         "confusion_matrix": cm.tolist(),
+        **calibration,
     }
 
 
@@ -393,8 +460,14 @@ def bootstrap_confidence_intervals(
     auroc_boot = {name: [] for name in pathologies}
     f1_boot = {name: [] for name in pathologies}
     auroc_macro_boot = []
+    auprc_macro_boot = []
     f1_macro_boot = []
     accuracy_boot = []
+    balanced_accuracy_boot = []
+    ece_boot = []
+    adaptive_ece_boot = []
+    nll_boot = []
+    brier_boot = []
 
     print(f"\nRunning {n_bootstrap:,} bootstrap resamples for 95% CIs...")
     for _ in tqdm(range(n_bootstrap), desc="Bootstrap"):
@@ -403,6 +476,7 @@ def bootstrap_confidence_intervals(
         boot_probs = all_probs[indices]
 
         per_class_aurocs = []
+        per_class_auprcs = []
         if is_multilabel:
             boot_preds = (boot_probs >= 0.5).astype(np.int64)
             macro_f1 = f1_score(
@@ -412,6 +486,7 @@ def bootstrap_confidence_intervals(
             for class_id, name in enumerate(pathologies):
                 binary_gt = boot_gt[:, class_id].astype(np.int64)
                 auc_value = _safe_auroc(binary_gt, boot_probs[:, class_id])
+                auprc_value = _safe_auprc(binary_gt, boot_probs[:, class_id])
                 f1_value = float(f1_score(
                     binary_gt, boot_preds[:, class_id], zero_division=0
                 ))
@@ -419,14 +494,21 @@ def bootstrap_confidence_intervals(
                 f1_boot[name].append(f1_value)
                 if not np.isnan(auc_value):
                     per_class_aurocs.append(auc_value)
+                if not np.isnan(auprc_value):
+                    per_class_auprcs.append(auprc_value)
         else:
             boot_gt = boot_gt.astype(np.int64).reshape(-1)
+            row_sums = boot_probs.sum(axis=1, keepdims=True)
+            boot_probs = boot_probs / np.clip(row_sums, 1e-12, None)
             boot_preds = np.argmax(boot_probs, axis=1)
             macro_f1 = f1_score(
                 boot_gt, boot_preds, labels=class_order,
                 average="macro", zero_division=0,
             )
             accuracy_value = accuracy_score(boot_gt, boot_preds)
+            balanced_accuracy_boot.append(
+                float(balanced_accuracy_score(boot_gt, boot_preds))
+            )
             per_class_f1 = f1_score(
                 boot_gt, boot_preds, labels=class_order,
                 average=None, zero_division=0,
@@ -434,14 +516,27 @@ def bootstrap_confidence_intervals(
             for class_id, name in enumerate(pathologies):
                 binary_gt = (boot_gt == class_id).astype(np.int64)
                 auc_value = _safe_auroc(binary_gt, boot_probs[:, class_id])
+                auprc_value = _safe_auprc(binary_gt, boot_probs[:, class_id])
                 f1_value = float(per_class_f1[class_id])
                 auroc_boot[name].append(auc_value)
                 f1_boot[name].append(f1_value)
                 if not np.isnan(auc_value):
                     per_class_aurocs.append(auc_value)
+                if not np.isnan(auprc_value):
+                    per_class_auprcs.append(auprc_value)
+            calibration = multiclass_calibration_metrics(
+                boot_probs, boot_gt, n_bins=15
+            )
+            ece_boot.append(calibration["ece_15"])
+            adaptive_ece_boot.append(calibration["adaptive_ece_15"])
+            nll_boot.append(calibration["nll"])
+            brier_boot.append(calibration["brier_score"])
 
         auroc_macro_boot.append(
             float(np.mean(per_class_aurocs)) if per_class_aurocs else float("nan")
+        )
+        auprc_macro_boot.append(
+            float(np.mean(per_class_auprcs)) if per_class_auprcs else float("nan")
         )
         f1_macro_boot.append(float(macro_f1))
         accuracy_boot.append(float(accuracy_value))
@@ -458,11 +553,20 @@ def bootstrap_confidence_intervals(
 
     result = {
         "auroc_macro": _ci(auroc_macro_boot),
+        "auprc_macro": _ci(auprc_macro_boot),
         "f1_macro": _ci(f1_macro_boot),
         "accuracy": _ci(accuracy_boot),
         "auroc_per_class": {name: _ci(auroc_boot[name]) for name in pathologies},
         "f1_per_class": {name: _ci(f1_boot[name]) for name in pathologies},
     }
+    if not is_multilabel:
+        result.update({
+            "balanced_accuracy": _ci(balanced_accuracy_boot),
+            "ece_15": _ci(ece_boot),
+            "adaptive_ece_15": _ci(adaptive_ece_boot),
+            "nll": _ci(nll_boot),
+            "brier_score": _ci(brier_boot),
+        })
     print(
         f"  AUROC macro 95% CI: [{result['auroc_macro'][0]:.4f}, "
         f"{result['auroc_macro'][1]:.4f}]"

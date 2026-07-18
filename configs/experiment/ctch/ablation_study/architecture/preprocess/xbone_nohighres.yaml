@@ -1,0 +1,21 @@
+# @package _global_
+# Preprocessing ablation: direct global resize without local high-resolution tiles.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/preprocess/xbone_nohighres
+
+model:
+  # Match the proposed fusion budget: one global token + eight deterministic
+  # pooled tokens from the single 224x224 view (no local tile encoder passes).
+  num_visual_tokens: 8
+  single_view_pool_shape: [2, 4]
+
+dataset:
+  params:
+    high_res:
+      enabled: false
+    preprocess:
+      strategy: direct_resize

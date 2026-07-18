@@ -6,7 +6,7 @@ Exposes the core model composer, builder factory, and sub-package registries:
   - Builder: Factory functions (build_model, setup_phase2_modules)
   - Backbones: BiomedCLIP, OpenCLIP, ResNet-50, DenseNet-121, MedCLIP
   - Fusion: CrossAttentionFusion, ConcatFusion, IdentityFusion
-  - Classifier Heads: PrototypicalHead, LinearHead, IdentityHead
+  - Classifier Heads: EmpiricalCentroidHead, LinearHead, IdentityHead
   - PEFT: LoRA, QLoRA, Full FT
 """
 

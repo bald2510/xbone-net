@@ -1,10 +1,9 @@
 """
 XBone-Net Multi-Seed Results Aggregator.
 ===============================================================================
-Aggregates multi-seed experiment metrics, performs significance tests, and exports tables:
+Aggregates multi-seed experiment metrics and exports tables:
   - Metric Gathering: Recursively scans results directory for metrics.json files across seeds.
   - Statistical Aggregation: Groups metrics by experiment and computes mean ± std values.
-  - Paired Bootstrap: Performs non-parametric paired bootstrap significance testing between models.
   - Table Export: Exports aggregated summary CSV and publication-ready LaTeX tables.
 """
 
@@ -79,13 +78,22 @@ def aggregate_by_experiment(results: list[dict]) -> pd.DataFrame:
             "seeds": str(seeds),
         }
 
-        for metric_key in ["auroc_macro", "f1_macro", "accuracy", "sensitivity", "specificity", "precision", "hamming_loss"]:
+        for metric_key in [
+            "auroc_macro", "auprc_macro", "f1_macro", "accuracy",
+            "balanced_accuracy", "sensitivity", "specificity", "precision",
+            "ece_15", "adaptive_ece_15", "nll", "brier_score", "hamming_loss",
+        ]:
             values = [m.get(metric_key) for m in metrics_list if m.get(metric_key) is not None]
             if values:
                 row[f"{metric_key}_mean"] = np.mean(values)
-                row[f"{metric_key}_std"] = np.std(values)
+                row[f"{metric_key}_std"] = (
+                    np.std(values, ddof=1) if len(values) > 1 else 0.0
+                )
 
-                row[f"{metric_key}_formatted"] = f"{np.mean(values):.4f} ± {np.std(values):.4f}"
+                row[f"{metric_key}_formatted"] = (
+                    f"{np.mean(values):.4f} ± "
+                    f"{row[f'{metric_key}_std']:.4f}"
+                )
             else:
                 row[f"{metric_key}_mean"] = None
                 row[f"{metric_key}_std"] = None
@@ -97,67 +105,8 @@ def aggregate_by_experiment(results: list[dict]) -> pd.DataFrame:
 
 
 # ============================================================
-# Statistical Testing & Export
+# Table Export
 # ============================================================
-
-def paired_bootstrap_test(
-    scores_a: np.ndarray,
-    scores_b: np.ndarray,
-    labels: np.ndarray,
-    metric_fn,
-    n_bootstrap: int = 10000,
-    seed: int = 42,
-) -> dict:
-    """Run paired bootstrap significance test between two models.
-
-    Args:
-        scores_a: Predicted probabilities from model A.
-        scores_b: Predicted probabilities from model B.
-        labels: Ground-truth target labels.
-        metric_fn: Callable metric evaluation function.
-        n_bootstrap: Number of bootstrap iterations (default: 10000).
-        seed: Random seed value (default: 42).
-
-    Returns:
-        dict: Test results containing observed metrics, p-value, and 95% CIs.
-    """
-    rng = np.random.RandomState(seed)
-    n = len(labels)
-
-    observed_a = metric_fn(labels, scores_a)
-    observed_b = metric_fn(labels, scores_b)
-    observed_diff = observed_b - observed_a
-
-    diffs = []
-    for _ in range(n_bootstrap):
-        idx = rng.randint(0, n, size=n)
-        boot_labels = labels[idx]
-
-        if len(np.unique(boot_labels)) < 2:
-            continue
-
-        boot_a = metric_fn(boot_labels, scores_a[idx])
-        boot_b = metric_fn(boot_labels, scores_b[idx])
-        diffs.append(boot_b - boot_a)
-
-    diffs = np.array(diffs)
-
-    p_value = np.mean(np.abs(diffs) >= np.abs(observed_diff))
-
-    ci_lower = np.percentile(diffs, 2.5)
-    ci_upper = np.percentile(diffs, 97.5)
-
-    return {
-        "metric_a": float(observed_a),
-        "metric_b": float(observed_b),
-        "observed_diff": float(observed_diff),
-        "p_value": float(p_value),
-        "ci_95": [float(ci_lower), float(ci_upper)],
-        "n_bootstrap": n_bootstrap,
-        "significant_at_005": p_value < 0.05,
-    }
-
-
 def generate_latex_table(df: pd.DataFrame, metric_cols: list[str], caption: str = "") -> str:
     """Generate LaTeX table string from aggregated results DataFrame.
 
@@ -219,8 +168,6 @@ def main():
     parser.add_argument("--results-dir", default="results/", help="Root results directory")
     parser.add_argument("--output", default="results/summary/", help="Output directory for summary files")
     parser.add_argument("--latex", action="store_true", help="Generate LaTeX tables")
-    parser.add_argument("--compare", nargs=2, metavar=("EXP_A", "EXP_B"),
-                        help="Run significance test between two experiments")
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -258,4 +205,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

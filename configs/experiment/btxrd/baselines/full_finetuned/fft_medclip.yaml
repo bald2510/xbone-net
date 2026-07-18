@@ -1,6 +1,6 @@
 # @package _global_
 # ===============================================================================
-# Experiment Config: btxrd/baselines/finetuned/fft_medclip
+# Experiment Config: btxrd/baselines/full_finetuned/fft_medclip
 # Backbone: medclip | PEFT: full_ft | Fusion: concat | Head: linear
 # Description: Full Fine-Tuned Baseline.
 # ===============================================================================
@@ -18,7 +18,7 @@ model:
   freeze_backbone: false
 
 # --- Experiment Identifier ---
-experiment_name: btxrd/baselines/finetuned/fft_medclip
+experiment_name: btxrd/baselines/full_finetuned/fft_medclip
 
 # --- Training Hyperparameters ---
 params:

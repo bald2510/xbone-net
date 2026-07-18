@@ -1,0 +1,14 @@
+# @package _global_
+# Modality robustness: train normally and mismatch reports only at test time.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/modality/shuffled_report
+
+dataset:
+  params:
+    shuffle_report_mode: cross_class
+    shuffle_report_splits:
+      - test

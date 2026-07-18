@@ -6,7 +6,7 @@ Executes model evaluation, metric computation, bootstrap 95% CIs, and embedding 
   - Model Reconstruction: Reconstructs architecture from Hydra config and loads
     fine-tuned Phase 2/Phase 1 weights or pre-trained foundation weights.
   - Test Set Inference: Evaluates test split in zero-shot mode (CLIP text prompts)
-    or classifier mode (cross-attention fusion + prototypical head).
+    or classifier mode (cross-attention fusion + empirical-centroid/linear head).
   - Metric Computation: Calculates AUROC, F1-Macro, Accuracy, Sensitivity, Specificity,
     Precision, and optional 95% bootstrap confidence intervals.
   - Embedding Export: Option to export intermediate image/text embeddings to .npz.
@@ -35,7 +35,11 @@ import hydra
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
 
-from src.models.builder import build_model, setup_phase2_modules
+from src.models.builder import (
+    build_model,
+    checkpoint_model_config,
+    setup_phase2_modules,
+)
 from src.datasets.builder import build_dataloader
 from src.utils.prompts import generate_custom_prompts
 from src.utils.metrics import (
@@ -485,7 +489,7 @@ def main(cfg: DictConfig) -> None:
     print(f"Starting evaluation on device: {device} (seed: {seed_val})")
 
     print("Building model architecture...")
-    model = build_model(cfg.model).to(device)
+    model = build_model(checkpoint_model_config(cfg)).to(device)
 
     p2_phase_cfg = params_cfg.get("phase2", {}) or {}
     model, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)

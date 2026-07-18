@@ -1,0 +1,24 @@
+# @package _global_
+# Modality ablation: bypass the visual path and classify from clinical text only.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/modality/text_only
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    use_image: false
+    use_text: true
+    init_from_phase1_merged: false
+
+dataset:
+  params:
+    # Avoid reading patient images while retaining a collatable placeholder.
+    text_only: true
+    high_res:
+      enabled: false

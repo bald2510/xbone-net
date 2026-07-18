@@ -27,7 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from evaluate import adapt_state_dict_keys, load_state_dict_checked
 from src.datasets.builder import build_dataloader
-from src.models.builder import build_model, setup_phase2_modules
+from src.models.builder import (
+    build_model,
+    checkpoint_model_config,
+    setup_phase2_modules,
+)
 from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id
 
@@ -47,7 +51,7 @@ def load_config(path: Path):
 
 
 def load_model(cfg, checkpoint: Path, device: torch.device):
-    model = build_model(cfg.model).to(device)
+    model = build_model(checkpoint_model_config(cfg)).to(device)
     model, _, fusion_type, _ = setup_phase2_modules(model, cfg, device)
     if fusion_type != "cross_attention":
         raise ValueError(f"Expected cross_attention fusion, got {fusion_type!r}.")

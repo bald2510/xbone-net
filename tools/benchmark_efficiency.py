@@ -1,0 +1,439 @@
+"""Benchmark XBone-Net parameters, supported FLOPs, latency and CUDA memory.
+
+The script uses the same Hydra experiment config, model builder, checkpoint
+loader, dataset preprocessing and Phase-2 forward path as ``evaluate.py``.
+Host-to-device transfer, dataloader time and zero-shot prompt precomputation are
+excluded from model latency.
+"""
+
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import torch
+import torch.nn.functional as F
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Measure inference efficiency for one Hydra experiment."
+    )
+    parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
+    parser.add_argument("--precision", choices=("fp32", "fp16", "bf16"), default="fp32")
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--num-batches", type=int, default=1)
+    parser.add_argument("--warmup", type=int, default=10)
+    parser.add_argument("--repeats", type=int, default=50)
+    parser.add_argument(
+        "--skip-flops",
+        action="store_true",
+        help="Skip FlopCounterMode when only latency/params are needed.",
+    )
+    args, hydra_args = parser.parse_known_args()
+    if args.batch_size < 1 or args.num_batches < 1:
+        parser.error("--batch-size and --num-batches must be positive.")
+    if args.warmup < 0 or args.repeats < 1:
+        parser.error("--warmup must be non-negative and --repeats must be positive.")
+    sys.argv = [sys.argv[0], *hydra_args]
+    return args
+
+
+ARGS = _parse_args()
+
+# Import after consuming benchmark-only arguments. Importing evaluate.py reuses
+# its validated checkpoint loading helpers and preserves Hydra overrides.
+import hydra  # noqa: E402
+from omegaconf import DictConfig, OmegaConf  # noqa: E402
+
+from evaluate import load_model_checkpoint, seed_everything  # noqa: E402
+from src.datasets.builder import build_dataloader  # noqa: E402
+from src.models.builder import (  # noqa: E402
+    build_model,
+    checkpoint_model_config,
+    setup_phase2_modules,
+)
+from src.utils.efficiency import (  # noqa: E402
+    batch_metadata,
+    count_supported_flops,
+    measure_cuda_memory_mb,
+    measure_latency_ms,
+    parameter_summary,
+    summarize_measurements,
+)
+from src.utils.prompts import generate_custom_prompts  # noqa: E402
+from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id  # noqa: E402
+
+
+def _resolve_device(name: str) -> torch.device:
+    if name == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("--device cuda was requested but CUDA is unavailable.")
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(name)
+
+
+def _move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
+    return {
+        key: value.to(device, non_blocking=True)
+        if isinstance(value, torch.Tensor)
+        else value
+        for key, value in batch.items()
+    }
+
+
+def _tokenize_prompts(tokenizer, texts: list[str], device: torch.device):
+    encoded = tokenizer(texts)
+    attention_mask = None
+    if isinstance(encoded, dict):
+        attention_mask = encoded.get("attention_mask")
+        encoded = encoded["input_ids"]
+    input_ids = encoded.to(device)
+    if attention_mask is not None:
+        attention_mask = attention_mask.to(device)
+    return input_ids, attention_mask
+
+
+def _encode_zero_shot_prompts(
+    model,
+    class_names: list[str],
+    image_context: str,
+    device: torch.device,
+) -> torch.Tensor:
+    tokenizer = getattr(model.backbone, "tokenizer", None)
+    if tokenizer is None:
+        raise ValueError("Zero-shot efficiency benchmarking requires a tokenizer.")
+
+    prompts = generate_custom_prompts(class_names, image_context)
+    flat_prompts = []
+    for class_name in class_names:
+        pair = prompts[class_name]
+        flat_prompts.extend((pair["positive"], pair["negative"]))
+
+    input_ids, attention_mask = _tokenize_prompts(tokenizer, flat_prompts, device)
+    encoder = getattr(model.backbone, "encode_text", None)
+    if encoder is None:
+        encoder = getattr(getattr(model.backbone, "model", None), "encode_text", None)
+    if encoder is None:
+        raise AttributeError("The zero-shot backbone does not expose encode_text().")
+
+    with torch.inference_mode():
+        try:
+            features = encoder(input_ids, attention_mask=attention_mask)
+        except TypeError:
+            features = encoder(input_ids)
+        features = F.normalize(features, dim=-1)
+    return features.reshape(len(class_names), 2, -1)
+
+
+def _select_report_inputs(
+    batch: dict[str, Any],
+    is_classifier: bool,
+    use_text: bool,
+    report_type: str,
+) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+    if not is_classifier or not use_text:
+        return None, None
+    if report_type in ("both", "xray_clinical"):
+        raise NotImplementedError(
+            "The benchmark follows evaluation.py, which does not support "
+            "simultaneous token-level dual-report inference."
+        )
+    prefix = "xray" if report_type == "xray" else "clinical"
+    return batch[f"{prefix}_input_ids"], batch.get(f"{prefix}_attention_mask")
+
+
+def _build_forward(
+    model,
+    batch: dict[str, Any],
+    is_classifier: bool,
+    use_text: bool,
+    report_type: str,
+    zero_shot_features: torch.Tensor | None,
+    temperature: float,
+):
+    input_ids, attention_mask = _select_report_inputs(
+        batch, is_classifier, use_text, report_type
+    )
+    if is_classifier:
+        def forward():
+            return model(
+                images=batch["pixel_values"],
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                tile_values=batch.get("tile_values"),
+                tile_mask=batch.get("tile_mask"),
+                tile_boxes=batch.get("tile_boxes"),
+            )
+
+        return forward, attention_mask
+
+    image_encoder = getattr(getattr(model.backbone, "model", None), "encode_image", None)
+    if image_encoder is None or zero_shot_features is None:
+        raise AttributeError("Zero-shot benchmarking requires image and text encoders.")
+
+    def forward():
+        image_features = F.normalize(image_encoder(batch["pixel_values"]), dim=-1)
+        pair_logits = torch.einsum("bd,cpd->bcp", image_features, zero_shot_features)
+        return torch.softmax(pair_logits / temperature, dim=-1)[..., 0]
+
+    return forward, None
+
+
+def _with_precision(forward_fn, device: torch.device, precision: str):
+    if precision == "fp32":
+        return forward_fn
+    if device.type == "cpu" and precision == "fp16":
+        raise ValueError("FP16 autocast is not supported by this CPU benchmark.")
+    dtype = torch.float16 if precision == "fp16" else torch.bfloat16
+
+    def autocast_forward():
+        with torch.autocast(device_type=device.type, dtype=dtype):
+            return forward_fn()
+
+    return autocast_forward
+
+
+def _aggregate_input_profile(batch_profiles: list[dict[str, Any]]) -> dict[str, Any]:
+    valid_tiles = [
+        value
+        for profile in batch_profiles
+        for value in profile.get("valid_tiles_per_sample", [])
+    ]
+    valid_text = [
+        value
+        for profile in batch_profiles
+        for value in profile.get("valid_text_tokens_per_sample", [])
+    ]
+    result: dict[str, Any] = {
+        "batches": len(batch_profiles),
+        "samples": sum(profile["batch_size"] for profile in batch_profiles),
+        "observed_batches": batch_profiles,
+    }
+    if valid_tiles:
+        result["valid_tiles_per_sample"] = summarize_measurements(valid_tiles)
+    if valid_text:
+        result["valid_text_tokens_per_sample"] = summarize_measurements(valid_text)
+    return result
+
+
+def _output_path(cfg: DictConfig) -> Path:
+    experiment_name = str(cfg.get("experiment_name", "default"))
+    params_cfg = cfg.get("params", {}) or {}
+    seed = int(params_cfg.get("seed", cfg.get("seed", 42)))
+    if ARGS.output_dir:
+        directory = Path(ARGS.output_dir)
+        if not directory.is_absolute():
+            directory = ROOT / directory
+    else:
+        directory = ROOT / "results" / experiment_name / f"seed_{seed}"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "efficiency.json"
+
+
+@hydra.main(config_path="../configs", config_name="config", version_base="1.3")
+def main(cfg: DictConfig) -> None:
+    OmegaConf.set_struct(cfg, False)
+    cfg.dataset.batch_size = ARGS.batch_size
+
+    params_cfg = cfg.get("params", {}) or {}
+    seed = int(params_cfg.get("seed", cfg.get("seed", 42)))
+    seed_everything(seed)
+    device = _resolve_device(ARGS.device)
+    if device.type == "cuda":
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = True
+
+    print(f"Building model on {device} for efficiency benchmark...")
+    model = build_model(checkpoint_model_config(cfg)).to(device)
+    model, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    model.eval()
+
+    is_classifier = classifier_type != "none"
+    experiment_name = str(cfg.get("experiment_name", "")).lower()
+    is_zero_shot = (not is_classifier) or ("zeroshot" in experiment_name)
+    checkpoint_loaded = load_model_checkpoint(
+        model, cfg, device, is_zero_shot=is_zero_shot
+    )
+    if not checkpoint_loaded and not is_zero_shot:
+        raise FileNotFoundError(
+            "A trained checkpoint is required to benchmark this classifier."
+        )
+
+    tokenizer = getattr(
+        model.backbone,
+        "tokenizer_obj",
+        getattr(model.backbone, "tokenizer", None),
+    )
+    test_loader = build_dataloader(
+        cfg=cfg.dataset,
+        split="test",
+        transform=model.backbone.preprocess,
+        tokenizer=tokenizer,
+    )
+    pad_id = resolve_pad_token_id(tokenizer) if tokenizer is not None else 0
+    test_loader.collate_fn = BioMedCLIPDataCollator(pad_token_id=pad_id)
+
+    dataset_params = cfg.dataset.get("params", {}) or {}
+    class_names = list(
+        dataset_params.get("prompt_classes", dataset_params.get("classes", []))
+        if is_zero_shot
+        else dataset_params.get("classes", dataset_params.get("pathologies", []))
+    )
+    if not class_names:
+        raise ValueError("The dataset config does not define classes/pathologies.")
+
+    zero_shot_features = None
+    if is_zero_shot:
+        zero_shot_features = _encode_zero_shot_prompts(
+            model,
+            class_names,
+            str(params_cfg.get("image_context", "a bone x-ray")),
+            device,
+        )
+
+    phase2_cfg = params_cfg.get("phase2", {}) or {}
+    use_text = bool(phase2_cfg.get("use_text", True))
+    report_type = str(phase2_cfg.get("p2_report_type", "clinical"))
+    temperature = float(params_cfg.get("temperature", 0.07))
+
+    latency_per_batch = []
+    latency_per_sample = []
+    throughput = []
+    gflops_per_sample = []
+    input_profiles = []
+    cuda_memory_profiles = []
+    warnings = []
+
+    batches = itertools.islice(test_loader, ARGS.num_batches)
+    for batch_index, cpu_batch in enumerate(batches, start=1):
+        if not isinstance(cpu_batch, dict):
+            raise TypeError("Efficiency benchmark expects dictionary batches.")
+        batch = _move_batch(cpu_batch, device)
+        forward_fn, attention_mask = _build_forward(
+            model=model,
+            batch=batch,
+            is_classifier=is_classifier,
+            use_text=use_text,
+            report_type=report_type,
+            zero_shot_features=zero_shot_features,
+            temperature=temperature,
+        )
+        forward_fn = _with_precision(forward_fn, device, ARGS.precision)
+        profile = batch_metadata(batch, attention_mask)
+        input_profiles.append(profile)
+        batch_size = int(profile["batch_size"])
+
+        if not ARGS.skip_flops:
+            try:
+                supported_flops = count_supported_flops(forward_fn, model)
+                gflops_per_sample.append(supported_flops / batch_size / 1.0e9)
+            except Exception as exc:
+                warning = (
+                    f"FLOP counting failed for batch {batch_index}: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                print(f"[Warning] {warning}")
+                warnings.append(warning)
+
+        timings = measure_latency_ms(
+            forward_fn,
+            device=device,
+            warmup=ARGS.warmup,
+            repeats=ARGS.repeats,
+        )
+        latency_per_batch.extend(timings)
+        latency_per_sample.extend(value / batch_size for value in timings)
+        throughput.extend(batch_size * 1000.0 / value for value in timings)
+
+        memory = measure_cuda_memory_mb(forward_fn, device)
+        if memory is not None:
+            cuda_memory_profiles.append(memory)
+        print(
+            f"  batch {batch_index}/{ARGS.num_batches}: "
+            f"latency={sum(timings) / len(timings):.3f} ms, "
+            f"tiles={profile.get('valid_tiles_per_sample', 'n/a')}"
+        )
+
+    if not input_profiles:
+        raise RuntimeError("The test dataloader did not yield any batches.")
+
+    result: dict[str, Any] = {
+        "experiment_name": str(cfg.get("experiment_name", "default")),
+        "seed": seed,
+        "model": {
+            "backbone_type": str(cfg.model.get("backbone_type", "unknown")),
+            "fusion_type": str(fusion_type),
+            "classifier_type": str(classifier_type),
+            "zero_shot": bool(is_zero_shot),
+        },
+        "parameters": parameter_summary(model),
+        "input_profile": _aggregate_input_profile(input_profiles),
+        "latency_ms_per_batch": summarize_measurements(latency_per_batch),
+        "latency_ms_per_sample": summarize_measurements(latency_per_sample),
+        "throughput_samples_per_second": summarize_measurements(throughput),
+        "supported_gflops_per_sample": (
+            summarize_measurements(gflops_per_sample)
+            if gflops_per_sample
+            else None
+        ),
+        "cuda_memory": (
+            {
+                key: max(profile[key] for profile in cuda_memory_profiles)
+                for key in cuda_memory_profiles[0]
+            }
+            if cuda_memory_profiles
+            else None
+        ),
+        "protocol": {
+            "device": str(device),
+            "device_name": (
+                torch.cuda.get_device_name(device)
+                if device.type == "cuda"
+                else "CPU"
+            ),
+            "torch_version": torch.__version__,
+            "precision": ARGS.precision,
+            "batch_size_requested": ARGS.batch_size,
+            "num_batches_requested": ARGS.num_batches,
+            "warmup_per_batch": ARGS.warmup,
+            "repeats_per_batch": ARGS.repeats,
+            "latency_scope": "model forward only; excludes dataloader and H2D transfer",
+            "zero_shot_prompt_precomputation_included": False,
+            "flop_definition": (
+                "PyTorch FlopCounterMode supported operations; multiply-add=2 FLOPs; "
+                "unsupported pointwise/custom operations are excluded"
+            ),
+        },
+        "warnings": warnings,
+        "config": OmegaConf.to_container(cfg, resolve=True),
+    }
+
+    output_path = _output_path(cfg)
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(result, handle, indent=2, ensure_ascii=False, default=str)
+
+    params = result["parameters"]
+    latency = result["latency_ms_per_sample"]
+    print("\nEfficiency benchmark complete")
+    print(f"  Parameters: {params['total']:,} total, {params['trainable']:,} trainable")
+    if result["supported_gflops_per_sample"] is not None:
+        print(
+            "  Supported GFLOPs/sample: "
+            f"{result['supported_gflops_per_sample']['mean']:.3f}"
+        )
+    print(f"  Latency/sample: {latency['mean']:.3f} ms (p95={latency['p95']:.3f} ms)")
+    print(f"  Saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    main()

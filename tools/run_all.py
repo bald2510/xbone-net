@@ -24,111 +24,138 @@ import numpy as np
 # ============================================================
 
 EXPERIMENTS = OrderedDict({
-    # --- BTXRD Zero-Shot Baselines --- Done
-    # "btxrd_zeroshot": [
-    #     "btxrd/baselines/zeroshot/biomedclip_zeroshot",# done
-    #     "btxrd/baselines/zeroshot/clip_zeroshot", # done
-    #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot", # done
-    #     "btxrd/baselines/zeroshot/medclip_zeroshot", # done
-    # ],
-    # #--- BTXRD Fine-Tuned Baselines --- Done
-    # "btxrd_finetuned": [
-    #     "btxrd/baselines/full_finetuned/fft_resnet50", # done
-    #     "btxrd/baselines/full_finetuned/fft_densenet", # done
-    #     "btxrd/baselines/full_finetuned/fft_clip", # done
-    #     "btxrd/baselines/full_finetuned/fft_pubmedclip", # done
-    #     "btxrd/baselines/full_finetuned/fft_medclip", # done
-    #     "btxrd/baselines/full_finetuned/fft_biomedclip", # done
-    # ],
-    # # --- BTXRD PEFT Fine-Tuned Baselines ---
-    # "btxrd_peft_finetuned": [
-    #     "btxrd/baselines/peft_finetuned/lora_pubmedclip", # done
-    #     "btxrd/baselines/peft_finetuned/lora_biomedclip", # done
-    # ],
-    # # --- BTXRD Proposed Model ---
-    # "btxrd_proposed": [
-    #     "btxrd/proposed/ours_xbone_net",
-    # ],
-    # # --- BTXRD Few-Shot Learning ---
-    # "btxrd_few_shot_1": [
-    #     "btxrd/few_shot/1_shot/lora_pubmedclip", # done
-    #     "btxrd/few_shot/1_shot/lora_biomedclip", # done
-    #     "btxrd/few_shot/1_shot/ours_xbone_net", # done
-    # ],
-    # "btxrd_few_shot_10": [
-    #     "btxrd/few_shot/10_shot/lora_pubmedclip", # done
-    #     "btxrd/few_shot/10_shot/lora_biomedclip", # done
-    #     "btxrd/few_shot/10_shot/ours_xbone_net", # done
-    # ],
-    # "btxrd_few_shot_20": [
-    #     "btxrd/few_shot/20_shot/lora_pubmedclip", # done
-    #     "btxrd/few_shot/20_shot/lora_biomedclip", # done
-    #     "btxrd/few_shot/20_shot/ours_xbone_net", # done
-    # ],
-    # --- CTCH Zero-Shot Baselines ---
-    # "ctch_zeroshot": [
-    #     "ctch/baselines/zeroshot/biomedclip_zeroshot", # done
-    #     "ctch/baselines/zeroshot/clip_zeroshot", # done
-    #     "ctch/baselines/zeroshot/pubmedclip_zeroshot", # done
-    #     "ctch/baselines/zeroshot/medclip_zeroshot", # done
-    # ],
-    # --- CTCH Fine-Tuned Baselines ---
+    "btxrd_zeroshot": [
+        "btxrd/baselines/zeroshot/biomedclip_zeroshot",
+        "btxrd/baselines/zeroshot/clip_zeroshot",
+        "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
+        "btxrd/baselines/zeroshot/medclip_zeroshot",
+    ],
+    "btxrd_finetuned": [
+        "btxrd/baselines/full_finetuned/fft_resnet50",
+        "btxrd/baselines/full_finetuned/fft_densenet",
+        "btxrd/baselines/full_finetuned/fft_clip",
+        "btxrd/baselines/full_finetuned/fft_pubmedclip",
+        "btxrd/baselines/full_finetuned/fft_medclip",
+        "btxrd/baselines/full_finetuned/fft_biomedclip",
+    ],
+    "btxrd_peft_finetuned": [
+        "btxrd/baselines/peft_finetuned/lora_pubmedclip",
+        "btxrd/baselines/peft_finetuned/lora_biomedclip",
+    ],
+    "btxrd_few_shot_1": [
+        "btxrd/few_shot/1_shot/lora_pubmedclip",
+        "btxrd/few_shot/1_shot/lora_biomedclip",
+        "btxrd/few_shot/1_shot/ours_xbone_net",
+    ],
+    "btxrd_few_shot_10": [
+        "btxrd/few_shot/10_shot/lora_pubmedclip",
+        "btxrd/few_shot/10_shot/lora_biomedclip",
+        "btxrd/few_shot/10_shot/ours_xbone_net",
+    ],
+    "btxrd_few_shot_20": [
+        "btxrd/few_shot/20_shot/lora_pubmedclip",
+        "btxrd/few_shot/20_shot/lora_biomedclip",
+        "btxrd/few_shot/20_shot/ours_xbone_net",
+    ],
+    "btxrd_proposed": [
+        "btxrd/proposed/ours_xbone_net",
+    ],
+    "ctch_zeroshot": [
+        "ctch/baselines/zeroshot/biomedclip_zeroshot",
+        "ctch/baselines/zeroshot/clip_zeroshot",
+        "ctch/baselines/zeroshot/pubmedclip_zeroshot",
+        "ctch/baselines/zeroshot/medclip_zeroshot",
+    ],
     "ctch_finetuned": [
-        # "ctch/baselines/full_finetuned/fft_biomedclip", # done
-        # "ctch/baselines/full_finetuned/fft_clip", # done
-        # "ctch/baselines/full_finetuned/fft_pubmedclip", # done
-        # "ctch/baselines/full_finetuned/fft_medclip", # done
-        # "ctch/baselines/full_finetuned/fft_resnet50", # done
-        # "ctch/baselines/full_finetuned/fft_densenet", # done
+        "ctch/baselines/full_finetuned/fft_biomedclip",
+        "ctch/baselines/full_finetuned/fft_clip",
+        "ctch/baselines/full_finetuned/fft_pubmedclip",
+        "ctch/baselines/full_finetuned/fft_medclip",
+        "ctch/baselines/full_finetuned/fft_resnet50",
+        "ctch/baselines/full_finetuned/fft_densenet",
     ],
     "ctch_peft_finetuned": [
-        # "ctch/baselines/peft_finetuned/lora_pubmedclip", # done
-        # "ctch/baselines/peft_finetuned/lora_biomedclip", # done
+        "ctch/baselines/peft_finetuned/lora_pubmedclip",
+        "ctch/baselines/peft_finetuned/lora_biomedclip",
     ],
     "ctch_few_shot_1": [
-        # "ctch/few_shot/1_shot/lora_pubmedclip", # done
-        # "ctch/few_shot/1_shot/lora_biomedclip", # done
-        # "ctch/few_shot/1_shot/ours_xbone_net", # done
+        "ctch/few_shot/1_shot/lora_pubmedclip",
+        "ctch/few_shot/1_shot/lora_biomedclip",
+        "ctch/few_shot/1_shot/ours_xbone_net",
     ],
     "ctch_few_shot_10": [
-        # "ctch/few_shot/10_shot/lora_pubmedclip", # done
-        # "ctch/few_shot/10_shot/lora_biomedclip", # done
-        # "ctch/few_shot/10_shot/ours_xbone_net", # done
+        "ctch/few_shot/10_shot/lora_pubmedclip",
+        "ctch/few_shot/10_shot/lora_biomedclip",
+        "ctch/few_shot/10_shot/ours_xbone_net",
     ],
     "ctch_few_shot_20": [
-        # "ctch/few_shot/20_shot/lora_pubmedclip", # done
-        # "ctch/few_shot/20_shot/lora_biomedclip", # done
-        # "ctch/few_shot/20_shot/ours_xbone_net",
+        "ctch/few_shot/20_shot/lora_pubmedclip",
+        "ctch/few_shot/20_shot/lora_biomedclip",
+        "ctch/few_shot/20_shot/ours_xbone_net",
     ],
-    # --- CTCH Proposed Model ---
     "ctch_proposed": [
         "ctch/proposed/ours_xbone_net",
     ],
-    # --- CTCH Ablation Studies (uncomment experiments to schedule them) ---
     "ctch_ablation": [
-        # "ctch/ablation_study/modality/image_only",
-        # "ctch/ablation_study/modality/text_only",
-        # "ctch/ablation_study/modality/shuffled_report",
-        # "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
-        # "ctch/ablation_study/finetune/xbone_highres_full_ft",
-        # "ctch/ablation_study/finetune/xbone_highres_no_ft",
-        # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-        # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-        # "ctch/ablation_study/architecture/phase/phase2_only",
-        # "ctch/ablation_study/architecture/phase/phase1_merged",
-        # "ctch/ablation_study/architecture/fusion/concat",
-        # "ctch/ablation_study/architecture/fusion/image_to_text",
-        # "ctch/ablation_study/architecture/fusion/text_to_image",
-        # "ctch/ablation_study/architecture/classifier/no_class_weight",
-        # "ctch/ablation_study/architecture/classifier/linear",
+        "ctch/ablation_study/modality/image_only",
+        "ctch/ablation_study/modality/text_only",
+        "ctch/ablation_study/modality/shuffled_report",
+        "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
+        "ctch/ablation_study/finetune/xbone_highres_full_ft",
+        "ctch/ablation_study/finetune/xbone_highres_no_ft",
+        "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+        "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        "ctch/ablation_study/architecture/phase/phase2_only",
+        "ctch/ablation_study/architecture/phase/phase1_merged",
+        "ctch/ablation_study/architecture/fusion/concat",
+        "ctch/ablation_study/architecture/fusion/image_to_text",
+        "ctch/ablation_study/architecture/fusion/text_to_image",
+        "ctch/ablation_study/architecture/classifier/no_class_weight",
+        "ctch/ablation_study/architecture/classifier/linear",
     ],
 })
+
+# Run this subset on one fixed, locally controlled GPU when wall-clock training
+# time is a reported outcome. Performance-only experiments may run elsewhere.
+CTCH_TRAINING_TIME_EXPERIMENTS = [
+    "ctch/proposed/ours_xbone_net",
+    "ctch/baselines/peft_finetuned/lora_biomedclip",
+    "ctch/baselines/full_finetuned/fft_biomedclip",
+    "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+    "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+    "ctch/ablation_study/finetune/xbone_highres_no_ft",
+    "ctch/ablation_study/finetune/xbone_highres_full_ft",
+    "ctch/ablation_study/architecture/phase/phase2_only",
+]
+
+BTXRD_TRAINING_TIME_EXPERIMENTS = [
+    "btxrd/proposed/ours_xbone_net",
+    "btxrd/baselines/peft_finetuned/lora_biomedclip",
+    "btxrd/baselines/full_finetuned/fft_biomedclip",
+]
+
+TRAINING_TIME_EXPERIMENTS = (
+    BTXRD_TRAINING_TIME_EXPERIMENTS + CTCH_TRAINING_TIME_EXPERIMENTS
+)
+
+_ALL_REGISTERED_EXPERIMENTS = list(dict.fromkeys(
+    experiment
+    for experiments in EXPERIMENTS.values()
+    for experiment in experiments
+))
+_TRAINING_TIME_SET = set(TRAINING_TIME_EXPERIMENTS)
+NON_TIMING_EXPERIMENTS = [
+    experiment
+    for experiment in _ALL_REGISTERED_EXPERIMENTS
+    if experiment not in _TRAINING_TIME_SET
+]
 
 DEFAULT_SEEDS = [42, 123, 456]
 
 METRIC_KEYS = [
     "f1_macro", "accuracy", "sensitivity", "specificity",
-    "precision", "auroc_macro",
+    "precision", "auroc_macro", "auprc_macro", "balanced_accuracy",
+    "ece_15", "adaptive_ece_15", "nll", "brier_score",
 ]
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -151,6 +178,14 @@ def get_experiments(groups: list[str] | None) -> list[str]:
     for g in groups:
         if g in EXPERIMENTS:
             result.extend(EXPERIMENTS[g])
+        elif g == "training_time":
+            result.extend(TRAINING_TIME_EXPERIMENTS)
+        elif g in ("ctch_training_time", "training_time_ctch"):
+            result.extend(CTCH_TRAINING_TIME_EXPERIMENTS)
+        elif g in ("btxrd_training_time", "training_time_btxrd"):
+            result.extend(BTXRD_TRAINING_TIME_EXPERIMENTS)
+        elif g in ("non_timing", "performance_only"):
+            result.extend(NON_TIMING_EXPERIMENTS)
         elif g in ("zero_shot_baselines", "zeroshot"):
             for key, exps in EXPERIMENTS.items():
                 if "zeroshot" in key:
@@ -215,6 +250,7 @@ def run_one(script: str, experiment: str, seed: int, extra_args: list | None = N
         f"++seed={seed}",
         f"++params.model_dir={sd}/",
         f"++params.phase1.checkpoint_path={os.path.join(sd, 'best_phase1.pth')}",
+        f"++params.phase1.merged_checkpoint_path={os.path.join(sd, 'merged_phase1.pth')}",
         f"++params.phase2.checkpoint_path={os.path.join(sd, 'best_phase2.pth')}",
     ]
 
@@ -293,7 +329,13 @@ def aggregate(all_metrics: dict[int, dict]) -> dict:
         vals = [m[key] for m in all_metrics.values()
                 if m and key in m and m[key] is not None]
         if vals:
-            agg[key] = {"mean": float(np.mean(vals)), "std": float(np.std(vals)), "n": len(vals)}
+            std = float(np.std(vals, ddof=1)) if len(vals) > 1 else 0.0
+            agg[key] = {
+                "mean": float(np.mean(vals)),
+                "std": std,
+                "std_ddof": 1,
+                "n": len(vals),
+            }
     return agg
 
 
@@ -375,10 +417,37 @@ def main():
                         help="Skip training, only evaluate + aggregate")
     parser.add_argument("--table", action="store_true",
                         help="Only print results from existing aggregated JSON files")
+    parser.add_argument("--bootstrap", action="store_true",
+                        help="Compute paired sample-level bootstrap CIs during evaluation")
+    parser.add_argument("--n-bootstrap", type=int, default=10_000,
+                        help="Bootstrap resamples passed to evaluate.py (default: 10000)")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override per-device train/eval batch size for every selected config.",
+    )
+    parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=None,
+        help="Keep effective batch size fixed on memory-constrained GPUs.",
+    )
     args = parser.parse_args()
+    if args.batch_size is not None and args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if (
+        args.gradient_accumulation_steps is not None
+        and args.gradient_accumulation_steps < 1
+    ):
+        parser.error("--gradient-accumulation-steps must be positive")
 
     experiments = get_experiments(args.group)
     seeds = args.seeds
+    total_runs = sum(
+        1 if "zeroshot" in experiment else len(seeds)
+        for experiment in experiments
+    )
 
     mode_str = "TABLE ONLY" if args.table else (
         "PHASE2 ONLY" if args.phase2_only else (
@@ -393,7 +462,7 @@ def main():
     print("+----------------------------------------------------------+")
     print(f"|  Experiments : {len(experiments):<40d} |")
     print(f"|  Seeds       : {str(seeds):<40s} |")
-    print(f"|  Total runs  : {len(experiments) * len(seeds):<40d} |")
+    print(f"|  Total runs  : {total_runs:<40d} |")
     print(f"|  Mode        : {mode_str:<40s} |")
     print("+----------------------------------------------------------+")
 
@@ -406,25 +475,48 @@ def main():
         print(f"{'-'*60}")
 
         seeds_metrics = {}
+        is_zeroshot = "zeroshot" in experiment
+        experiment_seeds = seeds[:1] if is_zeroshot else seeds
+        if is_zeroshot and len(seeds) > 1:
+            print(
+                "  [ZERO-SHOT] Deterministic foundation evaluation uses one "
+                f"seed ({experiment_seeds[0]}); repeated seeds would be "
+                "pseudo-replication."
+            )
 
-        for seed in seeds:
+        for seed in experiment_seeds:
             if args.table:
                 metrics = load_metrics(experiment, seed)
                 if metrics:
                     seeds_metrics[seed] = metrics
                 continue
 
-            is_zeroshot = "zeroshot" in experiment
             sd = seed_dir(experiment, seed)
             ckpt_p2 = os.path.join(sd, "best_phase2.pth")
             ckpt_p1 = os.path.join(sd, "best_phase1.pth")
 
             # --- STEP 1: Train model ---
             if not args.eval_only and not is_zeroshot:
-                p2_extra = ["++params.run_phase1=false", "++params.run_phase2=true"] if args.phase2_only else None
+                train_extra = []
+                if args.phase2_only:
+                    train_extra.extend([
+                        "++params.run_phase1=false",
+                        "++params.phase1.enabled=false",
+                        "++params.run_phase2=true",
+                        "++params.phase2.enabled=true",
+                    ])
+                if args.batch_size is not None:
+                    train_extra.append(f"++dataset.batch_size={args.batch_size}")
+                if args.gradient_accumulation_steps is not None:
+                    train_extra.append(
+                        "++params.gradient_accumulation_steps="
+                        f"{args.gradient_accumulation_steps}"
+                    )
                 print(f"\n  [STEP 1/2: TRAINING] Launching train.py for {experiment} (seed={seed})...")
                 sys.stdout.flush()
-                train_success = run_one("train.py", experiment, seed, extra_args=p2_extra)
+                train_success = run_one(
+                    "train.py", experiment, seed, extra_args=train_extra or None
+                )
 
                 # Strictly verify train.py process exited cleanly with code 0
                 if not train_success:
@@ -460,7 +552,16 @@ def main():
             # --- STEP 2: Evaluate model (Only after train.py is 100% finished & verified) ---
             print(f"\n  [STEP 2/2: EVALUATION] Launching evaluate.py for {experiment} (seed={seed})...")
             sys.stdout.flush()
-            eval_success = run_one("evaluate.py", experiment, seed)
+            eval_extra = []
+            if args.batch_size is not None:
+                eval_extra.append(f"++dataset.batch_size={args.batch_size}")
+            if args.bootstrap:
+                eval_extra.extend(
+                    ["--bootstrap", "--n-bootstrap", str(args.n_bootstrap)]
+                )
+            eval_success = run_one(
+                "evaluate.py", experiment, seed, extra_args=eval_extra or None
+            )
             if not eval_success:
                 print(f"    [ERROR] evaluate.py failed for seed={seed}.")
                 continue

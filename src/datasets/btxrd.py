@@ -1,4 +1,4 @@
-"""BTXRD dataset with deterministic high-resolution grid tiling."""
+"""BTXRD dataset with fixed-budget sparse focal image preprocessing."""
 
 from __future__ import annotations
 
@@ -9,12 +9,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from .high_resolution import (
-    letterbox_square,
-    make_uniform_grid_tiles,
-    normalize_tile_boxes,
-    prepare_high_resolution_inputs,
-)
+from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
 
 
 class BTXRDDataset(Dataset):
@@ -39,6 +34,7 @@ class BTXRDDataset(Dataset):
         k_shot: int | None = None,
         seed: int = 42,
         high_res: dict | None = None,
+        preprocess: dict | None = None,
         **kwargs,
     ):
         del num_classes
@@ -150,6 +146,11 @@ class BTXRDDataset(Dataset):
 
         self.high_res_cfg = high_res or {}
         self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
+        self.cache_high_res_selection = bool(
+            self.high_res_cfg.get("cache_selection", True)
+        )
+        self._high_res_selection_cache = {}
+        self.preprocess_cfg = preprocess or {}
         self.text_only = bool(kwargs.get("text_only", False))
         self.shuffle_reports = bool(kwargs.get("shuffle_reports", False))
         if self.shuffle_reports:
@@ -162,7 +163,7 @@ class BTXRDDataset(Dataset):
 
         print(
             f"[Dataset] Initialized '{split.upper()}' with {len(self.df)} samples. "
-            f"Dual reports: {self.has_dual_reports}. Uniform high-res grid: "
+            f"Dual reports: {self.has_dual_reports}. Sparse high-res views: "
             f"{self.use_high_res}."
         )
 
@@ -209,11 +210,23 @@ class BTXRDDataset(Dataset):
         labels = self._label(row)
         high_res_fields = {}
         if self.use_high_res:
-            high_res_fields = prepare_high_resolution_inputs(
-                image, self.transform, self.high_res_cfg
+            cache_key = "__text_only__" if self.text_only else image_id
+            cached_selection = self._high_res_selection_cache.get(cache_key)
+            high_res_fields, selection = prepare_high_resolution_inputs(
+                image,
+                self.transform,
+                self.high_res_cfg,
+                selection=cached_selection,
+                return_selection=True,
             )
+            if self.cache_high_res_selection and cached_selection is None:
+                self._high_res_selection_cache[cache_key] = selection
         else:
-            image = self.transform(image) if self.transform else image
+            image = prepare_global_image(
+                image,
+                self.transform,
+                self.preprocess_cfg,
+            )
 
         if self.has_dual_reports:
             xray_ids = self._load_and_tokenize(
