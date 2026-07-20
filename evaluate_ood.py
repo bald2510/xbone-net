@@ -23,8 +23,15 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.utils.analysis import SOURCE_EXPERIMENT, load_feature_archive
+from src.datasets.fracatlas import FRACATLAS_IMAGE_RESOLVER_VERSION
+from src.utils.analysis import (
+    SOURCE_EXPERIMENT,
+    load_feature_archive,
+    sha256_file,
+)
 from src.utils.ood import (
+    MAHALANOBIS_SCORE_DEFINITION,
+    OOD_PROTOCOL_VERSION,
     OODDetector,
     bootstrap_ood_metrics,
     calibrate_ood_threshold,
@@ -81,6 +88,39 @@ def _validate_archive(
         if value.ndim > 0 and len(value) != count:
             raise ValueError(
                 f"Archive field {key!r} has {len(value)} rows, expected {count}."
+            )
+
+    if expected_scenario == "fracatlas_test":
+        coverage = provenance.get("coverage", {})
+        if (
+            int(provenance.get("fracatlas_image_resolver_version", -1))
+            != FRACATLAS_IMAGE_RESOLVER_VERSION
+            or int(coverage.get("rows", -1)) != count
+            or int(coverage.get("resolved_images", -1)) != count
+            or int(coverage.get("missing_images", -1)) != 0
+            or int(coverage.get("missing_reports", -1)) != 0
+            or not bool(coverage.get("decode_validation", False))
+            or int(coverage.get("decode_failure_count", -1)) != 0
+        ):
+            raise ValueError(
+                "FracAtlas domain-OOD archive lacks complete fail-closed image/report "
+                "coverage. Re-export fracatlas_test features with the current loader."
+            )
+        visual = arrays.get("visual_global_embeddings")
+        if visual is None:
+            raise ValueError(
+                "FracAtlas domain-OOD archive has no visual_global_embeddings."
+            )
+        max_pairwise_from_first = float(
+            np.linalg.norm(
+                np.asarray(visual, dtype=np.float64) - visual[:1], axis=1
+            ).max()
+        )
+        if max_pairwise_from_first <= 1e-6:
+            raise ValueError(
+                "FracAtlas visual-global features are effectively constant. "
+                "This usually indicates repeated fallback images; refusing to "
+                "report domain-OOD metrics."
             )
 
 
@@ -242,6 +282,8 @@ def run_protocol(
             if method in {"mahalanobis", "knn"}
             else "fused_classifier_logits"
         )
+        if method == "mahalanobis":
+            metrics["score_definition"] = MAHALANOBIS_SCORE_DEFINITION
         results[method] = metrics
         score_archive[f"{method}_calibration"] = calibration_scores
         score_archive[f"{method}_id"] = id_scores
@@ -324,15 +366,13 @@ def main() -> None:
             "report_mismatch_same_class": "report_mismatch_same_class",
         }[args.scenario],
     )
-    loaded = [
-        load_feature_archive(path)
-        for path in (
-            args.train_embeddings,
-            args.calibration_embeddings,
-            args.id_test_embeddings,
-            args.ood_embeddings,
-        )
-    ]
+    archive_paths = {
+        "fit": args.train_embeddings,
+        "calibration": args.calibration_embeddings,
+        "id_test": args.id_test_embeddings,
+        "ood_test": args.ood_embeddings,
+    }
+    loaded = [load_feature_archive(path) for path in archive_paths.values()]
     arrays = [item[0] for item in loaded]
     provenances = [item[1] for item in loaded]
     for archive_arrays, provenance, expected in zip(
@@ -400,9 +440,15 @@ def main() -> None:
     np.savez_compressed(args.output_dir / "ood_scores.npz", **score_archive)
     output = {
         "type": "locked_ctch_ood_evaluation",
+        "ood_protocol_version": OOD_PROTOCOL_VERSION,
+        "mahalanobis_score_definition": MAHALANOBIS_SCORE_DEFINITION,
         "source_experiment": SOURCE_EXPERIMENT,
         "seed": int(args.seed),
         "checkpoint_sha256": checkpoint_sha256,
+        "feature_archive_sha256": {
+            role: sha256_file(path)
+            for role, path in archive_paths.items()
+        },
         "scenario": args.scenario,
         "feature_key": feature_key,
         "paired_by_image_id": paired,

@@ -12,6 +12,13 @@ methods: [mahalanobis, knn, msp, entropy, energy, max_logit]
 n_bootstrap: 2000
 bootstrap_seed: 3107
 
+mahalanobis:
+  formulation: "classical_distance"
+  class_centers: "empirical_train_means"
+  covariance: "shared_ledoit_wolf"
+  class_reduction: "minimum"
+  detector_l2_normalization: false
+
 scenarios:
   semantic_ood:
     archive: "ctch_ood"

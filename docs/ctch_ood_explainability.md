@@ -45,19 +45,23 @@ explainability artifacts are resumed only when their provenance matches.
 ## CTCH-OOD data coverage
 
 Official semantic-OOD evaluation is fail-closed: every `ctch-ood.csv` row must
-have an image, X-ray report, and clinical report. The current workspace has 29
-complete rows out of 44; 15 rows are missing source artifacts. Therefore the
-default full command intentionally stops before producing an official semantic
-OOD result.
+have an image, English X-ray report, and English clinical report. Check coverage
+before starting analysis with `--step validate`; the command reports ID and OOD
+image/report coverage separately and stops when either OOD modality is missing.
 
-After restoring the source workbook and source images, regenerate the dataset:
+After restoring the source workbook and source images, repair only artifacts for
+the already locked `ctch-ood.csv` cohort:
 
 ```powershell
-python data/CTCH/preprocess_ctch.py --step all --input-xlsx <source.xlsx> --images-src <images_no_implants>
+python data/CTCH/preprocess_ctch.py --step repair-ood --input-xlsx <source.xlsx> --images-src <images_no_implants>
+python data/CTCH/preprocess_ctch.py --step validate
 ```
 
-The preprocessing step now materializes both ID and OOD images/reports and
-retains an anonymized patient grouping key for clustered confidence intervals.
+`repair-ood` never regenerates `ctch-labels.csv`, `ctch-split.csv`, or
+`ctch-ood.csv`. It materializes only missing OOD images/reports, translates only
+missing OOD English reports, and verifies that the ID-manifest SHA-256 values
+remain unchanged. Install `deep-translator` in the preprocessing environment if
+uncached Vietnamese report segments still require translation.
 
 For debugging only, incomplete coverage can be explicitly acknowledged:
 

@@ -56,6 +56,9 @@ MODULE_TO_DISTRIBUTION = {
 # project import, so an AST-only scan cannot discover it.
 RUNTIME_DISTRIBUTIONS = {
     "accelerate": "required by transformers.Trainer at runtime",
+    "deep-translator": (
+        "used by data/CTCH/preprocess_ctch.py to materialize English OOD reports"
+    ),
 }
 
 # MedCLIP's package initializer and pretrained-weight loader use these modules,

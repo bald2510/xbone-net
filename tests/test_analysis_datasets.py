@@ -11,6 +11,10 @@ from src.datasets.analysis import (
     cross_class_derangement,
     same_class_derangement,
 )
+from src.datasets.fracatlas import (
+    FRACATLAS_IMAGE_RESOLVER_VERSION,
+    FracAtlasDataset,
+)
 
 
 class AnalysisDatasetTests(unittest.TestCase):
@@ -68,7 +72,137 @@ class AnalysisDatasetTests(unittest.TestCase):
             self.assertEqual(len(exploratory), 1)
             self.assertEqual(exploratory.coverage["missing_rows"], 1)
 
+    def test_fracatlas_resolves_released_class_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            images = root / "images"
+            reports = root / "reports"
+            (images / "Fractured").mkdir(parents=True)
+            (images / "Non_fractured").mkdir(parents=True)
+            reports.mkdir()
+            Image.new("RGB", (8, 8), color="white").save(
+                images / "Fractured" / "fractured.png"
+            )
+            Image.new("RGB", (8, 8), color="black").save(
+                images / "Non_fractured" / "normal.png"
+            )
+            for stem in ("fractured", "normal"):
+                (reports / f"{stem}.txt").write_text(stem, encoding="utf-8")
+
+            split = root / "split.csv"
+            labels = root / "labels.csv"
+            pd.DataFrame(
+                {
+                    "image_id": ["fractured.png", "normal.png"],
+                    "split": ["test", "test"],
+                }
+            ).to_csv(split, index=False)
+            pd.DataFrame(
+                {
+                    "image_id": ["fractured.png", "normal.png"],
+                    "fractured": [1, 0],
+                }
+            ).to_csv(labels, index=False)
+
+            dataset = FracAtlasDataset(
+                str(images),
+                str(reports),
+                str(split),
+                str(labels),
+                split="test",
+                strict_files=True,
+            )
+
+            self.assertEqual(len(dataset), 2)
+            self.assertEqual(dataset.coverage["resolved_images"], 2)
+            self.assertEqual(dataset.coverage["missing_images"], 0)
+            self.assertEqual(dataset.coverage["missing_reports"], 0)
+            self.assertEqual(
+                dataset.coverage["resolver_version"],
+                FRACATLAS_IMAGE_RESOLVER_VERSION,
+            )
+            self.assertEqual(dataset.coverage["image_layout"], "class_directory")
+            for index in range(len(dataset)):
+                image, report, label = dataset[index]
+                self.assertIsInstance(image, Image.Image)
+                self.assertIn(report, {"fractured", "normal"})
+                expected_pixel = 255 if int(label) == 1 else 0
+                self.assertEqual(image.getpixel((0, 0))[0], expected_pixel)
+
+    def test_fracatlas_fails_closed_when_image_is_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            images = root / "images"
+            reports = root / "reports"
+            images.mkdir()
+            reports.mkdir()
+            (reports / "missing.txt").write_text("report", encoding="utf-8")
+            split = root / "split.csv"
+            labels = root / "labels.csv"
+            pd.DataFrame(
+                {"image_id": ["missing.png"], "split": ["test"]}
+            ).to_csv(split, index=False)
+            pd.DataFrame(
+                {"image_id": ["missing.png"], "fractured": [1]}
+            ).to_csv(labels, index=False)
+
+            with self.assertRaises(FileNotFoundError):
+                FracAtlasDataset(
+                    str(images),
+                    str(reports),
+                    str(split),
+                    str(labels),
+                    split="test",
+                    strict_files=True,
+                )
+
+    def test_fracatlas_records_controlled_truncated_jpeg_recovery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            images = root / "images" / "Non_fractured"
+            reports = root / "reports"
+            images.mkdir(parents=True)
+            reports.mkdir()
+            image_path = images / "truncated.jpg"
+            pixels = np.random.default_rng(7).integers(
+                0, 256, size=(64, 64, 3), dtype=np.uint8
+            )
+            Image.fromarray(pixels).save(image_path, quality=90)
+            image_path.write_bytes(image_path.read_bytes()[:-20])
+            (reports / "truncated.txt").write_text("report", encoding="utf-8")
+            split = root / "split.csv"
+            labels = root / "labels.csv"
+            pd.DataFrame(
+                {"image_id": ["truncated.jpg"], "split": ["test"]}
+            ).to_csv(split, index=False)
+            pd.DataFrame(
+                {"image_id": ["truncated.jpg"], "fractured": [0]}
+            ).to_csv(labels, index=False)
+
+            with self.assertRaises(OSError):
+                FracAtlasDataset(
+                    str(root / "images"),
+                    str(reports),
+                    str(split),
+                    str(labels),
+                    split="test",
+                    strict_files=True,
+                )
+
+            dataset = FracAtlasDataset(
+                str(root / "images"),
+                str(reports),
+                str(split),
+                str(labels),
+                split="test",
+                strict_files=True,
+                allow_truncated_images=True,
+            )
+            self.assertEqual(dataset.coverage["truncated_image_count"], 1)
+            self.assertEqual(dataset.coverage["decode_failure_count"], 0)
+            image, _, _ = dataset[0]
+            self.assertEqual(image.size, (64, 64))
+
 
 if __name__ == "__main__":
     unittest.main()
-

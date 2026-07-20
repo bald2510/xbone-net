@@ -1,63 +1,16 @@
 \chapter{Thực nghiệm}
-Trong quá trình thực nghiệm, nhóm tập trung vào việc đánh giá hiệu quả của mô hình đề xuất so với các backbone khác (ResNet-50, CLIP, MedCLIP, BiomedCLIP, PubMedCLIP) trên nhiệm vụ phân loại ảnh x-quang. Nhóm đã thiết lập một loạt các thí nghiệm để so sánh hiệu suất của các mô hình này, đồng thời thực hiện các thí nghiệm rời rạc để kiểm tra ảnh hưởng của việc sử dụng thông tin văn bản, các đóng góp của các thành phần đề xuất trong quá trình huấn luyện và đánh giá.
-
-\section{Mục đích thực nghiệm}
-Nhằm chứng minh cho các luận điểm mà nhóm đưa ra, đóng góp lý thuyết cũng như thực tiễn của mô hình đề xuất XBone-Net trên bài toán hỗ trợ chẩn đoán và phân loại đa lớp ảnh x-quang xương, nhóm nghiên cứu đã thiết lập một hệ thống các thí nghiệm thực nghiệm. Mỗi thí nghiệm được xây dựng nhằm xác thực một luận điểm cụ thể, giải quyết các thách thức của bài toán phân loại ảnh x-quang xương đa phương thức và kiểm chứng các cải tiến về mặt kiến trúc cũng như phương pháp huấn luyện hai pha.
-
-\subsection{Đánh giá so sánh hiệu năng chẩn đoán với các mô hình đối sánh}
-Mục đích chính của nhóm thí nghiệm này là đặt mô hình đề xuất XBone-Net vào mối tương quan so sánh đa chiều trực tiếp với các mô hình học sâu y khoa và mô hình ngôn ngữ trực quan (VLM) hiện nay. Thí nghiệm này nhằm chứng minh các luận điểm cốt lõi sau:
-\begin{itemize}
-    \item Thách thức khoảng cách miền khi áp dụng trực tiếp các mô hình VLM y học tiền huấn luyện ở dạng Zero-shot mà không qua quá trình thích ứng hai pha.
-    \item Sự vượt trội của việc kết hợp thông tin đa phương thức (ảnh chụp X-quang và văn bản bệnh sử lâm sàng) so với các phương pháp chỉ sử dụng thông tin hình ảnh thị giác đơn thuần (ResNet-50, DenseNet-121) trong việc phân biệt các lớp bệnh lý u xương có hình thái tương đồng.
-\end{itemize}
-
-\subsection{Đánh giá khả năng phát hiện dữ liệu ngoài phân phối}
-Trong môi trường lâm sàng thực tế, mô hình phân loại có thể phải đối mặt với các hình ảnh X-quang không chứa khối u xương mà chứa các loại bệnh lý xương khớp khác (như gãy xương, viêm khớp, loãng xương) hoặc ảnh chụp từ các vùng giải phẫu không liên quan. Mục đích của thí nghiệm này là đánh giá độ tin cậy và an toàn y khoa của mô hình thông qua khả năng phát hiện dữ liệu ngoài phân phối thay vì đưa ra các chẩn đoán sai lệch. Thí nghiệm hướng đến việc kiểm chứng giả thuyết:
-\begin{itemize}
-    \item Việc sử dụng đầu phân loại nguyên mẫu kết hợp học khoảng cách ở Pha 2 giúp tạo lập một không gian đặc trưng có cấu trúc cụm chặt chẽ hơn.
-    \item Độ tương đồng cosine giữa vector đặc trưng của mẫu kiểm thử với các nguyên mẫu của lớp đã biết cung cấp một thước đo khoảng cách đáng tin cậy để xác định ranh giới từ chối chẩn đoán, giúp phát hiện các mẫu ngoài phân phối.
-\end{itemize}
-
-\subsection{Đánh giá vai trò của các nguồn thông tin văn bản lâm sàng}
-Thông tin văn bản y khoa có thể đến từ nhiều nguồn khác nhau trong quy trình chẩn đoán lâm sàng. Thí nghiệm này được thiết lập nhằm bóc tách đóng góp cụ thể của từng nguồn văn bản (báo cáo mô tả hình ảnh X-quang và báo cáo lâm sàng) đến kết quả phân loại cuối cùng. Mục đích cốt lõi của thí nghiệm này bao gồm:
-\begin{itemize}
-    \item Phát hiện và ngăn chặn hiện tượng rò rỉ nhãn trong học máy đa phương thức y tế. Các báo cáo chẩn đoán X-quang cận lâm sàng thường chứa trực tiếp tên của bệnh lý (ví dụ: "osteosarcoma"). Nếu đưa báo cáo này vào huấn luyện, mô hình sẽ học cách đọc trực tiếp từ khóa này thay vì phân tích các dấu hiệu thị giác trên ảnh, dẫn đến việc mất đi giá trị chẩn đoán thực tế khi ứng dụng.
-    \item Khẳng định giá trị lâm sàng thực tế của báo cáo tổng quát như tuổi tác, giới tính, vị trí sưng đau, tiền sử bệnh án. Đây là nguồn thông tin an toàn, không gây rò rỉ nhãn và đóng vai trò hỗ trợ đắc lực cho hình ảnh X-quang để đưa ra kết luận chẩn đoán chính xác nhất.
-\end{itemize}
-
-\subsection{Đánh giá ảnh hưởng của chiến thuật tinh chỉnh backbone}
-Mục đích của nhóm thí nghiệm này là nghiên cứu và so sánh các chiến thuật cập nhật trọng số cho các bộ trích xuất đặc trưng bao gồm: đóng băng hoàn toàn, tinh chỉnh hiệu quả tham số và tinh chỉnh toàn bộ. Nhóm thí nghiệm hướng tới chứng minh hai luận điểm quan trọng:
-\begin{itemize}
-    \item \textbf{Hiện tượng quên biểu diễn:} Xảy ra khi có sự không đồng nhất về mặt ngữ nghĩa giữa nguồn thông tin văn bản được sử dụng trong Pha 1 học biểu diễn và Pha 2 học phân loại. Thí nghiệm nhằm chứng minh việc đồng bộ hóa nguồn văn bản lâm sàng ở cả hai pha sẽ bảo toàn không gian biểu diễn chung, tránh trôi lệch đặc trưng và nâng cao đáng kể hiệu năng chẩn đoán.
-    \item \textbf{Quên tri thức gốc và Quá khớp:} Thí nghiệm kiểm chứng giả thuyết rằng việc áp dụng PEFT (QLoRA) kết hợp với quy trình huấn luyện hai pha sẽ giúp giữ lại các tri thức y khoa nền tảng mạnh mẽ đã học được ở giai đoạn tiền huấn luyện trên bộ dữ liệu quy mô lớn, ngăn chặn hiện tượng quên đặc trưng khi tinh chỉnh trên tập dữ liệu y sinh nhỏ so với Full Fine-Tuning.
-\end{itemize}
-
-\subsection{Đánh giá hiệu quả của đầu phân loại nguyên mẫu so với đầu phân loại tuyến tính}
-Thí nghiệm này tập trung vào việc đánh giá so sánh hiệu năng của đầu phân loại nguyên mẫu, sử dụng khoảng cách để phân lớp, so với đầu phân loại tuyến tính truyền thống. Mục đích thực nghiệm là xác minh:
-\begin{itemize}
-    \item Khả năng xây dựng ranh giới quyết định của phân loại nguyên mẫu trong không gian đặc trưng.
-    \item Sự ổn định và khả năng chống chịu của đầu phân loại nguyên mẫu khi đối mặt với hiện tượng trôi lệch biểu diễn hoặc nhiễu dữ liệu. Bằng cách định hướng quá trình tối ưu kéo gần các đặc trưng cùng lớp về phía nguyên mẫu đại diện và đẩy xa các lớp khác thông qua hàm loss khoảng cách có khoảng lề, phân loại nguyên mẫu giúp ổn định ranh giới quyết định tốt hơn đầu tuyến tính.
-\end{itemize}
-
-\subsection{Trực quan hóa bản đồ chú ý chéo và khả năng giải thích y khoa}
-Thí nghiệm này nhằm trực quan hóa các vùng chú ý của mô hình khi đưa ra quyết định phân loại, từ đó cung cấp khả năng giải thích lâm sàng và tính minh bạch cho các dự đoán của mô hình đề xuất XBone-Net. Mục đích thực nghiệm cụ thể bao gồm:
-\begin{itemize}
-    \item \textbf{Đánh giá khả năng định vị tổn thương giải phẫu:} Xác minh xem vùng tập trung chú ý cao nhất của bản đồ chú ý chéo trích xuất từ mô-đun Cross-Attention Fusion có thực sự trùng khớp với phân vùng tổn thương thực tế được chú thích bởi các chuyên gia y tế trên ảnh X-quang hay không.
-    \item \textbf{Kiểm chứng tương tác đa phương thức:} Chứng minh rằng thông tin từ bệnh sử lâm sàng dạng văn bản đóng vai trò dẫn đường hiệu quả, giúp mô hình tập trung vào các vùng giải phẫu đặc trưng của từng bệnh cảnh cụ thể trên ảnh X-quang, thay vì dựa vào các chi tiết nền không liên quan.
-    \item \textbf{Củng cố độ tin cậy trong hỗ trợ chẩn đoán:} Chứng minh tính hợp lý về mặt y học của ranh giới quyết định, giúp các bác sĩ hiểu rõ cơ sở logic của mô hình khi đưa ra dự đoán chẩn đoán, từ đó tăng cường độ tin cậy trong các ứng dụng thực tế.
-\end{itemize}
+Chương này mô tả các thực nghiệm được thực hiện gồm so sánh hiệu năng phân loại không mẫu của các mô hình nền tảng, so sánh hiệu năng phân loại đa lớp giữa mô hình đề xuất và các mô hình nền tảng khi huấn luyện trên BTXRD và CTCH, đánh giá khả năng phát hiện dữ liệu ngoài phân phối của XBone-Net trên CTCH, và phân tích hiệu chuẩn xác suất dự đoán. Ngoài ra, mô tả về các bộ dữ liệu, thiết lập thí nghiệm và nội dung thí nghiệm cùng với mục đích của các thí nghiệm này sẽ được trình bày.
 
 \section{Chuẩn bị dữ liệu}
-Để minh chứng hiệu quả của mô hình đề xuất, nhóm đã sử dụng hai tập dữ liệu xương được thu thập từ bệnh viện chấn thương chỉnh hình và bộ dữ liệu BTXRD được công bố \cite{Yao2025}. Các tập dữ liệu này bao gồm các hình ảnh xương cùng với các nhãn và mô tả bệnh lý tương ứng. Nhóm đã thực hiện các bước tiền xử lý dữ liệu, bao gồm chuẩn hóa hình ảnh và mã hóa nhãn, để đảm bảo tính nhất quán và chất lượng của dữ liệu trước khi đưa vào quá trình huấn luyện và đánh giá mô hình.
+Nghiên cứu sử dụng bộ dữ liệu BTXRD được công bố \cite{Yao2025} và bộ dữ liệu
+CTCH thu thập tại Bệnh viện Chấn thương Chỉnh hình. Phần dưới đây mô tả nguồn gốc của bộ dữ liệu cách thức thu thập, các bước tiền xử lý dữ liệu, cấu trúc dữ liệu và các số liệu thống kê liên quan đến bộ dữ liệu.
 
 \subsection{Bộ dữ liệu BTXRD}
-Bộ dữ liệu hình ảnh X-quang U xương (Bone Tumor X-ray Radiograph dataset - BTXRD) được xây dựng nhằm hỗ trợ cho các nghiên cứu về phân loại, định vị và phân vùng tự động các khối u xương nguyên phát trên ảnh X-quang. Bộ dữ liệu này bao gồm tổng cộng 3.746 hình ảnh, mỗi hình ảnh trong BTXRD đều được gắn nhãn với các thông tin lâm sàng bao gồm giới tính, độ tuổi, bộ phận cơ thể được chụp và góc chụp. Đặc biệt, mỗi hình ảnh chứa khối u còn được bổ sung thêm các nhãn phân loại lành tính hoặc ác tính, nhãn phân loại phụ, nhãn vị trí giải phẫu, cùng với mặt nạ phân vùng và hộp giới hạn được chú thích thủ công.
+Bộ dữ liệu ảnh X-quang u xương BTXRD \cite{Yao2025} được xây dựng phục vụ các nghiên cứu phân loại, định vị và phân vùng tự động khối u xương nguyên phát. Bộ dữ liệu gồm 3.746 hình ảnh, kèm theo các thông tin lâm sàng như giới tính, độ tuổi, vị trí cơ thể và góc chụp. Các ảnh có khối u còn được gán nhãn lành tính hoặc ác tính, phân loại phụ, vị trí giải phẫu, hộp giới hạn và mặt nạ phân vùng thủ công.
 
-Hình ảnh của bộ dữ liệu BTXRD được thu thập từ ba trung tâm lưu trữ hình ảnh y tế khác nhau. Trung tâm 1 bao gồm ba bệnh viện tại Trung Quốc: Bệnh viện trực thuộc số 1 của Đại học Y khoa Quảng Tây, Bệnh viện trực thuộc của Đại học Y khoa Dân tộc Hữu Giang và Bệnh viện Nhân dân Bách Sắc. Trung tâm 2 là nền tảng giáo dục X-quang trực tuyến Radiopaedia.org. Trung tâm 3 là cơ sở dữ liệu công cộng MedPix.
+Dữ liệu được thu thập từ ba nguồn: ba bệnh viện tại Trung Quốc, nền tảng Radiopaedia.org và cơ sở dữ liệu MedPix. Tại các bệnh viện, ảnh của bệnh nhân mắc u xương nguyên phát được thu thập từ tháng 7 năm 2013 đến tháng 7 năm 2023, với chẩn đoán được xác nhận bằng mô bệnh học hoặc bởi hai chuyên gia X-quang. Đối với Radiopaedia và MedPix, ảnh được hai chuyên gia tìm kiếm bằng các từ khóa liên quan đến u xương. Chỉ những ảnh có đầy đủ thông tin giới tính và độ tuổi mới được lựa chọn. Các mẫu thuộc vùng đầu, cổ, ngực và bụng bị loại bỏ do số lượng ít và chứa nhiều nhiễu; vì vậy, BTXRD chỉ gồm ảnh ở chi trên, chi dưới và xương chậu.
 
-Tại Trung tâm 1, các hình ảnh X-quang của những bệnh nhân mắc u xương nguyên phát (đã được xác nhận qua mô bệnh học hoặc bởi hai chuyên gia X-quang) được thu thập trong khoảng thời gian từ tháng 7 năm 2013 đến tháng 7 năm 2023. Đối với Trung tâm 2 và 3, hai chuyên gia X-quang đã thu thập hình ảnh bằng cách tìm kiếm các từ khóa cụ thể liên quan đến u xương (như 'bone tumor', 'osteosarcoma', v.v.) và tải trực tiếp hình ảnh từ các trang web chính thức. Tiêu chí đưa vào bộ dữ liệu bắt buộc mỗi hình ảnh phải có thông tin tương ứng về giới tính và độ tuổi. Trong quá trình làm sạch dữ liệu, các mẫu u xương nguyên phát ở vùng đầu, cổ, ngực và bụng đã bị loại bỏ do số lượng ít và có nhiều nhiễu ảnh. Do đó, BTXRD chỉ bao gồm các hình ảnh khối u xương và xương bình thường thuộc các vị trí chi trên, chi dưới và xương chậu.
-
-Trong giai đoạn gán nhãn, một bác sĩ chuyên khoa u xương với 10 năm kinh nghiệm chẩn đoán đã sử dụng công cụ gán nhãn hình ảnh Labelme \cite{russell2008labelme} để phân vùng các khối u và vẽ hộp giới hạn xung quanh chúng. Các chú thích ban đầu này sau đó được đánh giá và xem xét lại bởi một chuyên gia khác có 20 năm kinh nghiệm nhằm đảm bảo tính chính xác. Sau khi hoàn tất, toàn bộ thông tin về mặt nạ phân vùng và hộp giới hạn được lưu dưới định dạng JSON. Các thông tin nhãn lâm sàng khác của mỗi hình ảnh như giới tính, tuổi tác, vị trí giải phẫu và góc chụp được ghi lại trong các tệp định dạng CSV.
+Trong quá trình gán nhãn, một bác sĩ chuyên khoa u xương có 10 năm kinh nghiệm sử dụng Labelme \cite{russell2008labelme} để xác định mặt nạ phân vùng và hộp giới hạn khối u. Các chú thích sau đó được kiểm tra bởi một chuyên gia có 20 năm kinh nghiệm. Thông tin phân vùng và hộp giới hạn được lưu dưới dạng JSON, trong khi các nhãn lâm sàng được lưu trong các tệp CSV.
 
 \subsubsection{Cấu trúc bộ dữ liệu}
 Bộ dữ liệu này bao gồm tổng cộng 3.746 hình ảnh, trong đó phân bổ thành 1.879 ảnh xương bình thường, 1.525 ảnh u xương lành tính và 342 ảnh u xương ác tính. Dữ liệu hình ảnh được lưu dưới định dạng JPEG thang độ xám 8-bit, các dữ liệu về nhãn lâm sàng được lưu dưới định dạng CSV, và các thông tin về mặt nạ phân vùng cũng như hộp giới hạn được lưu dưới định dạng JSON. Cấu trúc thư mục của bộ dữ liệu được tổ chức như sau:
@@ -66,50 +19,39 @@ Bộ dữ liệu này bao gồm tổng cộng 3.746 hình ảnh, trong đó phâ
 \centering
 \begin{adjustbox}{max width=\textwidth}
 \begin{forest}
-for tree={ font=\ttfamily, grow'=0, child anchor=west, parent anchor=south west, anchor=west, calign=first, edge path={ \noexpand\path [draw, \forestoption{edge}] (!u.parent anchor) |- (.child anchor)\forestoption{edge label}; }, before typesetting nodes={ if n=1 {insert before={[,phantom]}} {} }, fit=band, before computing xy={l=15pt}, } [data/BTXRD/ [images/ [IMG000001.jpeg] ] [Annotations/ [IMG000001.json] ] [reports/ [clinical/ [IMG000001.txt] ] [xray/ [IMG000001.txt] ] ] [dataset.csv] [btxrd-labels.csv] [btxrd-split.csv] ]
+for tree={ font=\ttfamily, grow'=0, child anchor=west, parent anchor=south west, anchor=west, calign=first, edge path={ \noexpand\path [draw, \forestoption{edge}] (!u.parent anchor) |- (.child anchor)\forestoption{edge label}; }, before typesetting nodes={ if n=1 {insert before={[,phantom]}} {} }, fit=band, before computing xy={l=15pt}, } [data/BTXRD/ [images/ [IMG000001.jpeg] ] [Annotations/ [IMG000001.json] ] [reports/ [clinical\_v2/ [IMG000001.txt] ] [clinical/ [IMG000001.txt] ] [xray/ [IMG000001.txt] ] ] [dataset.csv] [btxrd-labels.csv] [btxrd-split.csv] ]
 \end{forest}
 \end{adjustbox}
-\caption{Sơ đồ phân cấp cấu trúc dữ liệu BTXRD}
+\caption{Sơ đồ cấu trúc của bộ dữ liệu BTXRD}
 \label{fig:btxrd_forest}
 \end{figure}
 
 Trong đó:\begin{itemize}
     \item \textbf{images/}: Thư mục chứa toàn bộ hình ảnh chụp X-quang gốc của bệnh nhân dưới định dạng ảnh JPEG thang độ xám.
-    \item \textbf{Annotations/}: Chứa các tệp nhãn dạng JSON lưu trữ tọa độ đỉnh đa giác phân vùng của khối u và hộp giới hạn tương ứng được xuất ra từ công cụ LabelMe.
-    \item \textbf{reports/}: Thư mục lưu trữ hai nguồn văn bản phục vụ cho học máy đa phương thức:
+    \item \textbf{Annotations/}: Chứa các tệp JSON lưu tọa độ đa giác và hộp giới hạn. Các chú thích này thuộc dữ liệu công bố nhưng không được sử dụng trong các thí nghiệm hiện tại.
+    \item \textbf{reports/}: Thư mục lưu trữ các nguồn văn bản phục vụ cho học máy đa phương thức:
     \begin{itemize}
-        \item \textbf{clinical/}: Chứa các báo cáo mô tả bệnh sử lâm sàng của từng bệnh nhân.
-        \item \textbf{xray/}: Chứa các văn bản mô tả phát hiện chẩn đoán hình ảnh trên phim X-quang.
+        \item \textbf{clinical/}: Chứa bệnh sử tổng hợp đã loại tên chẩn đoán trực tiếp.
+        \item \textbf{xray/}: Chứa mô tả X-quang tổng hợp từ nhãn bệnh lý và có thể chứa tên lớp.
     \end{itemize}
-    \item \textbf{dataset.csv}: Tệp bảng chứa siêu dữ liệu thô ban đầu (tuổi, giới tính, vùng xương chụp, góc chụp).
-    \item \textbf{btxrd-labels.csv}: Tệp lưu trữ ánh xạ các lớp bệnh lý của từng ảnh phục vụ cho huấn luyện phân loại (bao gồm cả lớp phân loại đa lớp \texttt{class\_id}).
-    \item \textbf{btxrd-split.csv}: Tập tin chỉ định phân tách phân bổ tập dữ liệu (huấn luyện, đánh giá, kiểm thử).
+    \item \textbf{dataset.csv}: Tệp siêu dữ liệu thô gồm tuổi, giới tính, vùng xương, khớp, góc chụp và các cờ bệnh lý.
+    \item \textbf{btxrd-labels.csv}: Tệp lưu 10 cột chỉ báo lớp bệnh lý.
+    \item \textbf{btxrd-split.csv}: Tệp ánh xạ image\_id vào một trong ba tập train, validate và tests.
 \end{itemize}
 
-\subsubsection{Phương pháp xây dựng dữ liệu báo cáo y khoa đa phương thức}
-Do tập dữ liệu gốc BTXRD công bố chỉ bao gồm hình ảnh X-quang, nhãn phân loại và tọa độ vùng khoanh u xương mà không đi kèm các báo cáo văn bản chẩn đoán y khoa, nhóm nghiên cứu đã thiết kế một quy trình xây dựng văn bản báo cáo y khoa đa phương thức bán tự động dựa trên khuôn mẫu và thuộc tính. Phương pháp này giúp giả lập hai nguồn dữ liệu văn bản quan trọng tương tự như trong thực tế chẩn đoán:
-
+\subsubsection{Nguồn văn bản tổng hợp và giới hạn sử dụng}
+BTXRD công bố không kèm báo cáo tự do do bác sĩ viết. Các thư mục văn bản trong
+workspace đều được sinh bằng khuôn mẫu với seed 42 và quy trình được mô tả trong Phụ lục \ref{Appendix1} và cần được phân biệt như sau:
 \begin{enumerate}
-    \item \textbf{Báo cáo lâm sàng:}
-Báo cáo này được tạo lập bằng cách kết hợp thông tin nhân khẩu học (độ tuổi, giới tính) và vị trí giải phẫu xương của bệnh nhân với các bệnh lý tương ứng. Nhóm đã xây dựng các ngân hàng khuôn mẫu câu mô tả:
-    \begin{itemize}
-        \item Lý do khám bệnh (ví dụ: xuất hiện khối u sưng nề hoặc đau nhức ở vùng xương tương ứng).
-        \item Thời gian khởi phát triệu chứng (được chọn ngẫu nhiên trong khoảng từ vài tuần đến vài tháng).
-        \item Tiền sử bệnh và ghi nhận khám thực thể.
-    \end{itemize}
-Đặc biệt, để mô phỏng chính xác bệnh cảnh lâm sàng, quy trình sinh văn bản sẽ phân nhánh dựa trên tính chất u xương. Đối với u lành tính, bệnh sử mô tả các khối u tăng trưởng chậm, không sốt, không sụt cân, không đau đêm. Ngược lại, đối với u ác tính, văn bản được thêm vào các triệu chứng nguy cấp của ung thư như đau xương tăng dữ dội về đêm, sụt cân không rõ nguyên nhân, sốt nhẹ hoặc đổ mồ hôi trộm. Các thuộc tính cá nhân của bệnh nhân sau đó được thay thế vào các chỗ trống để tạo ra văn bản lâm sàng tự nhiên và đa dạng.
-
-    \item \textbf{Báo cáo mô tả ảnh X-quang:}
-Báo cáo cận lâm sàng chẩn đoán hình ảnh được sinh ra dựa trên góc chụp X-quang và các dấu hiệu hình ảnh đặc trưng lâm sàng của từng phân nhóm u xương xương đã được chuyên gia chẩn đoán:
-    \begin{itemize}
-        \item Đối với u xương sụn (\textit{osteochondroma}): văn bản sinh ra các mô tả đặc trưng như chồi xương có nắp sụn liên tục với vỏ xương và tủy xương (\textit{"cartilage-capped bony outgrowth", "continuity of cortex"}).
-        \item Đối với nang xương đơn thuần (\textit{simple bone cyst}): văn bản mô tả tổn thương tiêu xương giới hạn rõ ở vùng hành xương (\textit{"well-defined lucent lesion in the metaphysis"}).
-        \item Đối với u tế bào khổng lồ (\textit{giant cell tumor}): văn bản chứa mô tả tổn thương tiêu xương dạng bong bóng xà phòng (\textit{"soap-bubble appearance"}).
-    \end{itemize}
-Các mô tả hình thái học thuật này giúp mô hình học sâu có thể liên kết giữa các đặc trưng thị giác trên phim X-quang gốc với các thuật ngữ y học chuyên ngành tương ứng trong báo cáo cận lâm sàng.
+    \item \textbf{\texttt{clinical}:} mỗi báo cáo gồm tuổi,
+    giới tính, vị trí xương hoặc khớp, góc chụp, lý do vào viện, bệnh sử, khám
+    thực thể và tiền sử. Quy trình không chèn tên của 10 lớp đích, nhưng vẫn chọn nhóm khuôn mẫu theo các cờ \texttt{tumor} và \texttt{malignant}, đồng thời sử dụng thông tin tổn thương nhiều xương và liên quan khớp từ
+    \texttt{dataset.csv}.
+    \item \textbf{\texttt{xray}:} mô tả X-quang được sinh trực tiếp từ
+    nhãn phân nhóm và các dấu hiệu điển hình, trong đó có thể xuất hiện tên chẩn đoán. Nguồn này được sử dụng nhằm mục đích hỗ trợ phân tích dữ liệu và trình bày không sử dụng trong quá trình huấn luyện.
 \end{enumerate}
 
-Bảng \ref{tab:btxrd_examples} trình bày một số mẫu ví dụ cụ thể về hình ảnh X-quang gốc cùng với hai nguồn văn bản báo cáo y khoa lâm sàng và cận lâm sàng tương ứng được xây dựng trong bộ dữ liệu BTXRD.
+Việc loại tên bệnh trực tiếp làm giảm dạng rò rỉ từ khóa, nhưng không khiến văn bản trở thành độc lập với nhãn vì quá trình sinh vẫn có điều kiện theo cờ u và ác tính. Do đó, mức cải thiện từ văn bản trên BTXRD được diễn giải như hiệu quả trên dữ liệu tổng hợp có điều kiện, không phải bằng chứng trực tiếp về hiệu quả trên bệnh sử lâm sàng tự nhiên. Bảng \ref{tab:btxrd_examples} minh họa sự khác nhau giữa báo cáo lâm sàng và mô tả X-quang.
 
 \begin{table}[htbp]
 \centering
@@ -118,15 +60,15 @@ Bảng \ref{tab:btxrd_examples} trình bày một số mẫu ví dụ cụ thể
 \label{tab:btxrd_examples}
 \begin{tabular}{|C{2.5cm}|L{6.0cm}|L{6.0cm}|}
 \hline
-\textbf{Hình ảnh X-quang} & \textbf{Thông tin lâm sàng (Clinical)} & \textbf{Thông tin cận lâm sàng (X-ray)} \\ \hline
+\textbf{Hình ảnh X-quang} & \textbf{Bệnh sử tổng hợp canonical (\texttt{clinical\_v2})} & \textbf{Mô tả X-quang tổng hợp legacy} \\ \hline
 \adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000849.jpeg}} &
-Patient: 58-year-old male. Chief complaint: swelling and discomfort in the tibia (shin bone) region. The patient noticed the lump 2 months ago. It has been painless and gradually increasing in size. No night pain reported. Physical examination reveals a hard, non-tender bony protuberance. No history of prior bone disease, fracture, or malignancy. Radiographic evaluation: AP view of the tibia (shin bone) was obtained. &
+Patient: 58-year-old male. Reason for admission: Pain and swelling of the tibia. Disease history: Swelling discovered 3 months ago; painless. Physical examination: Firm, fixed swelling on the tibia; mild local tenderness. Personal medical history: No significant medical history. Age-related musculoskeletal complaints; no prior bone surgeries. Radiographic evaluation: AP view of the tibia was obtained. &
 A musculoskeletal radiograph of the bone in standard projection with evidence of osteochondroma: a pedunculated or sessile bony projection with cartilage cap. Captured at standard radiographic technique. The overall appearance favors a benign process. \\ \hline
 \adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000008.jpeg}} &
-Patient: 6-year-old male. The patient reports a progressively growing swelling over the humerus (upper arm). Rapidly enlarging mass in the humerus (upper arm) over the past a few months. Associated with night pain and unintentional weight loss. Large, firm, tender mass with overlying skin warmth. Regional lymphadenopathy absent. No significant past medical history. Radiographic evaluation: AP view of the humerus (upper arm) was obtained. &
+Patient: 6-year-old male. Reason for admission: Persistent pain in the humerus. Disease history: Pain and swelling in the humerus for 1 year; progressively worsening. Physical examination: Tender swelling; overlying skin warm; reduced mobility. Personal medical history: History of mild hypertension; otherwise unremarkable. No significant past medical history. Age-appropriate development. Radiographic evaluation: AP view of the humerus was obtained. &
 A musculoskeletal radiograph of the bone in conventional radiographic view with evidence of osteosarcoma: an aggressive osteoblastic lesion with irregular periosteal new bone formation. In a routine clinical radiographic study. The imaging features raise concern for malignancy. \\ \hline
 \adjustbox{valign=c}{\includegraphics[width=2.2cm]{../../data/BTXRD/images/IMG000001.jpeg}} &
-Patient: 48-year-old female. The patient presents with a palpable mass on the hip bone (pelvis). The patient presents with a painful mass that has been growing rapidly. Significant weight loss of 5 kg over 1 month. Night pain disturbs sleep. Painful, rapidly growing mass with constitutional symptoms. No known chronic diseases. No prior surgeries. Radiographic evaluation: AP view of the hip bone (pelvis) was obtained. &
+Patient: 48-year-old female. Reason for admission: Pain and swelling of the hip bone. Disease history: Pain in the hip bone for 1 month; associated with decreased appetite. Physical examination: Palpable mass; tenderness on palpation; mild swelling. Personal medical history: No prior bone disease or fracture. No relevant surgical or medical history. Radiographic evaluation: AP view of the hip bone was obtained. &
 A musculoskeletal radiograph of the bone in standard projection with evidence of other mt: a destructive bone lesion with ill-defined borders suggestive of malignancy. In a high-resolution diagnostic acquisition. The imaging features raise concern for malignancy. \\ \hline
 \end{tabular}
 \end{table}
@@ -136,13 +78,12 @@ Nhằm cung cấp cái nhìn chi tiết và khách quan về cấu trúc dữ li
 
 \begin{table}[htbp]
 \centering
-\small
 \begin{tabular}{|l|c|c|}
 \hline
-\textbf{Tập dữ liệu (Split)} & \textbf{Số lượng hình ảnh} & \textbf{Tỷ lệ (\%)} \\ \hline
-Huấn luyện (Train)            & 2.622                       & 70,0\%              \\ \hline
-Đánh giá (Validation)         & 562                         & 15,0\%              \\ \hline
-Kiểm thử (Test)               & 562                         & 15,0\%              \\ \hline
+\textbf{Tập dữ liệu} & \textbf{Số lượng hình ảnh} & \textbf{Tỷ lệ (\%)} \\ \hline
+Huấn luyện           & 2.621                       & 69,97\%             \\ \hline
+Đánh giá         & 375                         & 10,01\%             \\ \hline
+Kiểm thử               & 750                         & 20,02\%             \\ \hline
 \textbf{Tổng cộng}            & \textbf{3.746}              & \textbf{100,0\%}    \\ \hline
 \end{tabular}
 \caption{Phân bổ hình ảnh theo các tập dữ liệu trong BTXRD}
@@ -152,27 +93,28 @@ Kiểm thử (Test)               & 562                         & 15,0\%        
 \begin{table}[htbp]
 \centering
 \small
-\begin{tabular}{|l|c|c|}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|r|r|r|r|r|}
 \hline
-\textbf{Nhãn bệnh lý (Pathology)} & \textbf{Số lượng} & \textbf{Tỷ lệ (\%)} \\ \hline
-Bình thường (Normal)              & 1.879              & 50,2\%              \\ \hline
-U xương sụn (\textit{osteochondroma}) & 754            & 20,1\%              \\ \hline
-U xương ác tính (\textit{osteosarcoma}) & 297          & 7,9\%               \\ \hline
-Đa u xương sụn (\textit{multiple}) & 263               & 7,0\%               \\ \hline
-Nang xương đơn thuần (\textit{cyst}) & 206             & 5,5\%               \\ \hline
-U xương lành tính khác (\textit{other benign}) & 115   & 3,1\%               \\ \hline
-U tế bào khổng lồ (\textit{giant cell}) & 93           & 2,5\%               \\ \hline
-U màng hoạt dịch (\textit{synovial}) & 51              & 1,4\%               \\ \hline
-U xương ác tính khác (\textit{other malignant}) & 45  & 1,2\%               \\ \hline
-U xơ không tạo xương (\textit{osteofibroma}) & 44     & 1,2\%               \\ \hline
+\textbf{Nhãn bệnh lý} & \textbf{Train} & \textbf{Validation} & \textbf{Test} & \textbf{Tổng} & \textbf{Tỷ lệ} \\ \hline
+Bình thường (\textit{normal}) & 1.322 & 191 & 366 & 1.879 & 50,16\% \\ \hline
+U xương sụn (\textit{osteochondroma}) & 538 & 70 & 145 & 753 & 20,10\% \\ \hline
+Sarcoma xương (\textit{osteosarcoma}) & 200 & 32 & 65 & 297 & 7,93\% \\ \hline
+Đa u xương sụn (\textit{multiple osteochondromas}) & 189 & 29 & 45 & 263 & 7,02\% \\ \hline
+Nang xương đơn thuần (\textit{simple bone cyst}) & 149 & 17 & 40 & 206 & 5,50\% \\ \hline
+U lành tính khác (\textit{other bt}) & 83 & 8 & 24 & 115 & 3,07\% \\ \hline
+U tế bào khổng lồ (\textit{giant cell tumor}) & 54 & 8 & 31 & 93 & 2,48\% \\ \hline
+U sụn màng hoạt dịch (\textit{synovial osteochondroma}) & 35 & 7 & 9 & 51 & 1,36\% \\ \hline
+U ác tính khác (\textit{other mt}) & 27 & 5 & 13 & 45 & 1,20\% \\ \hline
+U xơ xương (\textit{osteofibroma}) & 24 & 8 & 12 & 44 & 1,17\% \\ \hline
+\textbf{Tổng} & \textbf{2.621} & \textbf{375} & \textbf{750} & \textbf{3.746} & \textbf{100,00\%} \\ \hline
 \end{tabular}
-\caption{Phân bổ các lớp bệnh lý u xương trong bộ dữ liệu BTXRD}
+}
+\caption{Phân bổ các lớp đơn nhãn sau chuẩn hóa trong bộ dữ liệu BTXRD}
 \label{tab:btxrd_pathologies}
 \end{table}
 
-Về mặt gán nhãn u xương, bộ dữ liệu BTXRD được tổ chức chủ yếu dưới dạng đơn nhãn, trong đó có 1.879 ảnh bình thường (không có khối u) và 1.866 ảnh có đúng 1 nhãn bệnh lý. Chỉ có duy nhất 1 hình ảnh chứa đồng thời 2 nhãn bệnh lý (u xương sụn và đa u xương sụn). Số lượng nhãn trung bình trên mỗi ảnh là 0,50 và tối đa là 2 nhãn.
-
-Đối với phần báo cáo ảnh x-quang, có tổng cộng 3.746 tệp tương ứng với 3.746 hình ảnh. Trong đó, có 1.576 văn bản báo cáo là độc nhất (tỷ lệ độc nhất đạt 42,1\%). Sự trùng lặp văn bản là do quy trình tự động sinh dựa trên các tập thuộc tính và mẫu câu cố định. Tuy nhiên, tính độc nhất này phân bổ cao hơn trên các tập chia nhỏ: tập huấn luyện có 1.333/2.622 báo cáo độc nhất (50,8\%), tập đánh giá có 475/562 báo cáo độc nhất (84,5\%), và tập kiểm thử có 451/562 báo cáo độc nhất (80,2\%). Độ dài trung bình của các báo cáo cận lâm sàng là khoảng 24,6 từ (tối thiểu là 19 từ, tối đa là 36 từ), tương đương trung bình khoảng 172 ký tự (từ 120 đến 266 ký tự).
+Bộ dữ liệu được chia theo tỉ lệ 70\% huấn luyện, 10\% đánh giá và 20\% kiểm thử. Tất cả các tập con đều được cân bằng theo các lớp bệnh lý. Bảng \ref{tab:btxrd_pathologies} cho thấy số lượng mẫu của mỗi lớp bệnh lý trong từng tập con, từ đó có thể thấy rằng các lớp bệnh lý phổ biến như u xương sụn và sarcoma xương chiếm tỷ lệ lớn trong bộ dữ liệu, trong khi các lớp hiếm gặp như u sụn màng hoạt dịch và u xơ xương chiếm tỷ lệ nhỏ hơn.
 
 \subsection{Bộ dữ liệu CTCH}
 Bộ dữ liệu hình ảnh X-quang xương CTCH được thu thập từ bệnh viện Chấn thương Chỉnh hình, bao gồm tổng cộng 400 hình ảnh X-quang từ 400 bệnh nhân khác nhau. Mỗi hình ảnh được gán nhãn với các thông tin lâm sàng bao gồm lý do vào viện, quá trình bệnh lý, tiền sử bệnh lý.
@@ -225,10 +167,10 @@ Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu 
 \end{itemize}
 
 \section{Độ đo đánh giá}
-Để đánh giá hiệu quả của mô hình đề xuất và các mô hình đối sánh trên bài toán phân loại đa lớp u xương, nhóm nghiên cứu đã sử dụng các độ đo tiêu chuẩn trong học máy y sinh. Do tập dữ liệu BTXRD có sự mất cân bằng lớp nghiêm trọng (lớp Bình thường chiếm hơn 50\% số lượng mẫu, trong khi một số lớp u hiếm như u xơ xương chỉ chiếm khoảng 1,2\%), các chỉ số tính toán được áp dụng cơ chế Macro-averaging. Phương pháp này giúp phản ánh chính xác hiệu năng dự đoán trên từng lớp bệnh lý độc lập, ngăn chặn việc kết quả của lớp đa số chi phối các lớp hiếm gặp.
-
-\subsection{Định nghĩa toán học và ý nghĩa của các độ đo}
-Các chỉ số đánh giá được tính toán dựa trên các khái niệm cơ bản cho từng lớp $c \in \{1, 2, \dots, C\}$ (với $C = 10$ là số lớp):
+\label{sec:evaluation_metrics}
+BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp đơn nhãn. Số
+lớp $C$ phụ thuộc vào bộ dữ liệu: $C=10$ đối với BTXRD và $C=22$ đối với CTCH.
+Phần này chỉ trình bày bảy đại lượng được sử dụng trong báo cáo kết quả. Các chỉ số đánh giá được tính toán dựa trên các khái niệm cơ bản cho từng lớp $c \in \{1, 2, \dots, C\}$:
 \begin{itemize}
     \item \textbf{True Positive ($TP_c$):} Số lượng mẫu thuộc lớp $c$ được dự đoán chính xác vào lớp $c$.
     \item \textbf{False Positive ($FP_c$):} Số lượng mẫu thuộc lớp khác nhưng bị mô hình dự đoán nhầm vào lớp $c$.
@@ -236,108 +178,213 @@ Các chỉ số đánh giá được tính toán dựa trên các khái niệm c
     \item \textbf{False Negative ($FN_c$):} Số lượng mẫu thuộc lớp $c$ nhưng bị mô hình dự đoán nhầm vào lớp khác.
 \end{itemize}
 
-Dưới đây là định nghĩa toán học và ý nghĩa chi tiết của từng độ đo được áp dụng:
 
-\subsubsection{Độ chính xác}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        \text{Accuracy} = \frac{\sum_{c=1}^{C} TP_c}{N}
-    \end{equation}
-Trong đó $N$ là tổng số lượng mẫu trong tập kiểm thử.
-    \item \textbf{Ý nghĩa:} Chỉ số này thể hiện tỷ lệ phần trăm mẫu được chẩn đoán hoàn toàn chính xác trên toàn bộ tập dữ liệu. Độ đo này hữu ích khi cấu trúc dữ liệu cân bằng, nhưng đối với BTXRD, nó chỉ đóng vai trò tham khảo phụ vì dễ bị chi phối bởi lớp Bình thường chiếm đa số.
-\end{itemize}
+\subsection{Độ chính xác}
 
-\subsubsection{Độ chính xác dương tính}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        \text{Precision}_c = \frac{TP_c}{TP_c + FP_c}
-    \end{equation}
-    \begin{equation}
-        \text{Macro Precision} = \frac{1}{C} \sum_{c=1}^{C} \text{Precision}_c
-    \end{equation}
-    \item \textbf{Ý nghĩa:} Precision đo lường độ tin cậy trong các dự đoán dương tính của mô hình. Ví dụ, nếu mô hình chẩn đoán 10 ca là u ác tính và Precision đạt 90\%, nghĩa là có 9 ca thực sự là ác tính và chỉ có 1 ca bị chẩn đoán nhầm (dương tính giả). Trong lâm sàng, Precision cao giúp giảm tỷ lệ chỉ định sinh thiết nhầm và giảm gánh nặng chi phí cũng như tâm lý cho bệnh nhân.
-\end{itemize}
+\textbf{Mục đích:} Đo tỷ lệ mẫu được phân loại đúng trên toàn bộ tập đánh giá.
 
-\subsubsection{Độ phủ}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        \text{Sensitivity}_c = \text{Recall}_c = \frac{TP_c}{TP_c + FN_c}
-    \end{equation}
-    \begin{equation}
-        \text{Macro Sensitivity} = \frac{1}{C} \sum_{c=1}^{C} \text{Sensitivity}_c
-    \end{equation}
-    \item \textbf{Ý nghĩa:} Độ nhạy phản ánh khả năng phát hiện bệnh của mô hình, tức là tỷ lệ bệnh nhân thực sự có u được mô hình nhận diện chính xác. Nếu một mô hình có độ nhạy 95\% đối với u ác tính osteosarcoma, điều đó nghĩa là cứ 100 bệnh nhân mắc bệnh thì mô hình phát hiện được 95 người, chỉ bỏ sót 5 người (âm tính giả). Chỉ số này bắt buộc phải duy trì ở mức cao trong chẩn đoán y sinh để đảm bảo an toàn tính mạng cho người bệnh.
-\end{itemize}
+\textbf{Công thức:}
+\begin{equation}
+    \operatorname{Acc}
+      =\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}(y_i=\hat{y}_i)
+\end{equation}
 
-\subsubsection{Độ đặc hiệu}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        \text{Specificity}_c = \frac{TN_c}{TN_c + FP_c}
-    \end{equation}
-    \begin{equation}
-        \text{Macro Specificity} = \frac{1}{C} \sum_{c=1}^{C} \text{Specificity}_c
-    \end{equation}
-    \item \textbf{Ý nghĩa:} Độ đặc hiệu đo lường khả năng nhận diện các ca âm tính (không mắc bệnh $c$). Đối với lớp Bình thường, Specificity cao đồng nghĩa với việc mô hình ít khi chẩn đoán nhầm một người khỏe mạnh là có khối u. Chỉ số này giúp bảo vệ bệnh nhân khỏi các quy trình điều trị nhầm lẫn có hại cho sức khỏe.
-\end{itemize}
+\textbf{Lý do sử dụng:} Độ chính xác cung cấp một chỉ số tổng quát, dễ diễn giải và thuận tiện khi đối chiếu với các nghiên cứu trước. Tuy nhiên, do độ đo này có thể bị chi phối bởi lớp phổ biến, nó được báo cáo cùng các độ đo cân bằng lớp; giá trị cao hơn là tốt hơn.
 
-\subsubsection{Chỉ số F1-Score}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        F1_c = 2 \times \frac{\text{Precision}_c \times \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
-    \end{equation}
-    \begin{equation}
-        \text{Macro F1-Score} = \frac{1}{C} \sum_{c=1}^{C} F1_c
-    \end{equation}
-    \item \textbf{Ý nghĩa:} F1-Score là trung bình điều hòa của Precision và Recall, đóng vai trò là thước đo trung thực nhất cho sức khỏe tổng thể của mô hình. F1-Score chỉ cao khi cả Precision và Recall đều cao. Nếu mô hình có xu hướng dự đoán bừa để tăng Recall hoặc chỉ dự đoán các ca cực kỳ dễ để tăng Precision, chỉ số F1-Score sẽ bị kéo tụt xuống. Chỉ số trung bình vĩ mô (Macro F1-Score) là độ đo chính được sử dụng để xếp hạng các mô hình đối sánh trong nghiên cứu này.
-\end{itemize}
+\subsection{Độ chính xác cân bằng}
 
-\subsubsection{Diện tích dưới đường cong ROC}
-\begin{itemize}
-    \item \textbf{Công thức:}
-    \begin{equation}
-        \text{Macro AUROC} = \frac{1}{C} \sum_{c=1}^{C} \text{AUC}_c
-    \end{equation}
-Trong đó $\text{AUC}_c$ là diện tích dưới đường cong ROC của lớp $c$ được tính toán theo phương pháp một đối tất cả (One-vs-Rest).
-    \item \textbf{Ý nghĩa:} ROC AUC thể hiện xác suất mô hình xếp hạng một mẫu dương tính thực sự cao hơn một mẫu âm tính thực sự. Giá trị AUROC bằng 0,5 tương đương đoán ngẫu nhiên, trong khi bằng 1,0 thể hiện khả năng phân tách hoàn hảo giữa các lớp bệnh lý. Chỉ số này đại diện cho năng lực trích xuất đặc trưng thuần túy của mô hình, độc lập với ngưỡng quyết định phân lớp được lựa chọn.
-\end{itemize}
+\textbf{Mục đích:} Đo độ phủ trung bình của các lớp, qua đó phản ánh khả năng
+nhận diện cả lớp phổ biến và lớp ít mẫu.
 
-\subsubsection{Ma trận nhầm lẫn}
-\begin{itemize}
-    \item \textbf{Ý nghĩa:} Trong y học, ma trận nhầm lẫn không chỉ cung cấp các con số mà còn mang ý nghĩa định hướng chẩn đoán sai lệch. Nó giúp các bác sĩ hiểu rõ mô hình đang phân loại nhầm giữa các lớp nào với nhau (ví dụ: mô hình có xu hướng nhầm u ác tính osteosarcoma sang u lành tính osteochondroma hay không). Sự nhầm lẫn giữa hai lớp lành tính ít gây hậu quả nghiêm trọng hơn so với việc chẩn đoán nhầm từ một u ác tính sang một u lành tính hoặc bình thường. Do đó, ma trận nhầm lẫn là công cụ đắc lực để chẩn đoán lâm sàng lỗi hệ thống của mô hình.
-\end{itemize}
+\textbf{Công thức:}
+\begin{equation}
+    \operatorname{Balanced\,Acc}
+      =\frac{1}{C}\sum_{c=1}^{C}
+       \frac{TP_c}{TP_c+FN_c}
+\end{equation}
+
+\textbf{Lý do sử dụng:} Độ chính xác cân bằng trao trọng số bằng nhau cho từng
+lớp nên phù hợp hơn độ chính xác khi dữ liệu mất cân bằng. Độ đo này cho biết mô hình có duy trì khả năng bao phủ trên các lớp hiếm hay không; giá trị cao hơn là tốt hơn.
+
+\subsection{Macro F1-Score}
+
+\textbf{Mục đích:} Đánh giá đồng thời độ chuẩn xác và độ phủ của từng lớp trước
+khi tổng hợp kết quả trên toàn bộ bài toán.
+
+\textbf{Công thức:}
+\begin{equation}
+    P_c =\frac{TP_c}{TP_c+FP_c}
+\end{equation}
+
+\begin{equation}
+    R_c =\frac{TP_c}{TP_c+FN_c}
+\end{equation}
+
+\begin{equation}
+    \operatorname{Macro\text{-}F1}
+      =\frac{1}{C}\sum_{c=1}^{C}
+        \frac{2P_cR_c}{P_c+R_c}
+\end{equation}
+
+Khi mẫu số bằng 0, mã đánh giá gán giá trị 0 cho thành phần tương ứng.
+
+\textbf{Lý do sử dụng:} Macro-F1 lấy trung bình không trọng số trên các lớp và
+phạt các trường hợp có độ chuẩn xác hoặc độ phủ thấp. Vì vậy, đây là độ đo chính để chọn checkpoint và so sánh các mô hình trong nghiên cứu; giá trị cao hơn là tốt hơn.
+
+\subsection{Macro AUROC}
+
+\textbf{Mục đích:} Đánh giá khả năng mô hình xếp hạng mẫu của mỗi lớp cao hơn
+các mẫu không thuộc lớp đó trên toàn bộ các ngưỡng quyết định.
+
+\textbf{Công thức:} Với $x_c^{+}$ và $x_c^{-}$ lần lượt là mẫu dương và mẫu âm đối với phần còn lại của lớp $c$,
+\begin{equation}
+    \operatorname{AUROC}_c =\Pr\!\left[p_c(x_c^{+})>p_c(x_c^{-})\right]
+        +\frac{1}{2}\Pr\!\left[p_c(x_c^{+})=p_c(x_c^{-})\right]
+\end{equation}
+
+\begin{equation}
+    \operatorname{Macro\,AUROC}
+      =\frac{1}{|\mathcal{C}_v|}
+        \sum_{c\in\mathcal{C}_v}\operatorname{AUROC}_c
+\end{equation}
+trong đó $\mathcal{C}_v$ là tập lớp có đủ cả mẫu dương và mẫu âm.
+
+\textbf{Lý do sử dụng:} Macro AUROC đánh giá chất lượng xếp hạng độc lập với
+một ngưỡng phân loại cố định và trao trọng số như nhau cho các lớp hợp lệ. Độ
+đo này bổ sung cho Macro-F1, vốn phụ thuộc vào quyết định argmax; giá trị cao
+hơn là tốt hơn.
+
+\subsection{AUROC-OOD}
+
+Giao thức OOD hiện chỉ áp dụng cho CTCH. Gọi $s(x)$ là điểm OOD, trong đó giá
+trị cao hơn biểu thị bằng chứng ngoài phân phối mạnh hơn.
+
+\textbf{Mục đích:} Đánh giá khả năng xếp hạng mẫu OOD cao hơn mẫu trong phân
+phối (ID) trên toàn bộ các ngưỡng.
+
+\textbf{Công thức:}
+\begin{equation}
+    \operatorname{AUROC}_{OOD}
+      =\Pr\!\left[s(x_{ood})>s(x_{id})\right]
+       +\frac{1}{2}\Pr\!\left[s(x_{ood})=s(x_{id})\right]
+\end{equation}
+
+\textbf{Lý do sử dụng:} AUROC-OOD không phụ thuộc vào một điểm vận hành duy
+nhất và cho phép so sánh thống nhất các hàm điểm OOD khác nhau; giá trị cao hơn
+là tốt hơn.
+
+\subsection{FPR@95\% ID-TPR}
+
+\textbf{Mục đích:} Đo tỷ lệ mẫu OOD bị chấp nhận nhầm như ID khi hệ thống phải
+giữ lại ít nhất 95\% mẫu ID.
+
+\textbf{Công thức:} Tỷ lệ chấp nhận đúng ID tại ngưỡng $\tau$ là
+\begin{equation}
+    \operatorname{IDTPR}(\tau)
+      =\frac{1}{N_{id}}\sum_{x\in D_{id}}
+       \mathbb{I}\!\left[s(x)\leq\tau\right]
+\end{equation}
+Trong độ đo benchmark, $\tau_{95}$ được chọn trên đường ROC để tỷ lệ OOD bị
+chấp nhận nhầm là nhỏ nhất trong các ngưỡng thỏa
+$\operatorname{IDTPR}(\tau)\geq0{,}95$. Khi đó,
+\begin{equation}
+    \operatorname{FPR@95\%}
+      =\frac{1}{N_{ood}}\sum_{x\in D_{ood}}
+       \mathbb{I}\!\left[s(x)\leq\tau_{95}\right]
+\end{equation}
+
+\textbf{Lý do sử dụng:} FPR@95\% phản ánh trực tiếp chi phí chấp nhận nhầm OOD
+tại một mức duy trì dữ liệu ID cao, nên có ý nghĩa vận hành rõ hơn AUROC-OOD;
+giá trị thấp hơn là tốt hơn. Ngưỡng benchmark này được xác định từ cả score ID
+và OOD của tập đánh giá; nó khác với ngưỡng triển khai chỉ được hiệu chỉnh trên
+validation ID.
+
+\subsection{Khoảng tin cậy bootstrap 95\%}
+
+\textbf{Mục đích:} Ước lượng độ bất định của Acc, Balanced Acc, Macro-F1,
+Macro AUROC, AUROC-OOD và FPR@95\% trên tập đánh giá hữu hạn.
+
+\textbf{Công thức:} Từ tập đánh giá $D$ có $N$ mẫu, ở lần lặp thứ $b$ tạo
+$D^{*(b)}$ bằng cách lấy $N$ mẫu có hoàn lại và tính
+\begin{equation}
+    \hat{\theta}^{*(b)}=m\!\left(D^{*(b)}\right)
+    \qquad b=1,\ldots,B
+\end{equation}
+với $m$ là độ đo cần báo cáo. Khoảng tin cậy percentile 95\% được xác định bởi
+\begin{equation}
+    \operatorname{CI}_{95\%}(\theta)
+      =\left[
+        Q_{0{,}025}\!\left(\{\hat{\theta}^{*(b)}\}_{b=1}^{B}\right)
+        Q_{0{,}975}\!\left(\{\hat{\theta}^{*(b)}\}_{b=1}^{B}\right)
+       \right]
+\end{equation}
+trong đó $Q_q$ là phân vị bậc $q$. Pipeline sử dụng $B=10.000$ cho phân loại
+và $B=2.000$ cho OOD.
+
+\textbf{Lý do sử dụng:} Bootstrap không yêu cầu giả định phân phối chuẩn cho
+các độ đo phi tuyến như Macro-F1 hoặc AUROC và cung cấp miền bất định dễ báo
+cáo cùng ước lượng điểm. Khoảng tin cậy được dùng để mô tả độ ổn định của từng
+mô hình, không được diễn giải riêng như một kiểm định ý nghĩa cho chênh lệch
+giữa hai mô hình.
 
 \section{Thiết lập thực nghiệm}
 Phần này trình bày các thiết lập thực nghiệm, bao gồm môi trường phần cứng và phần mềm, cũng như các siêu tham số được sử dụng trong quá trình huấn luyện mô hình. Các thiết lập này nhằm đảm bảo tính nhất quán và khả năng tái tạo của các thí nghiệm.
 \subsection{Môi trường thực nghiệm}
-\begin{itemize}
-    \item \textbf{Phần cứng:} NVIDIA RTX 5060ti 16GB, CPU Ultra 7 265KF, RAM 32GB
-    \item \textbf{Phần mềm:} Python 3.11.15, PyTorch 2.11.0, CUDA 12.8, HuggingFace Transformers
-\end{itemize}
+Mô hình đề xuất được chạy ba lần trong các điều kiện và siêu tham số giống nhau. Môi trường phần cứng được trình bày trong Bảng
+\ref{tab:hardware_environment}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\caption{Môi trường phần cứng được thiết lập}
+\label{tab:hardware_environment}
+\textbf{Thành phần} & \textbf{Cấu hình} \\ \hline
+GPU & 1 $\times$ RTX 5060 Ti 16 GB VRAM \\ \hline
+CPU & Intel Core Ultra 7 265KF \\ \hline
+Bộ nhớ hệ thống & 32 GB RAM \\ \hline
+Độ chính xác số học & BF16 trong cả hai pha huấn luyện \\ \hline
+\end{tabular}
+\end{table}
+
+Môi trường phần mềm được cố định theo tệp phụ thuộc của dự án và được tóm tắt
+trong Bảng \ref{tab:software_environment}.
+\begin{table}[htbp]
+\centering
+\caption{Phiên bản của các thư viện chính trong môi trường thí nghiệm}
+\label{tab:software_environment}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Thành phần} & \textbf{Phiên bản} \\ \hline
+Python & 3.11.15 \\ \hline
+Torch & 2.11.0+cu128 \\ \hline
+CUDA runtime & 12.8 \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Tham số thực nghiệm}
+Các Bảng \ref{tab:hyperparameters_phase1} và \ref{tab:hyperparameters_phase2} dưới đây mô tả cấu hình siêu tham số của mô hình đề xuất. Các siêu tham số được lựa chọn dựa trên các nghiên cứu trước và thử nghiệm sơ bộ để tối ưu hóa hiệu suất mô hình trên cả hai bộ dữ liệu BTXRD và CTCH. Các siêu tham số này bao gồm độ phân giải ảnh đầu vào, bộ tối ưu hóa, tốc độ học, suy giảm trọng số, bộ điều chỉnh tốc độ học, tỷ lệ khởi động, kích thước lô, số epoch tối đa, số epoch dừng sớm, nhiệt độ tương phản ($\tau$), trạng thái tham số Backbone, hạng LoRA ($r$), hệ số LoRA ($\alpha$) và tỷ lệ bỏ học LoRA.
+
 \subsection{Tham số thực nghiệm}
 \begin{table}[htbp]
 \centering
 \begin{tabular}{|l|c|}
 \hline
-\textbf{Siêu tham số}        & \textbf{Pha 1 (Tương phản)}  \\ \hline
-Độ phân giải ảnh đầu vào     & $224 \times 224$ pixels      \\ \hline
-Bộ tối ưu hóa                & AdamW                        \\ \hline
-Tốc độ học                   & $2 \times 10^{-4}$           \\ \hline
-Suy giảm trọng số            & $1 \times 10^{-2}$           \\ \hline
-Bộ điều chỉnh tốc độ học     & Cosine Annealing             \\ \hline
-Tỷ lệ khởi động              & 0.1                          \\ \hline
-Kích thước lô                & 32                           \\ \hline
-Số epoch tối đa              & 50                           \\ \hline
-Số epoch dừng sớm            & 5 epochs                     \\ \hline
-Nhiệt độ tương phản ($\tau$) & 0.07                         \\ \hline
-Trạng thái tham số Backbone  & Tinh chỉnh qua PEFT          \\ \hline
-Hạng QLoRA ($r$)             & 16                           \\ \hline
-Hệ số QLoRA ($\alpha$)       & 32                           \\ \hline
-Tỷ lệ bỏ học QLoRA           & 0.1                          \\ \hline
+\textbf{Siêu tham số}        & \textbf{Pha 1}      \\ \hline
+Độ phân giải ảnh đầu vào & \begin{tabular}[c]{@{}c@{}}1 ảnh global \(224\times224\) \\ và 4 tile cùng kích thước\end{tabular} \\ \hline
+Bộ tối ưu hóa                & AdamW               \\ \hline
+Tốc độ học                   & $5 \times 10^{-5}$  \\ \hline
+Suy giảm trọng số            & $1 \times 10^{-4}$  \\ \hline
+Bộ điều chỉnh tốc độ học     & Cosine              \\ \hline
+Tỷ lệ khởi động              & 0.1                 \\ \hline
+Kích thước lô                & 16                  \\ \hline
+Số epoch tối đa              & 30                  \\ \hline
+Số epoch dừng sớm            & 3 epochs            \\ \hline
+Nhiệt độ tương phản ($\tau$) & 0.07                \\ \hline
+Trạng thái tham số Backbone  & Tinh chỉnh qua LoRA \\ \hline
+Hạng QLoRA ($r$)             & 16                  \\ \hline
+Hệ số QLoRA ($\alpha$)       & 32                  \\ \hline
+Tỷ lệ bỏ học QLoRA           & 0.1                 \\ \hline
 \end{tabular}
 \caption{Bảng tổng hợp siêu tham số ở pha 1 và thiết lập của chúng}
 \label{tab:hyperparameters_phase1}
@@ -347,25 +394,244 @@ Tỷ lệ bỏ học QLoRA           & 0.1                          \\ \hline
 \centering
 \begin{tabular}{|l|c|}
 \hline
-\textbf{Siêu tham số}        & \textbf{Pha 2 (Phân loại)} \\ \hline
-Độ phân giải ảnh đầu vào     & $224 \times 224$ pixels    \\ \hline
-Bộ tối ưu hóa                & AdamW                      \\ \hline
-Tốc độ học                  & $1 \times 10^{-3}$          \\ \hline
-Suy giảm trọng số            & $1 \times 10^{-4}$         \\ \hline
-Bộ điều chỉnh tốc độ học     & Cosine Annealing           \\ \hline
-Tỷ lệ khởi động              & 0.1                        \\ \hline
-Kích thước lô                & 32                         \\ \hline
-Số epoch tối đa              & 50 / 100                   \\ \hline
-Số epoch dừng sớm           & 5 epochs                    \\ \hline
-Nhiệt độ tương phản ($\tau$) & Không áp dụng              \\ \hline
-Trạng thái tham số Backbone & Đông băng                   \\ \hline
-Hạng QLoRA ($r$)             & Không áp dụng              \\ \hline
-Hệ số QLoRA ($\alpha$)       & Không áp dụng              \\ \hline
-Tỷ lệ bỏ học QLoRA           & Không áp dụng              \\ \hline
+\textbf{Siêu tham số}        & \textbf{Pha 2} \\ \hline
+Độ phân giải ảnh đầu vào     & Giống pha 1                  \\ \hline
+Bộ tối ưu hóa                & AdamW                        \\ \hline
+Tốc độ học                   & $1 \times 10^{-4}$           \\ \hline
+Suy giảm trọng số            & $1 \times 10^{-4}$           \\ \hline
+Bộ điều chỉnh tốc độ học     & Cosine                       \\ \hline
+Tỷ lệ khởi động              & 0.1                          \\ \hline
+Kích thước lô                & 16                           \\ \hline
+Số epoch tối đa              & 50                           \\ \hline
+Số epoch dừng sớm            & 5 epochs                     \\ \hline
+Nhiệt độ tương phản ($\tau$) & Không áp dụng                \\ \hline
+Trạng thái tham số Backbone  & Tinh chỉnh qua LoRA          \\ \hline
+Hạng QLoRA ($r$)             & 16                           \\ \hline
+Hệ số QLoRA ($\alpha$)       & 32                           \\ \hline
+Tỷ lệ bỏ học QLoRA           & 0.1                          \\ \hline
 \end{tabular}
 \caption{Bảng tổng hợp siêu tham số ở pha 2 và thiết lập của chúng}
 \label{tab:hyperparameters_phase2}
 \end{table}
+
+\section{Nội dung thực nghiệm}
+Phần này trình bày các nhóm thí nghiệm được thực hiện trên hai bộ dữ liệu BTXRD và CTCH, bao gồm nội dung, mục đích và phạm vi của từng nhóm. Bảng \ref{tab:experiment_overview} tóm tắt các nhóm thí nghiệm theo registry cấu hình hiện tại.
+
+\begin{table}[p]
+\centering
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{|L{2.45cm}|X|L{3.75cm}|C{1.45cm}|}
+\hline
+\textbf{Nhóm thí nghiệm} &
+\textbf{Nội dung} &
+\textbf{Mô hình hoặc phương pháp} &
+\textbf{Dữ liệu} \\ \hline
+Đánh giá mô hình nền tảng &
+Phân loại zero-shot, không dùng mẫu huấn luyện từ tập đích. &
+CLIP, MedCLIP, PubMedCLIP, BiomedCLIP. &
+BTXRD, CTCH \\ \hline
+\multirow{3}{2.45cm}{So sánh mô hình} &
+So sánh trong các thiết lập 1-, 10- và 20-shot/lớp. &
+XBone-Net, LoRA-BiomedCLIP, LoRA-PubMedCLIP. &
+BTXRD, CTCH \\ \cline{2-4}
+& So sánh khi sử dụng toàn bộ tập huấn luyện. &
+ResNet-50, DenseNet-121, CLIP, MedCLIP, PubMedCLIP, BiomedCLIP, XBone-Net. &
+BTXRD, CTCH \\ \cline{2-4}
+& Đối sánh XBone-Net với các backbone được tinh chỉnh LoRA trên cùng dữ liệu. &
+XBone-Net, LoRA-BiomedCLIP, LoRA-PubMedCLIP. &
+BTXRD, CTCH \\ \hline
+\multirow{4}{2.45cm}{Đánh giá thành phần} &
+Tiền xử lý ảnh: direct resize, letterbox và sparse-focal. &
+XBone-Net; \texttt{nohighres}, \texttt{letterbox}, canonical. &
+CTCH \\ \cline{2-4}
+& Tinh chỉnh backbone: đóng băng, LoRA và toàn bộ tham số. &
+XBone-Net; \texttt{no\_ft}, LoRA canonical, \texttt{full\_ft}. &
+CTCH \\ \cline{2-4}
+& Dung hợp: concat, attention một chiều và hai chiều. &
+XBone-Net; concat, image-to-text, text-to-image, hai chiều. &
+CTCH \\ \cline{2-4}
+& Đầu phân loại và trọng số lớp. &
+XBone-Net; empirical centroid, linear head, \texttt{no\_class\_weight}. &
+CTCH \\ \hline
+OOD hậu xử lý &
+Nhận diện semantic OOD, domain OOD và report mismatch. &
+XBone-Net; Mahalanobis, kNN, MSP, entropy, energy, max-logit. &
+CTCH \\ \hline
+Giải thích và biểu diễn &
+Khảo sát attribution và cấu trúc lớp trong không gian biểu diễn. &
+XBone-Net; Integrated Gradients, can thiệp token, độ đo biểu diễn. &
+CTCH \\ \hline
+\end{tabularx}
+}
+\caption{Tổng quan các nhóm thực nghiệm}
+\label{tab:experiment_overview}
+\end{table}
+
+\subsection{Đánh giá mô hình nền tảng}
+\label{subsec:foundation_model_evaluation}
+
+\textbf{Thiết kế mô hình.} Nhóm thí nghiệm này sử dụng bốn mô hình ngôn ngữ
+trực quan gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP ở chế độ zero-shot. Toàn
+bộ tham số của backbone được giữ cố định; mô hình không sử dụng adapter LoRA,
+mô-đun dung hợp hoặc đầu phân loại được huấn luyện trên dữ liệu đích. Với mỗi
+lớp, tên lớp được đưa vào một mẫu prompt cố định để tạo biểu diễn văn bản. Nhãn
+dự đoán được xác định từ lớp có độ tương đồng lớn nhất giữa biểu diễn ảnh và
+biểu diễn văn bản.
+
+\textbf{Mục đích thực nghiệm.} Thí nghiệm khảo sát khả năng chuyển trực tiếp
+tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xương chuyên biệt.
+Thiết lập này cung cấp một mốc tham chiếu không sử dụng mẫu huấn luyện của bộ dữ
+liệu đích, qua đó cho phép xem xét mức độ phù hợp ban đầu của từng không gian
+biểu diễn và bộ prompt. Kết quả zero-shot chỉ phản ánh toàn bộ cấu hình suy luận;
+không được dùng riêng để quy chênh lệch cho backbone hoặc prompt.
+
+\textbf{Dữ liệu và độ đo.} Bốn mô hình được đánh giá độc lập trên tập kiểm thử
+của BTXRD và CTCH; các tập huấn luyện và validation không tham gia cập nhật tham
+số. Các độ đo báo cáo gồm Acc, Balanced Acc, Macro-F1 và Macro AUROC theo định
+nghĩa tại Mục~\ref{sec:evaluation_metrics}. Do suy luận zero-shot là xác định,
+mỗi mô hình chỉ có một ước lượng điểm; khoảng tin cậy bootstrap 95\% với
+$B=10.000$ lần lấy mẫu lại được dùng để mô tả độ bất định do tập kiểm thử hữu
+hạn, thay vì độ biến thiên giữa các lần huấn luyện.
+
+\subsection{So sánh với các mô hình nền tảng}
+\label{subsec:foundation_model_comparison}
+
+\textbf{Thiết kế mô hình.} Nhóm đối sánh có ba thiết lập bổ sung cho nhau:
+\begin{enumerate}
+    \item \textit{Few-shot:} XBone-Net, LoRA-BiomedCLIP và LoRA-PubMedCLIP
+    được huấn luyện với 1, 10 hoặc 20 mẫu cho mỗi lớp. Hai baseline LoRA sử dụng
+    quy trình hai pha, phép nối đặc trưng và đầu phân loại tuyến tính. XBone-Net
+    sử dụng BiomedCLIP, LoRA, nhánh ảnh sparse-focal, cross-attention hai chiều
+    và đầu phân loại empirical centroid. Chỉ tập train được rút gọn; validation
+    và test được giữ nguyên.
+    \item \textit{Toàn bộ dữ liệu:} ResNet-50 và DenseNet-121 được tinh chỉnh
+    toàn bộ với đầu tuyến tính và chỉ nhận ảnh. Các VLM gồm CLIP, MedCLIP,
+    PubMedCLIP và BiomedCLIP được tinh chỉnh toàn bộ, sử dụng ảnh cùng bệnh sử,
+    phép nối đặc trưng và đầu tuyến tính. XBone-Net được huấn luyện theo cấu hình
+    canonical để cung cấp đối sánh với pipeline đề xuất.
+    \item \textit{Đối sánh cùng cơ chế PEFT.} Hai baseline LoRA-BiomedCLIP và
+    LoRA-PubMedCLIP được đặt cạnh XBone-Net trên cùng dữ liệu và cùng các seed.
+    Hai baseline giữ phép nối đặc trưng và đầu tuyến tính, nhờ đó phép so sánh
+    này kiểm soát tốt hơn ảnh hưởng của việc chỉ sử dụng LoRA so với đối sánh
+    full fine-tuning.
+\end{enumerate}
+
+\textbf{Mục đích thực nghiệm.} Thiết lập few-shot đánh giá khả năng học khi số
+mẫu gán nhãn bị giới hạn và mức suy giảm so với cấu hình toàn bộ dữ liệu. Thiết
+lập toàn bộ dữ liệu cung cấp đối sánh tổng thể giữa mô hình ảnh đơn phương thức,
+VLM được tinh chỉnh và pipeline đề xuất. Đối sánh cùng PEFT được dùng để xem xét
+liệu chênh lệch quan sát được có vượt ra ngoài lợi ích của riêng LoRA hay không.
+Vì các nhóm CNN và VLM vẫn khác nhau về backbone, modality và cơ chế dung hợp,
+kết quả đối sánh tổng thể không được diễn giải như bằng chứng nhân quả cho một
+thành phần riêng lẻ.
+
+\textbf{Dữ liệu và độ đo.} Tất cả ba thiết lập được thực hiện trên BTXRD và
+CTCH với các phân hoạch train, validation và test cố định. Kết quả chính được
+tổng hợp trên ba seed 42, 123 và 456 bằng Acc, Balanced Acc, Macro-F1 và Macro
+AUROC; Macro-F1 là độ đo dùng để chọn checkpoint trên validation. Khoảng tin cậy
+bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Đối với các đối sánh
+cùng backbone, số tham số có thể huấn luyện, peak VRAM, throughput và GPU-hour
+được báo cáo như thông tin chi phí bổ sung khi phần cứng và giao thức batch trùng
+khớp.
+
+\subsection{Đánh giá thành phần}
+\label{subsec:component_evaluation}
+
+\textbf{Thiết kế biến thể.} Các ablation kế thừa cấu hình
+\path{ctch/proposed/ours_xbone_net}; ngoài thành phần đang khảo sát, dữ liệu,
+seed và quy trình chọn checkpoint được giữ cố định. Bốn nhóm biến thể gồm:
+\begin{enumerate}
+    \item \textit{Tiền xử lý ảnh:} cấu hình canonical dùng một ảnh toàn cục và
+    bốn vùng sparse-focal, từ đó tạo ngân sách tám token thị giác. Biến thể
+    \path{xbone_nohighres} dùng direct resize về $224\times224$, còn
+    \path{xbone_letterbox} giữ tỷ lệ ảnh và thêm biên đệm. Hai biến thể đối
+    chứng vẫn tạo tám token từ một ảnh để giữ ổn định đầu vào của mô-đun dung hợp.
+    \item \textit{Tinh chỉnh backbone:} cấu hình canonical cập nhật adapter
+    LoRA; \path{xbone_highres_no_ft} đóng băng các encoder nền tảng nhưng
+    vẫn cho phép mô-đun spatial resampler mới được huấn luyện; và
+    \path{xbone_highres_full_ft} cập nhật toàn bộ tham số backbone.
+    \item \textit{Dung hợp:} cross-attention hai chiều của cấu hình canonical
+    được so sánh với phép nối đặc trưng \path{concat} và hai biến thể attention
+    một chiều \path{image_to_text}, \path{text_to_image}.
+    \item \textit{Đầu phân loại và cân bằng lớp:} đầu empirical centroid với
+    trọng số lớp theo effective number được so sánh với đầu tuyến tính
+    \path{linear}. Biến thể \path{no_class_weight} giữ đầu empirical
+    centroid nhưng loại bỏ trọng số lớp.
+\end{enumerate}
+
+\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm lần lượt xem xét vai trò của
+việc bảo toàn chi tiết ảnh độ phân giải cao, chiến lược cập nhật backbone, hướng
+trao đổi thông tin giữa hai modality và lựa chọn đầu phân loại trong điều kiện
+mất cân bằng lớp. Thiết kế kế thừa cùng config cha giúp giới hạn thay đổi trong
+từng phép so sánh, từ đó hỗ trợ diễn giải chênh lệch theo thành phần. Kết quả
+ablation không được dùng hậu nghiệm để thay đổi định nghĩa pipeline canonical.
+
+\textbf{Dữ liệu và độ đo.} Toàn bộ ablation được thực hiện trên CTCH với ba
+seed 42, 123 và 456; registry hiện tại không định nghĩa nhóm ablation tương ứng
+cho BTXRD. Acc, Balanced Acc, Macro-F1 và Macro AUROC được dùng để đánh giá hiệu
+năng phân loại, kèm khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh
+chỉnh và tiền xử lý ảnh, số tham số có thể huấn luyện, peak VRAM, throughput và
+GPU-hour được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
+
+\subsection{OOD hậu xử lý}
+\label{subsec:ood_postprocessing}
+
+\textbf{Thiết kế phương pháp.} Phân tích OOD không huấn luyện lại mô hình phân
+loại mà sử dụng checkpoint XBone-Net canonical của CTCH ở ba seed. Các detector
+dựa trên đặc trưng gồm khoảng cách Mahalanobis tới tâm lớp gần nhất và cosine
+kNN với $k=5$; các detector dựa trên đầu ra gồm MSP, entropy chuẩn hóa, energy
+với $T=1$ và negative max-logit. Thống kê của detector đặc trưng được ước lượng
+từ CTCH train. Ngưỡng vận hành được hiệu chỉnh chỉ trên CTCH validation-ID sao
+cho tỷ lệ từ chối ID xấp xỉ 5\%, sau đó được khóa trước khi đánh giá test.
+
+\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm đánh giá liệu các điểm hậu xử lý
+có thể tách mẫu ngoài phân phối khỏi mẫu thuộc phân phối huấn luyện mà không thay
+đổi bộ phân loại hay không. Ba dạng sai lệch được xem xét riêng gồm khác biệt ngữ
+nghĩa bệnh, dịch chuyển miền ảnh và sự không nhất quán giữa ảnh với bệnh sử. Cách
+tách scenario này hạn chế việc quy mọi trường hợp bất thường về một nguồn sai
+lệch duy nhất.
+
+\textbf{Dữ liệu và độ đo.} Tập ID gồm CTCH train để khớp detector, CTCH
+validation để hiệu chỉnh ngưỡng và CTCH test để đánh giá. Semantic OOD sử dụng
+archive \texttt{ctch\_ood}; domain OOD sử dụng FracAtlas, trong đó Mahalanobis và
+kNN trên đặc trưng thị giác là phân tích chính; report mismatch được tạo bằng
+cách ghép ảnh với bệnh sử khác lớp, còn ghép cùng lớp là phân tích phụ. Hai độ đo
+chính là AUROC-OOD và FPR@95\% ID-TPR; khoảng tin cậy bootstrap 95\% được tính
+với $B=2.000$ lần lấy mẫu lại. AUROC-OOD cao hơn và FPR@95\% thấp hơn biểu thị
+khả năng phân tách tốt hơn.
+
+\subsection{Giải thích và biểu diễn}
+\label{subsec:explainability_representation}
+
+\textbf{Thiết kế phương pháp.} Phân tích sử dụng checkpoint XBone-Net canonical
+trên CTCH ở ba seed. Với mỗi seed, mẫu test được lấy phân tầng theo nhãn thật,
+tối đa hai mẫu mỗi lớp và không quá 44 mẫu. Integrated Gradients với 24 bước
+được áp dụng cho các token ảnh cục bộ; token bệnh sử được phân tích bằng can
+thiệp thay thế. Độ trung thực được kiểm tra bằng các đường deletion và insertion
+so với thứ tự ngẫu nhiên và thứ tự ít liên quan. Độ ổn định được khảo sát dưới
+nhiễu nhỏ, đồng thời classifier-randomization được dùng như một sanity check.
+Phần biểu diễn khảo sát sáu không gian gồm đặc trưng fused, ảnh toàn cục, tóm tắt
+ảnh cục bộ, văn bản toàn cục và hai hướng cross-attention.
+
+\textbf{Mục đích thực nghiệm.} Phân tích attribution nhằm xác định mức độ phụ
+thuộc của dự đoán vào các token ảnh và bệnh sử, đồng thời kiểm tra liệu thứ hạng
+attribution có ổn định và phản ánh đầu ra của mô hình hay không. Phân tích biểu
+diễn khảo sát mức độ kết cụm theo lớp và khoảng cách giữa mẫu với tâm lớp trong
+từng không gian nhúng. CTCH chưa có annotation vùng tổn thương trong protocol,
+do đó nhóm này không báo cáo IoU, Dice hoặc độ chính xác định vị.
+
+\textbf{Dữ liệu và độ đo.} Đặc trưng train và test của CTCH được dùng cho phân
+tích hình học; attribution chỉ được tính trên tập con test đã chọn. Các độ đo
+attribution gồm độ giảm logit và xác suất khi loại bỏ nhánh, completeness error
+của Integrated Gradients, AUC của đường deletion/insertion, tương quan hạng
+Spearman giữa các phương pháp, độ ổn định dưới nhiễu và tương quan sau khi ngẫu
+nhiên hóa classifier. Chất lượng biểu diễn được mô tả bằng Silhouette cosine,
+Davies--Bouldin, Calinski--Harabasz, NMI, ARI, Balanced Acc của bộ phân loại tâm
+lớp gần nhất và kNN, cùng biên độ tương đồng tới tâm lớp đúng. Các đại lượng này
+được xem là chỉ báo định lượng bổ trợ cho minh họa trực quan, không phải bằng
+chứng định vị tổn thương.
 
 \section{Kết quả thực nghiệm và Thảo luận}
 
@@ -378,48 +644,81 @@ Tỷ lệ bỏ học QLoRA           & Không áp dụng              \\ \hline
 \begin{tabular}{|l|c|c|}
 \hline
 \textbf{Mô hình Zero-Shot} & \textbf{F1-Macro ↑} & \textbf{Accuracy ↑} \\ \hline
-CLIP             & 0,0434              & 0,0623              \\ \hline
-MedCLIP          & 0,0066              & 0,0338              \\ \hline
-PubMedCLIP       & 0,0726              & 0,0943              \\ \hline
-BiomedCLIP       & \textbf{0,1056}     & \textbf{0,3381}     \\ \hline
+CLIP             & 0,0631              & 0,0640              \\ \hline
+MedCLIP          & 0,0075              & 0,0387              \\ \hline
+PubMedCLIP       & 0,0690              & 0,0893              \\ \hline
+BiomedCLIP       & \textbf{0,1289}     & \textbf{0,3427}     \\ \hline
 \end{tabular}
-\caption{Bảng đánh giá hiệu năng Zero-Shot của các mô hình VLM gốc trên bộ dữ liệu BTXRD}
+\caption{Hiệu năng zero-shot trên BTXRD; mỗi mô hình được đánh giá một lần do quy trình suy luận xác định}
 \label{tab:zeroshot_results}
 \end{table}
 
 \begin{table}[htbp]
 \centering
+\scriptsize
 \resizebox{\textwidth}{!}{
-\begin{tabular}{|l|c|c|c|c|}
+\begin{tabular}{|l|l|c|c|c|c|c|}
 \hline
-\textbf{Mô hình}   & \textbf{F1-Macro ↑} & \textbf{Accuracy ↑} & \textbf{Macro AUROC ↑} & \textbf{Specificity ↑} \\ \hline
-ResNet-50 (Image-only)    & 0,3099 & 0,6441 & 0,8006 & 0,9438 \\ \hline
-DenseNet-121 (Image-only) & 0,4112 & 0,6726 & 0,8320 & 0,9510 \\ \hline
-MedCLIP Fine-tuned        & 0,7784 & 0,9609 & 0,9984 & 0,9959 \\ \hline
-BiomedCLIP Fine-tuned     & 0,8105 & 0,9448 & 0,9940 & 0,9937 \\ \hline
-PubMedCLIP Fine-tuned     & 0,8217 & 0,8915 & 0,9886 & 0,9942 \\ \hline
-\textbf{XBone-Net} & \textbf{0,8583} & \textbf{0,9626} & \textbf{0,9869}       \\ \hline
+\textbf{Mô hình} & \textbf{Chiến lược} & \textbf{Macro F1 ↑} & \textbf{Accuracy ↑} & \textbf{Macro AUROC ↑} & \textbf{Macro AUPRC ↑} & \textbf{Macro Spec. ↑} \\ \hline
+ResNet-50 & Full FT, image-only & $0{,}3291\pm0{,}0102$ & $0{,}6071\pm0{,}0140$ & $0{,}7236\pm0{,}0259$ & $0{,}3338\pm0{,}0061$ & $0{,}9434\pm0{,}0017$ \\ \hline
+DenseNet-121 & Full FT, image-only & $0{,}3718\pm0{,}0173$ & $0{,}6320\pm0{,}0013$ & $0{,}7717\pm0{,}0173$ & $0{,}3831\pm0{,}0036$ & $0{,}9482\pm0{,}0008$ \\ \hline
+CLIP & Full FT, clinical & $0{,}5787\pm0{,}0252$ & $0{,}8036\pm0{,}0273$ & $0{,}8973\pm0{,}0231$ & $0{,}6251\pm0{,}0080$ & $0{,}9784\pm0{,}0024$ \\ \hline
+MedCLIP & Full FT, clinical & $0{,}6054\pm0{,}0147$ & $0{,}8204\pm0{,}0144$ & $0{,}8599\pm0{,}0330$ & $0{,}6228\pm0{,}0253$ & $0{,}9803\pm0{,}0012$ \\ \hline
+BiomedCLIP & Full FT, clinical & $0{,}5994\pm0{,}0124$ & $0{,}8311\pm0{,}0028$ & $0{,}8865\pm0{,}0165$ & $0{,}6511\pm0{,}0104$ & $0{,}9808\pm0{,}0001$ \\ \hline
+PubMedCLIP & Full FT, clinical & $0{,}5723\pm0{,}0577$ & $0{,}7884\pm0{,}0285$ & $0{,}9048\pm0{,}0240$ & $0{,}6149\pm0{,}0245$ & $0{,}9775\pm0{,}0028$ \\ \hline
+BiomedCLIP & LoRA, clinical & $0{,}6326\pm0{,}0217$ & $0{,}8302\pm0{,}0008$ & $0{,}8771\pm0{,}0298$ & $0{,}6427\pm0{,}0245$ & $0{,}9809\pm0{,}0006$ \\ \hline
+PubMedCLIP & LoRA, clinical & $\mathbf{0{,}6397\pm0{,}0214}$ & $0{,}8316\pm0{,}0134$ & $0{,}9031\pm0{,}0170$ & $\mathbf{0{,}6665\pm0{,}0420}$ & $\mathbf{0{,}9814\pm0{,}0016}$ \\ \hline
+\textbf{XBone-Net} & LoRA, cross-attention, centroid & $0{,}6001\pm0{,}0116$ & $\mathbf{0{,}8324\pm0{,}0015}$ & $\mathbf{0{,}9383\pm0{,}0072}$ & $0{,}6379\pm0{,}0115$ & $0{,}9811\pm0{,}0002$ \\ \hline
 \end{tabular}
 }
-\caption{Bảng so sánh kết quả thực nghiệm fine-tuned baselines và mô hình đề xuất XBone-Net}
+\caption{Kết quả BTXRD của các mô hình được huấn luyện; giá trị là trung bình $\pm$ độ lệch chuẩn mẫu trên ba seed}
 \label{tab:comparison_results}
 \end{table}
 
-Dựa trên các bảng kết quả thực nghiệm, nhóm nghiên cứu đưa ra các nhận xét và phân tích chuẩn hóa sau:
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Độ đo bổ sung của XBone-Net} & \textbf{Trung bình $\pm$ độ lệch chuẩn} \\ \hline
+Balanced Accuracy / Macro Recall & $0{,}5878\pm0{,}0106$ \\ \hline
+Macro Precision & $0{,}6587\pm0{,}0245$ \\ \hline
+ECE-15 & $0{,}1483\pm0{,}0098$ \\ \hline
+Adaptive ECE-15 & $0{,}1473\pm0{,}0096$ \\ \hline
+NLL & $1{,}3974\pm0{,}1599$ \\ \hline
+Brier Score & $0{,}3087\pm0{,}0151$ \\ \hline
+\end{tabular}
+\caption{Các độ đo bổ sung của XBone-Net trên tập kiểm thử BTXRD qua ba seed}
+\label{tab:xbone_additional_metrics}
+\end{table}
+
+Các số liệu trong Bảng \ref{tab:comparison_results} và
+\ref{tab:xbone_additional_metrics} được tổng hợp từ cùng ba seed 42, 123 và 456.
+Kết quả được diễn giải như sau:
 \begin{itemize}
-    \item \textbf{Phân tích kết quả Zero-Shot Baselines (Bảng \ref{tab:zeroshot_results}):}
-    Tất cả các mô hình VLM nguyên bản ở chế độ Zero-shot đều cho hiệu năng rất thấp (F1-Macro đều dưới $0,11$, độ chính xác dưới $34\%$). BiomedCLIP Zero-shot đạt kết quả nhỉnh nhất ($F1 = 0,1056$, $\text{Acc} = 33,81\%$) nhờ được tiền huấn luyện trên 15 triệu cặp ảnh-văn bản y tế (PMC-15M). Kết quả này minh chứng rõ ràng cho thách thức về **khoảng cách miền dữ liệu (Domain Gap)** giữa dữ liệu y khoa tổng quát và ảnh X-quang u xương chuyên sâu. Nếu không thông qua quy trình huấn luyện hai pha thích ứng miền và hợp nhất đa phương thức, các mô hình VLM gốc hoàn toàn không thể đưa ra chẩn đoán chính xác trong thực tế lâm sàng.
-
-    \item \textbf{So sánh giữa Mô hình Đơn phương thức và Đa phương thức Fine-tuned:}
-    Các mô hình chỉ sử dụng ảnh X-quang đơn thuần (ResNet-50 đạt $F1 = 0,3099$, DenseNet-121 đạt $F1 = 0,4112$) gặp khó khăn lớn do nhiều loại u xương (như u tế bào khổng lồ và nang xương đơn thuần) có biểu hiện hình thái tiêu xương rất giống nhau trên ảnh X-quang thang độ xám. Trái lại, các mô hình đa phương thức fine-tuned (MedCLIP, BiomedCLIP, PubMedCLIP) khi được bổ sung thông tin bệnh sử lâm sàng dạng văn bản (tuổi, giới tính, vị trí sưng đau) đã giúp F1-Macro vọt lên trên $0,77 - 0,82$. Điều này khẳng định vai trò bổ trợ sinh tử của thông tin bệnh sử lâm sàng đối với hình ảnh X-quang.
-
-    \item \textbf{Phân tích Đánh đổi Kỹ thuật và Năng lực Mô hình Đề xuất XBone-Net:}
-    \begin{itemize}
-        \item Các mô hình Baseline fine-tuned sử dụng đầu phân loại tuyến tính (Linear Head) đạt kết quả phân loại In-Distribution cao nhờ 10.240 tham số tự do dễ dàng tạo siêu phẳng phân tách dữ liệu đóng. Tuy nhiên, Linear Head có điểm yếu chí mạng là **hoàn toàn mù trước dữ liệu lạ OOD** (Overconfidence), cố tình gán ca bệnh lạ vào 1 trong 10 lớp cũ với độ tin cậy $>95\%$, gây rủi ro y khoa nghiêm trọng.
-        \item Mô hình đề xuất **XBone-Net** áp dụng đầu phân loại nguyên mẫu (Prototypical Head) kết hợp hàm loss hỗn hợp chuẩn hóa $0.7 \mathcal{L}_{\text{WeightedCE}} + 0.3 \mathcal{L}_{\text{proto}}$. XBone-Net đạt hiệu năng phân loại In-Distribution vượt trội ($\text{Accuracy} = 96,09\% - 97,15\%$, $F1 = 0,8027 - 0,8839$), đồng thời **đạt khả năng kiểm soát an toàn lâm sàng tuyệt đối với bài toán phát hiện bệnh lạ ngoài phân phối ($\text{AUROC OOD} = 1,0000$ với khoảng cách Mahalanobis)**.
-    \end{itemize}
+    \item \textbf{Zero-shot:} Cả bốn mô hình có Macro F1 thấp hơn 0,13. BiomedCLIP đạt giá trị cao nhất trong nhóm với Macro F1 là 0,1289 và Accuracy là 0,3427. Kết quả cho thấy suy luận zero-shot với bộ prompt hiện tại chưa đủ cho bài toán 10 lớp BTXRD; chưa thể quy toàn bộ chênh lệch cho một nguyên nhân duy nhất nếu chưa có phân tích prompt và miền dữ liệu riêng.
+    \item \textbf{Các mô hình được huấn luyện:} Hai mô hình image-only đạt Macro F1 từ $0{,}3291$ đến $0{,}3718$. Nhóm VLM full fine-tuning đạt từ $0{,}5723$ đến $0{,}6054$, còn hai baseline LoRA đạt $0{,}6326$ và $0{,}6397$. Do backbone, nguồn đầu vào và chiến lược tinh chỉnh cùng thay đổi giữa các nhóm, bảng đối sánh này không được dùng riêng để quy nguyên nhân cho một thành phần kiến trúc.
+    \item \textbf{XBone-Net:} Mô hình đạt Macro F1 $0{,}6001\pm0{,}0116$, Accuracy $0{,}8324\pm0{,}0015$ và Macro AUROC $0{,}9383\pm0{,}0072$. Macro AUROC là giá trị cao nhất trong bảng, trong khi Macro F1 thấp hơn hai baseline LoRA. Vì vậy, kết quả hiện tại gợi ý một đánh đổi giữa khả năng xếp hạng xác suất và hiệu năng cân bằng theo lớp; chưa hỗ trợ kết luận rằng một mô hình vượt trội đồng thời trên mọi độ đo.
+    \item \textbf{Hiệu chuẩn:} ECE-15 của XBone-Net là $0{,}1483\pm0{,}0098$, NLL là $1{,}3974\pm0{,}1599$ và Brier Score là $0{,}3087\pm0{,}0151$. Các giá trị này được báo cáo mô tả; cần đối sánh hiệu chuẩn và hiệu chỉnh nhiệt độ trên tập validation trước khi đưa ra nhận định về độ tin cậy xác suất.
 \end{itemize}
 
+\subsubsection{Trạng thái kết quả đối sánh trên CTCH}
+Các config đối sánh CTCH đã được đăng ký theo cùng cấu trúc với BTXRD. Tuy
+nhiên, bảng kết quả ba seed chưa được đưa vào bản chính cho đến khi mọi artifact
+theo seed và aggregate được hoàn tất, kiểm tra provenance và xác nhận bài toán
+đa lớp 22 lớp. Các số multi-label từ pipeline cũ không được sử dụng.
+
+\subsection{Trạng thái kết quả OOD, ablation và explainability}
+Protocol OOD và explainability hiện chỉ khóa cho checkpoint CTCH canonical.
+Workspace chưa có artifact \texttt{ood\_metrics.json} hoặc kết quả explainability
+hoàn chỉnh, nên chương này chưa báo cáo giá trị số cho hai nhóm. Tương tự, các
+bảng ablation chỉ được thêm sau khi 15 config CTCH hoàn tất cùng ba seed. Những
+kết quả BTXRD--FracAtlas, QLoRA, Prototypical Head và attention map của pipeline
+legacy được loại khỏi bản biên dịch vì không tương ứng với registry hiện tại.
+
+% Nội dung dưới đây được giữ tạm để truy vết pipeline legacy và không thuộc bản
+% biên dịch. Xóa khối này sau khi các bảng canonical đã được tạo tự động.
+\iffalse
 \subsubsection{Kết quả đối sánh trên bộ dữ liệu nội bộ CTCH}
 Nhằm đánh giá khả năng tổng quát hóa của mô hình đề xuất trên dữ liệu thực tế tại Việt Nam, nhóm nghiên cứu thực hiện đánh giá đối sánh trên bộ dữ liệu nội bộ CTCH được thu thập tại Bệnh viện Chấn thương Chỉnh hình TP.HCM.
 
@@ -489,7 +788,12 @@ Nhóm đã thực hiện các thí nghiệm loại bỏ thành phần để bóc
 
 Pipeline đề xuất được cố định theo Mục \ref{sec:final-pipeline} trước khi đọc kết quả ablation. Vì vậy, ablation không được dùng để tái định nghĩa mô hình đề xuất theo hướng hậu nghiệm. Nếu một cấu hình rút gọn đạt kết quả cao hơn, nghiên cứu báo cáo đầy đủ độ chênh lệch và xem đây là bằng chứng về điểm yếu hoặc sự đánh đổi của thành phần tương ứng (chẳng hạn hiệu năng ID, khả năng phát hiện OOD, chi phí tính toán hoặc độ ổn định giữa các seed). Chỉ khi cấu hình đó được xác nhận lại bằng quy trình lựa chọn trên validation và đánh giá độc lập, nó mới có thể được xem là một phiên bản cải tiến trong nghiên cứu tiếp theo.
 
-Các giá trị ablation hiện có trong chương này được xem là kết quả sơ bộ. Bản báo cáo cuối chỉ sử dụng các lần chạy lại từ config kế thừa pipeline chuẩn, cùng split, seed và quy trình chọn checkpoint; các bảng sẽ được cập nhật sau khi suite thí nghiệm này hoàn tất.
+Ba bảng ablation dưới đây lưu lại các lần chạy thăm dò theo pipeline cũ nhằm
+phục vụ truy vết. Các cấu hình này chưa kế thừa đầy đủ pipeline canonical, do đó
+không được so sánh trực tiếp với Bảng \ref{tab:comparison_results} và không được
+dùng để kết luận về đóng góp của từng thành phần. Bản báo cáo cuối cần thay các
+giá trị này bằng kết quả chạy lại trên cùng split, ba seed và cùng quy trình chọn
+checkpoint.
 
 \subsubsection{Đánh giá vai trò của các nguồn thông tin văn bản lâm sàng}
 Mục đích thí nghiệm này là đánh giá tác động của việc tích hợp văn bản lâm sàng và cận lâm sàng đến kết quả chẩn đoán, đồng thời xác định xem có xảy ra hiện tượng rò rỉ nhãn hay không. Nhóm so sánh 4 kịch bản văn bản tại Bảng \ref{tab:ablation_text}.
@@ -497,32 +801,34 @@ Mục đích thí nghiệm này là đánh giá tác động của việc tích 
 \begin{table}[htbp]
 \centering
 \resizebox{\textwidth}{!}{
-\caption{Bảng kết quả ablation về nguồn văn bản đầu vào}
+\caption{Kết quả thăm dò legacy về nguồn văn bản đầu vào; chưa dùng để kết luận}
 \label{tab:ablation_text}
 \begin{tabular}{|l|c|c|c|c|}
 \hline
 \textbf{Kịch bản văn bản} & \textbf{Văn bản sử dụng} & \textbf{F1-Macro} & \textbf{Accuracy} & \textbf{Macro AUROC} \\ \hline
 Image only & Không sử dụng & 0,2052 & 0,6050 & 0,7857 \\ \hline
-Clinical only & Bệnh sử lâm sàng & 0,8583 & 0,9626 & 0,9869 \\ \hline
+Image + clinical & Bệnh sử lâm sàng & 0,8583 & 0,9626 & 0,9869 \\ \hline
 X-ray only & Mô tả kết quả X-quang & 1,0000 & 1,0000 & 1,0000 \\ \hline
 Both texts & Lâm sàng + X-quang & 1,0000 & 1,0000 & 1,0000 \\ \hline
 \end{tabular}
 }
 \end{table}
 
-\textbf{Thảo luận kết quả:}
-\begin{itemize}
-    \item \textbf{Hiện tượng rò rỉ nhãn (Label Leakage):} Các kịch bản có sử dụng văn bản phát hiện X-quang (\textit{xray}) đạt F1-Macro tuyệt đối là 1,0000. Phân tích văn bản cho thấy báo cáo X-quang của bác sĩ chẩn đoán hình ảnh chứa trực tiếp tên lớp bệnh lý (ví dụ: "osteosarcoma", "osteochondroma"). Mô hình học sâu đã bỏ qua ảnh chụp và chỉ đọc văn bản kết luận này để phân loại. Trong lâm sàng thực tế, khi bệnh nhân mới vào viện khám sàng lọc, báo cáo X-quang chưa được viết. Do đó, để đảm bảo tính thực tiễn và tính khoa học, chỉ có kịch bản sử dụng bệnh sử lâm sàng (clinical) là hợp lệ.
-    \item \textbf{Đóng góp của Bệnh sử lâm sàng:} Khi chuyển từ chỉ dùng ảnh (T2\_imgonly) sang dùng ảnh kèm bệnh sử lâm sàng, F1-Macro tăng vọt từ \textbf{0,2052} lên \textbf{0,8583} (tăng gấp 4 lần). Điều này chứng minh thông tin y khoa lâm sàng (như độ tuổi, vị trí đau đùi, các triệu chứng sốt/sụt cân) là "la bàn" vô cùng đắc lực giúp bộ phân loại định hướng chính xác lớp bệnh lý u xương.
-\end{itemize}
+\textbf{Giới hạn diễn giải:} Kết quả hoàn hảo ở các hàng dùng báo cáo X-quang
+phù hợp với nguy cơ rò rỉ nhãn vì văn bản có thể chứa tên bệnh. Tuy nhiên, các
+giá trị legacy chưa đủ để định lượng riêng đóng góp của bệnh sử. Thí nghiệm
+canonical cần so sánh image-only, clinical-only, image + clinical và image +
+clinical bị xáo trộn trên cùng một checkpoint protocol.
 
 \subsubsection{Đánh giá ảnh hưởng của chiến thuật tinh chỉnh backbone}
-Mục đích thí nghiệm này là đánh giá hiệu năng khi đóng băng backbone so với tinh chỉnh (Full FT hoặc QLoRA PEFT) trong quy trình huấn luyện.
+Mục đích thí nghiệm này là đánh giá hiệu năng khi đóng băng backbone so với
+LoRA và tinh chỉnh toàn bộ trong cùng một quy trình huấn luyện. Hai hàng QLoRA
+trong bảng là cấu hình legacy, không phải thành phần của pipeline canonical.
 
 \begin{table}[htbp]
 \centering
 \resizebox{\textwidth}{!}{
-\caption{Bảng kết quả ablation về chiến thuật tinh chỉnh backbone}
+\caption{Kết quả thăm dò legacy về chiến thuật tinh chỉnh backbone; chưa dùng để kết luận}
 \label{tab:ablation_finetuning}
 \begin{tabular}{|c|c|c|c|c|}
 \hline
@@ -536,11 +842,10 @@ Tinh chỉnh QLoRA (Gốc) & Có (Xray) & 0,6464 & 0,8754 & 0,9741 \\ \hline
 }
 \end{table}
 
-\textbf{Thảo luận kết quả:}
-\begin{itemize}
-    \item \textbf{Hiện tượng trôi lệch biểu diễn (Representation Drift):} Bản gốc \texttt{full\_proposed} chỉ đạt F1-Macro 0,6464 (kém hơn so với đóng băng hoàn toàn backbone \texttt{T3\_no\_ft} đạt 0,8095). Nguyên nhân là ở pha 1, mô hình gốc căn chỉnh tương đối ảnh-văn bản với báo cáo Xray, nhưng ở pha 2 lại sử dụng báo cáo Clinical. Việc lệch nguồn thông tin này làm không gian biểu diễn bị trôi lệch, gây suy giảm chất lượng đặc trưng. Khi đồng bộ hóa dùng Clinical ở cả hai pha (\texttt{T2\_clinical}), hiệu năng vượt lên đạt **0,8583**.
-    \item \textbf{Quên lãng thảm họa (Catastrophic Forgetting) trên tập dữ liệu nhỏ:} Thí nghiệm tinh chỉnh toàn bộ hệ thống (\texttt{T3\_full\_ft}) đạt kết quả thấp nhất (F1-Macro 0,5951). Việc cập nhật toàn bộ tham số của Vision Transformer trên tập dữ liệu nhỏ dễ dàng phá hủy các biểu diễn đặc trưng y tế mạnh mẽ đã học được ở giai đoạn pre-train, gây ra hiện tượng quá khớp (overfitting). Việc đóng băng backbone và chỉ cập nhật adapter LoRA siêu nhẹ ở Pha 1 giúp bảo toàn tối đa tri thức nền.
-\end{itemize}
+\textbf{Giới hạn diễn giải:} Các hàng trong bảng đồng thời thay đổi chiến lược
+tinh chỉnh, việc có chạy Pha 1 và nguồn văn bản, nên chênh lệch không thể quy
+riêng cho LoRA, QLoRA hay full fine-tuning. So sánh chính thức cần giữ cố định
+nguồn văn bản, kiến trúc dung hợp, bộ phân loại và ngân sách huấn luyện.
 
 \subsubsection{Đánh giá hiệu quả của đầu phân loại nguyên mẫu so với đầu phân loại tuyến tính}
 Nhóm thí nghiệm này nhằm kiểm tra hiệu quả của đầu phân loại nguyên mẫu (Prototypical Head) so với đầu phân loại tuyến tính (Linear Head) truyền thống trong bài toán phân loại đa lớp u xương.
@@ -548,7 +853,7 @@ Nhóm thí nghiệm này nhằm kiểm tra hiệu quả của đầu phân loạ
 \begin{table}[htbp]
 \centering
 \resizebox{\textwidth}{!}{
-\caption{Bảng kết quả ablation về bộ phân loại Classifier Head}
+\caption{Kết quả thăm dò legacy về bộ phân loại; chưa dùng để kết luận}
 \label{tab:ablation_classifier}
 \begin{tabular}{|l|c|c|c|c|}
 \hline
@@ -561,11 +866,10 @@ BiomedCLIP (QLoRA) & Prototypical Head & 0,6464 & 0,8754 & 0,9741 \\ \hline
 }
 \end{table}
 
-\textbf{Thảo luận kết quả:}
-\begin{itemize}
-    \item Khi backbone được đóng băng hoàn toàn (các đặc trưng có độ phân tách cao), cả hai bộ phân loại đều đạt hiệu năng xuất sắc ngang nhau (~0,81 F1-Macro).
-    \item Tuy nhiên, khi backbone bị trôi lệch biểu diễn (đặc trưng bị nhiễu do lệch pha thông tin), bộ phân loại nguyên mẫu Prototypical Head (\texttt{full\_proposed} đạt 0,6464) vượt trội hơn so với Linear Head (\texttt{T4\_crossattn\_linear} đạt 0,6261). Điều này chứng minh học máy khoảng cách (Metric Learning) của Prototypical Head giúp kéo các vector đặc trưng của cùng một lớp lại gần nhau và đẩy xa các lớp khác bằng khoảng lề xác định, tăng cường khả năng chịu lỗi của ranh giới quyết định.
-\end{itemize}
+\textbf{Giới hạn diễn giải:} Bảng legacy sử dụng Prototypical Head của pipeline
+cũ, trong khi mô hình canonical dùng empirical centroid. Kết luận về bộ phân
+loại chỉ có thể được đưa ra sau khi so sánh linear head và empirical centroid
+trên cùng encoder, cùng seed và cùng hàm mất mát.
 
 \subsection{Trực quan hóa bản đồ chú ý chéo và khả năng giải thích y khoa}
 Để chứng minh khả năng giải thích lâm sàng (clinical explainability) và tính hợp lý về mặt y khoa của mô hình đề xuất XBone-Net, nhóm nghiên cứu tiến hành trích xuất bản đồ chú ý chéo (Cross-Attention Map) từ khối Transformer của mô-đun Cross-Attention Fusion cuối cùng trước đầu phân loại. Bản đồ này được thu nhận bằng cách tính toán trọng số tự chú ý (self-attention) của token đại diện lớp hình ảnh (CLS token) đối với các token vị trí hình ảnh (196 token patch), thể hiện mức độ tập trung của mô hình vào các vùng không gian trên ảnh chụp X-quang khi tổng hợp với thông tin bệnh sử lâm sàng.
@@ -596,3 +900,4 @@ Các kết quả trực quan hóa attention map chồng lên ảnh chụp X-quan
 \end{itemize}
 
 Các kết quả định tính trên chứng minh rằng mô hình XBone-Net không chỉ đưa ra các dự đoán phân loại dựa trên các tương quan thống kê thuần túy, mà đã thực sự học được cách liên kết chặt chẽ thông tin gợi ý từ bệnh sử lâm sàng để định vị đúng các vùng tổn thương giải phẫu bệnh lý thực tế trên ảnh X-quang, mang lại giá trị giải thích cao và củng cố niềm tin cho các y bác sĩ trong quá trình hỗ trợ chẩn đoán.
+\fi
