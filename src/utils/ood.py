@@ -15,10 +15,25 @@ from sklearn.covariance import LedoitWolf
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
+OOD_PROTOCOL_VERSION = 2
+MAHALANOBIS_SCORE_DEFINITION = (
+    "minimum_class_conditional_classical_mahalanobis_distance"
+)
+
+
+def _embedding_matrix(array: np.ndarray, name: str = "embeddings") -> np.ndarray:
+    values = np.asarray(array, dtype=np.float64)
+    if values.ndim != 2:
+        raise ValueError(f"Expected a 2-D {name} matrix, got {values.shape}.")
+    if values.shape[1] < 1:
+        raise ValueError(f"{name} must contain at least one feature.")
+    if not np.isfinite(values).all():
+        raise ValueError(f"{name} contains NaN or infinity.")
+    return values
+
+
 def _l2_normalize(array: np.ndarray) -> np.ndarray:
-    array = np.asarray(array, dtype=np.float64)
-    if array.ndim != 2:
-        raise ValueError(f"Expected a 2-D embedding matrix, got {array.shape}.")
+    array = _embedding_matrix(array)
     norms = np.linalg.norm(array, axis=1, keepdims=True)
     return array / np.maximum(norms, 1e-12)
 
@@ -57,7 +72,12 @@ class OODDetector:
         labels: np.ndarray,
         prototypes: Optional[np.ndarray] = None,
     ):
-        embeddings = _l2_normalize(embeddings)
+        # Mahalanobis statistics are estimated in the feature archive's native
+        # coordinate system.  Do not normalize inside the detector: doing so
+        # changes both the empirical mean and covariance away from the
+        # classical definition.  A separately normalized copy is retained for
+        # cosine k-NN scoring.
+        embeddings = _embedding_matrix(embeddings)
         labels = np.asarray(labels)
         if labels.ndim == 2:
             labels = np.argmax(labels, axis=1)
@@ -69,32 +89,38 @@ class OODDetector:
         if np.any(labels < 0):
             raise ValueError("Reference labels must be non-negative class IDs.")
 
-        self.ref_embeddings = embeddings
+        self.ref_embeddings = _l2_normalize(embeddings)
         self.ref_labels = labels
         unique_classes = np.unique(labels)
         if unique_classes.size < 1:
             raise ValueError("Reference labels contain no classes.")
 
-        normalized_prototypes = None
+        prototype_centers = None
         if prototypes is not None:
-            normalized_prototypes = _l2_normalize(prototypes)
+            prototype_centers = _embedding_matrix(prototypes, "prototype")
+            if prototype_centers.shape[1] != embeddings.shape[1]:
+                raise ValueError(
+                    "Prototype and reference embedding dimensions differ."
+                )
 
         self.class_means = {}
         centered_parts = []
         for class_id in unique_classes:
             class_embeddings = embeddings[labels == class_id]
-            if normalized_prototypes is not None and 0 <= class_id < len(normalized_prototypes):
-                center = normalized_prototypes[class_id]
+            if (
+                prototype_centers is not None
+                and 0 <= class_id < len(prototype_centers)
+            ):
+                center = prototype_centers[class_id]
             else:
                 center = class_embeddings.mean(axis=0)
-                center /= max(np.linalg.norm(center), 1e-12)
             self.class_means[int(class_id)] = center
             centered_parts.append(class_embeddings - center)
 
         # Centroids may cover a class absent from a deliberately small reference
         # subset; covariance is still estimated from observed samples only.
-        if normalized_prototypes is not None:
-            for class_id, center in enumerate(normalized_prototypes):
+        if prototype_centers is not None:
+            for class_id, center in enumerate(prototype_centers):
                 self.class_means.setdefault(int(class_id), center)
 
         centered = np.vstack(centered_parts)
@@ -104,15 +130,32 @@ class OODDetector:
         return self
 
     def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
+        """Return the classical Mahalanobis distance to the nearest ID class.
+
+        For each class this computes ``sqrt((x-mu)^T Sigma^-1 (x-mu))``
+        using empirical class means and one shared Ledoit-Wolf covariance.
+        The minimum class-conditional distance is the OOD score.
+        """
         if not self._fitted or self.shared_cov_inv is None:
             raise RuntimeError("Call fit() before Mahalanobis scoring.")
-        test_embeddings = _l2_normalize(test_embeddings)
-        scores = np.full(test_embeddings.shape[0], np.inf, dtype=np.float64)
+        test_embeddings = _embedding_matrix(test_embeddings, "test embedding")
+        if test_embeddings.shape[1] != self.shared_cov_inv.shape[0]:
+            raise ValueError(
+                "Test and reference embedding dimensions differ."
+            )
+        squared_scores = np.full(
+            test_embeddings.shape[0], np.inf, dtype=np.float64
+        )
         for center in self.class_means.values():
             diff = test_embeddings - center
-            distances = np.einsum("ni,ij,nj->n", diff, self.shared_cov_inv, diff)
-            scores = np.minimum(scores, distances)
-        return scores
+            squared_distances = np.einsum(
+                "ni,ij,nj->n", diff, self.shared_cov_inv, diff
+            )
+            squared_scores = np.minimum(squared_scores, squared_distances)
+        # A symmetric pseudo-inverse can still produce tiny negative values
+        # from floating-point roundoff.  Zero-clipping preserves the classical
+        # non-negative distance before taking the square root.
+        return np.sqrt(np.maximum(squared_scores, 0.0))
 
     def score_knn(
         self,

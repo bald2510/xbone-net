@@ -1,6 +1,435 @@
 \appendix
 
-\chapter{Ngữ pháp tiếng Việt}
+\chapter{QUY TRÌNH TIỀN XỬ LÝ DỮ LIỆU BTXRD VÀ CTCH}
 \label{Appendix1}
 
-Đây là phụ lục.
+Phụ lục này mô tả quy trình tiền xử lý được hiện thực trong mã nguồn của hệ
+thống, bao gồm: (i) chuẩn hóa siêu dữ liệu và nhãn; (ii) phân chia dữ liệu;
+(iii) xây dựng hai nguồn văn bản; và (iv) tạo đầu vào ảnh độ phân giải cao với
+ngân sách cố định. Mô tả dưới đây phân biệt hai khái niệm thường dễ bị nhầm
+lẫn: \emph{tiền xử lý ngoại tuyến} tạo ra các tệp ảnh, nhãn và báo cáo trên đĩa;
+và \emph{tiền xử lý tại thời điểm nạp dữ liệu} chuyển các tệp này thành tensor
+đầu vào của mô hình.
+
+\section{Tổng quan quy trình}
+
+BTXRD và CTCH sử dụng chung bộ tiền xử lý ảnh \texttt{sparse\_focal}, nhưng có
+nguồn gốc văn bản và cách phân chia dữ liệu khác nhau. Bảng
+\ref{tab:appendix-preprocess-overview} tóm tắt các khác biệt quan trọng.
+
+\begin{table}[H]
+\centering
+\caption{So sánh quy trình tiền xử lý BTXRD và CTCH}
+\label{tab:appendix-preprocess-overview}
+\small
+\begin{tabularx}{\textwidth}{L{2.6cm}XX}
+\toprule
+\textbf{Thành phần} & \textbf{BTXRD} & \textbf{CTCH} \\
+\midrule
+Nguồn dữ liệu & Ảnh X-quang và siêu dữ liệu có cấu trúc trong
+\texttt{dataset.csv}. Bộ dữ liệu không cung cấp bệnh sử tự do tương ứng với
+từng ảnh. & Ảnh X-quang và các trường bệnh án tiếng Việt trong bảng tính đã
+được chọn lọc. \\
+\addlinespace
+Nhãn đích & Mười lớp; cột \texttt{normal} được suy ra từ
+\texttt{tumor=0}. Khi nạp dữ liệu, nhãn cha \texttt{osteochondroma} được bỏ nếu
+nhãn con \texttt{multiple osteochondromas} hoặc
+\texttt{synovial osteochondroma} đang hoạt động. & Hai mươi hai lớp theo đúng
+thứ tự trong \texttt{labels.txt}; tên lớp được chuẩn hóa Unicode và so khớp
+không phân biệt hoa--thường, sau đó mã hóa thành \texttt{class\_id} và vector
+one-hot. \\
+\addlinespace
+Chia tập & Chia ngẫu nhiên ở mức ảnh theo tỷ lệ xấp xỉ 70/10/20, với
+\texttt{random\_state=42}; không phân tầng theo lớp và không kiểm soát theo
+bệnh nhân. & Chia theo khóa bệnh nhân, có xét lớp chính của mỗi bệnh nhân,
+theo tỷ lệ mục tiêu 70/10/20 và seed 42. Tập OOD được tách riêng trước khi chia
+tập ID. \\
+\addlinespace
+Nguồn văn bản & Báo cáo X-quang và bệnh sử đều là văn bản tổng hợp từ metadata.
+Thiết lập chính sử dụng thư mục \texttt{clinical\_v2}. & Các trường bệnh án
+tiếng Việt được ghép thành báo cáo có cấu trúc, sau đó dịch từng trường sang
+tiếng Anh và lưu trong bộ nhớ đệm. \\
+\addlinespace
+Đầu vào mô hình & \multicolumn{2}{L{10.9cm}}{Một ảnh toàn cục $224\times224$,
+bốn vùng cục bộ $224\times224$, tọa độ chuẩn hóa của các vùng, cùng hai chuỗi
+văn bản đã chuyển về chữ thường và được tokenizer của backbone mã hóa.} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Tiền xử lý bộ dữ liệu BTXRD}
+
+\subsection{Chuẩn hóa nhãn và phân chia dữ liệu}
+
+Tệp \texttt{dataset.csv} được đọc bằng Pandas. Một cột nhãn mới
+\texttt{normal} được tạo theo quy tắc $\mathbb{I}(\texttt{tumor}=0)$. Mười cột
+đích được giữ lại cùng \texttt{image\_id}. Quá trình chia tập gồm hai lần gọi
+\texttt{train\_test\_split}: trước hết tách 20\% mẫu làm tập kiểm tra; sau đó
+tách $0{,}10/(1-0{,}20)=0{,}125$ phần dữ liệu còn lại làm tập xác thực. Cả hai
+lần đều dùng seed 42. Kết quả được xuất thành \texttt{btxrd-labels.csv} và
+\texttt{btxrd-split.csv}.
+
+Khi khởi tạo \texttt{BTXRDDataset}, hai tệp CSV được ghép một--một theo
+\texttt{image\_id}. Do một số chỉ báo trong BTXRD có quan hệ phân cấp, loader
+đặt nhãn cha \texttt{osteochondroma} về 0 khi một trong hai nhãn con tương ứng
+đang bằng 1. Sau bước này, mỗi hàng phải có đúng một nhãn hoạt động; chỉ số của
+nhãn đó trong danh sách lớp cấu hình trở thành \texttt{class\_id}. Kiểm tra này
+giúp phát hiện giá trị thiếu, hàng đa nhãn còn sót lại hoặc chỉ số lớp nằm ngoài
+miền hợp lệ.
+
+\begin{algorithm}[H]
+\caption{Chuẩn hóa nhãn và chia tập BTXRD}
+\label{alg:appendix-btxrd-labels}
+\begin{algorithmic}[1]
+\Require Bảng $D$ từ \texttt{dataset.csv}; danh sách lớp có thứ tự $C$; seed $s=42$
+\Ensure Tệp nhãn $L$ và ánh xạ tập dữ liệu $S$
+\State Tạo $D[\textit{normal}] \gets \mathbb{I}(D[\textit{tumor}]=0)$
+\State $L \gets D[\textit{image\_id}\cup C]$
+\State $(D_{tv},D_{te})\gets\Call{RandomSplit}{L,0{,}20,s}$
+\State $(D_{tr},D_{va})\gets\Call{RandomSplit}{D_{tv},0{,}125,s}$
+\State Gán nhãn tập \texttt{train}, \texttt{validate}, \texttt{test}
+\State Xuất $L$ và $S=(\textit{image\_id},\textit{split})$
+\ForAll{mẫu $i$ khi được loader đọc}
+    \State $z_i\gets$ OR của hai nhãn con của \texttt{osteochondroma}
+    \If{$z_i=1$}
+        \State Đặt \texttt{osteochondroma} bằng 0
+    \EndIf
+    \State Kiểm tra $\sum_{c\in C}L_{ic}=1$ và gán
+    $\textit{class\_id}_i\gets\arg\max_c L_{ic}$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Cần lưu ý rằng phép chia BTXRD hiện tại được thực hiện ở mức ảnh và không dùng
+tham số \texttt{stratify}. Do tệp nguồn không chứa khóa bệnh nhân, quy trình này
+không đủ cơ sở để khẳng định ba tập độc lập ở mức bệnh nhân. Đây là khác biệt
+phương pháp luận quan trọng so với CTCH.
+
+\subsection{Xây dựng văn bản cho BTXRD}
+
+BTXRD không có báo cáo bệnh sử tự do đi kèm từng ảnh. Vì vậy, hai loại văn bản
+được sinh ngoại tuyến từ metadata với seed 42:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Báo cáo X-quang trong \texttt{reports/xray}:} được tạo từ
+    loại tổn thương và các chỉ báo lành/ác tính bằng tập mẫu câu định trước.
+    Văn bản này có thể chứa trực tiếp tên lớp hoặc mô tả đặc hiệu cho lớp, do đó
+    phù hợp để minh họa hoặc thực nghiệm kiểm soát hơn là làm nguồn văn bản
+    độc lập với nhãn.
+    \item \textbf{Bệnh sử \texttt{clinical\_v2}:} sử dụng tuổi, giới, vị trí
+    xương/khớp, tư thế chụp, số vị trí xương, sự liên quan khớp và nhóm hành vi
+    bình thường--lành tính--ác tính để chọn các mẫu câu về lý do vào viện, diễn
+    tiến bệnh, khám lâm sàng và tiền sử. Phiên bản này không chèn tên chẩn đoán
+    cụ thể. Tuy nhiên, vì việc chọn mẫu câu vẫn phụ thuộc vào các cờ
+    \texttt{tumor} và \texttt{malignant}, văn bản không hoàn toàn độc lập với
+    nhãn đích; cách diễn đạt phù hợp hơn là ``giảm rò rỉ tên lớp trực tiếp''.
+\end{itemize}
+
+Trong thiết lập chính, \texttt{clinical\_subdir=clinical\_v2}. Loader đọc cả
+\texttt{xray} và \texttt{clinical\_v2}, loại khoảng trắng ở hai đầu, chuyển
+toàn bộ văn bản về chữ thường, rồi chuyển cho tokenizer của backbone. Nếu tệp
+báo cáo thiếu hoặc rỗng, loader thay bằng câu mặc định. Tham số
+\texttt{max\_text\_len} được lưu trong lớp dữ liệu nhưng chưa được truyền trực
+tiếp vào lời gọi tokenizer; do đó, độ dài thực tế hiện do tokenizer của mô hình
+quyết định.
+
+\begin{algorithm}[H]
+\caption{Sinh và nạp văn bản BTXRD}
+\label{alg:appendix-btxrd-text}
+\begin{algorithmic}[1]
+\Require Một hàng metadata $r$ và ảnh có định danh $u$
+\Ensure Hai chuỗi token $t_{xray}$ và $t_{clinical}$
+\State Suy ra tuổi, giới, vị trí chính, tư thế chụp, số xương và khớp liên quan
+\State Xác định nhóm hành vi từ \texttt{tumor} và \texttt{malignant}
+\State Chọn mẫu câu theo nhóm bằng bộ sinh giả ngẫu nhiên có seed 42
+\State Ghép các trường thành báo cáo \texttt{clinical\_v2}; không chèn tên lớp cụ thể
+\State Sinh báo cáo X-quang từ nhãn và tập mô tả đặc hiệu, lưu riêng trong \texttt{xray}
+\State Đọc hai tệp theo stem của $u$; thay câu mặc định nếu tệp thiếu hoặc rỗng
+\State $x\gets\operatorname{lower}(\operatorname{strip}(x))$ và
+$h\gets\operatorname{lower}(\operatorname{strip}(h))$
+\State $t_{xray}\gets\Call{Tokenizer}{x}$;
+$t_{clinical}\gets\Call{Tokenizer}{h}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Tiền xử lý bộ dữ liệu CTCH}
+
+\subsection{Lọc mẫu, định danh và ánh xạ nhãn}
+
+Quy trình CTCH bắt đầu từ tệp bảng tính đã làm sạch:
+\begin{center}
+\texttt{data\_labeled\_full\_selected\_cleaned.xlsx}.
+\end{center}
+Mã nguồn kiểm tra sự tồn tại của các trường bắt buộc, sau đó chỉ giữ các hàng
+thỏa đồng thời ba điều kiện: cờ
+\texttt{Deleted} bằng 0, cờ \texttt{Implants} bằng 0 và trường ảnh được chọn
+\texttt{SelectedImage} không rỗng. Những hàng có \texttt{OOD=1} được đưa vào
+\texttt{ctch-ood.csv} và không tham gia phân loại ID theo thiết lập mặc định.
+Ở phiên bản dữ liệu hiện tại, bước kiểm tra đọc 3.641 hàng, loại 348 hàng có
+implant, không ghi nhận hàng bị đánh dấu xóa hoặc thiếu ảnh được chọn, và tách
+44 hàng OOD; phần còn lại tạo thành 3.249 mẫu ID.
+
+Định danh ảnh được tạo bằng cách nối trường \texttt{ID}, một dấu gạch dưới và
+tên tệp lấy từ \texttt{SelectedImage}. Quy trình dừng nếu định danh bị trùng
+hoặc ảnh được chọn không tồn tại. Nhãn trong bảng tính được
+chuẩn hóa Unicode NFC, xóa khoảng trắng thừa và chuyển về dạng so khớp không
+phân biệt hoa--thường. Sau đó, nhãn được ánh xạ theo thứ tự 22 dòng của
+\texttt{labels.txt}; mỗi mẫu nhận một \texttt{class\_id}, một
+\texttt{mapped\_class} và một vector one-hot có đúng một phần tử bằng 1.
+
+\subsection{Chia tập theo bệnh nhân và quản lý OOD}
+
+Khóa nhóm ưu tiên là \texttt{Mã bệnh nhân}; nếu trường này rỗng, mã ca khám có
+tiền tố \texttt{visit\_} được dùng thay thế. Lớp chính của một bệnh nhân là lớp
+có tần suất lớn nhất trong các ảnh của bệnh nhân đó. Với mỗi lớp chính, danh
+sách bệnh nhân được xáo trộn bằng bộ sinh số ngẫu nhiên NumPy với seed 42, rồi
+phân bổ theo tỷ lệ mục tiêu 70/10/20. Khi một lớp có ít nhất ba bệnh nhân, mã
+nguồn cố gắng giữ tối thiểu một bệnh nhân cho mỗi tập. Manifest hiện tại có
+3.249 ảnh ID, gồm 2.265 ảnh huấn luyện, 315 ảnh xác thực và 669 ảnh kiểm tra.
+
+Trước khi tạo manifest, mã nguồn kiểm tra tập bệnh nhân ID và tập bệnh nhân OOD
+không giao nhau. Khi sửa các tệp OOD còn thiếu, hàm chuyên biệt chỉ bổ sung ảnh
+và báo cáo, đồng thời đối chiếu SHA-256 để bảo đảm ba manifest nhãn, phân chia
+và OOD không bị thay đổi.
+
+\begin{algorithm}[H]
+\caption{Tiền xử lý ngoại tuyến CTCH}
+\label{alg:appendix-ctch-offline}
+\begin{algorithmic}[1]
+\Require Bảng bệnh án $D$; thư mục ảnh $I$; từ vựng lớp $C$; seed $s=42$
+\Ensure Ảnh đã vật chất hóa, manifest ID/OOD và báo cáo song ngữ
+\State Chuẩn hóa Unicode NFC; xóa khoảng trắng đầu/cuối và rút gọn khoảng trắng liên tiếp
+\State $D\gets D[(Deleted=0)\land(Implants=0)\land(SelectedImage\ne\varnothing)]$
+\State Tách $D_{ood}$ theo \texttt{OOD=1}; đặt $D_{id}\gets D\setminus D_{ood}$
+\State Tạo \texttt{image\_id}; kiểm tra trùng lặp và sự tồn tại của ảnh
+\State Kiểm tra bệnh nhân của $D_{id}$ và $D_{ood}$ không giao nhau
+\State Ánh xạ nhãn của $D_{id}$ theo thứ tự $C$ và kiểm tra one-hot
+\ForAll{lớp chính $c$}
+    \State Xáo trộn các bệnh nhân thuộc $c$ bằng seed $s$
+    \State Phân bổ bệnh nhân vào train/validate/test theo tỷ lệ mục tiêu 70/10/20
+\EndFor
+\State Ghép ba trường bệnh án thành báo cáo lâm sàng tiếng Việt
+\State Ghép hai trường khám và cận lâm sàng thành báo cáo X-quang tiếng Việt
+\State Dịch từng nội dung sau tiền tố sang tiếng Anh; sử dụng bộ nhớ đệm dịch
+\State Hard-link ảnh sang thư mục đích; nếu thất bại thì sao chép ảnh
+\State Xuất \texttt{ctch-labels.csv}, \texttt{ctch-split.csv} và \texttt{ctch-ood.csv}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Chuẩn hóa và dịch báo cáo CTCH}
+
+Báo cáo lâm sàng tiếng Việt được ghép từ ba trường: lý do vào viện, quá trình
+bệnh lý và tiền sử bản thân. Báo cáo X-quang được ghép từ tóm tắt khám/cận lâm
+sàng và tóm tắt kết quả xét nghiệm. Cột chẩn đoán xác định và cột nhãn không
+được đưa trực tiếp vào danh sách trường nguồn. Mỗi trường không rỗng được ghi
+trên một dòng dưới dạng ``tên trường: nội dung''; nếu toàn bộ trường nguồn rỗng,
+một câu mặc định được sử dụng.
+
+Ở bước dịch, chương trình giữ nguyên tiền tố tiếng Anh của trường và chỉ dịch
+phần nội dung sau chuỗi ``\texttt{: }'' từ tiếng Việt sang tiếng Anh. Kết quả
+được lưu trong \texttt{translation\_cache.json} để cùng một đoạn nguồn không
+bị dịch lặp lại. Tệp đích được ghi thông qua tệp tạm rồi thay thế nguyên tử. Ở
+chế độ dịch thông thường, nếu dịch vụ dịch thất bại, đoạn tiếng Việt gốc được
+giữ lại; riêng quy trình sửa OOD ở chế độ nghiêm ngặt sẽ báo lỗi thay vì tạo
+báo cáo thay thế.
+
+Cần phân biệt việc loại bỏ cột nhãn với việc loại bỏ mọi dấu hiệu chẩn đoán.
+Hai trường khám/cận lâm sàng vẫn có thể chứa tên tổn thương hoặc vị trí gãy do
+được ghi trong bệnh án gốc. Vì vậy, báo cáo X-quang CTCH là nguồn mô tả lâm sàng
+thực tế nhưng không nên được xem là đã loại hoàn toàn thông tin liên quan đến
+nhãn. Khi được loader đọc, hai báo cáo tiếng Anh tiếp tục được
+\texttt{strip()}, chuyển về chữ thường và mã hóa bằng tokenizer.
+
+\section{Tiền xử lý ảnh dùng chung}
+
+Thiết lập chính của cả hai bộ dữ liệu sử dụng chiến lược
+\texttt{sparse\_focal}. Mục tiêu là giữ một biểu diễn toàn cục đồng thời chọn
+một số ít vùng cục bộ có thông tin, nhưng không làm thay đổi ngân sách đầu vào
+của encoder ảnh $224\times224$. Toàn bộ quá trình chọn vùng chỉ sử dụng pixel;
+nhãn, báo cáo văn bản và chú thích tổn thương không được truy cập.
+
+Đầu tiên, ảnh được chuyển sang RGB. Để ước lượng vùng giải phẫu, ảnh xám được
+thu nhỏ sao cho cạnh dài không vượt quá 512 pixel. Cường độ nền được ước lượng
+bằng trung vị của dải biên rộng 4\%. Một pixel được xem là khác nền nếu độ lệch
+cường độ vượt ngưỡng
+\begin{equation}
+\tau=\max\left(255\times0{,}035,\;4\times1{,}4826\times\operatorname{MAD}_{border}\right).
+\end{equation}
+Hộp bao được suy ra từ các hàng và cột có tỷ lệ pixel tiền cảnh tối thiểu 1\%,
+sau đó mở rộng thêm biên 4\%. Nếu hộp quá nhỏ, có diện tích dưới 20\% ảnh, có
+một chiều dưới 35\% chiều ảnh, hoặc giữ lại dưới 95\% năng lượng tương phản,
+thuật toán quay về sử dụng toàn bộ ảnh. Cơ chế bảo thủ này giảm khả năng cắt
+nhầm marker hoặc loại bỏ vùng giải phẫu có ích.
+
+Vùng tiền cảnh được letterbox thành ảnh toàn cục $224\times224$, với màu đệm
+là trung vị màu biên. Đồng thời, cạnh dài của vùng tiền cảnh được đưa về tối đa
+896 pixel mà không phóng lớn ảnh có độ phân giải thấp. Trên canvas này, các cửa
+sổ $224\times224$ được sinh với stride 168. Điểm của cửa sổ thứ $j$ là
+\begin{equation}
+s_j=0{,}55\,\widetilde{E}^{lap}_j
+    +0{,}35\,\widetilde{H}_j
+    +0{,}10\,R^{fg}_j,
+\end{equation}
+trong đó $\widetilde{E}^{lap}$ là năng lượng Laplacian đã chuẩn hóa min--max,
+$\widetilde{H}$ là entropy mức xám đã chuẩn hóa và $R^{fg}$ là tỷ lệ tiền cảnh.
+Hai vùng đầu tiên được chọn để tăng độ phủ giải phẫu. Hai vùng còn lại ưu tiên
+điểm thông tin và độ đa dạng không gian, với trọng số đa dạng 0,35 và ngưỡng
+NMS IoU 0,30. Các vùng có tỷ lệ tiền cảnh từ 0,60 được ưu tiên; nếu mặt nạ tiền
+cảnh không đáng tin cậy, toàn bộ tập ứng viên được xét. Trường hợp ảnh quá nhỏ
+không tạo đủ bốn cửa sổ khác nhau, các vùng được lặp lại theo thứ tự xác định để
+giữ nguyên kích thước tensor.
+
+\begin{algorithm}[H]
+\caption{Tạo đầu vào ảnh sparse-focal với ngân sách cố định}
+\label{alg:appendix-sparse-focal}
+\begin{algorithmic}[1]
+\Require Ảnh $X$; $K=4$; kích thước vùng $p=224$; stride $d=168$
+\Ensure Ảnh toàn cục $G$, tập vùng $T$ và tọa độ chuẩn hóa $B$
+\State Chuyển $X$ sang RGB và ước lượng nền từ dải biên
+\State Tạo mặt nạ khác nền; suy ra hộp tiền cảnh bảo thủ $b_{fg}$
+\If{$b_{fg}$ không đạt điều kiện kích thước, diện tích hoặc năng lượng}
+    \State $b_{fg}\gets$ toàn bộ ảnh
+\EndIf
+\State $G\gets\Call{Letterbox}{X[b_{fg}],224,\textit{border-median}}$
+\State Tạo canvas có cạnh dài tối đa 896, không phóng lớn ảnh nguồn
+\State Sinh các cửa sổ $224\times224$ với stride 168
+\ForAll{cửa sổ ứng viên $w_j$}
+    \State Tính tỷ lệ tiền cảnh, năng lượng Laplacian, entropy và điểm $s_j$
+\EndFor
+\State Chọn hai vùng tăng độ phủ theo hình dạng canvas
+\State Chọn các vùng focal còn lại theo $s_j$, độ đa dạng và NMS
+\State Bổ sung vùng theo quy tắc xác định cho đến khi đủ $K$ vùng
+\State Letterbox mỗi vùng về $224\times224$; ánh xạ hộp về tọa độ ảnh nguồn
+\State Chuẩn hóa tọa độ XYXY về $[0,1]$ và áp dụng transform của backbone
+\State \Return $G,T,B$
+\end{algorithmic}
+\end{algorithm}
+
+Nếu ảnh không tồn tại tại thời điểm nạp dữ liệu, loader hiện tạo một ảnh đen
+$224\times224$ thay thế. Tuy nhiên, các script tiền xử lý và kiểm tra CTCH đã
+kiểm tra sự tồn tại của ảnh trước đó; do vậy, bước \texttt{validate} nên được
+chạy trước thực nghiệm để tránh che giấu lỗi dữ liệu. Tọa độ vùng được lưu trong
+bộ nhớ đệm theo \texttt{image\_id}; chỉ tọa độ được cache, không cache tensor
+ảnh hoặc đặc trưng.
+
+\section{Ví dụ dữ liệu trước và sau tiền xử lý}
+
+Các bảng sau sử dụng mẫu đang có trong kho dữ liệu. Nội dung được giữ nguyên để
+minh họa khả năng truy vết; định danh bệnh nhân không được trình bày. Đối với
+BTXRD, ``văn bản gốc'' thực chất là metadata có cấu trúc, vì bộ dữ liệu không
+cung cấp bệnh sử tự do. Đối với CTCH, văn bản gốc là nội dung của các trường
+bệnh án trước khi ghép tiền tố, dịch và chuyển về chữ thường.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ ảnh và văn bản BTXRD trước--sau tiền xử lý
+(mẫu \texttt{IMG000001.jpeg})}
+\label{tab:appendix-btxrd-example}
+\scriptsize
+\begin{tabularx}{\textwidth}{C{2.5cm}L{4.7cm}X}
+\toprule
+\textbf{Ảnh gốc} & \textbf{Nguồn ban đầu} & \textbf{Văn bản sau xử lý ngoại tuyến} \\
+\midrule
+\includegraphics[width=2.2cm,height=5.2cm,keepaspectratio]{../../data/BTXRD/images/IMG000001.jpeg}
+& \textbf{Metadata:} age=48; gender=F; hip bone=1; pelvis=1; frontal=1;
+tumor=1; benign=0; malignant=1; other mt=1.
+& \textbf{Báo cáo X-quang tổng hợp:} A musculoskeletal radiograph of the bone
+in standard projection with evidence of other mt: a destructive bone lesion
+with ill-defined borders suggestive of malignancy. In a high-resolution
+diagnostic acquisition. The imaging features raise concern for malignancy. \\
+\cmidrule(lr){2-3}
+& \textbf{Lưu ý nguồn:} Không có bệnh sử tự do gốc tương ứng với ảnh. Các cờ
+metadata ở trên được dùng để chọn mẫu câu.
+& \textbf{Bệnh sử \texttt{clinical\_v2}:} Patient: 48-year-old female. Reason
+for admission: Pain and swelling of the hip bone. Disease history: Pain in the
+hip bone for 1 month; associated with decreased appetite. Physical examination:
+Palpable mass; tenderness on palpation; mild swelling. Personal medical history:
+No prior bone disease or fracture. No relevant surgical or medical history.
+Radiographic evaluation: AP view of the hip bone was obtained. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Khi mẫu ở Bảng \ref{tab:appendix-btxrd-example} được loader đọc, toàn bộ chuỗi
+được chuyển về chữ thường trước khi token hóa. Chẳng hạn, tiền tố của bệnh sử
+trở thành \emph{``patient: 48-year-old female. reason for admission: pain and
+swelling of the hip bone.''}. Báo cáo X-quang chứa \texttt{other mt}, trong khi
+\texttt{clinical\_v2} không chứa tên lớp cụ thể nhưng vẫn phản ánh nhóm hành vi
+ác tính qua cách chọn triệu chứng.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ ảnh và văn bản lâm sàng CTCH trước--sau tiền xử lý
+(mẫu \texttt{5\_img-02102-00001.jpg})}
+\label{tab:appendix-ctch-clinical-example}
+\scriptsize
+\begin{tabularx}{\textwidth}{C{2.3cm}L{4.2cm}L{4.3cm}X}
+\toprule
+\textbf{Ảnh gốc} & \textbf{Trường bệnh án gốc} &
+\textbf{Báo cáo \texttt{clinical\_vi}} &
+\textbf{Báo cáo tiếng Anh} \\
+\midrule
+\includegraphics[width=2.0cm,height=5.4cm,keepaspectratio]{../../data/CTCH/images/5_img-02102-00001.jpg}
+& \textbf{Lý do:} Đau cổ tay trái + gót trái.\newline
+\textbf{Quá trình bệnh lý:} 10h 27/11/22 bệnh nhân té cao 2,5 m tại Thủ Đức
+$\rightarrow$ đau cổ chân trái $\rightarrow$ sơ cứu BV Hoàn Mỹ Thủ Đức
+$\rightarrow$ BV CTCH, đã nẹp bột cánh bàn tay và cẳng bàn chân (T).\newline
+\textbf{Tiền sử:} chưa phát hiện bất thường.
+& \textbf{Reason for admission:} Đau cổ tay trái + gót trái.\newline
+\textbf{Disease history:} 10h 27/11/22 bệnh nhân té cao 2,5 m tại Thủ Đức
+$\rightarrow$ đau cổ chân trái $\rightarrow$ sơ cứu BV Hoàn Mỹ Thủ Đức
+$\rightarrow$ BV CTCH, đã nẹp bột cánh bàn tay và cẳng bàn chân (T).\newline
+\textbf{Personal medical history:} chưa phát hiện bất thường.
+& \textbf{Reason for admission:} Pain in left wrist + left heel.\newline
+\textbf{Disease history:} 10:00 a.m. November 27, 2022, patient fell 2.5 m high
+in Thu Duc $\rightarrow$ left ankle pain $\rightarrow$ first aid at Hoan My
+Thu Duc Hospital $\rightarrow$ CTCH Hospital, splinted hand and lower leg
+(T).\newline
+\textbf{Personal medical history:} No abnormalities have been detected. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ văn bản X-quang CTCH trước--sau tiền xử lý trên cùng một mẫu}
+\label{tab:appendix-ctch-xray-example}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{4.5cm}L{4.8cm}X}
+\toprule
+\textbf{Trường bệnh án gốc} & \textbf{Báo cáo \texttt{xray\_vi}} &
+\textbf{Báo cáo tiếng Anh} \\
+\midrule
+\textbf{Tóm tắt khám/cận lâm sàng:} XQ Gãy kín đầu dưới xương quay tay Trái +
+gãy xương gót Trái.\newline
+\textbf{Tóm tắt kết quả xét nghiệm:} XQ Gãy kín đầu dưới xương quay tay Trái +
+gãy xương gót Trái.
+& \textbf{Imaging and examination summary:} XQ Gãy kín đầu dưới xương quay tay
+Trái + gãy xương gót Trái.\newline
+\textbf{Investigation summary:} XQ Gãy kín đầu dưới xương quay tay Trái + gãy
+xương gót Trái.
+& \textbf{Imaging and examination summary:} XQ: Closed fracture of the lower
+end of the Left radial bone + fracture of the Left calcaneus.\newline
+\textbf{Investigation summary:} XQ: Closed fracture of the lower end of the
+Left radial bone + fracture of the Left calcaneus. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ví dụ CTCH cho thấy phép chuẩn hóa giữ nội dung chuyên môn gốc, bổ sung tên
+trường thống nhất và tạo bản dịch tiếng Anh tương ứng. Khi nạp vào mô hình, bản
+dịch tiếp tục được chuyển về chữ thường. Đồng thời, ví dụ cũng minh họa rằng dù
+cột nhãn không được ghép trực tiếp, nội dung mô tả X-quang vẫn có thể nêu rõ
+vị trí gãy; yếu tố này cần được xem xét khi diễn giải đóng góp của từng phương
+thức trong các thực nghiệm ablation.
+
+\section{Kiểm tra tính toàn vẹn sau tiền xử lý}
+
+Đối với BTXRD, loader kiểm tra ghép một--một giữa manifest phân chia và nhãn,
+tính hợp lệ của \texttt{class\_id}, cũng như điều kiện đúng một lớp hoạt động.
+Đối với CTCH, bước \texttt{validate} kiểm tra tập định danh của hai manifest
+ID trùng khớp, nhãn one-hot phù hợp với \texttt{class\_id}, không có bệnh nhân
+giao nhau giữa train/validate/test, tập ID và OOD không trùng ảnh, đồng thời xác
+nhận mỗi ảnh có đủ hai báo cáo tiếng Việt và hai báo cáo tiếng Anh. Các kiểm tra
+này nên được thực hiện trước khi huấn luyện để lỗi dữ liệu không bị che khuất
+bởi cơ chế ảnh hoặc văn bản mặc định trong loader.

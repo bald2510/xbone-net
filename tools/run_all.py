@@ -118,8 +118,8 @@ EXPERIMENTS = OrderedDict({
 # Run this subset on one fixed, locally controlled GPU when wall-clock training
 # time is a reported outcome. Performance-only experiments may run elsewhere.
 CTCH_TRAINING_TIME_EXPERIMENTS = [
-    "ctch/proposed/ours_xbone_net",
-    "ctch/baselines/peft_finetuned/lora_biomedclip",
+    # "ctch/proposed/ours_xbone_net",
+    # "ctch/baselines/peft_finetuned/lora_biomedclip",
     "ctch/baselines/full_finetuned/fft_biomedclip",
     "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
     "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
@@ -129,9 +129,9 @@ CTCH_TRAINING_TIME_EXPERIMENTS = [
 ]
 
 BTXRD_TRAINING_TIME_EXPERIMENTS = [
-    "btxrd/proposed/ours_xbone_net",
-    "btxrd/baselines/peft_finetuned/lora_biomedclip",
-    "btxrd/baselines/full_finetuned/fft_biomedclip",
+    # "btxrd/proposed/ours_xbone_net",
+    # "btxrd/baselines/peft_finetuned/lora_biomedclip",
+    # "btxrd/baselines/full_finetuned/fft_biomedclip",
 ]
 
 TRAINING_TIME_EXPERIMENTS = (

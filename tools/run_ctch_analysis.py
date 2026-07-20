@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from collections import OrderedDict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,9 @@ from src.utils.analysis import (
     SOURCE_SEEDS,
     analysis_root,
     locked_checkpoint_path,
+    sha256_file,
 )
+from src.utils.ood import MAHALANOBIS_SCORE_DEFINITION, OOD_PROTOCOL_VERSION
 
 
 OOD_CONFIG = ROOT / "configs" / "analysis" / "ctch" / "ood.yaml"
@@ -43,6 +46,13 @@ LOCKED_REPRESENTATION_SPACES = [
     "text_from_image_embeddings",
 ]
 
+OOD_ARCHIVES = {
+    "semantic_ood": "ctch_ood",
+    "domain_ood": "fracatlas_test",
+    "report_mismatch_cross_class": "report_mismatch_cross_class",
+    "report_mismatch_same_class": "report_mismatch_same_class",
+}
+
 
 def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
     """Reject config fields the implementation cannot faithfully execute."""
@@ -54,6 +64,26 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
     for key, expected in expected_ood_splits.items():
         if str(ood_cfg.get(key)) != expected:
             raise ValueError(f"{key} is locked to {expected!r}.")
+
+    expected_mahalanobis = {
+        "formulation": "classical_distance",
+        "class_centers": "empirical_train_means",
+        "covariance": "shared_ledoit_wolf",
+        "class_reduction": "minimum",
+        "detector_l2_normalization": False,
+    }
+    for key, expected in expected_mahalanobis.items():
+        actual = ood_cfg.mahalanobis.get(key)
+        if actual != expected:
+            raise ValueError(
+                f"Unsupported Mahalanobis setting {key}={actual!r}; "
+                f"expected {expected!r}."
+            )
+    for scenario, archive in OOD_ARCHIVES.items():
+        if str(ood_cfg.scenarios[scenario].archive) != archive:
+            raise ValueError(
+                f"OOD scenario {scenario!r} must use archive {archive!r}."
+            )
 
     expected_explain = {
         "target": "predicted_class",
@@ -141,11 +171,49 @@ def _feature_path(seed: int, scenario: str) -> Path:
     return analysis_root(seed) / "features" / f"{scenario}.npz"
 
 
-def _feature_checkpoint_sha(seed: int, scenario: str) -> str:
-    sidecar = _feature_path(seed, scenario).with_suffix(".json")
-    if not sidecar.is_file():
-        raise FileNotFoundError(f"Missing feature provenance sidecar: {sidecar}")
-    return str(json.loads(sidecar.read_text(encoding="utf-8"))["checkpoint_sha256"])
+@lru_cache(maxsize=None)
+def _cached_file_sha(path_text: str, size: int, modified_ns: int) -> str:
+    del size, modified_ns
+    return sha256_file(Path(path_text))
+
+
+def _feature_sha(seed: int, scenario: str) -> str:
+    path = _feature_path(seed, scenario).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing feature archive: {path}")
+    stat = path.stat()
+    return _cached_file_sha(str(path), stat.st_size, stat.st_mtime_ns)
+
+
+def _expected_ood_feature_hashes(
+    seed: int,
+    scenario: str,
+) -> dict[str, str]:
+    return {
+        "fit": _feature_sha(seed, "ctch_train"),
+        "calibration": _feature_sha(seed, "ctch_val"),
+        "id_test": _feature_sha(seed, "ctch_test"),
+        "ood_test": _feature_sha(seed, OOD_ARCHIVES[scenario]),
+    }
+
+
+def _ood_result_status(
+    payload: dict[str, Any],
+    seed: int,
+    scenario: str,
+) -> tuple[bool, str]:
+    if int(payload.get("ood_protocol_version", -1)) != OOD_PROTOCOL_VERSION:
+        return False, "OOD protocol/Mahalanobis definition changed"
+    if payload.get("mahalanobis_score_definition") != MAHALANOBIS_SCORE_DEFINITION:
+        return False, "Mahalanobis score definition changed"
+    mahalanobis = payload.get("results", {}).get("mahalanobis", {})
+    if mahalanobis.get("score_definition") != MAHALANOBIS_SCORE_DEFINITION:
+        return False, "Mahalanobis result metadata is stale"
+    recorded_hashes = payload.get("feature_archive_sha256")
+    expected_hashes = _expected_ood_feature_hashes(seed, scenario)
+    if recorded_hashes != expected_hashes:
+        return False, "source feature archive changed"
+    return True, "current"
 
 
 def _ood_output(seed: int, scenario: str) -> Path:
@@ -184,9 +252,16 @@ def aggregate_existing(seeds: list[int], scenarios: list[str]) -> dict[str, Any]
         for seed in seeds:
             path = _ood_output(seed, scenario) / "ood_metrics.json"
             if path.is_file():
-                ood_results.setdefault(scenario, {})[seed] = _verified_json(
+                payload = _verified_json(
                     path, seed, "locked_ctch_ood_evaluation"
                 )
+                current, reason = _ood_result_status(payload, seed, scenario)
+                if not current:
+                    raise RuntimeError(
+                        f"Stale OOD result {path}: {reason}. Re-run the analysis "
+                        "before aggregating."
+                    )
+                ood_results.setdefault(scenario, {})[seed] = payload
     for seed in seeds:
         path = analysis_root(seed) / "explainability" / "summary.json"
         if path.is_file():
@@ -337,17 +412,17 @@ def main() -> None:
                             seed,
                             "locked_ctch_ood_evaluation",
                         )
-                        if existing.get("checkpoint_sha256") == _feature_checkpoint_sha(
-                            seed, "ctch_train"
-                        ):
+                        current, reason = _ood_result_status(
+                            existing, seed, scenario
+                        )
+                        if current:
                             print(
                                 f"[Resume] OOD {scenario} seed={seed}: "
                                 "verified result exists."
                             )
                             continue
                         print(
-                            f"[Refresh] OOD {scenario} seed={seed}: checkpoint "
-                            "provenance changed."
+                            f"[Refresh] OOD {scenario} seed={seed}: {reason}."
                         )
                     command = [
                         sys.executable,

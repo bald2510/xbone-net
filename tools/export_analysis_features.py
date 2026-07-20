@@ -16,7 +16,10 @@ sys.path.insert(0, str(ROOT))
 
 from src.datasets.analysis import CTCHOODDataset, ReportMismatchDataset
 from src.datasets.ctch import CTCHDataset
-from src.datasets.fracatlas import FracAtlasDataset
+from src.datasets.fracatlas import (
+    FRACATLAS_IMAGE_RESOLVER_VERSION,
+    FracAtlasDataset,
+)
 from src.utils.analysis import (
     MetadataDataset,
     SOURCE_EXPERIMENT,
@@ -96,9 +99,15 @@ def build_scenario_dataset(
             transform=loaded.model.backbone.preprocess,
             tokenizer=loaded.model.backbone.tokenizer_obj,
             high_res=high_res,
+            strict_files=True,
+            allow_truncated_images=True,
         )
         return MetadataDataset(dataset, scenario), {
             "primary_feature": "visual_global_embeddings",
+            "coverage": dataset.coverage,
+            "fracatlas_image_resolver_version": (
+                FRACATLAS_IMAGE_RESOLVER_VERSION
+            ),
             "note": (
                 "Domain-OOD inference exports fused values for diagnostics, but the "
                 "pre-registered primary analysis uses visual_global_embeddings to "
@@ -133,13 +142,30 @@ def _can_resume(path: Path, loaded, scenario: str) -> bool:
         _, provenance = load_feature_archive(path)
     except (OSError, ValueError, json.JSONDecodeError):
         return False
-    return (
+    matches_locked_source = (
         provenance.get("checkpoint_sha256") == loaded.checkpoint_sha256
         and provenance.get("config_sha256")
         == loaded.provenance.get("config_sha256")
         and int(provenance.get("seed", -1)) == int(loaded.provenance["seed"])
         and provenance.get("scenario") == scenario
     )
+    if not matches_locked_source:
+        return False
+    if scenario == "fracatlas_test":
+        coverage = provenance.get("coverage", {})
+        return (
+            int(provenance.get("fracatlas_image_resolver_version", -1))
+            == FRACATLAS_IMAGE_RESOLVER_VERSION
+            and int(coverage.get("rows", -1))
+            == int(provenance.get("sample_count", -2))
+            and int(coverage.get("resolved_images", -1))
+            == int(provenance.get("sample_count", -2))
+            and int(coverage.get("missing_images", -1)) == 0
+            and int(coverage.get("missing_reports", -1)) == 0
+            and bool(coverage.get("decode_validation", False))
+            and int(coverage.get("decode_failure_count", -1)) == 0
+        )
+    return True
 
 
 def main() -> None:

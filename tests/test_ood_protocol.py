@@ -4,13 +4,15 @@ from pathlib import Path
 
 import numpy as np
 
-from evaluate_ood import align_paired_id, run_protocol
+from evaluate_ood import _validate_archive, align_paired_id, run_protocol
+from src.datasets.fracatlas import FRACATLAS_IMAGE_RESOLVER_VERSION
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
     load_feature_archive,
     save_feature_archive,
 )
 from src.utils.ood import (
+    MAHALANOBIS_SCORE_DEFINITION,
     OODDetector,
     bootstrap_ood_metrics,
     calibrate_ood_threshold,
@@ -30,6 +32,23 @@ class OODProtocolTests(unittest.TestCase):
             detector.score_max_logit,
         ):
             self.assertGreater(scorer(logits_ood).mean(), scorer(logits_id).mean())
+
+    def test_mahalanobis_matches_classical_distance_formula(self):
+        train = np.asarray(
+            [[1.0, 1.0], [3.0, 1.0], [1.0, 3.0], [3.0, 3.0]]
+        )
+        detector = OODDetector().fit(train, np.zeros(len(train), dtype=np.int64))
+        probe = np.asarray([[4.0, 5.0]])
+        center = detector.class_means[0]
+        difference = probe[0] - center
+        expected = np.sqrt(
+            difference @ detector.shared_cov_inv @ difference
+        )
+
+        np.testing.assert_allclose(center, [2.0, 2.0])
+        self.assertAlmostEqual(
+            float(detector.score_mahalanobis(probe)[0]), float(expected)
+        )
 
     def test_threshold_depends_only_on_calibration_id(self):
         calibration = np.asarray([0.1, 0.2, 0.3, 0.4, 0.5])
@@ -78,6 +97,46 @@ class OODProtocolTests(unittest.TestCase):
         np.testing.assert_array_equal(aligned["image_id"], ["c", "a"])
         np.testing.assert_array_equal(aligned["labels"], [2, 0])
 
+    def test_domain_archive_requires_complete_nonconstant_visual_inputs(self):
+        arrays = {
+            "labels": np.asarray([0, 1]),
+            "logits": np.zeros((2, 2)),
+            "image_id": np.asarray(["a", "b"]),
+            "visual_global_embeddings": np.asarray(
+                [[1.0, 0.0], [0.0, 1.0]]
+            ),
+        }
+        base = {
+            "source_experiment": SOURCE_EXPERIMENT,
+            "seed": 42,
+            "scenario": "fracatlas_test",
+        }
+        with self.assertRaises(ValueError):
+            _validate_archive(arrays, base, 42, "fracatlas_test")
+
+        complete = {
+            **base,
+            "fracatlas_image_resolver_version": (
+                FRACATLAS_IMAGE_RESOLVER_VERSION
+            ),
+            "coverage": {
+                "rows": 2,
+                "resolved_images": 2,
+                "missing_images": 0,
+                "missing_reports": 0,
+                "decode_validation": True,
+                "decode_failure_count": 0,
+            },
+        }
+        _validate_archive(arrays, complete, 42, "fracatlas_test")
+
+        constant = {
+            **arrays,
+            "visual_global_embeddings": np.ones((2, 2)),
+        }
+        with self.assertRaises(ValueError):
+            _validate_archive(constant, complete, 42, "fracatlas_test")
+
     def test_full_protocol_uses_disjoint_inputs(self):
         rng = np.random.default_rng(3)
         train_labels = np.repeat([0, 1], 20)
@@ -116,6 +175,10 @@ class OODProtocolTests(unittest.TestCase):
             paired=False,
         )
         self.assertIn("mahalanobis", results)
+        self.assertEqual(
+            results["mahalanobis"]["score_definition"],
+            MAHALANOBIS_SCORE_DEFINITION,
+        )
         self.assertEqual(len(scores["mahalanobis_calibration"]), len(calibration["labels"]))
         self.assertGreater(results["mahalanobis"]["auroc"], 0.9)
 
