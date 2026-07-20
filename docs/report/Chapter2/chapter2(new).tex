@@ -1,7 +1,7 @@
 \chapter{Cơ sở lý thuyết và các công trình nghiên cứu liên quan}
 \label{Chapter2}
 
-Chương này tổng hợp các hướng nghiên cứu có liên quan trực tiếp đến bài toán phân loại ảnh X-quang xương đa phương thức được xem xét trong luận văn. Thay vì khảo sát toàn bộ các mô hình y sinh đa phương thức, nội dung được tổ chức theo các quyết định thiết kế của hệ thống: lựa chọn nguồn văn bản, kế thừa mô hình ngôn ngữ -- thị giác y khoa, bảo toàn thông tin trên ảnh độ phân giải cao, tinh chỉnh hiệu quả tham số (Parameter-Efficient Fine-Tuning -- PEFT), dung hợp hai phương thức, phân loại trong điều kiện mất cân bằng, phát hiện dữ liệu ngoài phân phối (Out-of-Distribution -- OOD) và phân tích bản đồ chú ý. Cách tổ chức này nhằm làm rõ mối liên hệ giữa các công trình trước đây, khoảng trống còn lại và quy trình (pipeline) được trình bày ở Chương 3.
+Chương này tổng hợp các hướng nghiên cứu có liên quan trực tiếp đến bài toán phân loại ảnh X-quang xương đa phương thức được xem xét trong luận văn. Thay vì khảo sát toàn bộ các mô hình y sinh đa phương thức, nội dung được tổ chức theo các quyết định thiết kế của hệ thống: lựa chọn nguồn văn bản, kế thừa mô hình ngôn ngữ - thị giác y khoa, bảo toàn thông tin trên ảnh độ phân giải cao, tinh chỉnh hiệu quả tham số (Parameter-Efficient Fine-Tuning - PEFT), dung hợp hai phương thức, phân loại trong điều kiện mất cân bằng, phát hiện dữ liệu ngoài phân phối (Out-of-Distribution - OOD) và phân tích bản đồ chú ý. Cách tổ chức này nhằm làm rõ mối liên hệ giữa các công trình trước đây, khoảng trống còn lại và quy trình (pipeline) được trình bày ở Chương 3.
 
 Các kết quả định lượng trong những nghiên cứu được trích dẫn không được đặt cạnh nhau như một bảng xếp hạng, do khác biệt về bộ dữ liệu, cách chia tập, loại bệnh lý và chỉ số đánh giá. Thay vào đó, các bảng trong chương tập trung so sánh giả định, loại đầu vào, cơ chế học và mức độ liên quan với bài toán của luận văn.
 
@@ -23,7 +23,7 @@ Các nghiên cứu trước cho thấy nhiều mức độ kết hợp ảnh và
 \midrule
 Mei và cộng sự \cite{XMei} & CT ngực & Triệu chứng và thông tin lâm sàng & Ghép đặc trưng ảnh và lâm sàng cho dự đoán chung & Hỗ trợ giả định về tính bổ sung của dữ liệu lâm sàng; khác miền ảnh và bệnh lý. \\
 \addlinespace
-TieNet \cite{TieNet} & X-quang ngực & Báo cáo X-quang & Chú ý giữa từ và vùng ảnh & Cung cấp tiền lệ cho tương tác cục bộ ảnh--văn bản; nguồn văn bản có thể chứa thông tin gần với nhãn. \\
+TieNet \cite{TieNet} & X-quang ngực & Báo cáo X-quang & Chú ý giữa từ và vùng ảnh & Cung cấp tiền lệ cho tương tác cục bộ ảnh-văn bản; nguồn văn bản có thể chứa thông tin gần với nhãn. \\
 \addlinespace
 IRENE \cite{IRENE} & Nhiều loại ảnh y khoa & Dữ liệu lâm sàng không đồng nhất & Mã hóa thống nhất bằng token và Transformer & Liên quan đến tương tác token đa phương thức; kiến trúc và phạm vi dữ liệu rộng hơn bài toán hiện tại. \\
 \addlinespace
@@ -38,17 +38,17 @@ FTB \cite{FTB} & Ảnh y khoa & Văn bản y khoa & Giữ cố định backbone 
 
 Từ góc độ thiết kế thí nghiệm, cần phân biệt rõ \textit{bệnh sử lâm sàng được ghi nhận trước khi có kết luận đọc ảnh} với \textit{báo cáo đọc ảnh}. Hai nguồn này có thể cùng được lưu dưới dạng văn bản nhưng mang vai trò khác nhau trong quy trình khám. Với mục tiêu dự đoán loại bệnh từ ảnh và thông tin sẵn có trước khi có kết luận X-quang, bệnh sử lâm sàng phù hợp hơn với điều kiện suy luận dự kiến của đề tài. Việc sử dụng cùng một loại văn bản trong cả hai pha huấn luyện còn giúp hạn chế sai khác phân phối đầu vào giữa pha căn chỉnh và pha phân loại.
 
-Do đó, luận văn sử dụng ảnh X-quang và bệnh sử lâm sàng trong pipeline chính. Báo cáo đọc ảnh không được xem là một phương thức đầu vào tương đương, mà chỉ phù hợp cho các phân tích riêng về nguy cơ rò rỉ nhãn. Lựa chọn này không hàm ý rằng báo cáo X-quang không hữu ích trong các nhiệm vụ khác, chẳng hạn sinh báo cáo hoặc truy hồi ảnh--văn bản; nó chỉ phản ánh phạm vi dự đoán và điều kiện đánh giá của đề tài.
+Do đó, luận văn sử dụng ảnh X-quang và bệnh sử lâm sàng trong pipeline chính. Báo cáo đọc ảnh không được xem là một phương thức đầu vào tương đương, mà chỉ phù hợp cho các phân tích riêng về nguy cơ rò rỉ nhãn. Lựa chọn này không hàm ý rằng báo cáo X-quang không hữu ích trong các nhiệm vụ khác, chẳng hạn sinh báo cáo hoặc truy hồi ảnh-văn bản; nó chỉ phản ánh phạm vi dự đoán và điều kiện đánh giá của đề tài.
 
-\section{Mô hình ngôn ngữ -- thị giác y khoa}
+\section{Mô hình ngôn ngữ - thị giác y khoa}
 
-\subsection{Học biểu diễn tương phản ảnh--văn bản}
+\subsection{Học biểu diễn tương phản ảnh-văn bản}
 
-Các mô hình ngôn ngữ -- thị giác y khoa thường sử dụng một bộ mã hóa ảnh và một bộ mã hóa văn bản, sau đó đưa hai loại biểu diễn về cùng không gian để tối ưu một mục tiêu căn chỉnh. Với một mini-batch gồm các cặp ảnh và văn bản, mục tiêu tương phản làm tăng độ tương đồng của các cặp liên quan và giảm độ tương đồng của các cặp còn lại. Cơ chế này cho phép tận dụng văn bản đi kèm ảnh trong giai đoạn tiền huấn luyện hoặc thích nghi miền mà không nhất thiết phải xây dựng một bộ phân loại riêng cho từng nhãn.
+Các mô hình ngôn ngữ - thị giác y khoa thường sử dụng một bộ mã hóa ảnh và một bộ mã hóa văn bản, sau đó đưa hai loại biểu diễn về cùng không gian để tối ưu một mục tiêu căn chỉnh. Với một mini-batch gồm các cặp ảnh và văn bản, mục tiêu tương phản làm tăng độ tương đồng của các cặp liên quan và giảm độ tương đồng của các cặp còn lại. Cơ chế này cho phép tận dụng văn bản đi kèm ảnh trong giai đoạn tiền huấn luyện hoặc thích nghi miền mà không nhất thiết phải xây dựng một bộ phân loại riêng cho từng nhãn.
 
-ConVIRT \cite{ConVIRT} cho thấy khả năng học biểu diễn ảnh y khoa từ các cặp ảnh--văn bản bằng mục tiêu tương phản hai chiều. GLoRIA \cite{GLoRIA} mở rộng căn chỉnh toàn cục bằng quan hệ cục bộ giữa vùng ảnh và từ. MedCLIP \cite{MedCLIP} xem xét vấn đề cặp âm tính giả và đề xuất Semantic Matching để sử dụng quan hệ ngữ nghĩa mềm thay cho giả định mỗi ảnh chỉ khớp với đúng một văn bản. BiomedCLIP \cite{BiomedCLIP} được tiền huấn luyện trên PMC-15M với ViT và PubMedBERT, qua đó cung cấp một điểm khởi tạo đa phương thức thuộc miền y sinh.
+ConVIRT \cite{ConVIRT} cho thấy khả năng học biểu diễn ảnh y khoa từ các cặp ảnh-văn bản bằng mục tiêu tương phản hai chiều. GLoRIA \cite{GLoRIA} mở rộng căn chỉnh toàn cục bằng quan hệ cục bộ giữa vùng ảnh và từ. MedCLIP \cite{MedCLIP} xem xét vấn đề cặp âm tính giả và đề xuất Semantic Matching để sử dụng quan hệ ngữ nghĩa mềm thay cho giả định mỗi ảnh chỉ khớp với đúng một văn bản. BiomedCLIP \cite{BiomedCLIP} được tiền huấn luyện trên PMC-15M với ViT và PubMedBERT, qua đó cung cấp một điểm khởi tạo đa phương thức thuộc miền y sinh.
 
-Trong dữ liệu bệnh lý, nhiều bệnh nhân cùng lớp có thể có các mô tả khác nhau nhưng vẫn chia sẻ nội dung ngữ nghĩa liên quan. Nếu mọi cặp không trùng chỉ số trong mini-batch đều bị xem là âm tính, mục tiêu một--một có thể tạo ra tín hiệu tối ưu chưa phù hợp. Semantic Matching là tiền đề gần với pha 1 của luận văn, trong đó các cặp cùng lớp được gán quan hệ mềm sau khi chuẩn hóa theo hàng, còn cặp ảnh--bệnh sử tương ứng vẫn giữ mức khớp cao nhất. Bảng \ref{tab:ch2_medvlm} đối chiếu các mô hình theo bộ mã hóa, mục tiêu học và vai trò đối với pipeline.
+Trong dữ liệu bệnh lý, nhiều bệnh nhân cùng lớp có thể có các mô tả khác nhau nhưng vẫn chia sẻ nội dung ngữ nghĩa liên quan. Nếu mọi cặp không trùng chỉ số trong mini-batch đều bị xem là âm tính, mục tiêu một-một có thể tạo ra tín hiệu tối ưu chưa phù hợp. Semantic Matching là tiền đề gần với pha 1 của luận văn, trong đó các cặp cùng lớp được gán quan hệ mềm sau khi chuẩn hóa theo hàng, còn cặp ảnh-bệnh sử tương ứng vẫn giữ mức khớp cao nhất. Bảng \ref{tab:ch2_medvlm} đối chiếu các mô hình theo bộ mã hóa, mục tiêu học và vai trò đối với pipeline.
 
 \begin{table}[htbp]
 \centering
@@ -58,7 +58,7 @@ Trong dữ liệu bệnh lý, nhiều bệnh nhân cùng lớp có thể có cá
 \toprule
 \textbf{Mô hình} & \textbf{Bộ mã hóa ảnh} & \textbf{Bộ mã hóa văn bản} & \textbf{Mục tiêu hoặc cơ chế chính} & \textbf{Vai trò đối với pipeline đề xuất} \\
 \midrule
-ConVIRT \cite{ConVIRT} & ResNet-50 & BERT & Tương phản ảnh--văn bản hai chiều & Cơ sở cho học biểu diễn y khoa từ dữ liệu ghép cặp. \\
+ConVIRT \cite{ConVIRT} & ResNet-50 & BERT & Tương phản ảnh-văn bản hai chiều & Cơ sở cho học biểu diễn y khoa từ dữ liệu ghép cặp. \\
 \addlinespace
 GLoRIA \cite{GLoRIA} & ResNet-50 & BioClinicalBERT & Căn chỉnh toàn cục và cục bộ & Gợi ý rằng thông tin vùng ảnh và token văn bản có thể bổ sung cho biểu diễn toàn cục. \\
 \addlinespace
@@ -67,15 +67,15 @@ MedCLIP \cite{MedCLIP} & ResNet-50 hoặc Swin Transformer & BioClinicalBERT & S
 BiomedCLIP \cite{BiomedCLIP} & ViT-Base & PubMedBERT & Tiền huấn luyện tương phản trên PMC-15M & Backbone y sinh được kế thừa và thích nghi cho ảnh X-quang xương. \\
 \bottomrule
 \end{tabularx}
-\caption{So sánh các mô hình ngôn ngữ -- thị giác y khoa có liên quan trực tiếp.}
+\caption{So sánh các mô hình ngôn ngữ - thị giác y khoa có liên quan trực tiếp.}
 \label{tab:ch2_medvlm}
 \end{table}
 
 \subsection{Lý do kế thừa mô hình nền tảng thay vì huấn luyện từ đầu}
 
-Huấn luyện một mô hình đa phương thức từ đầu thường cần số lượng lớn cặp ảnh--văn bản và tài nguyên tính toán đáng kể. Trong bài toán u xương, số mẫu ở từng lớp có thể hạn chế và phân bố lớp không đồng đều. Kế thừa BiomedCLIP giúp bắt đầu từ các bộ mã hóa đã có khả năng biểu diễn ngôn ngữ và hình ảnh y sinh, sau đó chỉ thích nghi các thành phần cần thiết cho miền X-quang xương. Tuy vậy, tiền huấn luyện trên dữ liệu y sinh rộng không bảo đảm mô hình đã phù hợp với phân bố đích; vì vậy, thích nghi miền và đánh giá bằng các đối chứng vẫn là cần thiết.
+Huấn luyện một mô hình đa phương thức từ đầu thường cần số lượng lớn cặp ảnh-văn bản và tài nguyên tính toán đáng kể. Trong bài toán u xương, số mẫu ở từng lớp có thể hạn chế và phân bố lớp không đồng đều. Kế thừa BiomedCLIP giúp bắt đầu từ các bộ mã hóa đã có khả năng biểu diễn ngôn ngữ và hình ảnh y sinh, sau đó chỉ thích nghi các thành phần cần thiết cho miền X-quang xương. Tuy vậy, tiền huấn luyện trên dữ liệu y sinh rộng không bảo đảm mô hình đã phù hợp với phân bố đích; vì vậy, thích nghi miền và đánh giá bằng các đối chứng vẫn là cần thiết.
 
-Các mô hình đa phương thức sinh văn bản quy mô lớn phù hợp hơn với hội thoại, hỏi--đáp hoặc sinh báo cáo. Do luận văn tập trung vào phân loại đóng, phát hiện OOD và phân tích attention, nhóm mô hình này không được khảo sát như một nhánh chính. Flamingo \cite{Alayrac2022Flamingo} chỉ được nhắc lại ở phần sau như một ví dụ về cơ chế gom token thị giác, thay vì làm nền tảng cho tác vụ sinh văn bản.
+Các mô hình đa phương thức sinh văn bản quy mô lớn phù hợp hơn với hội thoại, hỏi-đáp hoặc sinh báo cáo. Do luận văn tập trung vào phân loại đóng, phát hiện OOD và phân tích attention, nhóm mô hình này không được khảo sát như một nhánh chính. Flamingo \cite{Alayrac2022Flamingo} chỉ được nhắc lại ở phần sau như một ví dụ về cơ chế gom token thị giác, thay vì làm nền tảng cho tác vụ sinh văn bản.
 
 \section{Biểu diễn ảnh độ phân giải cao và thông tin không gian}
 
@@ -105,7 +105,7 @@ Xử lý trực tiếp ảnh độ phân giải cao & Tăng kích thước ảnh
 \addlinespace
 Latent resampling & Nén tập token đầu vào vào số latent cố định & Kiểm soát độ dài chuỗi & Hiệu quả phụ thuộc dữ liệu và cách tối ưu truy vấn học được; đại diện bởi Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo}. \\
 \addlinespace
-Global--local với token cố định & Kết hợp ảnh toàn cục, các vùng cục bộ và tọa độ & Cân bằng ngữ cảnh, chi tiết và ngân sách token & Phụ thuộc vào quy tắc chọn vùng; cần đánh giá bằng ablation trên cùng dữ liệu. \\
+Global-local với token cố định & Kết hợp ảnh toàn cục, các vùng cục bộ và tọa độ & Cân bằng ngữ cảnh, chi tiết và ngân sách token & Phụ thuộc vào quy tắc chọn vùng; cần đánh giá bằng ablation trên cùng dữ liệu. \\
 \bottomrule
 \end{tabularx}
 \caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính.}
@@ -168,7 +168,7 @@ Pipeline đề xuất vì vậy sử dụng chú ý chéo hai chiều như một
 
 \subsection{Vai trò của hai pha huấn luyện}
 
-Pha 1 thích nghi hai bộ mã hóa và mô-đun token không gian bằng Semantic Matching trên cặp ảnh X-quang và bệnh sử; mô-đun dung hợp và đầu phân loại chưa tham gia vào pha này. Mục tiêu của pha 1 là điều chỉnh không gian ảnh--văn bản trước khi tối ưu trực tiếp cho phân loại. Pha 2 tiếp tục cập nhật các LoRA adapter và mô-đun token không gian, đồng thời bắt đầu tối ưu mô-đun chú ý chéo. Cách tách hai pha là một tổng hợp thiết kế từ học tương phản y khoa, PEFT và dung hợp token; nó không được xem là bản sao nguyên vẹn của một công trình đơn lẻ.
+Pha 1 thích nghi hai bộ mã hóa và mô-đun token không gian bằng Semantic Matching trên cặp ảnh X-quang và bệnh sử; mô-đun dung hợp và đầu phân loại chưa tham gia vào pha này. Mục tiêu của pha 1 là điều chỉnh không gian ảnh-văn bản trước khi tối ưu trực tiếp cho phân loại. Pha 2 tiếp tục cập nhật các LoRA adapter và mô-đun token không gian, đồng thời bắt đầu tối ưu mô-đun chú ý chéo. Cách tách hai pha là một tổng hợp thiết kế từ học tương phản y khoa, PEFT và dung hợp token; nó không được xem là bản sao nguyên vẹn của một công trình đơn lẻ.
 
 Việc tiếp tục tối ưu LoRA trong pha 2 cho phép gradient phân loại tác động đến biểu diễn của hai phương thức trong phạm vi hạng thấp. Ngược lại, nếu hợp nhất và đóng băng LoRA ngay sau pha 1, mô-đun dung hợp phải thích nghi với một backbone cố định. Hai chiến lược này cần được so sánh trên cùng thiết lập để đánh giá vai trò của việc thích nghi liên tục.
 
@@ -187,7 +187,7 @@ Sau khi chuẩn hóa $L_2$, logit của mẫu $z$ đối với lớp $k$ đượ
     \ell_k(z) = \alpha\,
     \frac{z^{\top}c_k}{\lVert z\rVert_2\lVert c_k\rVert_2}.
 \end{equation}
-Các centroid là thống kê của tập huấn luyện, được lưu như buffer và không được optimizer cập nhật như tham số tự do. Khi encoder thay đổi, centroid được ước lượng lại từ embedding train. Vì vậy, pipeline không sử dụng Prototypical Loss dạng pull--push và cũng không cần episodic training để học prototype. Bảng \ref{tab:ch2_centroid} làm rõ sự khác biệt giữa centroid thực nghiệm và các dạng đại diện lớp có nhận gradient.
+Các centroid là thống kê của tập huấn luyện, được lưu như buffer và không được optimizer cập nhật như tham số tự do. Khi encoder thay đổi, centroid được ước lượng lại từ embedding train. Vì vậy, pipeline không sử dụng Prototypical Loss dạng pull-push và cũng không cần episodic training để học prototype. Bảng \ref{tab:ch2_centroid} làm rõ sự khác biệt giữa centroid thực nghiệm và các dạng đại diện lớp có nhận gradient.
 
 \begin{table}[htbp]
 \centering
@@ -201,7 +201,7 @@ Linear head & Trọng số học được cho từng lớp & Tối ưu bằng gr
 \addlinespace
 Prototype học được & Vector lớp là tham số tự do & Tối ưu trực tiếp bằng loss phân loại hoặc metric loss & Có thể lệch khỏi trung bình embedding train nếu không có ràng buộc. \\
 \addlinespace
-Prototypical Networks \cite{Snell2017ProtoNet} & Trung bình support set trong từng episode & Episodic training trên support--query & Nền tảng của phân loại theo prototype trong few-shot. \\
+Prototypical Networks \cite{Snell2017ProtoNet} & Trung bình support set trong từng episode & Episodic training trên support-query & Nền tảng của phân loại theo prototype trong few-shot. \\
 \addlinespace
 SimpleShot \cite{Wang2019SimpleShot} & Mẫu support trong one-shot hoặc trung bình lớp trong multi-shot & Không dùng meta-learning; biến đổi đặc trưng trước phân loại láng giềng & Tiền đề gần với phân loại theo tâm lớp trên đặc trưng chuẩn hóa. \\
 \addlinespace
@@ -230,7 +230,7 @@ trong đó các trọng số được chuẩn hóa trên những lớp hiện di
 
 \subsection{Bài toán và nguyên tắc đánh giá}
 
-Phát hiện OOD nhằm gán một điểm bất thường cho mẫu không phù hợp với phân phối huấn luyện. Dữ liệu thuộc phân phối (In-Distribution -- ID) nhưng khó vẫn có thể bị phân loại sai, trong khi một mẫu OOD đôi khi vẫn nhận logit cao ở một lớp đã biết. Vì vậy, xác suất dự đoán không nên được xem như bảo đảm về độ tin cậy.
+Phát hiện OOD nhằm gán một điểm bất thường cho mẫu không phù hợp với phân phối huấn luyện. Dữ liệu thuộc phân phối (In-Distribution - ID) nhưng khó vẫn có thể bị phân loại sai, trong khi một mẫu OOD đôi khi vẫn nhận logit cao ở một lớp đã biết. Vì vậy, xác suất dự đoán không nên được xem như bảo đảm về độ tin cậy.
 
 Với điểm OOD $s(x)$ được quy ước càng lớn càng bất thường, ngưỡng từ chối phải được lựa chọn trên tập hiệu chỉnh độc lập với tập kiểm thử. Việc dùng mẫu OOD test để chọn phương pháp, tham số hoặc ngưỡng có thể làm sai lệch đánh giá. Pipeline khảo sát song song nhóm điểm dựa trên đầu ra và nhóm điểm dựa trên không gian đặc trưng; kết quả cuối cùng được báo cáo bằng AUROC, AUPR-Out và FPR@95TPR theo các kịch bản OOD được xác định trước. Trong quy ước đánh giá của luận văn, FPR@95TPR là tỷ lệ mẫu OOD bị chấp nhận nhầm như ID khi tỷ lệ chấp nhận đúng mẫu ID được giữ ở mức 95\%.
 
@@ -252,11 +252,11 @@ Lee và cộng sự \cite{Lee2018MahalanobisOOD} mô hình hóa đặc trưng th
     s_{\mathrm{Maha}}(z)=
     \min_k (z-c_k)^{\top}\Sigma^{-1}(z-c_k).
 \end{equation}
-Cách viết này khác với giả định một ma trận $\Sigma_k$ riêng cho từng lớp. Hiệp phương sai dùng chung giúp giảm số lượng đại lượng cần ước lượng khi một số lớp có ít mẫu; pipeline còn sử dụng shrinkage Ledoit--Wolf \cite{LedoitWolf2004} khi ước lượng để cải thiện tính ổn định số.
+Cách viết này khác với giả định một ma trận $\Sigma_k$ riêng cho từng lớp. Hiệp phương sai dùng chung giúp giảm số lượng đại lượng cần ước lượng khi một số lớp có ít mẫu; pipeline còn sử dụng shrinkage Ledoit-Wolf \cite{LedoitWolf2004} khi ước lượng để cải thiện tính ổn định số.
 
 Deep k-Nearest Neighbors \cite{Sun2022KNN} sử dụng khoảng cách đến các embedding train gần nhất và không cần giả định Gaussian. Trong luận văn, các vector được chuẩn hóa và khoảng cách cosine trung bình tới $k$ láng giềng gần nhất được dùng làm điểm OOD. Phương pháp này linh hoạt hơn về hình dạng phân bố nhưng cần lưu tập đặc trưng tham chiếu và có chi phí truy vấn theo kích thước tập train nếu không dùng chỉ mục gần đúng.
 
-Đối với mô hình ngôn ngữ -- thị giác, MCM \cite{Ming2022MCM} sử dụng độ tương đồng giữa ảnh và các khái niệm văn bản để phát hiện OOD zero-shot. Theo hướng tương tự, mã nguồn hỗ trợ khoảng cách đến các mốc văn bản của lớp ID. Tuy nhiên, phương pháp này chưa thuộc protocol OOD được khóa cho thí nghiệm chính, nên được xem là hướng mở rộng; muốn báo cáo như một kết quả kiểm định, cần bổ sung nó vào protocol và xác định trước cách xây dựng prompt, tập hiệu chỉnh và siêu tham số. Bảng \ref{tab:ch2_ood} tổng hợp tín hiệu đầu vào và giả định của từng nhóm điểm OOD.
+Đối với mô hình ngôn ngữ - thị giác, MCM \cite{Ming2022MCM} sử dụng độ tương đồng giữa ảnh và các khái niệm văn bản để phát hiện OOD zero-shot. Theo hướng tương tự, mã nguồn hỗ trợ khoảng cách đến các mốc văn bản của lớp ID. Tuy nhiên, phương pháp này chưa thuộc protocol OOD được khóa cho thí nghiệm chính, nên được xem là hướng mở rộng; muốn báo cáo như một kết quả kiểm định, cần bổ sung nó vào protocol và xác định trước cách xây dựng prompt, tập hiệu chỉnh và siêu tham số. Bảng \ref{tab:ch2_ood} tổng hợp tín hiệu đầu vào và giả định của từng nhóm điểm OOD.
 
 \begin{table}[htbp]
 \centering
@@ -278,7 +278,7 @@ Mahalanobis \cite{Lee2018MahalanobisOOD} & Tâm lớp và hiệp phương sai & 
 \addlinespace
 Cosine-kNN \cite{Sun2022KNN} & Láng giềng trong tập train & Phi tham số, không giả định dạng cụm & Điểm khoảng cách bổ sung cho Mahalanobis. \\
 \addlinespace
-Mốc văn bản \cite{Ming2022MCM} & Tương đồng ảnh--khái niệm & Phụ thuộc prompt và khả năng căn chỉnh VLM & Hướng mở rộng đã được mã nguồn hỗ trợ nhưng chưa nằm trong protocol chính. \\
+Mốc văn bản \cite{Ming2022MCM} & Tương đồng ảnh-khái niệm & Phụ thuộc prompt và khả năng căn chỉnh VLM & Hướng mở rộng đã được mã nguồn hỗ trợ nhưng chưa nằm trong protocol chính. \\
 \bottomrule
 \end{tabularx}
 \caption{Các nhóm điểm OOD có liên quan đến pipeline đánh giá.}
@@ -303,11 +303,11 @@ Trong XBone-Net, attention từ nhánh văn bản đến token ảnh có thể �
 \midrule
 Grad-CAM \cite{Selvaraju2017GradCAM} & Gradient và activation & Bản đồ theo lớp cho mạng tích chập & Không trùng trực tiếp với attention của mô hình đa phương thức. \\
 \addlinespace
-Attention trực tiếp & Trọng số giữa query và token & Thuận tiện để khảo sát tương tác ảnh--văn bản & Không mặc nhiên phản ánh đóng góp nhân quả \cite{Jain2019AttentionNotExplanation}. \\
+Attention trực tiếp & Trọng số giữa query và token & Thuận tiện để khảo sát tương tác ảnh-văn bản & Không mặc nhiên phản ánh đóng góp nhân quả \cite{Jain2019AttentionNotExplanation}. \\
 \addlinespace
 Attention rollout / flow \cite{Abnar2020AttentionFlow} & Attention qua nhiều tầng & Theo dõi sự truyền thông tin giữa các lớp Transformer & Vẫn là phép xấp xỉ hậu xử lý. \\
 \addlinespace
-Định lượng trên vùng tổn thương & Attention đã chiếu về ảnh và chú thích vùng & Cho phép so sánh với tỷ lệ diện tích khi có annotation & Phụ thuộc chất lượng chú thích và phép chiếu token--pixel; chưa báo cáo cho CTCH khi thiếu chú thích vùng. \\
+Định lượng trên vùng tổn thương & Attention đã chiếu về ảnh và chú thích vùng & Cho phép so sánh với tỷ lệ diện tích khi có annotation & Phụ thuộc chất lượng chú thích và phép chiếu token-pixel; chưa báo cáo cho CTCH khi thiếu chú thích vùng. \\
 \bottomrule
 \end{tabularx}
 \caption{Các hướng trực quan hóa và giới hạn diễn giải.}
@@ -318,7 +318,7 @@ Attention rollout / flow \cite{Abnar2020AttentionFlow} & Attention qua nhiều t
 
 \subsection{Những điểm đã được hỗ trợ bởi nghiên cứu trước}
 
-Tổng quan cho thấy từng thành phần của pipeline đều có tiền đề trong các nhánh nghiên cứu hiện có. MedCLIP và BiomedCLIP hỗ trợ hướng căn chỉnh rồi thích nghi mô hình ngôn ngữ -- thị giác y khoa. TieNet, IRENE và FTB cung cấp các ví dụ về tương tác ảnh--văn bản. LoRA tạo cơ sở cho thích nghi hạng thấp. Prototypical Networks và SimpleShot cung cấp góc nhìn về phân loại theo đại diện lớp, trong khi class-balanced loss điều chỉnh mức đóng góp không đồng đều giữa các lớp. Các phương pháp Mahalanobis, kNN, Energy và MCM cung cấp những điểm OOD có giả định bổ sung cho nhau.
+Tổng quan cho thấy từng thành phần của pipeline đều có tiền đề trong các nhánh nghiên cứu hiện có. MedCLIP và BiomedCLIP hỗ trợ hướng căn chỉnh rồi thích nghi mô hình ngôn ngữ - thị giác y khoa. TieNet, IRENE và FTB cung cấp các ví dụ về tương tác ảnh-văn bản. LoRA tạo cơ sở cho thích nghi hạng thấp. Prototypical Networks và SimpleShot cung cấp góc nhìn về phân loại theo đại diện lớp, trong khi class-balanced loss điều chỉnh mức đóng góp không đồng đều giữa các lớp. Các phương pháp Mahalanobis, kNN, Energy và MCM cung cấp những điểm OOD có giả định bổ sung cho nhau.
 
 Tuy vậy, kết quả từ các công trình này không trực tiếp chứng minh hiệu quả của tổ hợp cụ thể trên dữ liệu u xương. Phần lớn nghiên cứu sử dụng X-quang ngực, CT, ảnh mô bệnh học hoặc bộ dữ liệu tự nhiên; loại văn bản và phân bố lớp cũng khác nhau. Do đó, mỗi quyết định của XBone-Net cần được đánh giá bằng baseline và ablation trên cùng cách chia dữ liệu.
 
@@ -355,6 +355,6 @@ Phân tích vùng chú ý & Grad-CAM và attention flow \cite{Selvaraju2017GradC
 
 \subsection{Cơ sở hình thành pipeline đề xuất}
 
-Từ các phân tích trên, pipeline được xây dựng theo hai pha. Pha 1 thích nghi BiomedCLIP bằng LoRA và Semantic Matching trên cặp ảnh X-quang--bệnh sử lâm sàng; mô-đun token không gian thuộc nhánh thị giác cũng nhận gradient trong pha này. Pha 2 tiếp tục cập nhật LoRA và mô-đun token không gian, đồng thời tối ưu chú ý chéo hai chiều; empirical centroid được ước lượng từ embedding train và Cross-Entropy được tái trọng số theo số mẫu hiệu dụng. Sau huấn luyện, Mahalanobis và kNN được khớp trên đặc trưng train, còn các điểm dựa trên logit được tính trực tiếp từ đầu ra mô hình; ngưỡng của từng phương pháp được hiệu chỉnh trên validation. Attention được trích xuất như một tín hiệu phân tích, chiếu về ảnh nguồn và đánh giá trên vùng tổn thương khi có chú thích.
+Từ các phân tích trên, pipeline được xây dựng theo hai pha. Pha 1 thích nghi BiomedCLIP bằng LoRA và Semantic Matching trên cặp ảnh X-quang-bệnh sử lâm sàng; mô-đun token không gian thuộc nhánh thị giác cũng nhận gradient trong pha này. Pha 2 tiếp tục cập nhật LoRA và mô-đun token không gian, đồng thời tối ưu chú ý chéo hai chiều; empirical centroid được ước lượng từ embedding train và Cross-Entropy được tái trọng số theo số mẫu hiệu dụng. Sau huấn luyện, Mahalanobis và kNN được khớp trên đặc trưng train, còn các điểm dựa trên logit được tính trực tiếp từ đầu ra mô hình; ngưỡng của từng phương pháp được hiệu chỉnh trên validation. Attention được trích xuất như một tín hiệu phân tích, chiếu về ảnh nguồn và đánh giá trên vùng tổn thương khi có chú thích.
 
 Thiết kế này không giả định rằng mọi thành phần đều mang lại cải thiện trong mọi điều kiện. Vai trò của từng thành phần được chuyển thành các câu hỏi nghiên cứu và được kiểm tra bằng mốc đối chứng, thí nghiệm loại bỏ thành phần, chỉ số macro, đánh giá OOD và phân tích attention; chỉ số định vị chỉ được tính khi có chú thích vùng phù hợp. Kiến trúc, hàm mục tiêu và quy trình đánh giá cụ thể được trình bày trong Chương 3.

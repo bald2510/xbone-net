@@ -74,6 +74,42 @@ Ngoài học tương phản, các hướng tiếp cận khác bao gồm \textbf{
 
 Song song với các Med-VLMs, sự phát triển của các mô hình ngôn ngữ lớn (LLMs) đa phương thức như Med-Flamingo \cite{moor_2023_medflamingo}, LLaVA-Med \cite{li_2023_llavamed} hay Med-PaLM M \cite{MED-PALM-M} đã cho thấy tiềm năng trong các tác vụ hội thoại và hỗ trợ ra quyết định y khoa. Tuy nhiên, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác (hallucination). Do đó, đối với các bài toán phân loại chuyên biệt như phân loại ảnh X-quang xương, việc sử dụng các mô hình ngôn ngữ -- thị giác chuyên dụng kết hợp tinh chỉnh hiệu quả tham số thường phù hợp và hiệu quả hơn.
 
+\section{Biểu diễn ảnh độ phân giải cao và thông tin không gian}
+
+\subsection{Giới hạn của phép co giãn ảnh toàn cục}
+
+Các backbone ViT được tiền huấn luyện thường sử dụng kích thước đầu vào cố định. Khi toàn bộ ảnh X-quang có kích thước lớn được co về một ảnh nhỏ, cấu trúc tổng thể vẫn được duy trì nhưng một số chi tiết cục bộ có thể bị làm mờ. Ngược lại, đưa trực tiếp ảnh độ phân giải cao vào Transformer làm tăng số token và chi phí attention. FPT \cite{FPT} xem xét bài toán chuyển giao trên ảnh y khoa độ phân giải cao và sử dụng lựa chọn token cùng mạng nhánh để giảm yêu cầu bộ nhớ. Mặc dù cơ chế của FPT khác pipeline trong luận văn, công trình này cho thấy cần xem xét đồng thời độ chi tiết và chi phí tính toán khi thích nghi mô hình nền tảng cho ảnh y khoa.
+
+Một hướng khác là chuyển tập đặc trưng đầu vào lớn thành ngân sách latent cố định. Perceiver \cite{Jaegle2021Perceiver} sử dụng attention bất đối xứng để ánh xạ đầu vào có số phần tử lớn vào một tập latent nhỏ. Flamingo \cite{Alayrac2022Flamingo} sử dụng Perceiver Resampler để tạo số token thị giác cố định trước khi kết nối với mô hình ngôn ngữ. Các nghiên cứu này cung cấp cơ sở khái niệm cho việc kiểm soát ngân sách token, nhưng không đồng nghĩa với việc pipeline của luận văn sử dụng learned queries giống Perceiver.
+
+\subsection{Kết hợp ngữ cảnh toàn cục và vùng cục bộ}
+
+Đối với ảnh X-quang xương, nhánh toàn cục hỗ trợ duy trì vị trí giải phẫu và cấu trúc chung, trong khi các vùng cục bộ giữ lại thông tin chi tiết ở độ phân giải đầu vào của backbone. Tuy nhiên, nếu chỉ gom trung bình các token cục bộ, mô hình có thể mất thông tin về vị trí tương đối của từng vùng. Vì vậy, tọa độ đã chuẩn hóa có thể được bổ sung vào token trước khi dung hợp, với hệ số điều khiển để thông tin vị trí không lấn át nội dung ảnh.
+
+Pipeline cuối cùng sử dụng một ảnh toàn cục (\textit{global view}) và bốn ảnh cục bộ (\textit{local view}) được chọn theo chiến lược chọn thưa có trọng tâm (\textit{sparse-focal}) chỉ từ tín hiệu ảnh. Mỗi vùng cục bộ đóng góp CLS token và token tóm tắt patch; tám token được truyền trực tiếp qua mô-đun không gian có bổ sung tọa độ. Cách thiết kế này gần với một ngân sách token xác định hơn là một bộ resampler dùng truy vấn học được. Hiệu quả của toàn bộ nhánh ảnh độ phân giải cao cần được kiểm chứng bằng thí nghiệm loại bỏ thành phần, thay vì được giả định từ các công trình dùng kiến trúc khác. Nếu cần tách riêng đóng góp của tọa độ, quy trình thực nghiệm phải bổ sung một cấu hình chỉ tắt thành phần này trong khi giữ nguyên cách chọn vùng. Những đánh đổi chính được tổng hợp trong Bảng \ref{tab:ch2_high_resolution}.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{L{2.6cm} L{3.0cm} X X}
+\toprule
+\textbf{Chiến lược} & \textbf{Đặc điểm} & \textbf{Khả năng đáp ứng} & \textbf{Hạn chế cần xem xét} \\
+\midrule
+Co giãn ảnh toàn cục & Một ảnh được đưa về kích thước cố định & Chi phí thấp, duy trì bố cục tổng thể & Có thể làm giảm chi tiết cục bộ nhỏ. \\
+\addlinespace
+Xử lý trực tiếp ảnh độ phân giải cao & Tăng kích thước ảnh hoặc số patch & Giữ nhiều chi tiết hơn & Tăng bộ nhớ và chi phí attention; FPT \cite{FPT} xem xét sự đánh đổi này. \\
+\addlinespace
+Latent resampling & Nén tập token đầu vào vào số latent cố định & Kiểm soát độ dài chuỗi & Hiệu quả phụ thuộc dữ liệu và cách tối ưu truy vấn học được; đại diện bởi Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo}. \\
+\addlinespace
+Global--local với token cố định & Kết hợp ảnh toàn cục, các vùng cục bộ và tọa độ & Cân bằng ngữ cảnh, chi tiết và ngân sách token & Phụ thuộc vào quy tắc chọn vùng; cần đánh giá bằng ablation trên cùng dữ liệu. \\
+\bottomrule
+\end{tabularx}
+\caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính.}
+\label{tab:ch2_high_resolution}
+\end{table}
+
+
 \section{Các kỹ thuật tinh chỉnh hiệu quả tham số}
 
 Sự xuất hiện của các Mô hình Nền tảng (Foundation Models) nói chung và Mô hình Ngôn ngữ -- Thị giác Y sinh (Med-VLMs) nói riêng đã mang lại một nền tảng tri thức đa phương thức khổng lồ. Tuy nhiên, để triển khai hiệu quả các mô hình này vào các bài toán lâm sàng đặc thù, quá trình chuyển giao tri thức là bắt buộc.
@@ -211,19 +247,19 @@ Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu 
 
 Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên việc kế thừa mô hình BiomedCLIP \cite{BiomedCLIP} kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Các lựa chọn thiết kế cụ thể được đưa ra dựa trên phân tích sau:
 
-\textbf{Về kỹ thuật tinh chỉnh:} Kỹ thuật QLoRA được lựa chọn thay vì tinh chỉnh toàn phần hoặc các phương pháp tinh chỉnh hiệu quả tham số khác, vì ba lý do chính:
+\textbf{Về kỹ thuật tinh chỉnh:} Kỹ thuật LoRA được lựa chọn thay vì tinh chỉnh toàn phần hoặc các phương pháp tinh chỉnh hiệu quả tham số khác, vì ba lý do chính:
 \begin{itemize}
-  \item QLoRA giảm số lượng tham số cần huấn luyện xuống đáng kể bằng cách tiêm các ma trận phân rã hạng thấp vào mạng nơ-ron, cho phép tinh chỉnh các mô hình VLM ngay cả khi nguồn lực tính toán bị hạn chế.
-  \item Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số của QLoRA có thể được cộng gộp trực tiếp vào trọng số gốc, giúp không tăng độ trễ trong lúc suy luận.
-  \item QLoRA cho phép mô hình bám sát dữ liệu y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát đã được tiền huấn luyện.
+  \item LoRA giảm số lượng tham số cần huấn luyện xuống đáng kể bằng cách tiêm các ma trận phân rã hạng thấp vào mạng nơ-ron, cho phép tinh chỉnh các mô hình VLM ngay cả khi nguồn lực tính toán bị hạn chế.
+  \item Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số của LoRA có thể được cộng gộp trực tiếp vào trọng số gốc, giúp không tăng độ trễ trong lúc suy luận.
+  \item LoRA cho phép mô hình bám sát dữ liệu y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát đã được tiền huấn luyện.
 \end{itemize}
 
-\textbf{Về phương pháp phát hiện OOD:} Luận văn kết hợp Prototypical Loss \cite{} và Mahalanobis Distance theo cơ chế hai giai đoạn tách biệt. Trong giai đoạn huấn luyện, Prototypical Loss được sử dụng để xây dựng không gian đặc trưng có tính phân biệt cao thông qua việc giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế post-hoc để phát hiện dữ liệu ngoài phân phối. Mahalanobis được lựa chọn thay vì Euclidean hoặc Cosine vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, phản ánh chính xác hơn mức độ bất thường của mẫu, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
+\textbf{Về phương pháp phát hiện OOD:} Luận văn kết hợp Weighted CE Loss và Mahalanobis Distance theo cơ chế hai giai đoạn tách biệt. Trong giai đoạn huấn luyện, Weighted CE Loss được sử dụng để tối ưu hóa việc phân loại. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế post-hoc để phát hiện dữ liệu ngoài phân phối. Mahalanobis được lựa chọn thay vì Euclidean hoặc Cosine vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, phản ánh chính xác hơn mức độ bất thường của mẫu, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
 
 \textbf{Về kiến trúc pipeline:} Hệ thống được thiết kế theo kiến trúc hai giai đoạn :
 \begin{itemize}
-  \item \textbf{Giai đoạn 1 -- Căn chỉnh tương phản:} Chỉ huấn luyện backbone (BiomedCLIP thông qua LoRA) bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
-  \item \textbf{Giai đoạn 2 -- Huấn luyện dung hợp và phân loại:} Trọng số nền của BiomedCLIP được giữ đóng băng, trong khi các adapter LoRA, spatial resampler và mô-đun dung hợp cross-attention tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
+  \item \textbf{Giai đoạn 1 - Căn chỉnh tương phản:} Chỉ huấn luyện backbone (BiomedCLIP thông qua LoRA) bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
+  \item \textbf{Giai đoạn 2 - Huấn luyện dung hợp và phân loại:} Trọng số nền của BiomedCLIP được giữ đóng băng, trong khi các adapter LoRA, spatial resampler và mô-đun dung hợp cross-attention tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
 \end{itemize}
 
 Kiến trúc chi tiết của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày trong Chương 3.
