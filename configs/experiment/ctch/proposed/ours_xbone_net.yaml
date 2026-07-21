@@ -19,7 +19,7 @@ model:
   freeze_backbone: true
   # Four sparse-focal tiles each contribute one pretrained CLS token and a 2x2
   # pooled patch grid, preserving more local spatial detail (5 x 4 = 20 tokens).
-  num_visual_tokens: 20
+  num_visual_tokens: 30
   local_pool_grid: 2
   include_local_cls_token: true
   contrastive_local_weight: 0.25
