@@ -3,3 +3,4 @@ params:
   feature_dim: 512
   num_classes: 10
   scale: 15.0
+  use_class_bias: false

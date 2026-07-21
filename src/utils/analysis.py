@@ -93,7 +93,12 @@ def _absolute_dataset_paths(cfg: DictConfig) -> None:
 
 
 def compose_source_config(seed: int) -> DictConfig:
-    """Compose only the canonical CTCH proposed experiment."""
+    """Compose the locked legacy CTCH checkpoint architecture.
+
+    The trainable proposed config may evolve, but existing post-hoc archives and
+    checkpoints must remain reproducible.  These explicit overrides preserve the
+    architecture and training metadata used by the locked v1 checkpoints.
+    """
     if int(seed) not in SOURCE_SEEDS:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
@@ -111,6 +116,21 @@ def compose_source_config(seed: int) -> DictConfig:
             ],
         )
     OmegaConf.set_struct(cfg, False)
+    cfg.experiment_name = SOURCE_EXPERIMENT
+    cfg.model.num_visual_tokens = 8
+    cfg.model.local_pool_grid = 1
+    for key in ("contrastive_pooling", "contrastive_attention_hidden_dim"):
+        if key in cfg.model:
+            del cfg.model[key]
+    if "use_class_bias" in cfg.model.classifier.params:
+        del cfg.model.classifier.params["use_class_bias"]
+    cfg.params.phase1.target_similarity = 0.95
+    if "class_aware_sampling" in cfg.params.phase1:
+        del cfg.params.phase1["class_aware_sampling"]
+    cfg.params.phase2.loss.label_smoothing = 0.0
+    cfg.params.phase2.loss.effective_num_beta = 0.999
+    if "max_class_weight" in cfg.params.phase2.loss:
+        del cfg.params.phase2.loss["max_class_weight"]
     _absolute_dataset_paths(cfg)
     cfg.params.model_dir = str(locked_checkpoint_path(seed).parent)
     cfg.params.phase2.checkpoint_path = str(locked_checkpoint_path(seed))

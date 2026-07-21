@@ -4,6 +4,7 @@ import torch
 
 from src.models.backbone.biomedclip import (
     BiomedCLIPFoundation,
+    GlobalGuidedAttentionPool,
     SpatialTokenResampler,
 )
 
@@ -50,6 +51,23 @@ def _make_backbone(use_checkpointing=True):
 
 
 class LocalTileGradientTests(unittest.TestCase):
+    def test_attention_pool_starts_as_masked_mean(self):
+        pooler = GlobalGuidedAttentionPool(dim=3, hidden_dim=2)
+        global_feature = torch.tensor([[1.0, 0.0, 0.0]])
+        local_features = torch.tensor(
+            [[[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [9.0, 9.0, 9.0]]]
+        )
+        valid = torch.tensor([[True, True, False]])
+
+        output = pooler(global_feature, local_features, valid)
+
+        torch.testing.assert_close(
+            output, local_features[:, :2].mean(dim=1)
+        )
+        torch.testing.assert_close(
+            pooler.last_attention, torch.tensor([[0.5, 0.5, 0.0]])
+        )
+
     def test_pooling_can_preserve_cls_with_one_patch_summary(self):
         backbone = _make_backbone(use_checkpointing=False)
         backbone.local_pool_grid = 1

@@ -49,6 +49,54 @@ class _ResamplerLayer(nn.Module):
         return queries, weights
 
 
+class GlobalGuidedAttentionPool(nn.Module):
+    """Pool local visual tokens with a global-conditioned attention gate.
+
+    The final scorer is initialized to zero so the module starts as an exact
+    masked mean.  Training can then learn to emphasize informative local tokens
+    without introducing an abrupt change at initialization.
+    """
+
+    def __init__(self, dim: int = 512, hidden_dim: int = 128) -> None:
+        super().__init__()
+        if dim < 1 or hidden_dim < 1:
+            raise ValueError("dim and hidden_dim must be positive.")
+        self.local_projection = nn.Linear(dim, hidden_dim, bias=False)
+        self.global_projection = nn.Linear(dim, hidden_dim, bias=False)
+        self.score = nn.Linear(hidden_dim, 1, bias=False)
+        nn.init.zeros_(self.score.weight)
+        self.last_attention: Optional[torch.Tensor] = None
+
+    def forward(
+        self,
+        global_feature: torch.Tensor,
+        local_features: torch.Tensor,
+        valid_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        if global_feature.ndim != 2 or local_features.ndim != 3:
+            raise ValueError(
+                "Attention pooling expects global [B,D] and local [B,N,D] features."
+            )
+        if global_feature.shape != (
+            local_features.size(0),
+            local_features.size(2),
+        ):
+            raise ValueError("Global and local feature dimensions are incompatible.")
+        if valid_mask.shape != local_features.shape[:2]:
+            raise ValueError("valid_mask must have shape [B,N].")
+        valid_mask = valid_mask.to(device=local_features.device, dtype=torch.bool)
+        if torch.any(valid_mask.sum(dim=1) == 0):
+            raise ValueError("Each sample requires at least one valid local token.")
+
+        local_hidden = self.local_projection(local_features)
+        global_hidden = self.global_projection(global_feature).unsqueeze(1)
+        scores = self.score(torch.tanh(local_hidden + global_hidden)).squeeze(-1)
+        scores = scores.masked_fill(~valid_mask, torch.finfo(scores.dtype).min)
+        attention = torch.softmax(scores, dim=1)
+        self.last_attention = attention.detach()
+        return torch.sum(attention.unsqueeze(-1) * local_features, dim=1)
+
+
 class SpatialTokenResampler(nn.Module):
     """Adapt local patch tokens to a bounded coordinate-aware visual sequence.
 
@@ -233,6 +281,22 @@ class BiomedCLIPFoundation(nn.Module):
         self.contrastive_local_weight = float(
             kwargs.get("contrastive_local_weight", 0.25)
         )
+        self.contrastive_pooling = str(
+            kwargs.get("contrastive_pooling", "mean")
+        ).lower()
+        if self.contrastive_pooling not in {"mean", "attention"}:
+            raise ValueError(
+                "contrastive_pooling must be either 'mean' or 'attention'."
+            )
+        if self.contrastive_pooling == "attention":
+            self.contrastive_local_pooler = GlobalGuidedAttentionPool(
+                dim=512,
+                hidden_dim=int(
+                    kwargs.get("contrastive_attention_hidden_dim", 128)
+                ),
+            )
+        else:
+            self.contrastive_local_pooler = None
         self.tile_encode_chunk_size = int(kwargs.get("tile_encode_chunk_size", 32))
         self.local_tile_grad_enabled = bool(
             kwargs.get("local_tile_grad_enabled", True)
@@ -617,10 +681,17 @@ class BiomedCLIPFoundation(nn.Module):
             valid = ~padding_mask[:, 1:].to(
                 device=local_features.device, dtype=torch.bool
             )
-        weights = valid.unsqueeze(-1).to(local_features.dtype)
-        local_summary = (local_features * weights).sum(dim=1) / weights.sum(
-            dim=1
-        ).clamp_min(1.0)
+        if self.contrastive_local_pooler is not None:
+            local_summary = self.contrastive_local_pooler(
+                global_feature,
+                local_features,
+                valid,
+            )
+        else:
+            weights = valid.unsqueeze(-1).to(local_features.dtype)
+            local_summary = (local_features * weights).sum(dim=1) / weights.sum(
+                dim=1
+            ).clamp_min(1.0)
         local_summary = F.normalize(local_summary, dim=-1, eps=1e-6)
         return F.normalize(
             global_feature + self.contrastive_local_weight * local_summary,

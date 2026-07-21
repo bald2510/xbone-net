@@ -82,6 +82,25 @@ class EmpiricalCentroidTests(unittest.TestCase):
         torch.testing.assert_close(restored.centroid_counts, torch.tensor([4, 5]))
         torch.testing.assert_close(restored.centroids, source.centroids)
 
+    def test_optional_class_bias_adjusts_boundaries(self):
+        head = EmpiricalCentroidHead(
+            feature_dim=2,
+            num_classes=2,
+            scale=1.0,
+            use_class_bias=True,
+        )
+        head.set_centroids(
+            torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+            torch.tensor([2, 2]),
+        )
+        with torch.no_grad():
+            head.class_bias.copy_(torch.tensor([-0.5, 0.5]))
+
+        logits = head(torch.tensor([[1.0, 0.0]]))
+
+        torch.testing.assert_close(logits, torch.tensor([[0.5, 0.5]]))
+        self.assertEqual(tuple(head.class_bias.shape), (2,))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -159,6 +159,8 @@ def compute_class_weights(
         raise ValueError(
             "Cannot compute class weights from an empty training subset."
         )
+    if not np.isfinite(max_class_weight) or max_class_weight <= 0:
+        raise ValueError("max_class_weight must be finite and positive.")
     if np.any(class_ids < 0) or np.any(class_ids >= num_classes):
         invalid = np.unique(
             class_ids[(class_ids < 0) | (class_ids >= num_classes)]
@@ -187,9 +189,6 @@ def compute_class_weights(
         raw_weights[present_mask] = class_counts.sum() / (
             present_count * class_counts[present_mask]
         )
-        raw_weights[present_mask] = np.minimum(
-            raw_weights[present_mask], float(max_class_weight)
-        )
     else:
         raise ValueError(
             f"Unknown class weight_type='{weight_type}'. "
@@ -202,6 +201,12 @@ def compute_class_weights(
             "Class-weight computation produced invalid present-class weights."
         )
     raw_weights[present_mask] *= present_mask.sum() / present_weight_sum
+    # Cap final relative weights after mean-one normalization. PyTorch's
+    # weighted cross-entropy is invariant to a common scale, so re-normalizing
+    # after clipping is unnecessary and could violate the requested cap again.
+    raw_weights[present_mask] = np.minimum(
+        raw_weights[present_mask], float(max_class_weight)
+    )
     return raw_weights, class_counts, missing_classes
 
 
@@ -284,6 +289,7 @@ def run_phase1(
         )
     loss_type_p1 = p1_cfg.get("loss_type", "semantic_matching")
     p1_report_type = p1_cfg.get("p1_report_type", "clinical")
+    class_aware_sampling = dict(p1_cfg.get("class_aware_sampling", {}) or {})
 
     print("\n" + "=" * 60)
     print("PHASE 1: MULTIMODAL CONTRASTIVE ALIGNMENT (backbone only)")
@@ -319,6 +325,7 @@ def run_phase1(
             int(cfg.dataset.batch_size) * gradient_accumulation_p1
         ),
         "contrastive_in_batch_size": int(cfg.dataset.batch_size),
+        "class_aware_sampling": class_aware_sampling,
         "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
     })
     logger_p1.log_model_summary(model)
@@ -404,6 +411,7 @@ def run_phase1(
         optimizers=(optimizer_p1, None),
         phase="phase1",
         p1_report_type=p1_report_type,
+        class_aware_sampling=class_aware_sampling,
     )
 
     if device.type == "cuda":
@@ -611,7 +619,10 @@ def run_phase2(
             )
 
         if weight_type == "effective_num":
-            print(f"  [Loss] Effective-number class weights (beta={beta}):")
+            print(
+                "  [Loss] Effective-number class weights "
+                f"(beta={beta}, cap={max_weight}):"
+            )
         else:
             print(f"  [Loss] Inverse-frequency class weights (cap={max_weight}):")
 

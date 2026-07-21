@@ -12,6 +12,7 @@ Supports xray, clinical, or dual-report text embedding configurations.
 from dataclasses import dataclass
 import torch
 import torch.nn as nn
+from torch.utils.data import Sampler, Subset
 from transformers import Trainer
 import torchvision.transforms.functional as F_t
 
@@ -39,6 +40,129 @@ def resolve_pad_token_id(tokenizer) -> int:
         return pad_token_id
     # --- Fallback: use EOS token for GPT-style tokenizers ---
     return getattr(hf_tokenizer, "eos_token_id", 0) or 0
+
+
+def _sampler_class_ids(dataset) -> torch.Tensor:
+    """Extract integer class IDs without loading images or reports."""
+    if isinstance(dataset, Subset):
+        parent = _sampler_class_ids(dataset.dataset)
+        indices = torch.as_tensor(dataset.indices, dtype=torch.long)
+        return parent[indices]
+    if hasattr(dataset, "df") and "class_id" in dataset.df.columns:
+        return torch.as_tensor(
+            dataset.df["class_id"].to_numpy(), dtype=torch.long
+        )
+    for attribute in ("labels", "targets"):
+        if hasattr(dataset, attribute):
+            labels = torch.as_tensor(getattr(dataset, attribute))
+            if labels.ndim > 1:
+                labels = labels.argmax(dim=-1)
+            return labels.long().reshape(-1)
+    raise AttributeError(
+        "Class-aware sampling requires df['class_id'], labels, targets, or a Subset."
+    )
+
+
+class ClassAwareSampler(Sampler[int]):
+    """Arrange indices so each full physical batch contains same-class pairs.
+
+    This sampler is intended for Phase-1 in-batch semantic matching.  It keeps
+    the epoch length unchanged while sampling classes approximately uniformly.
+    Samples may repeat across batches, but are drawn without replacement within
+    a pair whenever a class contains at least two examples.
+    """
+
+    def __init__(
+        self,
+        dataset,
+        batch_size: int,
+        samples_per_class: int = 2,
+        seed: int = 42,
+    ) -> None:
+        if batch_size < 2:
+            raise ValueError("Class-aware sampling requires batch_size >= 2.")
+        if samples_per_class < 2 or samples_per_class > batch_size:
+            raise ValueError(
+                "samples_per_class must be between 2 and batch_size."
+            )
+        self.dataset = dataset
+        self.batch_size = int(batch_size)
+        self.samples_per_class = int(samples_per_class)
+        self.seed = int(seed)
+        self.epoch = 0
+        labels = _sampler_class_ids(dataset)
+        if labels.numel() != len(dataset):
+            raise ValueError("Extracted labels do not match the dataset length.")
+        self.class_to_indices = {
+            int(class_id): torch.nonzero(
+                labels == class_id, as_tuple=False
+            ).flatten()
+            for class_id in torch.unique(labels, sorted=True).tolist()
+        }
+        if len(self.class_to_indices) < 2:
+            raise ValueError("Class-aware sampling requires at least two classes.")
+        self.classes = torch.tensor(
+            sorted(self.class_to_indices), dtype=torch.long
+        )
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def set_epoch(self, epoch: int) -> None:
+        self.epoch = int(epoch)
+
+    def __iter__(self):
+        generator = torch.Generator()
+        generator.manual_seed(self.seed + self.epoch)
+        sequence: list[int] = []
+        remaining_total = len(self.dataset)
+
+        while remaining_total > 0:
+            current_batch = min(self.batch_size, remaining_total)
+            pair_groups = current_batch // self.samples_per_class
+            selected: list[int] = []
+
+            if pair_groups:
+                replace_classes = pair_groups > len(self.classes)
+                if replace_classes:
+                    class_positions = torch.randint(
+                        len(self.classes),
+                        (pair_groups,),
+                        generator=generator,
+                    )
+                else:
+                    class_positions = torch.randperm(
+                        len(self.classes), generator=generator
+                    )[:pair_groups]
+
+                for position in class_positions.tolist():
+                    class_id = int(self.classes[position])
+                    candidates = self.class_to_indices[class_id]
+                    if len(candidates) >= self.samples_per_class:
+                        chosen = candidates[
+                            torch.randperm(len(candidates), generator=generator)[
+                                : self.samples_per_class
+                            ]
+                        ]
+                    else:
+                        chosen = candidates[
+                            torch.randint(
+                                len(candidates),
+                                (self.samples_per_class,),
+                                generator=generator,
+                            )
+                        ]
+                    selected.extend(int(index) for index in chosen.tolist())
+
+            while len(selected) < current_batch:
+                selected.append(
+                    int(torch.randint(len(self.dataset), (1,), generator=generator))
+                )
+            order = torch.randperm(len(selected), generator=generator).tolist()
+            sequence.extend(selected[index] for index in order)
+            remaining_total -= current_batch
+
+        return iter(sequence)
 
 
 # ============================================================
@@ -278,6 +402,7 @@ class SFTrainer(Trainer):
 
     def __init__(self, phase, loss_fn, use_text_in_p2=True,
                  p1_report_type="xray", p2_report_type="clinical",
+                 class_aware_sampling=None,
                  *args, **kwargs):
         """Initialize the SFTrainer adapter.
 
@@ -290,12 +415,27 @@ class SFTrainer(Trainer):
             *args: Positional arguments forwarded to Trainer.
             **kwargs: Keyword arguments forwarded to Trainer.
         """
-        super().__init__(*args, **kwargs)
         self.phase = phase
+        self.class_aware_sampling = dict(class_aware_sampling or {})
+        super().__init__(*args, **kwargs)
         self.loss_fn = loss_fn
         self.use_text_in_p2 = use_text_in_p2
         self.p1_report_type = p1_report_type
         self.p2_report_type = p2_report_type
+
+    def _get_train_sampler(self, train_dataset=None):
+        dataset = train_dataset if train_dataset is not None else self.train_dataset
+        enabled = bool(self.class_aware_sampling.get("enabled", False))
+        if self.phase == "phase1" and enabled and dataset is not None:
+            return ClassAwareSampler(
+                dataset=dataset,
+                batch_size=int(self.args.train_batch_size),
+                samples_per_class=int(
+                    self.class_aware_sampling.get("samples_per_class", 2)
+                ),
+                seed=int(self.class_aware_sampling.get("seed", self.args.seed)),
+            )
+        return super()._get_train_sampler(train_dataset)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         """Compute training loss for Phase 1 or Phase 2.

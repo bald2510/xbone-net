@@ -718,6 +718,25 @@ def smoke_one_experiment(
             result.trainable_fusion = trainable_count(model.fusion)
             result.trainable_head = trainable_count(model.head)
 
+            # The production training loop estimates empirical centroids from
+            # the complete labelled training split before the first Phase-2
+            # forward pass.  A smoke test deliberately uses only one tiny
+            # batch, so install deterministic, non-degenerate centroids here
+            # to exercise the classifier (including an optional class bias)
+            # without pretending that the batch is a valid estimate.
+            if (
+                classifier_type == "empirical_centroid"
+                and hasattr(model.head, "set_centroids")
+            ):
+                stage = "initialize_smoke_centroids"
+                centroids = torch.randn(
+                    num_classes,
+                    int(model.head.feature_dim),
+                    device=device,
+                )
+                counts = torch.ones(num_classes, dtype=torch.long, device=device)
+                model.head.set_centroids(centroids, counts)
+
             p2_cfg = cfg.params.phase2
             loss_cfg = p2_cfg.get("loss", {}) or {}
             phase2_loss_fn = api["build_phase2_loss"](

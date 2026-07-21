@@ -10,9 +10,9 @@ import torch.nn.functional as F
 class EmpiricalCentroidHead(nn.Module):
     """Classify embeddings by cosine similarity to train-set class means.
 
-    Unlike a learnable prototype head, the centroids in this module are buffers:
-    they are estimated from labelled training embeddings and are never updated by
-    the optimizer.
+    The centroids are train-set buffers rather than optimizer parameters.  An
+    optional learnable class bias can calibrate argmax boundaries without
+    discarding the centroid geometry or changing within-class score rankings.
     """
 
     def __init__(
@@ -20,6 +20,7 @@ class EmpiricalCentroidHead(nn.Module):
         feature_dim: int = 512,
         num_classes: int = 14,
         scale: float = 15.0,
+        use_class_bias: bool = False,
         eps: float = 1e-8,
     ) -> None:
         super().__init__()
@@ -33,7 +34,13 @@ class EmpiricalCentroidHead(nn.Module):
         self.feature_dim = int(feature_dim)
         self.num_classes = int(num_classes)
         self.scale = float(scale)
+        self.use_class_bias = bool(use_class_bias)
         self.eps = float(eps)
+
+        if self.use_class_bias:
+            self.class_bias = nn.Parameter(torch.zeros(self.num_classes))
+        else:
+            self.register_parameter("class_bias", None)
 
         self.register_buffer(
             "centroids", torch.zeros(self.num_classes, self.feature_dim)
@@ -106,6 +113,8 @@ class EmpiricalCentroidHead(nn.Module):
         normed_features = F.normalize(features, dim=-1, eps=self.eps)
         normed_centroids = F.normalize(self.centroids, dim=-1, eps=self.eps)
         logits = self.scale * (normed_features @ normed_centroids.T)
+        if self.class_bias is not None:
+            logits = logits + self.class_bias
         if return_features:
             return logits, features
         return logits

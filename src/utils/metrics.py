@@ -6,11 +6,9 @@ Computes standard classification metrics for XBone-Net evaluation:
   - Multi-label pathology detection: Macro AUROC, F1, Hamming loss, per-class metrics
   - Paired bootstrap resampling: 95% confidence interval estimation (10,000 resamples)
 
-Per-class metrics use HuggingFace evaluate and scikit-learn for aggregation.
+Per-class metrics use scikit-learn for both per-class and aggregate values.
 """
 
-import sys
-import os
 import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import (
@@ -18,25 +16,6 @@ from sklearn.metrics import (
     precision_score, recall_score, roc_auc_score, average_precision_score,
     hamming_loss,
 )
-
-# ============================================================
-# HuggingFace Evaluate Package Import Isolation
-# ============================================================
-
-# Temporarily remove project root from sys.path so that ``import evaluate``
-# resolves to the HuggingFace ``evaluate`` package rather than a local
-# module with the same name.
-_sys_path = list(sys.path)
-try:
-    if "" in sys.path:
-        sys.path.remove("")
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    if root_dir in sys.path:
-        sys.path.remove(root_dir)
-    import evaluate
-finally:
-    sys.path = _sys_path
-
 
 # ============================================================
 # Robust Safe Helper Functions
@@ -302,13 +281,6 @@ def compute_metrics(
         Dictionary of aggregated metrics including auroc_macro, f1_macro,
         accuracy, sensitivity, specificity, and precision.
     """
-    # --- Load HuggingFace evaluation metrics ---
-    accuracy_metric = evaluate.load("accuracy")
-    precision_metric = evaluate.load("precision")
-    recall_metric = evaluate.load("recall")
-    f1_metric = evaluate.load("f1")
-    roc_auc_metric = evaluate.load("roc_auc")
-
     auroc_per_class: dict[str, float] = {}
     f1_per_class: dict[str, float] = {}
     per_class_results: list[dict] = []
@@ -330,11 +302,11 @@ def compute_metrics(
         print(f"TN: {tn}, FP: {fp}, FN: {fn}, TP: {tp}")
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
 
-        acc = accuracy_metric.compute(predictions=preds, references=gt_labels)["accuracy"]
-        prec = precision_metric.compute(predictions=preds, references=gt_labels)["precision"]
-        rec = recall_metric.compute(predictions=preds, references=gt_labels)["recall"]
-        f1 = f1_metric.compute(predictions=preds, references=gt_labels)["f1"]
-        auroc = roc_auc_metric.compute(prediction_scores=probs, references=gt_labels)["roc_auc"]
+        acc = accuracy_score(gt_labels, preds)
+        prec = precision_score(gt_labels, preds, zero_division=0)
+        rec = recall_score(gt_labels, preds, zero_division=0)
+        f1 = f1_score(gt_labels, preds, zero_division=0)
+        auroc = roc_auc_score(gt_labels, probs)
 
         auroc_per_class[path] = float(auroc)
         f1_per_class[path] = float(f1)

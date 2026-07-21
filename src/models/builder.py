@@ -147,6 +147,10 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             single_view_pool_shape=cfg.get('single_view_pool_shape', None),
             include_local_cls_token=cfg.get('include_local_cls_token', False),
             contrastive_local_weight=cfg.get('contrastive_local_weight', 0.25),
+            contrastive_pooling=cfg.get('contrastive_pooling', 'mean'),
+            contrastive_attention_hidden_dim=cfg.get(
+                'contrastive_attention_hidden_dim', 128
+            ),
             tile_encode_chunk_size=cfg.get('tile_encode_chunk_size', 32),
             local_tile_grad_enabled=cfg.get('local_tile_grad_enabled', True),
             local_tile_gradient_checkpointing=cfg.get(
