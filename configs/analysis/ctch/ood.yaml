@@ -27,10 +27,16 @@ scenarios:
     primary: true
   domain_ood:
     archive: "fracatlas_test"
-    feature_key: "visual_global_embeddings"
+    feature_key: "fused_embeddings"
     primary_methods: [mahalanobis, knn]
     primary: true
-    rationale: "Visual density scores are primary; fused-logit confidence scores are secondary because target report schema and label space differ."
+    rationale: "Mahalanobis and kNN operate on the trained bidirectional fused representation, which combines the global image token, high-resolution local image tokens, and clinical-text tokens."
+  domain_ood_btxrd:
+    archive: "btxrd_test"
+    feature_key: "fused_embeddings"
+    primary_methods: [mahalanobis, knn]
+    primary: true
+    rationale: "BTXRD is evaluated as multimodal cross-dataset OOD with Mahalanobis and kNN on the trained bidirectional fused representation. Results must be interpreted with the synthetic clinical_v2 report schema in mind."
   report_mismatch_cross_class:
     archive: "report_mismatch_cross_class"
     feature_key: "fused_embeddings"

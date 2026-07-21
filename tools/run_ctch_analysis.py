@@ -49,8 +49,22 @@ LOCKED_REPRESENTATION_SPACES = [
 OOD_ARCHIVES = {
     "semantic_ood": "ctch_ood",
     "domain_ood": "fracatlas_test",
+    "domain_ood_btxrd": "btxrd_test",
     "report_mismatch_cross_class": "report_mismatch_cross_class",
     "report_mismatch_same_class": "report_mismatch_same_class",
+}
+
+# The locked CTCH OOD protocol evaluates the representation learned by the
+# bidirectional fusion module.  This vector contains global image evidence,
+# high-resolution local image evidence, and clinical-text evidence.  Keep the
+# mapping in the runner (rather than trusting an arbitrary command-line/config
+# value) so a resumed analysis cannot silently fall back to a visual-only key.
+OOD_FEATURE_KEYS = {
+    "semantic_ood": "fused_embeddings",
+    "domain_ood": "fused_embeddings",
+    "domain_ood_btxrd": "fused_embeddings",
+    "report_mismatch_cross_class": "fused_embeddings",
+    "report_mismatch_same_class": "fused_embeddings",
 }
 
 
@@ -83,6 +97,13 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
         if str(ood_cfg.scenarios[scenario].archive) != archive:
             raise ValueError(
                 f"OOD scenario {scenario!r} must use archive {archive!r}."
+            )
+        configured_feature = str(ood_cfg.scenarios[scenario].feature_key)
+        expected_feature = OOD_FEATURE_KEYS[scenario]
+        if configured_feature != expected_feature:
+            raise ValueError(
+                f"OOD scenario {scenario!r} must use feature_key "
+                f"{expected_feature!r}, got {configured_feature!r}."
             )
 
     expected_explain = {
@@ -209,6 +230,13 @@ def _ood_result_status(
     mahalanobis = payload.get("results", {}).get("mahalanobis", {})
     if mahalanobis.get("score_definition") != MAHALANOBIS_SCORE_DEFINITION:
         return False, "Mahalanobis result metadata is stale"
+    expected_feature_key = OOD_FEATURE_KEYS[scenario]
+    if payload.get("feature_key") != expected_feature_key:
+        return (
+            False,
+            "OOD representation changed from "
+            f"{payload.get('feature_key')!r} to {expected_feature_key!r}",
+        )
     recorded_hashes = payload.get("feature_archive_sha256")
     expected_hashes = _expected_ood_feature_hashes(seed, scenario)
     if recorded_hashes != expected_hashes:
@@ -348,6 +376,16 @@ def main() -> None:
         )
     if args.table:
         aggregate_existing(args.seeds, args.ood_scenarios)
+        if "domain_ood_btxrd" in args.ood_scenarios:
+            _run(
+                [
+                    sys.executable,
+                    str(ROOT / "tools" / "export_btxrd_ood_confusions.py"),
+                    "--seeds",
+                    *[str(seed) for seed in args.seeds],
+                ],
+                "BTXRD OOD CASE AUDIT",
+            )
         return
 
     print("+----------------------------------------------------------------+")
@@ -440,7 +478,7 @@ def main() -> None:
                         "--ood-embeddings",
                         str(_feature_path(seed, str(scenario_cfg.archive))),
                         "--feature-key",
-                        str(scenario_cfg.feature_key),
+                        OOD_FEATURE_KEYS[scenario],
                         "--methods",
                         *[str(value) for value in ood_cfg.methods],
                         "--primary-methods",
@@ -527,6 +565,20 @@ def main() -> None:
                 raise
 
     aggregate_existing(args.seeds, args.ood_scenarios)
+    if (
+        "ood" in args.analyses
+        and "domain_ood_btxrd" in args.ood_scenarios
+        and not args.feature_only
+    ):
+        _run(
+            [
+                sys.executable,
+                str(ROOT / "tools" / "export_btxrd_ood_confusions.py"),
+                "--seeds",
+                *[str(seed) for seed in args.seeds],
+            ],
+            "BTXRD OOD CASE AUDIT",
+        )
     if failures:
         failure_path = analysis_root() / "failures.json"
         failure_path.write_text(

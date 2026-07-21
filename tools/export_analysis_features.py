@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.datasets.analysis import CTCHOODDataset, ReportMismatchDataset
+from src.datasets.btxrd import BTXRD_CLASS_NAMES, BTXRDDataset
 from src.datasets.ctch import CTCHDataset
 from src.datasets.fracatlas import (
     FRACATLAS_IMAGE_RESOLVER_VERSION,
@@ -38,6 +39,7 @@ SCENARIOS = (
     "ctch_test",
     "ctch_ood",
     "fracatlas_test",
+    "btxrd_test",
     "report_mismatch_cross_class",
     "report_mismatch_same_class",
 )
@@ -55,6 +57,47 @@ def _ctch_dataset(loaded, split: str) -> CTCHDataset:
         tokenizer=loaded.model.backbone.tokenizer_obj,
         **params,
     )
+
+
+def _btxrd_coverage(dataset: BTXRDDataset) -> dict[str, Any]:
+    """Validate BTXRD test inputs before domain-OOD feature extraction."""
+    image_root = Path(dataset.img_dir)
+    xray_root = Path(dataset.xray_dir)
+    clinical_root = Path(dataset.clinical_dir)
+    image_ids = dataset.df["image_id"].astype(str).tolist()
+
+    missing_images = []
+    missing_xray_reports = []
+    missing_clinical_reports = []
+    for image_id in image_ids:
+        stem = Path(image_id).stem
+        if not (image_root / image_id).is_file():
+            missing_images.append(image_id)
+        if not (xray_root / f"{stem}.txt").is_file():
+            missing_xray_reports.append(image_id)
+        if not (clinical_root / f"{stem}.txt").is_file():
+            missing_clinical_reports.append(image_id)
+
+    coverage = {
+        "rows": int(len(image_ids)),
+        "resolved_images": int(len(image_ids) - len(missing_images)),
+        "missing_images": int(len(missing_images)),
+        "present_xray_reports": int(len(image_ids) - len(missing_xray_reports)),
+        "missing_xray_reports": int(len(missing_xray_reports)),
+        "present_clinical_reports": int(
+            len(image_ids) - len(missing_clinical_reports)
+        ),
+        "missing_clinical_reports": int(len(missing_clinical_reports)),
+        "clinical_report_subdir": Path(dataset.clinical_dir).name,
+    }
+    if missing_images or missing_xray_reports or missing_clinical_reports:
+        raise FileNotFoundError(
+            "BTXRD domain-OOD coverage is incomplete: "
+            f"missing_images={len(missing_images)}, "
+            f"missing_xray_reports={len(missing_xray_reports)}, "
+            f"missing_clinical_reports={len(missing_clinical_reports)}."
+        )
+    return coverage
 
 
 def build_scenario_dataset(
@@ -103,15 +146,45 @@ def build_scenario_dataset(
             allow_truncated_images=True,
         )
         return MetadataDataset(dataset, scenario), {
-            "primary_feature": "visual_global_embeddings",
+            "primary_feature": "fused_embeddings",
             "coverage": dataset.coverage,
             "fracatlas_image_resolver_version": (
                 FRACATLAS_IMAGE_RESOLVER_VERSION
             ),
             "note": (
-                "Domain-OOD inference exports fused values for diagnostics, but the "
-                "pre-registered primary analysis uses visual_global_embeddings to "
-                "avoid report-schema and label-space confounding."
+                "Domain-OOD inference uses the trained bidirectional fused "
+                "representation of global/local image evidence and clinical text."
+            ),
+        }
+
+    if scenario == "btxrd_test":
+        dataset = BTXRDDataset(
+            img_dir=str(ROOT / "data" / "BTXRD" / "images"),
+            report_dir=str(ROOT / "data" / "BTXRD" / "reports"),
+            clinical_subdir="clinical_v2",
+            csv_split_path=str(ROOT / "data" / "BTXRD" / "btxrd-split.csv"),
+            csv_labels_path=str(ROOT / "data" / "BTXRD" / "btxrd-labels.csv"),
+            classes=list(BTXRD_CLASS_NAMES),
+            task_type="multiclass",
+            split="test",
+            transform=loaded.model.backbone.preprocess,
+            tokenizer=loaded.model.backbone.tokenizer_obj,
+            high_res=high_res,
+        )
+        coverage = _btxrd_coverage(dataset)
+        return MetadataDataset(dataset, scenario), {
+            "primary_feature": "fused_embeddings",
+            "coverage": coverage,
+            "ood_dataset": "BTXRD",
+            "ood_split": "test",
+            "ood_class_names": list(BTXRD_CLASS_NAMES),
+            "report_schema": "synthetic_clinical_v2",
+            "note": (
+                "BTXRD is a separate cross-dataset OOD source combining acquisition-"
+                "domain shift with a tumor-oriented label-space shift; its normal "
+                "class partially overlaps CTCH semantics. The primary multimodal "
+                "analysis uses the trained global/local image and clinical-text fused "
+                "representation; the synthetic report schema remains a limitation."
             ),
         }
 
@@ -151,8 +224,20 @@ def _can_resume(path: Path, loaded, scenario: str) -> bool:
     )
     if not matches_locked_source:
         return False
-    if scenario == "fracatlas_test":
+    if scenario in {"fracatlas_test", "btxrd_test"}:
         coverage = provenance.get("coverage", {})
+        if scenario == "btxrd_test":
+            return (
+                provenance.get("ood_dataset") == "BTXRD"
+                and provenance.get("ood_split") == "test"
+                and int(coverage.get("rows", -1))
+                == int(provenance.get("sample_count", -2))
+                and int(coverage.get("resolved_images", -1))
+                == int(provenance.get("sample_count", -2))
+                and int(coverage.get("missing_images", -1)) == 0
+                and int(coverage.get("missing_xray_reports", -1)) == 0
+                and int(coverage.get("missing_clinical_reports", -1)) == 0
+            )
         return (
             int(provenance.get("fracatlas_image_resolver_version", -1))
             == FRACATLAS_IMAGE_RESOLVER_VERSION

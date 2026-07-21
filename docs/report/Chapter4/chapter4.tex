@@ -470,14 +470,20 @@ của BTXRD và CTCH; các tập huấn luyện và đánh giá không được 
 \subsection{OOD hậu xử lý}
 \label{subsec:ood_postprocessing}
 
-\textbf{Thiết kế phương pháp.} Phân tích OOD không huấn luyện lại mô hình phân loại mà sử dụng trọng số của CTCH ở ba hạt giống. Các bộ phát hiện được sử dụng dựa trên đặc trưng gồm khoảng cách Mahalanobis tới tâm lớp gần nhất và cosine kNN với $k=5$; các bộ phát hiện dựa trên đầu ra gồm MSP, entropy chuẩn hóa, energy với $T=1$ và negative max-logit. Thống kê của bộ phát hiện đặc trưng được ước lượng từ CTCH train. Ngưỡng vận hành được hiệu chỉnh chỉ trên CTCH validation-ID sao cho tỷ lệ từ chối ID xấp xỉ 5\%, sau đó được khóa trước khi đánh giá.
+\textbf{Thiết kế phương pháp.} Phân tích OOD không huấn luyện lại mô hình phân loại mà sử dụng trọng số của CTCH ở ba hạt giống. Các bộ phát hiện dựa trên đặc trưng gồm khoảng cách Mahalanobis tới tâm lớp gần nhất và cosine kNN với $k=5$. Hai phương pháp này sử dụng biểu diễn fused đã được huấn luyện, trong đó token ảnh toàn cục, các token ảnh cục bộ độ phân giải cao và các token bệnh sử được kết hợp bằng cross-attention hai chiều trước khi chiếu qua fusion MLP. Các bộ phát hiện dựa trên đầu ra gồm MSP, entropy chuẩn hóa, energy với $T=1$ và negative max-logit. Thống kê của bộ phát hiện đặc trưng được ước lượng từ CTCH train. Ngưỡng vận hành được hiệu chỉnh chỉ trên CTCH validation-ID sao cho tỷ lệ từ chối ID xấp xỉ 5\%, sau đó được khóa trước khi đánh giá.
 
 \textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm đánh giá liệu các điểm hậu xử lý có thể tách mẫu ngoài phân phối khỏi mẫu thuộc phân phối huấn luyện mà không thay đổi bộ phân loại hay không. Ba dạng sai lệch được xem xét riêng gồm khác biệt ngữ nghĩa bệnh, dịch chuyển miền ảnh và sự không nhất quán giữa ảnh với bệnh sử. Cách tách scenario này hạn chế việc quy mọi trường hợp bất thường về một nguồn sai lệch duy nhất.
 
 \textbf{Dữ liệu và độ đo.} Tập ID gồm CTCH train để khớp bộ phát hiện, CTCH
 validation để hiệu chỉnh ngưỡng và CTCH test để đánh giá. Semantic OOD sử dụng
-archive \texttt{ctch\_ood}; domain OOD sử dụng FracAtlas, trong đó Mahalanobis và
-kNN trên đặc trưng thị giác là phân tích chính; report mismatch được tạo bằng
+archive \texttt{ctch\_ood}; domain OOD sử dụng riêng tập kiểm thử FracAtlas và
+750 mẫu thuộc tập kiểm thử BTXRD. Với cả hai nguồn domain OOD, Mahalanobis và
+kNN trên biểu diễn fused ảnh--bệnh sử là phân tích chính. BTXRD được xem như một nguồn
+OOD khác bộ dữ liệu, kết hợp dịch chuyển miền thu nhận với thay đổi không gian
+nhãn theo các bệnh lý u xương; riêng lớp bình thường có ngữ nghĩa giao một phần
+với CTCH. Vì bệnh sử \texttt{clinical\_v2} của BTXRD là văn bản tổng hợp, kết quả
+trên nguồn này được diễn giải như khả năng phát hiện OOD đa phương thức, không
+được dùng làm bằng chứng riêng cho dịch chuyển miền ảnh. Report mismatch được tạo bằng
 cách ghép ảnh với bệnh sử khác lớp, còn ghép cùng lớp là phân tích phụ. Hai độ đo
 chính là AUROC-OOD và FPR@95\% ID-TPR; khoảng tin cậy bootstrap 95\% được tính
 với $B=2.000$ lần lấy mẫu lại. AUROC-OOD cao hơn và FPR@95\% thấp hơn biểu thị
@@ -940,9 +946,10 @@ lợi ích của phương pháp này cần được cân nhắc cùng chi phí t
 
 \subsection{OOD hậu xử lý}
 
-Bảng~\ref{tab:ood_canonical_results} tổng hợp các phương pháp chính trong ba
-kịch bản OOD trên mô hình XBone-Net đã huấn luyện. Với domain OOD, bảng chỉ đưa
-vào Mahalanobis và kNN theo giao thức đánh giá chính.
+Bảng~\ref{tab:ood_canonical_results} tổng hợp các phương pháp chính trong bốn
+kịch bản OOD trên mô hình XBone-Net đã huấn luyện. Domain OOD được báo cáo riêng
+cho FracAtlas và BTXRD; bảng chỉ đưa Mahalanobis và kNN trên biểu diễn fused
+ảnh--bệnh sử vào hai kịch bản này theo giao thức đánh giá chính.
 
 \begin{table}[H]
 \centering
@@ -960,9 +967,12 @@ vào Mahalanobis và kNN theo giao thức đánh giá chính.
 & Entropy     & $0{.}5719\pm0{.}0072$ & $0{.}9394\pm0{.}0347$ \\ \cline{2-4}
 & Energy      & $0{.}5962\pm0{.}0232$ & $0{.}9242\pm0{.}0131$ \\ \cline{2-4}
 & Max-logit   & $0{.}5968\pm0{.}0235$ & $0{.}9242\pm0{.}0131$ \\ \hline
-\multirow{2}{3.0cm}{Domain OOD}
-& \textbf{Mahalanobis} & $\mathbf{0{.}7389\pm0{.}0127}$ & $\mathbf{0{.}7107\pm0{.}0374}$ \\ \cline{2-4}
-& kNN         & $0{.}6812\pm0{.}0134$ & $0{.}7966\pm0{.}0393$ \\ \hline
+\multirow{2}{3.0cm}{Domain OOD--FracAtlas}
+& \textbf{Mahalanobis} & $\mathbf{0{.}8906\pm0{.}0236}$ & $\mathbf{0{.}4633\pm0{.}0840}$ \\ \cline{2-4}
+& kNN         & $0{.}8353\pm0{.}0173$ & $0{.}6253\pm0{.}0640$ \\ \hline
+\multirow{2}{3.0cm}{Cross-dataset OOD--BTXRD}
+& \textbf{Mahalanobis} & $\mathbf{0{.}8429\pm0{.}0208}$ & $\mathbf{0{.}6533\pm0{.}0335}$ \\ \cline{2-4}
+& kNN         & $0{.}7843\pm0{.}0140$ & $0{.}7831\pm0{.}0104$ \\ \hline
 \multirow{6}{3.0cm}{Bệnh sử không tương hợp khác lớp}
 & Mahalanobis & $0{.}7106\pm0{.}0091$ & $0{.}8032\pm0{.}0238$ \\ \cline{2-4}
 & \textbf{kNN} & $\mathbf{0{.}7412\pm0{.}0119}$ & $\mathbf{0{.}7519\pm0{.}0312}$ \\ \cline{2-4}
@@ -977,9 +987,16 @@ vào Mahalanobis và kNN theo giao thức đánh giá chính.
 \end{table}
 
 Mahalanobis có kết quả cao nhất trong semantic OOD, nhưng AUROC-OOD chỉ đạt
-$0{.}6070$ và FPR@95\% vẫn ở mức $0{.}8939$. Đối với domain OOD, Mahalanobis đạt
-AUROC-OOD $0{.}7389$ và FPR@95\% $0{.}7107$, tốt hơn kNN trong hai phương pháp
-chính nhưng tỷ lệ chấp nhận nhầm OOD còn cao. Trong trường hợp bệnh sử không
+$0{.}6070$ và FPR@95\% vẫn ở mức $0{.}8939$. Với FracAtlas, Mahalanobis đạt
+AUROC-OOD $0{.}8906\pm0{.}0236$ và FPR@95\% $0{.}4633\pm0{.}0840$, tốt hơn
+kNN trong hai phương pháp chính. Trên BTXRD, Mahalanobis đạt AUROC-OOD
+$0{.}8429\pm0{.}0208$ và FPR@95\% $0{.}6533\pm0{.}0335$; kNN đạt lần lượt
+$0{.}7843\pm0{.}0140$ và $0{.}7831\pm0{.}0104$. Các kết quả này cho thấy biểu
+diễn fused chứa tín hiệu hữu ích để nhận biết thay đổi đồng thời trong ảnh và
+bệnh sử. Tuy nhiên, do BTXRD chứa lớp bình thường giao với CTCH, các lớp u xương
+ngoài không gian nhãn và bệnh sử tổng hợp theo một lược đồ riêng, mức phân tách
+cao hơn không thể được quy hoàn toàn cho khả năng phát hiện dịch chuyển miền
+ảnh. Trong trường hợp bệnh sử không
 tương hợp khác lớp, kNN đạt kết quả tốt nhất với AUROC-OOD $0{.}7412$ và
 FPR@95\% $0{.}7519$. Đối
 chứng ghép bệnh sử cùng lớp khó phân biệt hơn; kNN chỉ đạt AUROC-OOD

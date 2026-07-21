@@ -41,7 +41,8 @@ from src.utils.ood import (
 
 SCENARIO_FEATURES = {
     "semantic_ood": "fused_embeddings",
-    "domain_ood": "visual_global_embeddings",
+    "domain_ood": "fused_embeddings",
+    "domain_ood_btxrd": "fused_embeddings",
     "report_mismatch_cross_class": "fused_embeddings",
     "report_mismatch_same_class": "fused_embeddings",
 }
@@ -106,10 +107,28 @@ def _validate_archive(
                 "FracAtlas domain-OOD archive lacks complete fail-closed image/report "
                 "coverage. Re-export fracatlas_test features with the current loader."
             )
+    if expected_scenario == "btxrd_test":
+        coverage = provenance.get("coverage", {})
+        if (
+            provenance.get("ood_dataset") != "BTXRD"
+            or provenance.get("ood_split") != "test"
+            or int(coverage.get("rows", -1)) != count
+            or int(coverage.get("resolved_images", -1)) != count
+            or int(coverage.get("missing_images", -1)) != 0
+            or int(coverage.get("missing_xray_reports", -1)) != 0
+            or int(coverage.get("missing_clinical_reports", -1)) != 0
+        ):
+            raise ValueError(
+                "BTXRD domain-OOD archive lacks complete fail-closed image/report "
+                "coverage. Re-export btxrd_test features with the current loader."
+            )
+
+    if expected_scenario in {"fracatlas_test", "btxrd_test"}:
         visual = arrays.get("visual_global_embeddings")
         if visual is None:
             raise ValueError(
-                "FracAtlas domain-OOD archive has no visual_global_embeddings."
+                f"{expected_scenario} domain-OOD archive has no "
+                "visual_global_embeddings."
             )
         max_pairwise_from_first = float(
             np.linalg.norm(
@@ -118,7 +137,7 @@ def _validate_archive(
         )
         if max_pairwise_from_first <= 1e-6:
             raise ValueError(
-                "FracAtlas visual-global features are effectively constant. "
+                f"{expected_scenario} visual-global features are effectively constant. "
                 "This usually indicates repeated fallback images; refusing to "
                 "report domain-OOD metrics."
             )
@@ -362,6 +381,7 @@ def main() -> None:
         {
             "semantic_ood": "ctch_ood",
             "domain_ood": "fracatlas_test",
+            "domain_ood_btxrd": "btxrd_test",
             "report_mismatch_cross_class": "report_mismatch_cross_class",
             "report_mismatch_same_class": "report_mismatch_same_class",
         }[args.scenario],
@@ -421,7 +441,7 @@ def main() -> None:
         if args.primary_methods is not None
         else (
             ["mahalanobis", "knn"]
-            if args.scenario == "domain_ood"
+            if args.scenario.startswith("domain_ood")
             else list(args.methods)
         )
     )

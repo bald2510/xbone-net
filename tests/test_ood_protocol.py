@@ -4,7 +4,12 @@ from pathlib import Path
 
 import numpy as np
 
-from evaluate_ood import _validate_archive, align_paired_id, run_protocol
+from evaluate_ood import (
+    SCENARIO_FEATURES,
+    _validate_archive,
+    align_paired_id,
+    run_protocol,
+)
 from src.datasets.fracatlas import FRACATLAS_IMAGE_RESOLVER_VERSION
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
@@ -18,9 +23,32 @@ from src.utils.ood import (
     calibrate_ood_threshold,
     evaluate_ood,
 )
+from tools.run_ctch_analysis import OOD_FEATURE_KEYS
 
 
 class OODProtocolTests(unittest.TestCase):
+    def test_domain_ood_defaults_to_trained_multimodal_fusion(self):
+        self.assertEqual(SCENARIO_FEATURES["domain_ood"], "fused_embeddings")
+        self.assertEqual(
+            SCENARIO_FEATURES["domain_ood_btxrd"], "fused_embeddings"
+        )
+        self.assertEqual(set(OOD_FEATURE_KEYS.values()), {"fused_embeddings"})
+
+    def test_semantic_and_report_mismatch_use_multimodal_fusion(self):
+        scenarios = (
+            "semantic_ood",
+            "report_mismatch_cross_class",
+            "report_mismatch_same_class",
+        )
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario):
+                self.assertEqual(
+                    SCENARIO_FEATURES[scenario], "fused_embeddings"
+                )
+                self.assertEqual(
+                    OOD_FEATURE_KEYS[scenario], "fused_embeddings"
+                )
+
     def test_scores_use_higher_as_more_ood(self):
         logits_id = np.asarray([[8.0, 0.0], [0.0, 7.0]])
         logits_ood = np.asarray([[0.1, 0.0], [0.0, 0.1]])
@@ -136,6 +164,41 @@ class OODProtocolTests(unittest.TestCase):
         }
         with self.assertRaises(ValueError):
             _validate_archive(constant, complete, 42, "fracatlas_test")
+
+    def test_btxrd_domain_archive_requires_complete_coverage(self):
+        arrays = {
+            "labels": np.asarray([0, 1]),
+            "logits": np.zeros((2, 22)),
+            "image_id": np.asarray(["a", "b"]),
+            "visual_global_embeddings": np.asarray(
+                [[1.0, 0.0], [0.0, 1.0]]
+            ),
+        }
+        provenance = {
+            "source_experiment": SOURCE_EXPERIMENT,
+            "seed": 42,
+            "scenario": "btxrd_test",
+            "ood_dataset": "BTXRD",
+            "ood_split": "test",
+            "coverage": {
+                "rows": 2,
+                "resolved_images": 2,
+                "missing_images": 0,
+                "missing_xray_reports": 0,
+                "missing_clinical_reports": 0,
+            },
+        }
+        _validate_archive(arrays, provenance, 42, "btxrd_test")
+
+        incomplete = {
+            **provenance,
+            "coverage": {
+                **provenance["coverage"],
+                "missing_clinical_reports": 1,
+            },
+        }
+        with self.assertRaises(ValueError):
+            _validate_archive(arrays, incomplete, 42, "btxrd_test")
 
     def test_full_protocol_uses_disjoint_inputs(self):
         rng = np.random.default_rng(3)
