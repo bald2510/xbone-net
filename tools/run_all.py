@@ -138,10 +138,6 @@ _ALL_REGISTERED_EXPERIMENTS = list(dict.fromkeys(
 # the Phase-1 micro-batch would change the number of in-batch contrastive pairs
 # and therefore the training protocol.
 PRIORITY_GROUPS = OrderedDict({
-    # Suitable for a 16-GiB RTX 5060 Ti: single-view LoRA baselines, few-shot
-    # LoRA baselines, Phase-2-only ablations, no-high-resolution variants, and
-    # the high-resolution no-finetuning control whose foundation encoders are
-    # frozen.
     "less_important": [
         "btxrd/baselines/peft_finetuned/lora_pubmedclip",
         "btxrd/baselines/peft_finetuned/lora_biomedclip",
