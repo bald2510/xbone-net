@@ -99,20 +99,20 @@ EXPERIMENTS = OrderedDict({
         # "ctch/proposed/proposed_v6",
     ],
     "ctch_ablation": [
-        "ctch/ablation_study/modality/image_only",
-        "ctch/ablation_study/modality/text_only",
+        # "ctch/ablation_study/modality/image_only",
+        # "ctch/ablation_study/modality/text_only",
         # Evaluation-only perturbation; reuse the canonical v3 Phase-2
         # checkpoint instead of training another identical model.
         # "ctch/ablation_study/modality/shuffled_report",
-        "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
-        "ctch/ablation_study/finetune/xbone_highres_full_ft",
-        "ctch/ablation_study/finetune/xbone_highres_no_ft",
-        "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-        "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-        "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
-        "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
-        "ctch/ablation_study/architecture/phase/phase2_only",
-        "ctch/ablation_study/architecture/phase/phase1_merged",
+        # # "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
+        # # "ctch/ablation_study/finetune/xbone_highres_full_ft",
+        # # "ctch/ablation_study/finetune/xbone_highres_no_ft",
+        # # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+        # # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        # # "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
+        # # "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
+        # # "ctch/ablation_study/architecture/phase/phase2_only",
+        # # "ctch/ablation_study/architecture/phase/phase1_merged",
         # The fusion/classifier ablations below reuse the canonical v3 Phase-1
         # checkpoint and can be completed later without rerunning Phase 1.
         # "ctch/ablation_study/architecture/fusion/concat",
