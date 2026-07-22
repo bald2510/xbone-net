@@ -29,6 +29,7 @@ from src.models.builder import (
     build_model,
     checkpoint_model_config,
     setup_phase2_modules,
+    setup_phase3_modules,
 )
 from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.datasets.high_resolution import prepare_high_resolution_inputs
@@ -185,6 +186,8 @@ def load_state_dict_checked(model, state_dict, context: str):
     unexpected = list(result.unexpected_keys)
     critical_tokens = ("lora_A", "lora_B", "visual_resampler")
     critical_prefixes = ("fusion.", "head.")
+    if any(key.startswith("drl_auxiliary.") for key in model.state_dict()):
+        critical_prefixes = critical_prefixes + ("drl_auxiliary.",)
     critical_missing = [
         key for key in missing
         if key.startswith(critical_prefixes)
@@ -221,6 +224,7 @@ def load_checkpoint_from_dir(
         return None
 
     checkpoint_filenames = [
+        "best_phase3.pth",
         "best_phase2.pth",
     ]
 
@@ -284,8 +288,11 @@ def load_model_checkpoint(
         if not checkpoint_path:
             checkpoint_path = params_cfg.get("checkpoint_path", None)
             if not checkpoint_path:
-                phase2_cfg = params_cfg.get("phase2", {}) or {}
-                checkpoint_path = phase2_cfg.get("checkpoint_path", None)
+                phase3_cfg = params_cfg.get("phase3", {}) or {}
+                checkpoint_path = phase3_cfg.get("checkpoint_path", None)
+                if not checkpoint_path:
+                    phase2_cfg = params_cfg.get("phase2", {}) or {}
+                    checkpoint_path = phase2_cfg.get("checkpoint_path", None)
 
         if checkpoint_path and os.path.isfile(checkpoint_path):
             print(f"Loading weights from config checkpoint: {checkpoint_path}")
@@ -298,9 +305,9 @@ def load_model_checkpoint(
 
     if not loaded_path:
         raise FileNotFoundError(
-            "No trained Phase-2 checkpoint was found. Provide --checkpoint or "
-            "set params.model_dir/params.phase2.checkpoint_path to a valid "
-            "best_phase2.pth file. Inference with random weights is disabled."
+            "No trained classifier checkpoint was found. Provide --checkpoint or "
+            "set params.model_dir/phase2/phase3 checkpoint_path to a valid "
+            "best_phase2.pth or best_phase3.pth file."
         )
     return loaded_path
 
@@ -362,6 +369,7 @@ def main(cfg: DictConfig) -> None:
     model = build_model(checkpoint_model_config(cfg)).to(device)
 
     _, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    model, _ = setup_phase3_modules(model, cfg, device)
 
     params_cfg = cfg.get("params", {}) or {}
     debug_mode = getattr(args, "debug", False) or params_cfg.get("debug", cfg.get("debug", False))
@@ -549,15 +557,29 @@ def main(cfg: DictConfig) -> None:
     img_mask = None
 
     with torch.no_grad():
-        logits, fused_feats, _ = model(
-            images=image_tensor,
-            input_ids=text_tokens,
-            attention_mask=text_attention_mask,
-            tile_values=tile_values,
-            tile_mask=tile_mask,
-            tile_boxes=tile_boxes,
-            return_features=True,
-        )
+        drl_score = None
+        if getattr(model, "drl_auxiliary", None) is not None:
+            drl_output = model.forward_drl(
+                images=image_tensor,
+                input_ids=text_tokens,
+                attention_mask=text_attention_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+            )
+            logits = drl_output["primary_logits"]
+            fused_feats = drl_output["label_features"]
+            drl_score = float(drl_output["drl_ood_score"].item())
+        else:
+            logits, fused_feats, _ = model(
+                images=image_tensor,
+                input_ids=text_tokens,
+                attention_mask=text_attention_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+                return_features=True,
+            )
         test_embed = F.normalize(fused_feats, dim=-1).cpu().numpy()
 
         if is_multilabel:
@@ -601,6 +623,11 @@ def main(cfg: DictConfig) -> None:
         is_ood = test_score > threshold
 
     if attn_info is not None:
+        if "fusion_gate" in attn_info:
+            print(
+                "Gated fusion cross-attention contribution: "
+                f"{100.0 * float(attn_info['fusion_gate'].mean()):.2f}%"
+            )
         img_to_txt = attn_info["attn_img_to_txt"]
         txt_to_img = attn_info["attn_txt_to_img"]
         text_attention = (
@@ -666,6 +693,8 @@ def main(cfg: DictConfig) -> None:
     print("\n" + "=" * 60)
     print("PREDICTION RESULTS & OOD DETECTION")
     print("=" * 60)
+    if drl_score is not None:
+        print(f"DRL OOD Score        : {drl_score:10.4f} (larger means more OOD)")
 
     if detector is not None:
         embed_dim = test_embed.shape[-1]

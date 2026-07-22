@@ -2,7 +2,7 @@
 # Modality ablation: remove text from both training phases.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net
+  - /experiment/ctch/proposed/ours_xbone_net_v3
   - _self_
 
 experiment_name: ctch/ablation_study/modality/image_only

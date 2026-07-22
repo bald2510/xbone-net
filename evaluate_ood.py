@@ -54,6 +54,7 @@ SUPPORTED_METHODS = (
     "energy",
     "max_logit",
 )
+METHOD_CHOICES = SUPPORTED_METHODS + ("drl",)
 
 
 def _labels(values: np.ndarray) -> np.ndarray:
@@ -201,6 +202,13 @@ def _score_method(
         return detector.score_mahalanobis(arrays[feature_key])
     if method == "knn":
         return detector.score_knn(arrays[feature_key], k=knn_k)
+    if method == "drl":
+        if "drl_ood_scores" not in arrays:
+            raise ValueError(
+                "The feature archive has no 'drl_ood_scores'. Export it with "
+                "the proposed_v6 checkpoint before evaluating method='drl'."
+            )
+        return np.asarray(arrays["drl_ood_scores"], dtype=np.float64).reshape(-1)
     logits = arrays["logits"]
     if method == "msp":
         return detector.score_msp(logits)
@@ -299,7 +307,11 @@ def run_protocol(
         metrics["score_input"] = (
             feature_key
             if method in {"mahalanobis", "knn"}
-            else "fused_classifier_logits"
+            else (
+                "dual_classifier_probability"
+                if method == "drl"
+                else "fused_classifier_logits"
+            )
         )
         if method == "mahalanobis":
             metrics["score_definition"] = MAHALANOBIS_SCORE_DEFINITION
@@ -342,12 +354,12 @@ def main() -> None:
     parser.add_argument("--ood-embeddings", type=Path, required=True)
     parser.add_argument("--feature-key", default=None)
     parser.add_argument(
-        "--methods", nargs="+", choices=SUPPORTED_METHODS, default=list(SUPPORTED_METHODS)
+        "--methods", nargs="+", choices=METHOD_CHOICES, default=list(SUPPORTED_METHODS)
     )
     parser.add_argument(
         "--primary-methods",
         nargs="+",
-        choices=SUPPORTED_METHODS,
+        choices=METHOD_CHOICES,
         default=None,
         help="Methods designated primary by the locked scenario config.",
     )

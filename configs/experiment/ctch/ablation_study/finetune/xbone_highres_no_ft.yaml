@@ -3,7 +3,7 @@
 # resampler. "no_ft" refers only to the foundation visual/text encoders.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net
+  - /experiment/ctch/proposed/ours_xbone_net_v3
   - _self_
 
 experiment_name: ctch/ablation_study/finetune/xbone_highres_no_ft

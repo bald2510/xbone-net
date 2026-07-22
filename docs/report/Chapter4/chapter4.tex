@@ -362,6 +362,18 @@ CUDA runtime & 12.8 \\ \hline
 \end{tabular}
 \end{table}
 
+Đối với phân tích hiệu quả suy luận, năm đại lượng được báo cáo gồm tổng số và
+số tham số có thể huấn luyện (Params), số phép toán trên một mẫu (GFLOPs), thông
+lượng (mẫu/giây), độ trễ suy luận (ms/mẫu) và bộ nhớ GPU cực đại (MiB). Độ trễ
+được tổng hợp bằng giá trị trung bình, P50 và P95 sau các lượt khởi động; bộ nhớ
+GPU cực đại là lượng bộ nhớ CUDA được cấp phát lớn nhất trong một lượt truyền
+thuận. Thời gian nạp dữ liệu, tiền xử lý trên CPU và truyền dữ liệu từ CPU sang
+GPU không được tính vào độ trễ. Mọi mô hình được đo trên cùng GPU, độ chính xác
+số học, kích thước lô, số lượt khởi động và số lần lặp; với các mô hình
+zero-shot, biểu diễn prompt được tính trước và không được tính vào thời gian suy
+luận từng ảnh. Thiết lập này nhằm phản ánh chi phí của chính mô hình và duy trì
+tính nhất quán giữa các phép đối sánh.
+
 \subsection{Tham số thực nghiệm}
 Các Bảng \ref{tab:hyperparameters_phase1} và \ref{tab:hyperparameters_phase2} dưới đây mô tả cấu hình siêu tham số của mô hình đề xuất. Các siêu tham số được lựa chọn dựa trên các nghiên cứu trước và thử nghiệm sơ bộ để tối ưu hóa hiệu suất mô hình trên cả hai bộ dữ liệu BTXRD và CTCH. Các siêu tham số này bao gồm độ phân giải ảnh đầu vào, bộ tối ưu hóa, tốc độ học, suy giảm trọng số, bộ điều chỉnh tốc độ học, tỷ lệ khởi động, kích thước lô, số epoch tối đa, số epoch dừng sớm, nhiệt độ tương phản ($\tau$), trạng thái tham số Backbone, hạng LoRA ($r$), hệ số LoRA ($\alpha$) và tỷ lệ bỏ học LoRA.
 
@@ -445,7 +457,7 @@ của BTXRD và CTCH; các tập huấn luyện và đánh giá không được 
 
 \textbf{Mục đích thực nghiệm:} Thiết lập mẫu hạn chế đánh giá khả năng học khi số mẫu gán nhãn bị giới hạn và mức suy giảm so với khi huấn luyện trên toàn bộ dữ liệu khi áp dụng kỹ thuật LoRA. Thiết lập toàn bộ dữ liệu cung cấp đối sánh tổng thể giữa mô hình ảnh đơn phương thức, các mô hình ngôn ngữ trực quan y khoa được tinh chỉnh và pipeline đề xuất. Đối sánh tinh chỉnh hiệu quả tham số được dùng để xem xét liệu các mô hình ngôn ngữ trực quan y khoa có thể đạt được hiệu suất tương tự như mô hình tinh chỉnh toàn bộ khi chỉ được huấn luyện với một số lượng nhỏ tham số.
 
-\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, đánh giá, kiểm thử cố định. Kết quả chính được tổng hợp trên ba hạt giống 42, 123 và 456 bằng độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC; điểm Macro-F1 là độ đo dùng để chọn mô hình tốt nhất trên tập đánh giá. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm so sánh với các mô hình nền tảng áp dụng kỹ thuật LoRA, số tham số có thể huấn luyện, GFLOPs, thông lượng và thời gian huấn luyện cũng được báo cáo.
+\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, đánh giá, kiểm thử cố định. Kết quả chính được tổng hợp trên ba hạt giống 42, 123 và 456 bằng độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC; điểm Macro-F1 là độ đo dùng để chọn mô hình tốt nhất trên tập đánh giá. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm mô tả đánh đổi giữa hiệu năng dự đoán và chi phí suy luận, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại cũng được báo cáo.
 
 \subsection{Đánh giá thành phần}
 \label{subsec:component_evaluation}
@@ -465,7 +477,7 @@ của BTXRD và CTCH; các tập huấn luyện và đánh giá không được 
 
 \textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm lần lượt xem xét vai trò của việc bảo toàn chi tiết ảnh độ phân giải cao, chiến lược cập nhật mô hình kế thừa, hướng trao đổi thông tin giữa hai phương thức và lựa chọn đầu phân loại trong điều kiện mất cân bằng lớp. Thiết kế kế thừa cùng cấu hình giúp giới hạn thay đổi trong từng phép so sánh, từ đó hỗ trợ diễn giải chênh lệch theo thành phần.
 
-\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Các độ đo được sử dụng bao gồm độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC để đánh giá hiệu năng phân loại, kèm khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, số tham số có thể huấn luyện, số tham số có thể huấn luyện, GFLOPs, thông lượng và thời gian huấn luyện được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
+\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Các độ đo được sử dụng bao gồm độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC để đánh giá hiệu năng phân loại, kèm khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
 
 \subsection{OOD hậu xử lý}
 \label{subsec:ood_postprocessing}

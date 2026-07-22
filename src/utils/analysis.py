@@ -341,6 +341,167 @@ def load_locked_proposed_model(
     )
 
 
+def load_proposed_experiment_model(
+    experiment_name: str,
+    seed: int,
+    device: Optional[torch.device] = None,
+) -> LoadedAnalysisModel:
+    """Load a proposed checkpoint from its immutable evaluated configuration.
+
+    Unlike :func:`load_locked_proposed_model`, this helper is intended only for
+    explicitly named cross-version audits.  It rebuilds the architecture from
+    the resolved configuration stored beside the model's evaluation metrics,
+    so later YAML edits cannot silently change the evaluated network.
+    """
+    experiment_name = str(experiment_name).strip("/")
+    if not (
+        experiment_name.startswith("ctch/proposed/ours_xbone_net")
+        or experiment_name == "ctch/proposed/proposed_v6"
+    ):
+        raise ValueError(
+            "Cross-version analysis only accepts CTCH proposed experiments."
+        )
+    seed = int(seed)
+    metrics_path = (
+        PROJECT_ROOT / "results" / experiment_name / f"seed_{seed}" / "metrics.json"
+    )
+    if not metrics_path.is_file():
+        raise FileNotFoundError(
+            f"Missing evaluated configuration for {experiment_name}: {metrics_path}"
+        )
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    resolved = metrics_payload.get("config")
+    if not isinstance(resolved, dict):
+        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+    cfg = OmegaConf.create(resolved)
+    OmegaConf.set_struct(cfg, False)
+    recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
+    if recorded_experiment != experiment_name:
+        raise ValueError(
+            f"Resolved config records {recorded_experiment!r}, expected "
+            f"{experiment_name!r}."
+        )
+    if str(cfg.dataset.name) != "ctch":
+        raise ValueError("Proposed comparison requires the CTCH dataset config.")
+    _absolute_dataset_paths(cfg)
+
+    phase3_enabled = bool(
+        (cfg.get("params", {}) or {}).get("phase3", {}).get("enabled", False)
+    )
+    checkpoint_name = "best_phase3.pth" if phase3_enabled else "best_phase2.pth"
+    checkpoint = (
+        PROJECT_ROOT
+        / "checkpoints"
+        / experiment_name
+        / f"seed_{seed}"
+        / checkpoint_name
+    ).resolve()
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Missing proposed checkpoint: {checkpoint}")
+    cfg.params.model_dir = str(checkpoint.parent)
+    cfg.params.phase2.checkpoint_path = str(checkpoint)
+    if phase3_enabled:
+        cfg.params.phase3.checkpoint_path = str(checkpoint)
+
+    from src.models.builder import (
+        build_model,
+        setup_phase2_modules,
+        setup_phase3_modules,
+    )
+
+    seed_everything(seed)
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = build_model(cfg.model).to(device)
+    model, classifier_type, fusion_type, num_classes = setup_phase2_modules(
+        model, cfg, device
+    )
+    model, _ = setup_phase3_modules(model, cfg, device)
+    if classifier_type != "empirical_centroid" or int(num_classes) != EXPECTED_NUM_CLASSES:
+        raise RuntimeError(
+            "Proposed comparison requires empirical_centroid with 22 classes; "
+            f"got {classifier_type} with {num_classes}."
+        )
+    if fusion_type not in {"cross_attention", "gated_cross_attention"}:
+        raise RuntimeError(f"Unsupported proposed fusion type: {fusion_type}")
+
+    payload = _load_checkpoint_payload(checkpoint, device)
+    state_dict = payload.get("model_state_dict", payload)
+    if not isinstance(state_dict, dict):
+        raise TypeError("Checkpoint model_state_dict must be a mapping.")
+    state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
+    _validate_checkpoint_state(state_dict)
+    result = model.load_state_dict(state_dict, strict=False)
+    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_prefixes = ("fusion.", "head.", "drl_auxiliary.")
+    critical_missing = [
+        key for key in result.missing_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    critical_unexpected = [
+        key for key in result.unexpected_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    if critical_missing or critical_unexpected:
+        raise RuntimeError(
+            "Checkpoint architecture mismatch. Missing critical keys: "
+            f"{critical_missing[:20]}; unexpected critical keys: "
+            f"{critical_unexpected[:20]}."
+        )
+
+    total_parameters = sum(parameter.numel() for parameter in model.parameters())
+    trainable_parameters = sum(
+        parameter.numel() for parameter in model.parameters()
+        if parameter.requires_grad
+    )
+    recorded_metrics = metrics_payload.get("metrics", {})
+    expected_total = recorded_metrics.get("param_total")
+    expected_trainable = recorded_metrics.get("param_trainable")
+    if expected_total is not None and total_parameters != int(expected_total):
+        raise RuntimeError(
+            f"Parameter fingerprint mismatch for {experiment_name}: "
+            f"total={total_parameters:,}, evaluated={int(expected_total):,}."
+        )
+    if expected_trainable is not None and trainable_parameters != int(expected_trainable):
+        raise RuntimeError(
+            f"Trainable-parameter fingerprint mismatch for {experiment_name}: "
+            f"current={trainable_parameters:,}, evaluated={int(expected_trainable):,}."
+        )
+
+    model.eval()
+    resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
+    checkpoint_sha256 = sha256_file(checkpoint)
+    provenance = {
+        "source_experiment": experiment_name,
+        "seed": seed,
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": checkpoint_sha256,
+        "metrics_path": str(metrics_path.resolve()),
+        "metrics_sha256": sha256_file(metrics_path),
+        "git_revision": _git_revision(),
+        "total_parameters": total_parameters,
+        "trainable_parameters": trainable_parameters,
+        "num_classes": int(num_classes),
+        "fusion_type": fusion_type,
+        "classifier_type": classifier_type,
+        "visual_resampler": str(cfg.model.visual_resampler.aggregation),
+        "config_sha256": hashlib.sha256(
+            resolved_config_yaml.encode("utf-8")
+        ).hexdigest(),
+        "resolved_config": OmegaConf.to_container(cfg, resolve=True),
+        "created_at": _datetime.datetime.now(_datetime.timezone.utc).isoformat(),
+    }
+    return LoadedAnalysisModel(
+        model=model,
+        cfg=cfg,
+        checkpoint=checkpoint,
+        checkpoint_sha256=checkpoint_sha256,
+        device=device,
+        provenance=provenance,
+    )
+
+
 class AnalysisDataCollator:
     """Use the training collator while preserving sample provenance fields."""
 
@@ -438,6 +599,43 @@ def _to_device(value: Any, device: torch.device) -> Any:
     return value.to(device) if isinstance(value, torch.Tensor) else value
 
 
+def _attention_distribution_statistics(
+    attention: Optional[torch.Tensor],
+    key_padding_mask: Optional[torch.Tensor],
+) -> dict[str, torch.Tensor]:
+    """Summarize per-sample attention concentration without retaining maps."""
+    if attention is None:
+        return {}
+    from src.models.fusion.cross_attention import reduce_attention_to_keys
+
+    probability = reduce_attention_to_keys(attention, key_padding_mask)
+    if key_padding_mask is None:
+        valid_count = torch.full(
+            (probability.size(0),),
+            probability.size(1),
+            device=probability.device,
+            dtype=probability.dtype,
+        )
+    else:
+        valid_count = (~key_padding_mask).sum(dim=1).to(probability.dtype)
+    entropy = -(
+        probability * probability.clamp_min(1e-12).log()
+    ).sum(dim=1)
+    entropy_denominator = valid_count.clamp_min(2.0).log()
+    normalized_entropy = torch.where(
+        valid_count > 1,
+        entropy / entropy_denominator,
+        torch.zeros_like(entropy),
+    )
+    top_k = min(3, probability.size(1))
+    return {
+        "entropy_normalized": normalized_entropy,
+        "top1_mass": probability.max(dim=1).values,
+        "top3_mass": probability.topk(top_k, dim=1).values.sum(dim=1),
+        "effective_tokens": entropy.exp(),
+    }
+
+
 def forward_analysis_batch(
     model: torch.nn.Module,
     batch: dict[str, Any],
@@ -478,6 +676,13 @@ def forward_analysis_batch(
     )
     logits = model.head(fused)
 
+    text_attention_stats = _attention_distribution_statistics(
+        details.get("attn_img_to_txt"), text_local_padding
+    )
+    visual_attention_stats = _attention_distribution_statistics(
+        details.get("attn_txt_to_img"), image_local_padding
+    )
+
     if image_tokens.size(1) > 1:
         local = image_tokens[:, 1:]
         if image_local_padding is None:
@@ -490,8 +695,9 @@ def forward_analysis_batch(
     else:
         visual_local_summary = image_tokens[:, 0]
 
-    return {
+    output = {
         "fused_embeddings": F.normalize(fused, dim=-1),
+        "label_discriminative_embeddings": F.normalize(fused, dim=-1),
         "visual_global_embeddings": F.normalize(image_tokens[:, 0], dim=-1),
         "visual_local_summary_embeddings": F.normalize(
             visual_local_summary, dim=-1
@@ -506,6 +712,41 @@ def forward_analysis_batch(
         "logits": logits,
         "probabilities": torch.softmax(logits, dim=-1),
     }
+    if getattr(model, "drl_auxiliary", None) is not None:
+        from src.models.drl import drl_ood_score
+
+        auxiliary_logits, distribution_features, auxiliary_details = model.drl_auxiliary(
+            image_tokens,
+            text_tokens,
+            fused,
+            image_local_padding_mask=image_local_padding,
+            return_details=True,
+        )
+        output.update({
+            "distribution_discriminative_embeddings": F.normalize(
+                distribution_features, dim=-1
+            ),
+            "drl_auxiliary_logits": auxiliary_logits,
+            "drl_auxiliary_probabilities": torch.softmax(auxiliary_logits, dim=-1),
+            "drl_ood_scores": drl_ood_score(logits, auxiliary_logits),
+            "drl_component_weights": auxiliary_details["component_weights"],
+        })
+    output.update({
+        f"attention_text_{key}": value
+        for key, value in text_attention_stats.items()
+    })
+    output.update({
+        f"attention_visual_{key}": value
+        for key, value in visual_attention_stats.items()
+    })
+    output["attention_context_cosine"] = F.cosine_similarity(
+        details["txt_context_for_image"],
+        details["img_context_for_text"],
+        dim=-1,
+    )
+    if "fusion_gate" in details:
+        output["fusion_gate"] = details["fusion_gate"].squeeze(-1)
+    return output
 
 
 def save_feature_archive(

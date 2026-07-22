@@ -21,6 +21,7 @@ from .fusion import build_fusion_module
 from .classifier import build_head_module
 from .peft import apply_peft
 from .composer import XBoneMultiModalModel
+from .drl import DRLAuxiliaryBranch
 
 # Backbone keys that are loaded via the unified OpenCLIPFoundation wrapper
 OPENCLIP_BACKBONE_TYPES = {"clip", "pubmedclip"}
@@ -367,8 +368,9 @@ def setup_phase2_modules(model, cfg: dict, device):
     p2_classifier_type = p2_phase_cfg.get("classifier_type", "none")
 
     run_p2 = resolve_phase_enabled(params_cfg, "phase2", default=True)
+    run_p3 = resolve_phase_enabled(params_cfg, "phase3", default=False)
     exp_name = str(cfg.get("experiment_name", "")).lower()
-    is_zero_shot = (not run_p2) or ("zeroshot" in exp_name)
+    is_zero_shot = (not run_p2 and not run_p3) or ("zeroshot" in exp_name)
 
     fusion_type = (
         p2_fusion_type if p2_fusion_type != "none" else cfg_fusion_type
@@ -442,11 +444,49 @@ def setup_phase2_modules(model, cfg: dict, device):
         f"({feature_dim} -> {num_classes} classes)"
     )
 
-    # --- Enable local feature extraction for bi-directional cross-attention ---
+    # --- Enable local feature extraction for attention-based fusion ---
     if hasattr(model.backbone, 'return_local'):
-        model.backbone.return_local = (fusion_type == "cross_attention")
+        model.backbone.return_local = fusion_type in {
+            "cross_attention",
+            "gated_cross_attention",
+        }
         print(f"[Builder] Set backbone return_local = {model.backbone.return_local}")
 
     model.use_image_in_fusion = use_image_in_p2
 
     return model, classifier_type, fusion_type, num_classes
+
+
+def setup_phase3_modules(model, cfg: dict, device):
+    """Attach the DRL auxiliary branch configured for Phase 3.
+
+    The primary Phase-2 network must already have been reconstructed before
+    this helper is called.  Phase-3 trainability is configured by ``train.py``;
+    this function only creates the checkpoint-compatible module structure.
+    """
+    params_cfg = cfg.get("params", {}) or {}
+    phase3_cfg = params_cfg.get("phase3", {}) or {}
+    model_drl_cfg = cfg.model.get("drl", {}) or {}
+    enabled = bool(model_drl_cfg.get("enabled", False)) and bool(
+        phase3_cfg.get("enabled", True)
+    )
+    if not enabled:
+        model.drl_auxiliary = None
+        return model, False
+
+    dataset_params = cfg.dataset.get("params", {}) or {}
+    class_names = dataset_params.get(
+        "classes", dataset_params.get("pathologies", [])
+    )
+    num_classes = int(dataset_params.get("num_classes", len(class_names)))
+    feature_dim = int(model_drl_cfg.get("feature_dim", 512))
+    module_params = dict(model_drl_cfg.get("params", {}) or {})
+    module_params.update(
+        {"feature_dim": feature_dim, "num_classes": num_classes}
+    )
+    model.drl_auxiliary = DRLAuxiliaryBranch(**module_params).to(device)
+    print(
+        "[Builder] Phase-3 DRL auxiliary: "
+        f"{feature_dim}d -> {num_classes} classes"
+    )
+    return model, True

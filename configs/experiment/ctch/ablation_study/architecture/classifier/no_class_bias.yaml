@@ -1,11 +1,16 @@
 # @package _global_
-# Classifier ablation: retain the empirical-centroid head without class weighting.
+# Classifier ablation: empirical centroids without v3 class-specific bias.
 
 defaults:
   - /experiment/ctch/proposed/ours_xbone_net_v3
   - _self_
 
-experiment_name: ctch/ablation_study/architecture/classifier/no_class_weight
+experiment_name: ctch/ablation_study/architecture/classifier/no_class_bias
+
+model:
+  classifier:
+    params:
+      use_class_bias: false
 
 params:
   run_phase1: false
@@ -15,5 +20,3 @@ params:
   phase2:
     init_from_phase1_checkpoint: true
     init_from_phase1_merged: false
-    loss:
-      use_class_weights: false

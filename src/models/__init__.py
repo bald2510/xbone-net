@@ -11,10 +11,14 @@ Exposes the core model composer, builder factory, and sub-package registries:
 """
 
 from .composer import XBoneMultiModalModel
-from .builder import build_model, setup_phase2_modules
+from .builder import build_model, setup_phase2_modules, setup_phase3_modules
+from .drl import DRLAuxiliaryBranch, drl_ood_score
 
 __all__ = [
     "XBoneMultiModalModel",
     "build_model",
     "setup_phase2_modules",
+    "setup_phase3_modules",
+    "DRLAuxiliaryBranch",
+    "drl_ood_score",
 ]

@@ -16,7 +16,109 @@ class XBoneMultiModalModel(nn.Module):
         self.backbone = backbone
         self.fusion = fusion_module
         self.head = head_module
+        self.drl_auxiliary = None
+        self.phase3_mode = False
         self.use_image_in_fusion = True
+
+    def train(self, mode: bool = True):
+        """Keep the frozen primary path deterministic during DRL Phase 3."""
+        super().train(mode)
+        if mode and self.phase3_mode:
+            self.backbone.eval()
+            self.fusion.eval()
+            self.head.eval()
+            if self.drl_auxiliary is not None:
+                self.drl_auxiliary.train(True)
+        return self
+
+    def _encode_modalities(
+        self,
+        images,
+        input_ids=None,
+        attention_mask=None,
+        tile_values=None,
+        tile_mask=None,
+        tile_boxes=None,
+    ):
+        """Encode modalities once and construct fusion-compatible masks."""
+        use_image = bool(getattr(self, "use_image_in_fusion", True))
+        img_feats, txt_feats = self.backbone(
+            images if use_image else None,
+            input_ids,
+            attention_mask=attention_mask,
+            tile_values=tile_values if use_image else None,
+            tile_mask=tile_mask if use_image else None,
+            tile_boxes=tile_boxes if use_image else None,
+        )
+        full_img_padding_mask = getattr(
+            self.backbone,
+            "last_image_key_padding_mask",
+            None,
+        )
+        txt_key_padding_mask = None
+        if attention_mask is not None and txt_feats is not None and txt_feats.ndim == 3 and txt_feats.size(1) > 1:
+            txt_key_padding_mask = attention_mask[:, 1:] == 0
+            expected_len = txt_feats.size(1) - 1
+            if txt_key_padding_mask.size(1) != expected_len:
+                raise ValueError(
+                    "Text attention mask length does not match local text tokens: "
+                    f"{txt_key_padding_mask.size(1)} vs {expected_len}."
+                )
+        img_key_padding_mask = None
+        if img_feats is not None and img_feats.ndim == 3 and img_feats.size(1) > 1 and full_img_padding_mask is not None:
+            img_key_padding_mask = full_img_padding_mask[:, 1:]
+        return (
+            img_feats,
+            txt_feats,
+            full_img_padding_mask,
+            img_key_padding_mask,
+            txt_key_padding_mask,
+        )
+
+    def _fuse_modalities(
+        self,
+        img_feats,
+        txt_feats,
+        full_img_padding_mask=None,
+        img_key_padding_mask=None,
+        txt_key_padding_mask=None,
+    ) -> torch.Tensor:
+        """Fuse already encoded modality features without repeating the backbone."""
+        if img_feats is None:
+            if txt_feats is None:
+                raise ValueError("Text-only mode requires text input features.")
+            fused_feats = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
+        elif txt_feats is None:
+            if img_feats.ndim == 3:
+                fused_feats = self._masked_token_mean(img_feats, full_img_padding_mask)
+            elif img_feats.ndim == 2:
+                fused_feats = img_feats
+            else:
+                raise ValueError(
+                    "Unexpected image feature shape in image-only mode: "
+                    f"{tuple(img_feats.shape)}"
+                )
+        elif getattr(self.fusion, "supports_padding_mask", False):
+            fused_feats = self.fusion(
+                img_feats,
+                txt_feats,
+                img_key_padding_mask=img_key_padding_mask,
+                txt_key_padding_mask=txt_key_padding_mask,
+            )
+        else:
+            img_vector = (
+                self._masked_token_mean(img_feats, full_img_padding_mask)
+                if img_feats.ndim == 3
+                else img_feats
+            )
+            txt_vector = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
+            fused_feats = self.fusion(img_vector, txt_vector)
+        if fused_feats.ndim != 2:
+            raise ValueError(
+                "Fusion module must return one [D] embedding per sample, "
+                f"got {tuple(fused_feats.shape)}."
+            )
+        return fused_feats
 
     @staticmethod
     def _masked_token_mean(
@@ -46,75 +148,76 @@ class XBoneMultiModalModel(nn.Module):
         tile_boxes=None,
     ) -> torch.Tensor:
         """Encode a batch into the fused representation before classification."""
-        use_image = bool(getattr(self, "use_image_in_fusion", True))
-        img_feats, txt_feats = self.backbone(
-            images if use_image else None,
-            input_ids,
+        encoded = self._encode_modalities(
+            images,
+            input_ids=input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values if use_image else None,
-            tile_mask=tile_mask if use_image else None,
-            tile_boxes=tile_boxes if use_image else None,
+            tile_values=tile_values,
+            tile_mask=tile_mask,
+            tile_boxes=tile_boxes,
         )
+        return self._fuse_modalities(*encoded)
 
-        full_img_padding_mask = getattr(
-            self.backbone,
-            "last_image_key_padding_mask",
-            None,
+    def forward_drl(
+        self,
+        images,
+        input_ids=None,
+        attention_mask=None,
+        tile_values=None,
+        tile_mask=None,
+        tile_boxes=None,
+        return_details: bool = False,
+    ):
+        """Return primary and complementary outputs for DRL training/OOD."""
+        if self.drl_auxiliary is None:
+            raise RuntimeError("DRL auxiliary branch is not configured.")
+        encoded = self._encode_modalities(
+            images,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            tile_values=tile_values,
+            tile_mask=tile_mask,
+            tile_boxes=tile_boxes,
         )
-
-        if img_feats is None:
-            if txt_feats is None:
-                raise ValueError("Text-only mode requires text input features.")
-            fused_feats = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
-        elif txt_feats is None:
-            if img_feats.ndim == 3:
-                fused_feats = self._masked_token_mean(img_feats, full_img_padding_mask)
-            elif img_feats.ndim == 2:
-                fused_feats = img_feats
-            else:
-                raise ValueError(
-                    "Unexpected image feature shape in image-only mode: "
-                    f"{tuple(img_feats.shape)}"
-                )
+        (
+            img_feats,
+            txt_feats,
+            full_img_padding_mask,
+            img_key_padding_mask,
+            txt_key_padding_mask,
+        ) = encoded
+        label_features = self._fuse_modalities(
+            img_feats,
+            txt_feats,
+            full_img_padding_mask,
+            img_key_padding_mask,
+            txt_key_padding_mask,
+        )
+        primary_logits = self.head(label_features)
+        auxiliary_output = self.drl_auxiliary(
+            img_feats,
+            txt_feats,
+            label_features,
+            image_local_padding_mask=img_key_padding_mask,
+            return_details=return_details,
+        )
+        if return_details:
+            auxiliary_logits, distribution_features, details = auxiliary_output
         else:
-            txt_key_padding_mask = None
-            if attention_mask is not None and txt_feats.ndim == 3 and txt_feats.size(1) > 1:
-                txt_key_padding_mask = attention_mask[:, 1:] == 0
-                expected_len = txt_feats.size(1) - 1
-                if txt_key_padding_mask.size(1) != expected_len:
-                    raise ValueError(
-                        "Text attention mask length does not match local text tokens: "
-                        f"{txt_key_padding_mask.size(1)} vs {expected_len}."
-                    )
+            auxiliary_logits, distribution_features = auxiliary_output
+            details = None
+        from .drl import drl_ood_score
 
-            img_key_padding_mask = None
-            if img_feats.ndim == 3 and img_feats.size(1) > 1 and full_img_padding_mask is not None:
-                img_key_padding_mask = full_img_padding_mask[:, 1:]
-
-            if getattr(self.fusion, "supports_padding_mask", False):
-                fused_feats = self.fusion(
-                    img_feats,
-                    txt_feats,
-                    img_key_padding_mask=img_key_padding_mask,
-                    txt_key_padding_mask=txt_key_padding_mask,
-                )
-            else:
-                # Concat/identity fusion operates on one vector per modality.
-                # Pool high-resolution visual tokens and use the text global token.
-                img_vector = (
-                    self._masked_token_mean(img_feats, full_img_padding_mask)
-                    if img_feats.ndim == 3
-                    else img_feats
-                )
-                txt_vector = txt_feats[:, 0, :] if txt_feats.ndim == 3 else txt_feats
-                fused_feats = self.fusion(img_vector, txt_vector)
-
-        if fused_feats.ndim != 2:
-            raise ValueError(
-                "Fusion module must return one [D] embedding per sample, "
-                f"got {tuple(fused_feats.shape)}."
-            )
-        return fused_feats
+        result = {
+            "primary_logits": primary_logits,
+            "auxiliary_logits": auxiliary_logits,
+            "label_features": label_features,
+            "distribution_features": distribution_features,
+            "drl_ood_score": drl_ood_score(primary_logits, auxiliary_logits),
+        }
+        if details is not None:
+            result["auxiliary_details"] = details
+        return result
 
     def forward(
         self,

@@ -39,6 +39,7 @@ from src.models.builder import (
     build_model,
     checkpoint_model_config,
     setup_phase2_modules,
+    setup_phase3_modules,
 )
 from src.datasets.builder import build_dataloader
 from src.utils.prompts import generate_custom_prompts
@@ -117,6 +118,8 @@ def load_state_dict_checked(model: nn.Module, state_dict: Dict[str, torch.Tensor
         critical_prefixes.append("fusion.")
     if any(key.startswith("head.") for key in model_keys):
         critical_prefixes.append("head.")
+    if any(key.startswith("drl_auxiliary.") for key in model_keys):
+        critical_prefixes.append("drl_auxiliary.")
     critical_tokens = ("lora_A", "lora_B", "visual_resampler")
     critical_missing = [
         key for key in missing
@@ -173,7 +176,7 @@ def load_model_checkpoint(
 
     checkpoint_path = None
     if model_dir and os.path.isdir(model_dir):
-        for candidate in ["best_phase2.pth", "best_phase1.pth", "checkpoint_epoch_10.pth"]:
+        for candidate in ["best_phase3.pth", "best_phase2.pth", "best_phase1.pth", "checkpoint_epoch_10.pth"]:
             p = os.path.join(model_dir, candidate)
             if os.path.exists(p):
                 checkpoint_path = p
@@ -182,11 +185,14 @@ def load_model_checkpoint(
     if not checkpoint_path:
         checkpoint_path = cfg.get("checkpoint_path", None) or params_cfg.get("checkpoint_path", None)
         if not checkpoint_path:
-            p2_cfg = params_cfg.get("phase2", {}) or {}
-            checkpoint_path = p2_cfg.get("checkpoint_path", None)
+            p3_cfg = params_cfg.get("phase3", {}) or {}
+            checkpoint_path = p3_cfg.get("checkpoint_path", None)
             if not checkpoint_path:
-                p1_cfg = params_cfg.get("phase1", {}) or {}
-                checkpoint_path = p1_cfg.get("checkpoint_path", None)
+                p2_cfg = params_cfg.get("phase2", {}) or {}
+                checkpoint_path = p2_cfg.get("checkpoint_path", None)
+                if not checkpoint_path:
+                    p1_cfg = params_cfg.get("phase1", {}) or {}
+                    checkpoint_path = p1_cfg.get("checkpoint_path", None)
 
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"Loading weights from checkpoint: {checkpoint_path}")
@@ -275,6 +281,11 @@ def run_evaluation(
     all_ground_truths = []
     all_fused_embeddings = [] if save_embeddings_flag else None
     all_logits = [] if is_classifier else None
+    has_drl = bool(is_classifier and getattr(model, "drl_auxiliary", None) is not None)
+    all_distribution_embeddings = [] if save_embeddings_flag and has_drl else None
+    all_auxiliary_logits = [] if has_drl else None
+    all_drl_ood_scores = [] if has_drl else None
+    all_fusion_gates = []
 
     print("\nScanning test dataset...")
     with torch.no_grad():
@@ -309,21 +320,45 @@ def run_evaluation(
                     attention_mask = attention_mask.to(device)
 
             if is_classifier:
-                logits, fused_features, _ = model(
-                    images=images,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    tile_values=tile_values,
-                    tile_mask=tile_mask,
-                    tile_boxes=tile_boxes,
-                    return_features=True,
-                )
+                if has_drl:
+                    drl_output = model.forward_drl(
+                        images=images,
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        tile_values=tile_values,
+                        tile_mask=tile_mask,
+                        tile_boxes=tile_boxes,
+                    )
+                    # Classification remains strictly on the frozen v3 path.
+                    logits = drl_output["primary_logits"]
+                    fused_features = drl_output["label_features"]
+                    all_auxiliary_logits.append(drl_output["auxiliary_logits"].cpu())
+                    all_drl_ood_scores.append(drl_output["drl_ood_score"].cpu())
+                    if save_embeddings_flag:
+                        all_distribution_embeddings.append(
+                            torch.nn.functional.normalize(
+                                drl_output["distribution_features"], dim=-1
+                            ).cpu().numpy()
+                        )
+                else:
+                    logits, fused_features, _ = model(
+                        images=images,
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        tile_values=tile_values,
+                        tile_mask=tile_mask,
+                        tile_boxes=tile_boxes,
+                        return_features=True,
+                    )
                 batch_probs = (
                     torch.sigmoid(logits)
                     if is_multilabel
                     else torch.softmax(logits, dim=-1)
                 )
                 all_logits.append(logits.cpu())
+                fusion_gate = getattr(model.fusion, "last_gate", None)
+                if fusion_gate is not None:
+                    all_fusion_gates.append(fusion_gate.cpu().numpy())
                 if save_embeddings_flag:
                     all_fused_embeddings.append(
                         torch.nn.functional.normalize(fused_features, dim=-1).cpu().numpy()
@@ -355,14 +390,39 @@ def run_evaluation(
         else None
     )
     logits_np = torch.cat(all_logits, dim=0).numpy() if all_logits else None
+    auxiliary_logits_np = (
+        torch.cat(all_auxiliary_logits, dim=0).numpy()
+        if all_auxiliary_logits
+        else None
+    )
+    drl_ood_scores_np = (
+        torch.cat(all_drl_ood_scores, dim=0).numpy()
+        if all_drl_ood_scores
+        else None
+    )
+    distribution_embeddings_np = (
+        np.concatenate(all_distribution_embeddings, axis=0)
+        if save_embeddings_flag and all_distribution_embeddings
+        else None
+    )
+    fusion_gates_np = (
+        np.concatenate(all_fusion_gates, axis=0)
+        if all_fusion_gates
+        else None
+    )
 
     return {
         "all_probs": probs_np,
         "all_ground_truths": ground_truth_np,
         "image_embeddings": embeddings_np,  # backward-compatible key; these are fused features.
         "fused_embeddings": embeddings_np,
+        "label_discriminative_embeddings": embeddings_np,
+        "distribution_discriminative_embeddings": distribution_embeddings_np,
         "logits": logits_np,
+        "drl_auxiliary_logits": auxiliary_logits_np,
+        "drl_ood_scores": drl_ood_scores_np,
         "text_embeddings": text_embeddings_np,
+        "fusion_gates": fusion_gates_np,
     }
 
 
@@ -420,6 +480,9 @@ def export_embeddings(
     output_dir: str,
     logits: Optional[np.ndarray] = None,
     probabilities: Optional[np.ndarray] = None,
+    distribution_embeddings: Optional[np.ndarray] = None,
+    auxiliary_logits: Optional[np.ndarray] = None,
+    drl_ood_scores: Optional[np.ndarray] = None,
 ) -> Optional[str]:
     """Save fused/image embeddings, labels, and optional logits."""
     if image_embeddings is None:
@@ -431,8 +494,15 @@ def export_embeddings(
     save_dict = {
         "image_embeddings": image_embeddings,
         "fused_embeddings": image_embeddings,
+        "label_discriminative_embeddings": image_embeddings,
         "labels": labels,
     }
+    if distribution_embeddings is not None:
+        save_dict["distribution_discriminative_embeddings"] = distribution_embeddings
+    if auxiliary_logits is not None:
+        save_dict["drl_auxiliary_logits"] = auxiliary_logits
+    if drl_ood_scores is not None:
+        save_dict["drl_ood_scores"] = drl_ood_scores
     if logits is not None:
         save_dict["logits"] = logits
     if probabilities is not None:
@@ -493,6 +563,7 @@ def main(cfg: DictConfig) -> None:
 
     p2_phase_cfg = params_cfg.get("phase2", {}) or {}
     model, classifier_type, fusion_type, _ = setup_phase2_modules(model, cfg, device)
+    model, _ = setup_phase3_modules(model, cfg, device)
 
     debug_mode = extra_args.debug or params_cfg.get("debug", cfg.get("debug", False))
     model.print_architecture(verbose=debug_mode)
@@ -592,6 +663,17 @@ def main(cfg: DictConfig) -> None:
     metrics["param_trainable"] = trainable_params
     metrics["param_trainable_pct"] = round(100 * trainable_params / total_params, 2) if total_params > 0 else 0
 
+    fusion_gates = eval_output.get("fusion_gates")
+    if fusion_gates is not None:
+        fusion_gates = np.asarray(fusion_gates, dtype=np.float64).reshape(-1)
+        metrics.update({
+            "fusion_gate_mean": float(fusion_gates.mean()),
+            "fusion_gate_std": float(fusion_gates.std()),
+            "fusion_gate_p05": float(np.quantile(fusion_gates, 0.05)),
+            "fusion_gate_median": float(np.median(fusion_gates)),
+            "fusion_gate_p95": float(np.quantile(fusion_gates, 0.95)),
+        })
+
     save_results_json(metrics, cfg, output_dir, ci_95=ci_95)
 
     if extra_args.save_embeddings:
@@ -602,6 +684,9 @@ def main(cfg: DictConfig) -> None:
             output_dir=output_dir,
             logits=eval_output.get("logits"),
             probabilities=all_probs,
+            distribution_embeddings=eval_output.get("distribution_discriminative_embeddings"),
+            auxiliary_logits=eval_output.get("drl_auxiliary_logits"),
+            drl_ood_scores=eval_output.get("drl_ood_scores"),
         )
 
     print("\nEvaluation complete!")

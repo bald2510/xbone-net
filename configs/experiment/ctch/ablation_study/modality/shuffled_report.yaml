@@ -2,7 +2,7 @@
 # Modality robustness: train normally and mismatch reports only at test time.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net
+  - /experiment/ctch/proposed/ours_xbone_net_v3
   - _self_
 
 experiment_name: ctch/ablation_study/modality/shuffled_report

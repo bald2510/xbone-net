@@ -24,20 +24,20 @@ import numpy as np
 # ============================================================
 
 EXPERIMENTS = OrderedDict({
-    "btxrd_zeroshot": [
-        "btxrd/baselines/zeroshot/biomedclip_zeroshot",
-        "btxrd/baselines/zeroshot/clip_zeroshot",
-        "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
-        "btxrd/baselines/zeroshot/medclip_zeroshot",
-    ],
-    "btxrd_finetuned": [
-        "btxrd/baselines/full_finetuned/fft_resnet50",
-        "btxrd/baselines/full_finetuned/fft_densenet",
-        "btxrd/baselines/full_finetuned/fft_clip",
-        "btxrd/baselines/full_finetuned/fft_pubmedclip",
-        "btxrd/baselines/full_finetuned/fft_medclip",
-        "btxrd/baselines/full_finetuned/fft_biomedclip",
-    ],
+    # "btxrd_zeroshot": [
+    #     "btxrd/baselines/zeroshot/biomedclip_zeroshot",
+    #     "btxrd/baselines/zeroshot/clip_zeroshot",
+    #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
+    #     "btxrd/baselines/zeroshot/medclip_zeroshot",
+    # ],
+    # "btxrd_finetuned": [
+    #     "btxrd/baselines/full_finetuned/fft_resnet50",
+    #     "btxrd/baselines/full_finetuned/fft_densenet",
+    #     "btxrd/baselines/full_finetuned/fft_clip",
+    #     "btxrd/baselines/full_finetuned/fft_pubmedclip",
+    #     "btxrd/baselines/full_finetuned/fft_medclip",
+    #     "btxrd/baselines/full_finetuned/fft_biomedclip",
+    # ],
     "btxrd_peft_finetuned": [
         "btxrd/baselines/peft_finetuned/lora_pubmedclip",
         "btxrd/baselines/peft_finetuned/lora_biomedclip",
@@ -60,20 +60,20 @@ EXPERIMENTS = OrderedDict({
     "btxrd_proposed": [
         "btxrd/proposed/ours_xbone_net",
     ],
-    "ctch_zeroshot": [
-        "ctch/baselines/zeroshot/biomedclip_zeroshot",
-        "ctch/baselines/zeroshot/clip_zeroshot",
-        "ctch/baselines/zeroshot/pubmedclip_zeroshot",
-        "ctch/baselines/zeroshot/medclip_zeroshot",
-    ],
-    "ctch_finetuned": [
-        "ctch/baselines/full_finetuned/fft_biomedclip",
-        "ctch/baselines/full_finetuned/fft_clip",
-        "ctch/baselines/full_finetuned/fft_pubmedclip",
-        "ctch/baselines/full_finetuned/fft_medclip",
-        "ctch/baselines/full_finetuned/fft_resnet50",
-        "ctch/baselines/full_finetuned/fft_densenet",
-    ],
+    # "ctch_zeroshot": [
+    #     "ctch/baselines/zeroshot/biomedclip_zeroshot",
+    #     "ctch/baselines/zeroshot/clip_zeroshot",
+    #     "ctch/baselines/zeroshot/pubmedclip_zeroshot",
+    #     "ctch/baselines/zeroshot/medclip_zeroshot",
+    # ],
+    # "ctch_finetuned": [
+    #     "ctch/baselines/full_finetuned/fft_biomedclip",
+    #     "ctch/baselines/full_finetuned/fft_clip",
+    #     "ctch/baselines/full_finetuned/fft_pubmedclip",
+    #     "ctch/baselines/full_finetuned/fft_medclip",
+    #     "ctch/baselines/full_finetuned/fft_resnet50",
+    #     "ctch/baselines/full_finetuned/fft_densenet",
+    # ],
     "ctch_peft_finetuned": [
         "ctch/baselines/peft_finetuned/lora_pubmedclip",
         "ctch/baselines/peft_finetuned/lora_biomedclip",
@@ -94,66 +94,123 @@ EXPERIMENTS = OrderedDict({
         "ctch/few_shot/20_shot/ours_xbone_net",
     ],
     "ctch_proposed": [
-        "ctch/proposed/ours_xbone_net",
+        "ctch/proposed/ours_xbone_net_v3",
+        "ctch/proposed/ours_xbone_net_v5",
+        # "ctch/proposed/proposed_v6",
     ],
     "ctch_ablation": [
         "ctch/ablation_study/modality/image_only",
         "ctch/ablation_study/modality/text_only",
-        "ctch/ablation_study/modality/shuffled_report",
+        # Evaluation-only perturbation; reuse the canonical v3 Phase-2
+        # checkpoint instead of training another identical model.
+        # "ctch/ablation_study/modality/shuffled_report",
         "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
         "ctch/ablation_study/finetune/xbone_highres_full_ft",
         "ctch/ablation_study/finetune/xbone_highres_no_ft",
         "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
         "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
+        "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
         "ctch/ablation_study/architecture/phase/phase2_only",
         "ctch/ablation_study/architecture/phase/phase1_merged",
-        "ctch/ablation_study/architecture/fusion/concat",
-        "ctch/ablation_study/architecture/fusion/image_to_text",
-        "ctch/ablation_study/architecture/fusion/text_to_image",
-        "ctch/ablation_study/architecture/classifier/no_class_weight",
-        "ctch/ablation_study/architecture/classifier/linear",
+        # The fusion/classifier ablations below reuse the canonical v3 Phase-1
+        # checkpoint and can be completed later without rerunning Phase 1.
+        # "ctch/ablation_study/architecture/fusion/concat",
+        # "ctch/ablation_study/architecture/fusion/image_to_text",
+        # "ctch/ablation_study/architecture/fusion/text_to_image",
+        # "ctch/ablation_study/architecture/classifier/no_class_weight",
+        # "ctch/ablation_study/architecture/classifier/no_class_bias",
+        # "ctch/ablation_study/architecture/classifier/linear",
+        # Temporarily postponed; unlike the entries above, this requires a new
+        # Phase-1 run because it changes the Phase-1 sampler.
+        # "ctch/ablation_study/architecture/training/no_class_aware_sampling",
     ],
 })
-
-# Run this subset on one fixed, locally controlled GPU when wall-clock training
-# time is a reported outcome. Performance-only experiments may run elsewhere.
-CTCH_TRAINING_TIME_EXPERIMENTS = [
-    "ctch/proposed/ours_xbone_net",
-    # "ctch/baselines/peft_finetuned/lora_biomedclip",
-    # "ctch/baselines/full_finetuned/fft_biomedclip",
-    # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-    # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-    # "ctch/ablation_study/finetune/xbone_highres_no_ft",
-    # "ctch/ablation_study/finetune/xbone_highres_full_ft",
-    # "ctch/ablation_study/architecture/phase/phase2_only",
-    # "btxrd/few_shot/20_shot/ours_xbone_net",
-    # "ctch/ablation_study/architecture/fusion/image_to_text",
-    # "ctch/ablation_study/architecture/fusion/text_to_image",
-    # "ctch/ablation_study/architecture/classifier/no_class_weight",
-    # "ctch/ablation_study/architecture/classifier/linear",
-]
-
-BTXRD_TRAINING_TIME_EXPERIMENTS = [
-    # "btxrd/proposed/ours_xbone_net",
-    # "btxrd/baselines/peft_finetuned/lora_biomedclip",
-    # "btxrd/baselines/full_finetuned/fft_biomedclip",
-]
-
-TRAINING_TIME_EXPERIMENTS = (
-    BTXRD_TRAINING_TIME_EXPERIMENTS + CTCH_TRAINING_TIME_EXPERIMENTS
-)
 
 _ALL_REGISTERED_EXPERIMENTS = list(dict.fromkeys(
     experiment
     for experiments in EXPERIMENTS.values()
     for experiment in experiments
 ))
-_TRAINING_TIME_SET = set(TRAINING_TIME_EXPERIMENTS)
-NON_TIMING_EXPERIMENTS = [
-    experiment
-    for experiment in _ALL_REGISTERED_EXPERIMENTS
-    if experiment not in _TRAINING_TIME_SET
-]
+
+# Priority groups only select experiments; they deliberately do not override
+# the configured batch size or gradient accumulation. In particular, reducing
+# the Phase-1 micro-batch would change the number of in-batch contrastive pairs
+# and therefore the training protocol.
+PRIORITY_GROUPS = OrderedDict({
+    # Suitable for a 16-GiB RTX 5060 Ti: single-view LoRA baselines, few-shot
+    # LoRA baselines, Phase-2-only ablations, no-high-resolution variants, and
+    # the high-resolution no-finetuning control whose foundation encoders are
+    # frozen.
+    "less_important": [
+        "btxrd/baselines/peft_finetuned/lora_pubmedclip",
+        "btxrd/baselines/peft_finetuned/lora_biomedclip",
+        "btxrd/few_shot/1_shot/lora_pubmedclip",
+        "btxrd/few_shot/1_shot/lora_biomedclip",
+        "btxrd/few_shot/10_shot/lora_pubmedclip",
+        "btxrd/few_shot/10_shot/lora_biomedclip",
+        "btxrd/few_shot/20_shot/lora_pubmedclip",
+        "btxrd/few_shot/20_shot/lora_biomedclip",
+        "ctch/baselines/peft_finetuned/lora_pubmedclip",
+        "ctch/baselines/peft_finetuned/lora_biomedclip",
+        "ctch/few_shot/1_shot/lora_pubmedclip",
+        "ctch/few_shot/1_shot/lora_biomedclip",
+        "ctch/few_shot/10_shot/lora_pubmedclip",
+        "ctch/few_shot/10_shot/lora_biomedclip",
+        "ctch/few_shot/20_shot/lora_pubmedclip",
+        "ctch/few_shot/20_shot/lora_biomedclip",
+        # "ctch/ablation_study/modality/image_only",
+        # "ctch/ablation_study/modality/text_only",
+        # "ctch/ablation_study/finetune/xbone_highres_no_ft",
+        # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+        # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        # "ctch/ablation_study/architecture/phase/phase2_only",
+        # "ctch/ablation_study/architecture/fusion/concat",
+        # "ctch/ablation_study/architecture/fusion/image_to_text",
+        # "ctch/ablation_study/architecture/fusion/text_to_image",
+        # "ctch/ablation_study/architecture/classifier/no_class_weight",
+        # "ctch/ablation_study/architecture/classifier/no_class_bias",
+        # "ctch/ablation_study/architecture/classifier/linear",
+    ],
+    "important": [
+        "btxrd/few_shot/1_shot/ours_xbone_net",
+        "btxrd/few_shot/10_shot/ours_xbone_net",
+        "btxrd/few_shot/20_shot/ours_xbone_net",
+        "btxrd/proposed/ours_xbone_net",
+        "ctch/few_shot/1_shot/ours_xbone_net",
+        "ctch/few_shot/10_shot/ours_xbone_net",
+        "ctch/few_shot/20_shot/ours_xbone_net",
+        "ctch/proposed/ours_xbone_net_v3",
+        "ctch/proposed/ours_xbone_net_v5",
+        # "ctch/ablation_study/modality/shuffled_report",
+        # "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
+        # "ctch/ablation_study/finetune/xbone_highres_full_ft",
+        # "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
+        # "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
+        # "ctch/ablation_study/architecture/phase/phase1_merged",
+        # "ctch/ablation_study/architecture/training/no_class_aware_sampling",
+    ],
+})
+
+
+def _validate_priority_groups() -> None:
+    """Require every active experiment in exactly one priority group."""
+    profiled = [
+        experiment
+        for values in PRIORITY_GROUPS.values()
+        for experiment in values
+    ]
+    duplicates = sorted({experiment for experiment in profiled if profiled.count(experiment) > 1})
+    unknown = sorted(set(profiled) - set(_ALL_REGISTERED_EXPERIMENTS))
+    missing = sorted(set(_ALL_REGISTERED_EXPERIMENTS) - set(profiled))
+    if duplicates or unknown or missing:
+        raise RuntimeError(
+            "Invalid priority-group registry: "
+            f"duplicates={duplicates}, unknown={unknown}, missing={missing}"
+        )
+
+
+_validate_priority_groups()
 
 DEFAULT_SEEDS = [42, 123, 456]
 
@@ -183,14 +240,10 @@ def get_experiments(groups: list[str] | None) -> list[str]:
     for g in groups:
         if g in EXPERIMENTS:
             result.extend(EXPERIMENTS[g])
-        elif g == "training_time":
-            result.extend(TRAINING_TIME_EXPERIMENTS)
-        elif g in ("ctch_training_time", "training_time_ctch"):
-            result.extend(CTCH_TRAINING_TIME_EXPERIMENTS)
-        elif g in ("btxrd_training_time", "training_time_btxrd"):
-            result.extend(BTXRD_TRAINING_TIME_EXPERIMENTS)
-        elif g in ("non_timing", "performance_only"):
-            result.extend(NON_TIMING_EXPERIMENTS)
+        elif g in ("less_important", "less-important"):
+            result.extend(PRIORITY_GROUPS["less_important"])
+        elif g == "important":
+            result.extend(PRIORITY_GROUPS["important"])
         elif g in ("zero_shot_baselines", "zeroshot"):
             for key, exps in EXPERIMENTS.items():
                 if "zeroshot" in key:
@@ -410,6 +463,25 @@ def main():
     )
     parser.add_argument("--group", "-g", nargs="+", default=None,
                         help="Experiment groups to run or direct config path.")
+    parser.add_argument(
+        "--priority-group",
+        choices=tuple(PRIORITY_GROUPS),
+        default=None,
+        help=(
+            "Run only experiments assigned to this priority. When used with "
+            "--group, the intersection is selected."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the selected experiment paths without launching subprocesses.",
+    )
+    parser.add_argument(
+        "--skip-completed",
+        action="store_true",
+        help="Do not retrain a seed when its best_phase2.pth already exists.",
+    )
     parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS,
                         help=f"Seeds to run (default: {DEFAULT_SEEDS})")
     parser.add_argument("--train-only", action="store_true",
@@ -446,6 +518,24 @@ def main():
         parser.error("--gradient-accumulation-steps must be positive")
 
     experiments = get_experiments(args.group)
+    if args.priority_group is not None:
+        priority_set = set(PRIORITY_GROUPS[args.priority_group])
+        experiments = [
+            experiment for experiment in experiments if experiment in priority_set
+        ]
+    if not experiments:
+        parser.error("No experiments matched the requested group/priority.")
+
+    if args.dry_run:
+        priority_label = args.priority_group
+        if priority_label is None and args.group and len(args.group) == 1:
+            if args.group[0] in PRIORITY_GROUPS:
+                priority_label = args.group[0]
+        priority_label = priority_label or "custom/all"
+        print(f"Selected {len(experiments)} experiments for {priority_label}:")
+        for experiment in experiments:
+            print(f"  {experiment}")
+        return
     seeds = args.seeds
     total_runs = sum(
         1 if "zeroshot" in experiment else len(seeds)
@@ -500,39 +590,46 @@ def main():
 
             # --- STEP 1: Train model ---
             if not args.eval_only and not is_zeroshot:
-                train_extra = []
-                if args.phase2_only:
-                    train_extra.extend([
-                        "++params.run_phase1=false",
-                        "++params.phase1.enabled=false",
-                        "++params.run_phase2=true",
-                        "++params.phase2.enabled=true",
-                    ])
-                if args.batch_size is not None:
-                    train_extra.append(f"++dataset.batch_size={args.batch_size}")
-                if args.gradient_accumulation_steps is not None:
-                    train_extra.append(
-                        "++params.gradient_accumulation_steps="
-                        f"{args.gradient_accumulation_steps}"
+                if args.skip_completed and os.path.exists(ckpt_p2):
+                    print(
+                        f"\n  [SKIP] Existing Phase-2 checkpoint: {ckpt_p2}"
                     )
-                print(f"\n  [STEP 1/2: TRAINING] Launching train.py for {experiment} (seed={seed})...")
-                sys.stdout.flush()
-                train_success = run_one(
-                    "train.py", experiment, seed, extra_args=train_extra or None
-                )
+                    if args.train_only:
+                        continue
+                else:
+                    train_extra = []
+                    if args.phase2_only:
+                        train_extra.extend([
+                            "++params.run_phase1=false",
+                            "++params.phase1.enabled=false",
+                            "++params.run_phase2=true",
+                            "++params.phase2.enabled=true",
+                        ])
+                    if args.batch_size is not None:
+                        train_extra.append(f"++dataset.batch_size={args.batch_size}")
+                    if args.gradient_accumulation_steps is not None:
+                        train_extra.append(
+                            "++params.gradient_accumulation_steps="
+                            f"{args.gradient_accumulation_steps}"
+                        )
+                    print(f"\n  [STEP 1/2: TRAINING] Launching train.py for {experiment} (seed={seed})...")
+                    sys.stdout.flush()
+                    train_success = run_one(
+                        "train.py", experiment, seed, extra_args=train_extra or None
+                    )
 
-                # Strictly verify train.py process exited cleanly with code 0
-                if not train_success:
-                    print(f"    [ERROR] train.py failed for seed={seed}. ABORTING evaluation for this seed.")
-                    continue
+                    # Strictly verify train.py process exited cleanly with code 0
+                    if not train_success:
+                        print(f"    [ERROR] train.py failed for seed={seed}. ABORTING evaluation for this seed.")
+                        continue
 
-                # Strictly verify trained checkpoint file actually exists on disk before evaluate.py
-                if not os.path.exists(ckpt_p2) and not os.path.exists(ckpt_p1):
-                    print(f"    [ERROR] train.py completed but no trained checkpoint (.pth) was found in '{sd}'.")
-                    print("            ABORTING evaluation to prevent evaluating untrained random weights.")
-                    continue
+                    # Strictly verify trained checkpoint file actually exists on disk before evaluate.py
+                    if not os.path.exists(ckpt_p2) and not os.path.exists(ckpt_p1):
+                        print(f"    [ERROR] train.py completed but no trained checkpoint (.pth) was found in '{sd}'.")
+                        print("            ABORTING evaluation to prevent evaluating untrained random weights.")
+                        continue
 
-                print(f"    [OK] Training complete! Verified checkpoint on disk: {ckpt_p2 if os.path.exists(ckpt_p2) else ckpt_p1}")
+                    print(f"    [OK] Training complete! Verified checkpoint on disk: {ckpt_p2 if os.path.exists(ckpt_p2) else ckpt_p1}")
 
             elif is_zeroshot and not args.eval_only:
                 exp_short = experiment.split("/")[-1]

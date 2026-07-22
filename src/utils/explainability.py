@@ -76,7 +76,21 @@ def fusion_from_tokens(
         components = components * component_mask.view(
             1, len(COMPONENT_NAMES), 1
         )
-    fused = fusion.norm_fuse(fusion.fusion_mlp(components.flatten(1)))
+    cross_fused = fusion.norm_fuse(fusion.fusion_mlp(components.flatten(1)))
+    if hasattr(fusion, "concat_projection") and hasattr(fusion, "gate_network"):
+        image_vector = fusion._pool_image_tokens(image_tokens, image_padding)
+        text_vector = text_tokens[:, 0]
+        concat_fused = fusion.concat_projection(
+            torch.cat([image_vector, text_vector], dim=-1)
+        )
+        gate = torch.sigmoid(
+            fusion.gate_network(
+                torch.cat([concat_fused, cross_fused], dim=-1)
+            )
+        )
+        fused = concat_fused + gate * (cross_fused - concat_fused)
+    else:
+        fused = cross_fused
     return model.head(fused), components
 
 

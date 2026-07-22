@@ -1,0 +1,10 @@
+type: gated_cross_attention
+params:
+  attention_direction: bidirectional
+  text_dim: 512
+  img_dim: 512
+  embed_dim: 512
+  num_heads: 8
+  dropout: 0.1
+  gate_hidden_dim: 128
+  gate_bias_init: -2.0

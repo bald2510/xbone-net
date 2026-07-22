@@ -387,13 +387,13 @@ class BioMedCLIPDataCollator:
 # ============================================================
 
 class SFTrainer(Trainer):
-    """Phase-aware HuggingFace Trainer for XBone-Net two-stage training.
+    """Phase-aware HuggingFace Trainer for XBone-Net training.
 
     Overrides compute_loss and prediction_step to handle Phase 1 (contrastive)
-    and Phase 2 (classification) execution modes seamlessly.
+    Phase 2 (classification), and Phase 3 (DRL auxiliary) execution modes.
 
     Attributes:
-        phase (str): Training phase ('phase1' or 'phase2').
+        phase (str): Training phase ('phase1', 'phase2', or 'phase3').
         loss_fn (nn.Module): Active loss function instance.
         use_text_in_p2 (bool): Whether text features are fed into Phase 2 head.
         p1_report_type (str): Report type for Phase 1 ('xray', 'clinical', 'both').
@@ -407,7 +407,7 @@ class SFTrainer(Trainer):
         """Initialize the SFTrainer adapter.
 
         Args:
-            phase: 'phase1' or 'phase2'.
+            phase: 'phase1', 'phase2', or 'phase3'.
             loss_fn: Loss module instance.
             use_text_in_p2: Include text input in Phase 2.
             p1_report_type: Phase 1 report selection ('xray', 'clinical', or 'both').
@@ -438,7 +438,7 @@ class SFTrainer(Trainer):
         return super()._get_train_sampler(train_dataset)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        """Compute training loss for Phase 1 or Phase 2.
+        """Compute training loss for the active training phase.
 
         Args:
             model: The XBoneNet model instance.
@@ -507,7 +507,7 @@ class SFTrainer(Trainer):
             loss = self.loss_fn(image_features, text_features, labels_for_loss)
             outputs = {"image_features": image_features, "text_features": text_features}
         else:
-            # --- Phase 2: Classification with optional fusion ---
+            # --- Phase 2/3: Primary or complementary classification ---
             if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 raise NotImplementedError(
                     "Simultaneous token-level X-ray and clinical report fusion is "
@@ -522,15 +522,26 @@ class SFTrainer(Trainer):
                 text_ids = None
                 text_mask = None
 
-            outputs = model(
-                images,
-                text_ids,
-                attention_mask=text_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
-            )
-            logits = outputs[0] if isinstance(outputs, tuple) else outputs
+            if self.phase == "phase3":
+                outputs = model.forward_drl(
+                    images,
+                    text_ids,
+                    attention_mask=text_mask,
+                    tile_values=tile_values,
+                    tile_mask=tile_mask,
+                    tile_boxes=tile_boxes,
+                )
+                logits = outputs["auxiliary_logits"]
+            else:
+                outputs = model(
+                    images,
+                    text_ids,
+                    attention_mask=text_mask,
+                    tile_values=tile_values,
+                    tile_mask=tile_mask,
+                    tile_boxes=tile_boxes,
+                )
+                logits = outputs[0] if isinstance(outputs, tuple) else outputs
             loss = self.loss_fn(logits, labels_for_loss)
 
         return (loss, outputs) if return_outputs else loss
@@ -558,8 +569,11 @@ class SFTrainer(Trainer):
             loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
 
         logits = None
-        if not prediction_loss_only and self.phase == "phase2":
-            logits = outputs[0] if isinstance(outputs, tuple) else outputs
+        if not prediction_loss_only and self.phase in {"phase2", "phase3"}:
+            if self.phase == "phase3":
+                logits = outputs["auxiliary_logits"]
+            else:
+                logits = outputs[0] if isinstance(outputs, tuple) else outputs
 
         labels = inputs.get("labels")
         return (loss, logits, labels)

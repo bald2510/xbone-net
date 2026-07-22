@@ -1,44 +1,42 @@
 # @package _global_
 # ===============================================================================
-# Canonical experiment: ctch/proposed/ours_xbone_net
-# Backbone: BiomedCLIP | PEFT: LoRA | Fusion: cross-attention | Head: empirical centroid
+# Proposed v5: v4 representation pipeline with sample-adaptive gated fusion
+# Backbone: BiomedCLIP | PEFT: LoRA | Fusion: gated cross-attention
+# Classifier: empirical centroid with class-specific bias
 # ===============================================================================
 
 defaults:
   - /model/peft@model.peft: lora
-  - /model/fusion@model.fusion: cross_attention
+  - /model/fusion@model.fusion: gated_cross_attention
   - /model/classifier@model.classifier: empirical_centroid
   - /dataset@dataset: ctch
   - _self_
 
-experiment_name: ctch/proposed/ours_xbone_net_v3
+experiment_name: ctch/proposed/ours_xbone_net_v5
 seed: 42
 
 model:
   backbone_type: biomedclip
   freeze_backbone: true
-  # Four sparse-focal tiles each contribute one pretrained CLS token and a 2x2
-  # pooled patch grid, preserving more local spatial detail (5 x 4 = 20 tokens).
-  num_visual_tokens: 20 # change
+
+  num_visual_tokens: 20
   local_pool_grid: 2
   include_local_cls_token: true
   contrastive_local_weight: 0.25
-  # Start from exact mean pooling, then learn global-guided local attention.
   contrastive_pooling: attention
   contrastive_attention_hidden_dim: 128
+
   tile_encode_chunk_size: 32
-  # Let Phase-1/2 losses update visual LoRA through local tiles. Recompute tile
-  # activations during backward to keep memory bounded.
   local_tile_grad_enabled: true
   local_tile_gradient_checkpointing: true
+
   visual_resampler:
     aggregation: passthrough
     use_spatial_coordinates: true
-    spatial_coordinate_scale_init: 0.1
+    spatial_coordinate_scale_init: 0.05
+
   classifier:
     params:
-      # Retain empirical-centroid geometry while learning class-specific
-      # decision offsets; all biases start at zero.
       use_class_bias: true
 
 dataset:
@@ -46,8 +44,6 @@ dataset:
     high_res:
       enabled: true
       strategy: sparse_focal
-      # BiomedCLIP still receives only fixed 224x224 inputs: one global view
-      # plus exactly four image-only local views.
       global_size: 224
       tile_size: 224
       canonical_long_side: 896
@@ -55,7 +51,6 @@ dataset:
       candidate_stride: 168
       num_tiles: 4
       coverage_tiles: 2
-      # Cache only source-space crop coordinates, never image tensors/features.
       cache_selection: true
       min_foreground_ratio: 0.60
       nms_iou: 0.30
@@ -69,7 +64,6 @@ dataset:
         min_contrast: 0.035
         min_axis_coverage: 0.01
         min_run_ratio: 0.03
-        # Fall back to the complete image when the pixel mask is uncertain.
         min_dimension_ratio: 0.35
         min_area_ratio: 0.20
         min_energy_retained: 0.95
@@ -89,15 +83,12 @@ params:
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
-    # Reduce the pressure to collapse distinct same-class image/report pairs.
-    target_similarity: 0.50
+    target_similarity: 0.75
     p1_report_type: clinical
     class_aware_sampling:
       enabled: true
       samples_per_class: 2
       seed: ${seed}
-    # Keep adapters explicit so they remain trainable in Phase 2. Merging and
-    # freezing after Phase 1 is an architecture ablation, not the final model.
     merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
@@ -107,7 +98,7 @@ params:
   phase2:
     enabled: true
     epochs: 50
-    lr: 1e-4
+    lr: 5e-5
     weight_decay: 1e-4
     warmup_ratio: 0.1
     early_stopping_patience: 3
@@ -118,13 +109,13 @@ params:
     loss_type: empirical_centroid_ce
     optimizer: adamw
     scheduler: cosine
+
     centroid:
-      # Re-estimate class means with the latest encoder before each validation.
       update_interval_epochs: 1
+
     loss:
-      label_smoothing: 0.05 # change
+      label_smoothing: 0.05
       use_class_weights: true
       weight_type: effective_num
-      # Moderate the rare-class correction and cap extreme relative weights.
-      effective_num_beta: 0.999 # change
-      max_class_weight: 5.0
+      effective_num_beta: 0.995
+      max_class_weight: 3.0

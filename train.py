@@ -1,12 +1,14 @@
 """
 XBone-Net Training Pipeline.
 ===============================================================================
-Executes the streamlined two-phase training workflow for bone X-ray classification:
+Executes the staged training workflow for bone X-ray classification and OOD:
 
   - Phase 1 (Contrastive Alignment): Fine-tunes VLM backbones (e.g., BiomedCLIP)
     using soft-target semantic matching loss to align image and text embeddings.
   - Phase 2 (Classification): Attaches cross-attention fusion and an empirical
     centroid head trained with class-weighted cross-entropy.
+  - Phase 3 (Dual Representation): Freezes the classifier and trains a
+    complementary distribution-discriminative branch using ID data only.
   - OOD Calibration: Fits a Mahalanobis-based OOD detector on validation set
     embeddings to calibrate the decision threshold at a target FPR (e.g., 5%).
 
@@ -45,6 +47,7 @@ from src.models.builder import (
     build_model,
     resolve_phase_enabled,
     setup_phase2_modules,
+    setup_phase3_modules,
 )
 from src.datasets.builder import build_dataloader
 from src.utils.losses import (
@@ -808,6 +811,288 @@ def run_phase2(
 
 
 # ============================================================
+# Phase 3: Complementary Distribution Representation Learning
+# ============================================================
+
+def _phase_text_inputs(batch: dict, report_type: str, device: torch.device):
+    if report_type not in {"xray", "clinical"}:
+        raise ValueError("Phase 3 supports report_type='xray' or 'clinical'.")
+    prefix = "xray" if report_type == "xray" else "clinical"
+    input_ids = batch[f"{prefix}_input_ids"].to(device)
+    attention_mask = batch.get(f"{prefix}_attention_mask")
+    if attention_mask is not None:
+        attention_mask = attention_mask.to(device)
+    return input_ids, attention_mask
+
+
+@torch.no_grad()
+def estimate_drl_label_covariance(
+    model: nn.Module,
+    train_loader,
+    device: torch.device,
+    report_type: str,
+) -> dict:
+    """Estimate the native Phase-2 representation covariance on CTCH train."""
+    if model.drl_auxiliary is None:
+        raise RuntimeError("Cannot estimate DRL covariance without an auxiliary branch.")
+    model.eval()
+    label_features = []
+    for batch in train_loader:
+        images = batch["pixel_values"].to(device)
+        input_ids, attention_mask = _phase_text_inputs(
+            batch, report_type, device
+        )
+        optional = {}
+        for key in ("tile_values", "tile_mask", "tile_boxes"):
+            value = batch.get(key)
+            optional[key] = value.to(device) if value is not None else None
+        features = model.encode_fused(
+            images,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            **optional,
+        )
+        label_features.append(features.detach().float().cpu())
+    if not label_features:
+        raise ValueError("Cannot estimate DRL covariance from an empty loader.")
+    matrix = torch.cat(label_features, dim=0).to(torch.float64)
+    if matrix.size(0) < 2:
+        raise ValueError("DRL covariance requires at least two training samples.")
+    centered = matrix - matrix.mean(dim=0, keepdim=True)
+    covariance = centered.T @ centered / float(matrix.size(0) - 1)
+    model.drl_auxiliary.set_label_covariance(covariance.float().to(device))
+    return {
+        "samples": int(matrix.size(0)),
+        "dimension": int(matrix.size(1)),
+        "trace": float(torch.trace(covariance).item()),
+    }
+
+
+def run_phase3(
+    cfg: DictConfig,
+    model: nn.Module,
+    train_loader,
+    val_loader,
+    device: torch.device,
+    cp_p3: str,
+    log_dir: str,
+    experiment_name: str,
+    use_bf16: bool,
+    use_fp16: bool,
+) -> tuple[nn.Module, dict]:
+    """Train only the DRL auxiliary branch on frozen Phase-2 features."""
+    p3_cfg = cfg.params.phase3
+    epochs = int(p3_cfg.get("epochs", 20))
+    learning_rate = float(p3_cfg.get("lr", 1e-4))
+    weight_decay = float(p3_cfg.get("weight_decay", 1e-4))
+    patience = int(p3_cfg.get("early_stopping_patience", 5))
+    gradient_accumulation = int(
+        p3_cfg.get(
+            "gradient_accumulation_steps",
+            cfg.params.get("gradient_accumulation_steps", 1),
+        )
+    )
+    if gradient_accumulation < 1:
+        raise ValueError("Phase-3 gradient_accumulation_steps must be positive.")
+    report_type = str(p3_cfg.get("report_type", "clinical"))
+
+    print("\n" + "=" * 60)
+    print("PHASE 3: DUAL REPRESENTATION AUXILIARY TRAINING")
+    print("=" * 60)
+
+    for parameter in model.parameters():
+        parameter.requires_grad = False
+    if model.drl_auxiliary is None:
+        raise RuntimeError("Phase 3 requested but no DRL auxiliary branch is attached.")
+    for parameter in model.drl_auxiliary.parameters():
+        parameter.requires_grad = True
+    model.phase3_mode = True
+
+    covariance_stats = estimate_drl_label_covariance(
+        model,
+        train_loader,
+        device,
+        report_type,
+    )
+    print(
+        "  [DRL] Label covariance estimated from "
+        f"{covariance_stats['samples']} samples "
+        f"({covariance_stats['dimension']}d, trace={covariance_stats['trace']:.4f})."
+    )
+
+    loss_cfg = p3_cfg.get("loss", {}) or {}
+    class_weights_tensor = None
+    if bool(loss_cfg.get("use_class_weights", True)):
+        class_ids = extract_class_ids(train_loader.dataset)
+        dataset_params = cfg.dataset.get("params", {}) or {}
+        class_names = dataset_params.get(
+            "classes", dataset_params.get("pathologies", [])
+        )
+        num_classes = int(dataset_params.get("num_classes", len(class_names)))
+        raw_weights, _, missing_classes = compute_class_weights(
+            class_ids=class_ids,
+            num_classes=num_classes,
+            weight_type=str(loss_cfg.get("weight_type", "effective_num")),
+            effective_num_beta=float(
+                loss_cfg.get("effective_num_beta", 0.999)
+            ),
+            max_class_weight=float(loss_cfg.get("max_class_weight", 5.0)),
+        )
+        if missing_classes:
+            raise ValueError(
+                "DRL auxiliary training requires all configured classes in the "
+                f"training split; missing {missing_classes}."
+            )
+        class_weights_tensor = torch.tensor(
+            raw_weights, dtype=torch.float32, device=device
+        )
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights_tensor,
+        label_smoothing=float(loss_cfg.get("label_smoothing", 0.05)),
+    )
+
+    trainable = [
+        parameter
+        for parameter in model.drl_auxiliary.parameters()
+        if parameter.requires_grad
+    ]
+    optimizer_name = str(p3_cfg.get("optimizer", "adamw")).lower()
+    if optimizer_name == "sgd":
+        optimizer = SGD(
+            trainable,
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            momentum=0.9,
+        )
+    elif optimizer_name == "adamw":
+        optimizer = AdamW(
+            trainable,
+            lr=learning_rate,
+            weight_decay=weight_decay,
+        )
+    else:
+        raise ValueError(f"Unsupported Phase-3 optimizer: {optimizer_name}")
+
+    total_steps = math.ceil(
+        math.ceil(len(train_loader.dataset) / cfg.dataset.batch_size)
+        / gradient_accumulation
+    ) * epochs
+    warmup_steps = int(float(p3_cfg.get("warmup_ratio", 0.1)) * total_steps)
+    tokenizer = getattr(
+        model.backbone,
+        "tokenizer_obj",
+        getattr(model.backbone, "tokenizer", None),
+    )
+    pad_id = resolve_pad_token_id(tokenizer) if tokenizer is not None else 0
+
+    logger = TrainingLogger(
+        log_dir=log_dir,
+        experiment_name=experiment_name,
+        phase="phase3",
+    )
+    logger.log_hyperparams({
+        "experiment": experiment_name,
+        "phase": "phase3",
+        "epochs": epochs,
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "batch_size": cfg.dataset.batch_size,
+        "gradient_accumulation_steps": gradient_accumulation,
+        "report_type": report_type,
+        "epsilon": float(model.drl_auxiliary.epsilon),
+        "covariance_trace": covariance_stats["trace"],
+    })
+    logger.log_model_summary(model)
+
+    def compute_metrics_eval(eval_pred):
+        predictions, labels = eval_pred
+        if isinstance(predictions, tuple):
+            predictions = predictions[0]
+        if labels.ndim > 1:
+            labels = np.argmax(labels, axis=-1)
+        predicted_classes = np.argmax(predictions, axis=1)
+        return {
+            "accuracy": accuracy_score(labels, predicted_classes),
+            "f1_macro": f1_score(
+                labels, predicted_classes, average="macro", zero_division=0
+            ),
+        }
+
+    args = TrainingArguments(
+        output_dir=os.path.dirname(cp_p3) if os.path.dirname(cp_p3) else "./checkpoints",
+        num_train_epochs=epochs,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        per_device_train_batch_size=cfg.dataset.batch_size,
+        per_device_eval_batch_size=cfg.dataset.batch_size,
+        gradient_accumulation_steps=gradient_accumulation,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        logging_strategy="steps",
+        logging_steps=10,
+        lr_scheduler_type=str(p3_cfg.get("scheduler", "cosine")),
+        warmup_steps=warmup_steps,
+        max_steps=total_steps,
+        load_best_model_at_end=True,
+        metric_for_best_model="f1_macro",
+        greater_is_better=True,
+        save_total_limit=1,
+        bf16=use_bf16,
+        fp16=use_fp16,
+        max_grad_norm=1.0,
+        dataloader_num_workers=cfg.dataset.num_workers,
+        seed=int(cfg.get("seed", 42)),
+        data_seed=int(cfg.get("seed", 42)),
+        report_to="none",
+        remove_unused_columns=False,
+    )
+    trainer = SFTrainer(
+        model=model,
+        args=args,
+        train_dataset=train_loader.dataset,
+        eval_dataset=val_loader.dataset,
+        data_collator=BioMedCLIPDataCollator(pad_token_id=pad_id),
+        compute_metrics=compute_metrics_eval,
+        callbacks=[
+            XBoneTrainerCallback(logger),
+            EarlyStoppingCallback(early_stopping_patience=patience),
+        ],
+        loss_fn=criterion,
+        optimizers=(optimizer, None),
+        phase="phase3",
+        use_text_in_p2=True,
+        p2_report_type=report_type,
+    )
+
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    started = time.perf_counter()
+    train_output = trainer.train()
+    phase_stats = phase_training_stats(
+        train_output.metrics,
+        time.perf_counter() - started,
+        device,
+    )
+    phase_stats.update({
+        "gradient_accumulation_steps": gradient_accumulation,
+        "micro_batch_size": int(cfg.dataset.batch_size),
+        "effective_batch_size": int(cfg.dataset.batch_size) * gradient_accumulation,
+        "covariance": covariance_stats,
+    })
+
+    os.makedirs(os.path.dirname(cp_p3) or ".", exist_ok=True)
+    best_model = trainer.model
+    torch.save(best_model.state_dict(), cp_p3)
+    print(
+        f" [*] Saved best Phase 3 checkpoint: {cp_p3} "
+        f"(eval_f1={trainer.state.best_metric})"
+    )
+    logger.close()
+    print("Phase 3 complete!\n")
+    return best_model, phase_stats
+
+
+# ============================================================
 # Validation OOD Calibration
 # ============================================================
 
@@ -1017,6 +1302,7 @@ def main(cfg: DictConfig) -> None:
     # Resolve phase control flags
     do_phase1 = resolve_phase_enabled(cfg.params, "phase1", default=True)
     do_phase2 = resolve_phase_enabled(cfg.params, "phase2", default=True)
+    do_phase3 = resolve_phase_enabled(cfg.params, "phase3", default=False)
     init_from_merged = cfg.params.get("phase2", {}).get("init_from_phase1_merged", False)
     init_from_phase1 = cfg.params.get("phase2", {}).get(
         "init_from_phase1_checkpoint", False
@@ -1079,10 +1365,12 @@ def main(cfg: DictConfig) -> None:
     # Use dict.get to support old format gracefully but prioritize new format
     p1_cfg = cfg.params.get("phase1", {})
     p2_cfg = cfg.params.get("phase2", {})
+    p3_cfg = cfg.params.get("phase3", {})
     
     cp_p1 = p1_cfg.get("checkpoint_path", "")
     cp_merged = p1_cfg.get("merged_checkpoint_path", "")
     cp_p2 = p2_cfg.get("checkpoint_path", "")
+    cp_p3 = p3_cfg.get("checkpoint_path", "")
 
     merge_after_p1 = p1_cfg.get("merge_lora_after_training", False)
     phase_runtime: dict[str, dict] = {}
@@ -1177,9 +1465,14 @@ def main(cfg: DictConfig) -> None:
                 "initialization was requested; using configured foundation weights."
             )
 
+    # Reconstruct the exact primary classification path for Phase 2 training or
+    # for Phase 3 initialization from an already trained v3 checkpoint.
+    classifier_type = "none"
+    if do_phase2 or do_phase3:
+        model, classifier_type, _, _ = setup_phase2_modules(model, cfg, device)
+
     # --- Phase 2 Execution ---
     if do_phase2:
-        model, classifier_type, _, _ = setup_phase2_modules(model, cfg, device)
 
         # --- Configure parameter trainability for Phase 2 ---
         is_merged = (do_phase1 and merge_after_p1) or init_from_merged
@@ -1246,15 +1539,63 @@ def main(cfg: DictConfig) -> None:
             classifier_type=classifier_type,
         )
 
-        do_ood = cfg.params.get("run_ood", False)
-        if do_ood:
-            run_ood_calibration(
-                model=model,
-                val_loader=val_loader,
-                device=device,
-                output_dir=os.path.dirname(cp_p2),
-                p2_report_type=cfg.params.phase2.get("p2_report_type", "clinical"),
+    # --- Phase 3 Execution ---
+    if do_phase3:
+        if not do_phase2:
+            init_checkpoint = str(
+                p3_cfg.get("init_checkpoint_path", cp_p2) or cp_p2
             )
+            if not init_checkpoint or not os.path.exists(init_checkpoint):
+                raise FileNotFoundError(
+                    "Phase 3 requires a trained Phase-2 checkpoint, but it was "
+                    f"not found at: {init_checkpoint!r}"
+                )
+            print(f"Loading frozen primary checkpoint for Phase 3: {init_checkpoint}")
+            checkpoint = torch.load(init_checkpoint, map_location=device)
+            state_dict = checkpoint.get("model_state_dict", checkpoint)
+            result = load_state_dict_checked(
+                model,
+                state_dict,
+                context="Phase 3 primary initialization",
+            )
+            critical_primary_missing = [
+                key for key in result.missing_keys
+                if key.startswith(("fusion.", "head."))
+            ]
+            if critical_primary_missing:
+                raise RuntimeError(
+                    "Phase-3 initialization did not restore the primary "
+                    f"classification path: {critical_primary_missing[:20]}"
+                )
+
+        model, drl_enabled = setup_phase3_modules(model, cfg, device)
+        if not drl_enabled:
+            raise RuntimeError(
+                "Phase 3 is enabled but model.drl.enabled is false or missing."
+            )
+        model, phase_runtime["phase3"] = run_phase3(
+            cfg=cfg,
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            device=device,
+            cp_p3=cp_p3,
+            log_dir=log_dir,
+            experiment_name=experiment_name,
+            use_bf16=use_bf16,
+            use_fp16=use_fp16,
+        )
+
+    do_ood = cfg.params.get("run_ood", False)
+    if do_ood and (do_phase2 or do_phase3):
+        calibration_checkpoint = cp_p3 if do_phase3 else cp_p2
+        run_ood_calibration(
+            model=model,
+            val_loader=val_loader,
+            device=device,
+            output_dir=os.path.dirname(calibration_checkpoint),
+            p2_report_type=cfg.params.phase2.get("p2_report_type", "clinical"),
+        )
 
     total_wall_seconds = time.perf_counter() - training_window_started
     phase_seconds = sum(
@@ -1273,7 +1614,11 @@ def main(cfg: DictConfig) -> None:
         "validation_samples": int(len(val_loader.dataset)),
         "batch_size_per_device": int(cfg.dataset.batch_size),
         "precision": "bf16" if use_bf16 else ("fp16" if use_fp16 else "fp32"),
-        "phase_enabled": {"phase1": bool(do_phase1), "phase2": bool(do_phase2)},
+        "phase_enabled": {
+            "phase1": bool(do_phase1),
+            "phase2": bool(do_phase2),
+            "phase3": bool(do_phase3),
+        },
         "phases": phase_runtime,
         "phase_runtime_seconds": float(phase_seconds),
         "orchestration_wall_clock_seconds": float(total_wall_seconds),

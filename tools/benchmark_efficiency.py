@@ -432,6 +432,19 @@ def main(cfg: DictConfig) -> None:
             f"{result['supported_gflops_per_sample']['mean']:.3f}"
         )
     print(f"  Latency/sample: {latency['mean']:.3f} ms (p95={latency['p95']:.3f} ms)")
+    throughput_summary = result["throughput_samples_per_second"]
+    print(
+        "  Throughput: "
+        f"{throughput_summary['mean']:.3f} samples/s "
+        f"(p50={throughput_summary['p50']:.3f})"
+    )
+    cuda_memory = result["cuda_memory"]
+    if cuda_memory is not None:
+        print(
+            "  Peak GPU memory: "
+            f"{cuda_memory['peak_allocated_mb']:.1f} MiB allocated "
+            f"(forward delta={cuda_memory['forward_peak_delta_mb']:.1f} MiB)"
+        )
     print(f"  Saved to: {output_path}")
 
 
