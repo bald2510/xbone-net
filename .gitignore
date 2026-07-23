@@ -53,3 +53,5 @@ checkpoints/biomedclip/open_clip_pytorch_model.bin
 pretrained/medclip-resnet/pytorch_model.bin
 pretrained/medclip-resnet/medclip-pretrained.zip
 docs/report/main.pdf
+docs/report/main.synctex(busy)
+docs/report/main.pdf
