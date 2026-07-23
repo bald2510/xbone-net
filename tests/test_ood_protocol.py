@@ -23,7 +23,7 @@ from src.utils.ood import (
     calibrate_ood_threshold,
     evaluate_ood,
 )
-from tools.run_ctch_analysis import OOD_FEATURE_KEYS
+from tools.benchmark.ood_analysis import OOD_FEATURE_KEYS
 
 
 class OODProtocolTests(unittest.TestCase):

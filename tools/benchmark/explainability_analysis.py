@@ -20,7 +20,7 @@ from omegaconf import OmegaConf
 from PIL import Image
 from sklearn.decomposition import PCA
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.datasets.ctch import CTCHDataset

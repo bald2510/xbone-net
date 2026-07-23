@@ -23,7 +23,7 @@ from matplotlib import colors
 from omegaconf import OmegaConf
 from PIL import Image, ImageDraw
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from evaluate import adapt_state_dict_keys, load_state_dict_checked
 from src.datasets.builder import build_dataloader
@@ -36,7 +36,7 @@ from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_config(path: Path):

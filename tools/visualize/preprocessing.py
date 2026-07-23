@@ -1,4 +1,4 @@
-"""Visualize and audit foreground-aware fixed-budget sparse-focal preprocessing."""
+"""Visualize every sparse-focal preprocessing step and its combined audit."""
 
 from __future__ import annotations
 
@@ -20,14 +20,14 @@ import yaml
 from matplotlib.patches import Rectangle
 from PIL import Image, ImageDraw
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.datasets.high_resolution import SparseFocalViews, build_sparse_focal_views
 
 
 DEFAULT_EXPERIMENT_CONFIG = (
-    PROJECT_ROOT / "configs" / "experiment" / "btxrd" / "proposed" / "ours_xbone_net.yaml"
+    PROJECT_ROOT / "configs" / "experiment" / "ctch" / "proposed" / "ours_xbone_net.yaml"
 )
 
 ROLE_COLORS = {
@@ -150,14 +150,6 @@ def draw_ground_truth(axis, annotations, offset: tuple[float, float] = (0.0, 0.0
                 edgecolor="#f600ff",
                 linewidth=2.0,
             )
-        )
-        axis.text(
-            left,
-            top,
-            f"GT: {label}",
-            color="white",
-            fontsize=8,
-            bbox={"facecolor": "#a000a8", "alpha": 0.85, "pad": 2},
         )
 
 
@@ -285,7 +277,7 @@ def compute_annotation_coverage(
     return metrics
 
 
-def _draw_box(axis, box, color, linewidth=1.0, label=None, alpha=1.0):
+def _draw_box(axis, box, color, linewidth=1.0, alpha=1.0):
     left, top, right, bottom = box
     axis.add_patch(
         Rectangle(
@@ -298,17 +290,6 @@ def _draw_box(axis, box, color, linewidth=1.0, label=None, alpha=1.0):
             alpha=alpha,
         )
     )
-    if label:
-        axis.text(
-            left,
-            top,
-            label,
-            color="white",
-            fontsize=8,
-            bbox={"facecolor": color, "alpha": 0.88, "pad": 1.5},
-        )
-
-
 def _selected_candidates(views: SparseFocalViews):
     selected: dict[int, list[tuple[int, str]]] = {}
     for tile_index, (candidate_index, role) in enumerate(
@@ -335,12 +316,7 @@ def render_preprocessing(
     metrics: Mapping[str, Any] | None = None,
     config_label: str | None = None,
 ):
-    metrics = metrics or compute_annotation_coverage(
-        annotations,
-        source.size,
-        views.foreground_box,
-        views.tile_boxes,
-    )
+    del metrics, config_label
     tile_count = len(views.tiles)
     maximum_columns = min(4, max(1, tile_count))
     tile_columns = min(
@@ -373,31 +349,8 @@ def render_preprocessing(
         views.foreground_box,
         "#ffe066",
         linewidth=2.2,
-        label="Foreground crop",
     )
-    for box in views.candidate_boxes:
-        _draw_box(source_axis, box, "white", linewidth=0.55, alpha=0.30)
-    for candidate_index, selections in selected_lookup.items():
-        role = selections[0][1]
-        _draw_box(
-            source_axis,
-            views.candidate_boxes[candidate_index],
-            ROLE_COLORS.get(role, "#c8c8c8"),
-            linewidth=2.0,
-            label="/".join(f"T{tile_index}" for tile_index, _ in selections),
-        )
     draw_ground_truth(source_axis, annotations)
-    local_coverage = metrics.get("local_union_coverage_ratio")
-    local_summary = (
-        f"GT covered by local union: {local_coverage:.1%}"
-        if metrics.get("available") and local_coverage is not None
-        else "GT coverage: unavailable"
-    )
-    source_axis.set_title(
-        f"1. Source {source.width}x{source.height}\n"
-        f"Foreground crop + selected fixed-K views\n{local_summary}",
-        color="white",
-    )
     source_axis.axis("off")
 
     foreground_axis = figure.add_subplot(top_layout[0, 1])
@@ -407,18 +360,6 @@ def render_preprocessing(
         foreground_axis,
         annotations,
         offset=(-foreground_left, -foreground_top),
-    )
-    foreground_coverage = metrics.get("foreground_coverage_ratio")
-    foreground_summary = (
-        f"GT retained: {foreground_coverage:.1%}"
-        if metrics.get("available") and foreground_coverage is not None
-        else "GT retained: unavailable"
-    )
-    foreground_axis.set_title(
-        f"2. Foreground crop\n"
-        f"{views.foreground_image.width}x{views.foreground_image.height}; "
-        f"{foreground_summary}",
-        color="white",
     )
     foreground_axis.axis("off")
 
@@ -430,62 +371,122 @@ def render_preprocessing(
             _draw_box(candidate_axis, box, "white", linewidth=0.65, alpha=0.35)
         else:
             role = selections[0][1]
-            label = "/".join(
-                f"T{tile_index}{selection_role[0].upper()}"
-                for tile_index, selection_role in selections
-            )
             _draw_box(
                 candidate_axis,
                 box,
                 ROLE_COLORS.get(role, "#c8c8c8"),
                 linewidth=2.2,
-                label=label,
             )
-    candidate_axis.set_title(
-        f"3. Candidate canvas {views.canvas.width}x{views.canvas.height}\n"
-        f"{len(views.candidate_boxes)} candidates -> {tile_count} encoded",
-        color="white",
-    )
     candidate_axis.axis("off")
 
     global_axis = figure.add_subplot(top_layout[0, 3])
     global_axis.imshow(views.global_image)
-    global_axis.set_title(
-        f"4. Global view\nforeground letterbox -> "
-        f"{views.global_image.width}x{views.global_image.height}",
-        color="white",
-    )
     global_axis.axis("off")
 
-    per_tile_coverage = metrics.get("per_tile_coverage_ratios", [])
-    for zero_based_index, (tile, candidate_index, role) in enumerate(
-        zip(views.tiles, views.selected_candidate_indices, views.tile_roles)
-    ):
+    for zero_based_index, tile in enumerate(views.tiles):
         row, column = divmod(zero_based_index, tile_columns)
         axis = figure.add_subplot(tile_layout[row, column])
         axis.imshow(tile)
-        score = views.candidate_scores[candidate_index]
-        foreground_ratio = views.candidate_foreground_ratios[candidate_index]
-        gt_summary = ""
-        if metrics.get("available") and zero_based_index < len(per_tile_coverage):
-            gt_summary = f"; GT cover={per_tile_coverage[zero_based_index]:.1%}"
-        axis.set_title(
-            f"T{zero_based_index + 1} - {role} "
-            f"({tile.width}x{tile.height})\n"
-            f"score={score:.3f}; foreground={foreground_ratio:.0%}{gt_summary}",
-            color=ROLE_COLORS.get(role, "#c8c8c8"),
-        )
         axis.axis("off")
-
-    title = f"Sparse-focal preprocessing: 1 global + {tile_count} local views"
-    audit_note = "GT overlay/coverage is audit-only and is not used for tile selection"
-    if config_label:
-        audit_note = f"{audit_note} | config: {config_label}"
-    figure.suptitle(f"{title}\n{audit_note}", color="white", fontsize=15)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output, dpi=dpi, bbox_inches="tight", facecolor=figure.get_facecolor())
     plt.close(figure)
+
+
+def render_preprocessing_steps(
+    source: Image.Image,
+    views: SparseFocalViews,
+    annotations,
+    output_dir: Path,
+    dpi: int,
+) -> list[Path]:
+    """Save every stage at its native pixel dimensions without plot padding."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    selected_lookup = _selected_candidates(views)
+    outputs: list[Path] = []
+
+    def save(image: Image.Image, filename: str) -> None:
+        path = output_dir / filename
+        image.convert("RGB").save(path, dpi=(dpi, dpi))
+        outputs.append(path)
+
+    def draw_box(
+        draw: ImageDraw.ImageDraw,
+        box: Sequence[int | float],
+        color: str,
+        width: int,
+        image_size: tuple[int, int],
+    ) -> None:
+        del image_size
+        left, top, right, bottom = (round(float(value)) for value in box)
+        draw.rectangle(
+            (left, top, max(left, right - 1), max(top, bottom - 1)),
+            outline=color,
+            width=width,
+        )
+
+    def draw_annotations(
+        image: Image.Image,
+        offset: tuple[float, float] = (0.0, 0.0),
+    ) -> None:
+        draw = ImageDraw.Draw(image)
+        offset_x, offset_y = offset
+        width = max(1, round(min(image.size) * 0.006))
+        for left, top, right, bottom, _ in annotation_bounds(annotations):
+            draw_box(
+                draw,
+                (
+                    left + offset_x,
+                    top + offset_y,
+                    right + offset_x,
+                    bottom + offset_y,
+                ),
+                "#f600ff",
+                width,
+                image.size,
+            )
+
+    source_step = source.convert("RGB").copy()
+    source_draw = ImageDraw.Draw(source_step)
+    source_width = max(1, round(min(source_step.size) * 0.006))
+    draw_box(
+        source_draw,
+        views.foreground_box,
+        "#e6ab02",
+        source_width,
+        source_step.size,
+    )
+    draw_annotations(source_step)
+    save(source_step, "01_source_and_regions.png")
+
+    foreground_step = views.foreground_image.convert("RGB").copy()
+    foreground_left, foreground_top, _, _ = views.foreground_box
+    draw_annotations(
+        foreground_step,
+        offset=(-foreground_left, -foreground_top),
+    )
+    save(foreground_step, "02_foreground_crop.png")
+
+    candidate_step = views.canvas.convert("RGB").copy()
+    candidate_draw = ImageDraw.Draw(candidate_step)
+    candidate_width = max(1, round(min(candidate_step.size) * 0.006))
+    for index, box in enumerate(views.candidate_canvas_boxes):
+        selections = selected_lookup.get(index)
+        draw_box(
+            candidate_draw,
+            box,
+            ROLE_COLORS.get(selections[0][1], "#bdbdbd") if selections else "#bdbdbd",
+            candidate_width if selections else max(1, candidate_width // 2),
+            candidate_step.size,
+        )
+    save(candidate_step, "03_candidate_selection.png")
+
+    save(views.global_image, "04_global_view.png")
+
+    for index, tile in enumerate(views.tiles, start=1):
+        save(tile, f"{index + 4:02d}_local_tile_{index:02d}.png")
+    return outputs
 
 
 def _default_annotation_path(image_path: Path) -> Path:
@@ -505,7 +506,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--annotation")
     parser.add_argument(
         "--output",
-        default="results/visualizations/sparse_focal_preprocessing.png",
+        default="C:/Users/lebat/Documents/Github/xbone-net/results/visualization/sparse_focal_preprocessing.png",
+    )
+    parser.add_argument(
+        "--steps-dir",
+        default=None,
+        help="Directory for one PNG per step; defaults beside --output.",
     )
     parser.add_argument(
         "--experiment-config",
@@ -574,8 +580,21 @@ def main():
         metrics=metrics,
         config_label=_config_label(config_path),
     )
+    steps_dir = (
+        Path(args.steps_dir).expanduser().resolve()
+        if args.steps_dir
+        else output.with_name(f"{output.stem}_steps")
+    )
+    step_outputs = render_preprocessing_steps(
+        source,
+        views,
+        annotations,
+        steps_dir,
+        args.dpi,
+    )
 
     print(f"Saved: {output}")
+    print(f"Saved {len(step_outputs)} step images to: {steps_dir}")
     print(f"Config: {config_path}")
     print(
         f"Candidates: {len(views.candidate_boxes)}; encoded local views: "

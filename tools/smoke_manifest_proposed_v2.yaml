@@ -1,9 +1,0 @@
-suite_name: xbone_proposed_v2_smoke
-
-experiments:
-  - id: ctch_proposed_v2
-    patterns:
-      - "experiment/ctch/proposed/ours_xbone_net.yaml"
-  - id: btxrd_proposed_v2
-    patterns:
-      - "experiment/btxrd/proposed/ours_xbone_net.yaml"

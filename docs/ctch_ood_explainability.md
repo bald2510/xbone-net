@@ -13,7 +13,7 @@ and feature provenance.
 ## Run the registered protocol
 
 ```powershell
-python tools/run_ctch_analysis.py
+python tools/benchmark/ood_analysis.py
 ```
 
 The OOD protocol fits density estimators on CTCH train, calibrates thresholds on
@@ -33,10 +33,10 @@ and full-dimensional representation/clustering metrics.
 Useful subsets:
 
 ```powershell
-python tools/run_ctch_analysis.py --seeds 42 --analyses ood --ood-scenarios domain_ood
-python tools/run_ctch_analysis.py --seeds 42 --analyses explainability
-python tools/run_ctch_analysis.py --feature-only
-python tools/run_ctch_analysis.py --table
+python tools/benchmark/ood_analysis.py --seeds 42 --analyses ood --ood-scenarios domain_ood
+python tools/benchmark/ood_analysis.py --seeds 42 --analyses explainability
+python tools/benchmark/ood_analysis.py --feature-only
+python tools/benchmark/ood_analysis.py --table
 ```
 
 Use `--overwrite` to recompute verified outputs. Otherwise feature, OOD, and
@@ -66,7 +66,7 @@ uncached Vietnamese report segments still require translation.
 For debugging only, incomplete coverage can be explicitly acknowledged:
 
 ```powershell
-python tools/run_ctch_analysis.py --allow-incomplete-ood
+python tools/benchmark/ood_analysis.py --allow-incomplete-ood
 ```
 
 Those artifacts record their incomplete coverage and are marked exploratory.
@@ -95,5 +95,5 @@ results/ctch/proposed/ours_xbone_net/analysis/aggregated_results.json
 Plot an existing OOD score archive without refitting or recalibrating it:
 
 ```powershell
-python tools/visualize_ood.py --scores <scenario-dir>/ood_scores.npz --output <scenario-dir>/score_distributions.png
+python tools/visualize/ood.py --scores <scenario-dir>/ood_scores.npz --output <scenario-dir>/score_distributions.png
 ```

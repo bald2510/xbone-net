@@ -2,7 +2,7 @@
 # Local-resolution ablation: reduce the v3 local-token budget from 20 to 8.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens

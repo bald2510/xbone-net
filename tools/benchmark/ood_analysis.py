@@ -1,6 +1,6 @@
 """Run locked multi-seed CTCH OOD and explainability analyses.
 
-This orchestrator mirrors ``tools/run_all.py`` but is intentionally post-hoc:
+This orchestrator complements ``tools/run_all.py`` but is intentionally post-hoc:
 it never invokes ``train.py`` and accepts no experiment override.  Every child
 process is pinned to ``ctch/proposed/ours_xbone_net`` and verifies checkpoint
 and feature provenance before writing results.
@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 from omegaconf import OmegaConf
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.utils.analysis import (
@@ -516,7 +516,7 @@ def main() -> None:
                 output_dir = analysis_root(seed) / "explainability"
                 command = [
                     sys.executable,
-                    str(ROOT / "tools" / "evaluate_explainability.py"),
+                    str(ROOT / "tools" / "benchmark" / "explainability_analysis.py"),
                     "--seed",
                     str(seed),
                     "--train-features",

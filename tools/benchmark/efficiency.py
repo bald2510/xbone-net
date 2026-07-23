@@ -9,6 +9,7 @@ excluded from model latency.
 from __future__ import annotations
 
 import argparse
+import csv
 import itertools
 import json
 import sys
@@ -19,7 +20,7 @@ import torch
 import torch.nn.functional as F
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 
@@ -38,6 +39,18 @@ def _parse_args() -> argparse.Namespace:
         "--skip-flops",
         action="store_true",
         help="Skip FlopCounterMode when only latency/params are needed.",
+    )
+    parser.add_argument(
+        "--export-csv",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Write a report-ready efficiency.csv beside efficiency.json.",
+    )
+    parser.add_argument(
+        "--export-latex",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Write a report-ready efficiency_table.tex beside efficiency.json.",
     )
     args, hydra_args = parser.parse_known_args()
     if args.batch_size < 1 or args.num_batches < 1:
@@ -240,7 +253,84 @@ def _output_path(cfg: DictConfig) -> Path:
     return directory / "efficiency.json"
 
 
-@hydra.main(config_path="../configs", config_name="config", version_base="1.3")
+def _report_row(result: dict[str, Any]) -> dict[str, Any]:
+    flops = result["supported_gflops_per_sample"]
+    memory = result["cuda_memory"]
+    return {
+        "experiment": result["experiment_name"],
+        "seed": result["seed"],
+        "device": result["protocol"]["device_name"],
+        "precision": result["protocol"]["precision"],
+        "batch_size": result["protocol"]["batch_size_requested"],
+        "parameters_total": result["parameters"]["total"],
+        "parameters_trainable": result["parameters"]["trainable"],
+        "gflops_per_sample": None if flops is None else flops["mean"],
+        "latency_ms_mean": result["latency_ms_per_sample"]["mean"],
+        "latency_ms_p95": result["latency_ms_per_sample"]["p95"],
+        "throughput_samples_s": result["throughput_samples_per_second"]["mean"],
+        "peak_gpu_memory_mib": (
+            None if memory is None else memory["peak_allocated_mb"]
+        ),
+    }
+
+
+def _write_csv_report(path: Path, row: dict[str, Any]) -> None:
+    with path.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(row))
+        writer.writeheader()
+        writer.writerow(row)
+
+
+def _latex_escape(value: Any) -> str:
+    text = str(value)
+    for source, replacement in (
+        ("\\", r"\textbackslash{}"),
+        ("&", r"\&"),
+        ("%", r"\%"),
+        ("_", r"\_"),
+        ("#", r"\#"),
+    ):
+        text = text.replace(source, replacement)
+    return text
+
+
+def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
+    def number(key: str, digits: int = 2) -> str:
+        value = row[key]
+        return "--" if value is None else f"{float(value):.{digits}f}"
+
+    columns = (
+        "Experiment & Params & GFLOPs/sample & Latency (ms) & "
+        "Throughput (sample/s) & Peak GPU (MiB)"
+    )
+    values = " & ".join(
+        [
+            _latex_escape(row["experiment"]),
+            f"{int(row['parameters_total']):,}",
+            number("gflops_per_sample", 3),
+            number("latency_ms_mean", 3),
+            number("throughput_samples_s", 2),
+            number("peak_gpu_memory_mib", 1),
+        ]
+    )
+    table = (
+        "\\begin{table}[t]\n"
+        "\\centering\n"
+        "\\caption{Inference efficiency benchmark.}\n"
+        "\\label{tab:efficiency}\n"
+        "\\begin{tabular}{lrrrrr}\n"
+        "\\toprule\n"
+        f"{columns} \\\\\n"
+        "\\midrule\n"
+        f"{values} \\\\\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+        "\\end{table}\n"
+    )
+    path.write_text(table, encoding="utf-8")
+
+
+@hydra.main(config_path="../../configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     OmegaConf.set_struct(cfg, False)
     cfg.dataset.batch_size = ARGS.batch_size
@@ -421,6 +511,13 @@ def main(cfg: DictConfig) -> None:
     output_path = _output_path(cfg)
     with output_path.open("w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2, ensure_ascii=False, default=str)
+    report_row = _report_row(result)
+    csv_path = output_path.with_name("efficiency.csv")
+    latex_path = output_path.with_name("efficiency_table.tex")
+    if ARGS.export_csv:
+        _write_csv_report(csv_path, report_row)
+    if ARGS.export_latex:
+        _write_latex_report(latex_path, report_row)
 
     params = result["parameters"]
     latency = result["latency_ms_per_sample"]
@@ -446,6 +543,10 @@ def main(cfg: DictConfig) -> None:
             f"(forward delta={cuda_memory['forward_peak_delta_mb']:.1f} MiB)"
         )
     print(f"  Saved to: {output_path}")
+    if ARGS.export_csv:
+        print(f"  CSV: {csv_path}")
+    if ARGS.export_latex:
+        print(f"  LaTeX: {latex_path}")
 
 
 if __name__ == "__main__":

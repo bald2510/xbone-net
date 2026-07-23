@@ -2,7 +2,7 @@
 # Preprocessing ablation: direct global resize without local high-resolution tiles.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/architecture/preprocess/xbone_nohighres

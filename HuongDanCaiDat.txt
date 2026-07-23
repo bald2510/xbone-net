@@ -105,15 +105,7 @@ Transformers.
   python -c "from src.models.backbone.medclip_foundation import MedCLIPFoundation; print('MedCLIP: OK')"
 
 8.4. Kiểm tra requirements.txt còn đồng bộ với source code
-  python tools/generate_requirements.py --check
-
-8.5. Chạy smoke test
-GPU:
-  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cuda --batch-size 2
-
-CPU:
-  python tools/smoke_test_all.py --config-root configs --manifest tools/smoke_manifest.yaml --device cpu --batch-size 2
-
+  python tools/generate_requirement.py --check
 
 9. CHUẨN BỊ DỮ LIỆU
 --------------------
@@ -142,13 +134,13 @@ Nếu dữ liệu đặt ở vị trí khác, sửa đường dẫn trong:
 10. CẬP NHẬT REQUIREMENTS.TXT
 -----------------------------
 Sau khi thêm hoặc xóa import trong mã nguồn, kích hoạt đúng môi trường rồi chạy:
-  python tools/generate_requirements.py
+  python tools/generate_requirement.py
 
 Xem trước mà không ghi file:
-  python tools/generate_requirements.py --dry-run --verbose
+  python tools/generate_requirement.py --dry-run --verbose
 
 Kiểm tra trong CI:
-  python tools/generate_requirements.py --check
+  python tools/generate_requirement.py --check
 
 Không nên dùng pip freeze để thay thế vì pip freeze đưa cả các dependency gián
 tiếp và package không được repository sử dụng vào requirements.txt.

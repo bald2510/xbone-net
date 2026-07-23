@@ -62,10 +62,10 @@ python -m pip install --no-deps MedCLIP==0.0.3
 adding or removing a dependency, regenerate it from the active environment:
 
 ```bash
-python tools/generate_requirements.py
+python tools/generate_requirement.py
 
 # CI/read-only validation: exits with code 1 when the file is stale
-python tools/generate_requirements.py --check
+python tools/generate_requirement.py --check
 ```
 
 ---
@@ -122,7 +122,7 @@ orchestrator exports the required feature archives, fits detectors only on CTCH
 train/validation data, and evaluates all configured scenarios for three seeds:
 
 ```bash
-python tools/run_ctch_analysis.py
+python tools/benchmark/ood_analysis.py
 ```
 
 See `docs/ctch_ood_explainability.md` for feature-only, OOD-only,
@@ -131,11 +131,15 @@ internal stage of this locked workflow and should not be invoked with unrelated
 BTXRD checkpoints.
 
 ### 5.4. Running the Entire Experiment Suite
-The registry contains every classification config (BTXRD/CTCH baselines,
-few-shot, proposed, and CTCH ablations). Run all configs with the canonical
-three seeds, optionally enabling sample-level bootstrap CIs:
+`run_all.py` discovers every YAML under `configs/experiment/`; the Python
+registry no longer needs to be edited. Enable a config/group with `+` and
+disable it with `-` in `tools/experiments.txt` (a disabled selector always
+wins). Inspect the available selectors and preview the final queue before
+launching training:
 
 ```bash
+python tools/run_all.py --list-configs
+python tools/run_all.py --dry-run
 python tools/run_all.py --seeds 42 123 456 --bootstrap
 python tools/run_all.py --group zero_shot_baselines
 python tools/run_all.py --group finetuned_baselines
@@ -143,58 +147,32 @@ python tools/run_all.py --group proposed
 python tools/run_all.py --group ablation
 ```
 
+`--group` explicitly selects a subset while retaining the manifest's disabled
+list. `--ignore-experiment-file` performs direct CLI-only selection.
+
 Trainable experiments use every requested seed. Deterministic zero-shot configs
 are evaluated once because repeating them under different seed labels would be
 pseudo-replication; their uncertainty is estimated by test-sample bootstrap.
 
-For wall-clock comparisons, run the locked efficiency subset on one fixed GPU:
+Review mode is independent from the training switches. Without `--group`, it
+scans every existing result and prints separate BTXRD/CTCH sections grouped by
+configuration family. It reports F1, balanced accuracy, accuracy, sensitivity,
+specificity, precision, AUROC, AUPRC, ECE, adaptive ECE, NLL, Brier score, and
+parameter counts; the same data are exported to
+`results/summary/run_all_table.csv`.
 
 ```bash
-python tools/run_all.py --group training_time --seeds 42 123 456
+python tools/run_all.py --table
+python tools/run_all.py --table --group ctch
+python tools/run_all.py --table --group ctch_proposed
+python tools/run_all.py --table --table-selected-only
 ```
-
-Run the disjoint complement (all other registered experiments) on the faster
-performance GPU:
-
-```bash
-python tools/run_all.py --group non_timing --seeds 42 123 456 --bootstrap
-```
-
-First try the configured physical batch size of 16. If a 16 GB GPU runs out of
-memory, choose the largest physical micro-batch that fits the most demanding
-timing configuration and apply the same override to the complete timing group.
-For example:
-
-```bash
-python tools/run_all.py --group training_time --seeds 42 123 456 --batch-size 2 --gradient-accumulation-steps 8
-```
-
-This fallback preserves the optimizer effective batch, but it is **not**
-mathematically equivalent to physical batch 16 in Phase 1: the contrastive loss
-sees only two in-batch candidates. Therefore, do not mix its Phase-1 performance
-with batch-16 results; either use it as a timing-only protocol or rerun every
-contrastive performance comparison with the same physical batch.
-
-Each trained seed writes `training_summary.json` beside its checkpoint with
-per-phase runtime, GPU-hours, peak CUDA memory, precision, GPU model, and
-software versions. Compare wall-clock values only when GPU model, precision,
-physical batch size, gradient accumulation, and software environment match.
 
 ### 5.5. Canonical Pipeline and Ablations
 
 BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into `modality`, `finetune`, and `architecture` (`preprocess`, `phase`, `fusion`, and `classifier`). Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split. The `xbone_nohighres` and `xbone_letterbox` controls use one encoder view but preserve the proposed fusion budget of one global plus eight pooled visual tokens.
 
 The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
-
-Validate the materialized CTCH manifests and exact cross-split image hashes
-without changing data:
-
-```bash
-python tools/validate_ctch_split.py
-```
-
-Patient-level disjointness is certified only when `ctch-split.csv` contains a
-non-empty `patient_key` column.
 
 ### 5.6. CTCH Few-Shot Experiments
 

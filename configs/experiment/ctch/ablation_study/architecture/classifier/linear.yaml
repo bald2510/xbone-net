@@ -2,7 +2,7 @@
 # Classifier ablation: replace the empirical-centroid head with a linear head.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/architecture/classifier/linear
@@ -11,7 +11,7 @@ params:
   run_phase1: false
   phase1:
     enabled: false
-    checkpoint_path: checkpoints/ctch/proposed/ours_xbone_net_v3/seed_${seed}/best_phase1.pth
+    checkpoint_path: checkpoints/ctch/proposed/ours_xbone_net/seed_${seed}/best_phase1.pth
   phase2:
     init_from_phase1_checkpoint: true
     init_from_phase1_merged: false

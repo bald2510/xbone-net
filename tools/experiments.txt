@@ -1,0 +1,124 @@
+# Training switches for tools/run_all.py.
+#
+#   + config  enable a config
+#   - config  disable a config
+#
+# Only CTCH ablation studies are enabled below.
+# Preview the final queue: python tools/run_all.py --dry-run
+# List configs/groups:     python tools/run_all.py --list-configs
+
+# =============================================================================
+# BTXRD (disabled)
+# =============================================================================
+
+# Few-shot: 1 shot
+- btxrd/few_shot/1_shot/lora_biomedclip
+- btxrd/few_shot/1_shot/lora_pubmedclip
+- btxrd/few_shot/1_shot/ours_xbone_net
+
+# Few-shot: 10 shots
+- btxrd/few_shot/10_shot/lora_biomedclip
+- btxrd/few_shot/10_shot/lora_pubmedclip
+- btxrd/few_shot/10_shot/ours_xbone_net
+
+# Few-shot: 20 shots
+- btxrd/few_shot/20_shot/lora_biomedclip
+- btxrd/few_shot/20_shot/lora_pubmedclip
+- btxrd/few_shot/20_shot/ours_xbone_net
+
+# Full fine-tuning baselines
+- btxrd/baselines/full_finetuned/fft_biomedclip
+- btxrd/baselines/full_finetuned/fft_clip
+- btxrd/baselines/full_finetuned/fft_densenet
+- btxrd/baselines/full_finetuned/fft_medclip
+- btxrd/baselines/full_finetuned/fft_pubmedclip
+- btxrd/baselines/full_finetuned/fft_resnet50
+
+# Parameter-efficient fine-tuning baselines
+- btxrd/baselines/peft_finetuned/lora_biomedclip
+- btxrd/baselines/peft_finetuned/lora_pubmedclip
+
+# Proposed model
+- btxrd/proposed/ours_xbone_net
+
+# Zero-shot baselines
+- btxrd/baselines/zeroshot/biomedclip_zeroshot
+- btxrd/baselines/zeroshot/clip_zeroshot
+- btxrd/baselines/zeroshot/medclip_zeroshot
+- btxrd/baselines/zeroshot/pubmedclip_zeroshot
+
+# =============================================================================
+# CTCH ablation studies (enabled)
+# =============================================================================
+
+# Classifier
++ ctch/ablation_study/architecture/classifier/linear
++ ctch/ablation_study/architecture/classifier/no_class_bias
++ ctch/ablation_study/architecture/classifier/no_class_weight
+
+# Fusion direction
++ ctch/ablation_study/architecture/fusion/concat
++ ctch/ablation_study/architecture/fusion/image_to_text
++ ctch/ablation_study/architecture/fusion/text_to_image
+
+# Training phases
++ ctch/ablation_study/architecture/phase/phase1_merged
++ ctch/ablation_study/architecture/phase/phase2_only
+
+# Image preprocessing
++ ctch/ablation_study/architecture/preprocess/xbone_letterbox
++ ctch/ablation_study/architecture/preprocess/xbone_mean_pooling
++ ctch/ablation_study/architecture/preprocess/xbone_nohighres
++ ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens
+
+# Fine-tuning
++ ctch/ablation_study/finetune/xbone_highres_full_ft
++ ctch/ablation_study/finetune/xbone_highres_no_ft
+
+# Modality
++ ctch/ablation_study/modality/image_only
++ ctch/ablation_study/modality/phase1_xray_phase2_clinical
++ ctch/ablation_study/modality/shuffled_report
++ ctch/ablation_study/modality/text_only
+
+# =============================================================================
+# Other CTCH experiments (disabled)
+# =============================================================================
+
+# Few-shot: 1 shot
+- ctch/few_shot/1_shot/lora_biomedclip
+- ctch/few_shot/1_shot/lora_pubmedclip
+- ctch/few_shot/1_shot/ours_xbone_net
+
+# Few-shot: 10 shots
+- ctch/few_shot/10_shot/lora_biomedclip
+- ctch/few_shot/10_shot/lora_pubmedclip
+- ctch/few_shot/10_shot/ours_xbone_net
+
+# Few-shot: 20 shots
+- ctch/few_shot/20_shot/lora_biomedclip
+- ctch/few_shot/20_shot/lora_pubmedclip
+- ctch/few_shot/20_shot/ours_xbone_net
+
+# Full fine-tuning baselines
+- ctch/baselines/full_finetuned/fft_biomedclip
+- ctch/baselines/full_finetuned/fft_clip
+- ctch/baselines/full_finetuned/fft_densenet
+- ctch/baselines/full_finetuned/fft_medclip
+- ctch/baselines/full_finetuned/fft_pubmedclip
+- ctch/baselines/full_finetuned/fft_resnet50
+
+# Parameter-efficient fine-tuning baselines
+- ctch/baselines/peft_finetuned/lora_biomedclip
+- ctch/baselines/peft_finetuned/lora_pubmedclip
+
+# Proposed models
+- ctch/proposed/ours_xbone_net
+- ctch/proposed/ours_xbone_net_v2
+- ctch/proposed/proposed_v6
+
+# Zero-shot baselines
+- ctch/baselines/zeroshot/biomedclip_zeroshot
+- ctch/baselines/zeroshot/clip_zeroshot
+- ctch/baselines/zeroshot/medclip_zeroshot
+- ctch/baselines/zeroshot/pubmedclip_zeroshot

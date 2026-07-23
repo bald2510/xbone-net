@@ -2,7 +2,7 @@
 # Preprocessing ablation: preserve aspect ratio by letterboxing the global image.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/architecture/preprocess/xbone_letterbox

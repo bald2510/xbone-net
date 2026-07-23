@@ -2,7 +2,7 @@
 # Modality ablation: align with X-ray findings, then classify with clinical text.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/modality/phase1_xray_phase2_clinical

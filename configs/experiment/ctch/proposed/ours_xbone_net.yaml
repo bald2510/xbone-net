@@ -110,7 +110,7 @@ params:
     lr: 1e-4
     weight_decay: 1e-4
     warmup_ratio: 0.1
-    early_stopping_patience: 3
+    early_stopping_patience: 5
     use_text: true
     p2_report_type: clinical
     init_from_phase1_merged: false

@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from src.datasets.high_resolution import build_sparse_focal_views
-from tools.visualize_preprocessing import (
+from tools.visualize.preprocessing import (
     DEFAULT_EXPERIMENT_CONFIG,
     apply_config_overrides,
     compute_annotation_coverage,

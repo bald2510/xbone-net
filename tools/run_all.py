@@ -1,19 +1,20 @@
 """
 XBone-Net Full Experiment Suite Orchestrator.
 ===============================================================================
-Orchestrates multi-seed training and evaluation across the full XBone-Net experiment suite:
-  - Experiment Groups: Configures zero-shot baselines, fine-tuned models, and proposed XBone-Net.
+Orchestrates multi-seed training, evaluation, and result review:
+  - Config Discovery: Finds every Hydra experiment YAML automatically.
+  - Training Switches: Enables/disables configs through tools/experiments.txt.
   - Subprocess Management: Spawns sequential train.py and evaluate.py jobs per seed.
-  - Metric Aggregation: Parses per-seed metric JSONs and computes mean ± std across runs.
-  - Master Export: Saves per-experiment and master summary JSON files and displays console tables.
+  - Result Review: Groups existing results by dataset/config and reports mean ± std.
 """
 
 import argparse
+import csv
 import json
 import os
 import subprocess
 import sys
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -23,201 +24,74 @@ import numpy as np
 # Experiment Registry & Path Resolvers
 # ============================================================
 
-EXPERIMENTS = OrderedDict({
-    # "btxrd_zeroshot": [
-    #     "btxrd/baselines/zeroshot/biomedclip_zeroshot",
-    #     "btxrd/baselines/zeroshot/clip_zeroshot",
-    #     "btxrd/baselines/zeroshot/pubmedclip_zeroshot",
-    #     "btxrd/baselines/zeroshot/medclip_zeroshot",
-    # ],
-    # "btxrd_finetuned": [
-    #     "btxrd/baselines/full_finetuned/fft_resnet50",
-    #     "btxrd/baselines/full_finetuned/fft_densenet",
-    #     "btxrd/baselines/full_finetuned/fft_clip",
-    #     "btxrd/baselines/full_finetuned/fft_pubmedclip",
-    #     "btxrd/baselines/full_finetuned/fft_medclip",
-    #     "btxrd/baselines/full_finetuned/fft_biomedclip",
-    # ],
-    # "btxrd_peft_finetuned": [
-    #     "btxrd/baselines/peft_finetuned/lora_pubmedclip",
-    #     "btxrd/baselines/peft_finetuned/lora_biomedclip",
-    # ],
-    # "btxrd_few_shot_1": [
-    #     "btxrd/few_shot/1_shot/lora_pubmedclip",
-    #     "btxrd/few_shot/1_shot/lora_biomedclip",
-    #     "btxrd/few_shot/1_shot/ours_xbone_net",
-    # ],
-    # "btxrd_few_shot_10": [
-    #     "btxrd/few_shot/10_shot/lora_pubmedclip",
-    #     "btxrd/few_shot/10_shot/lora_biomedclip",
-    #     "btxrd/few_shot/10_shot/ours_xbone_net",
-    # ],
-    # "btxrd_few_shot_20": [
-    #     "btxrd/few_shot/20_shot/lora_pubmedclip",
-    #     "btxrd/few_shot/20_shot/lora_biomedclip",
-    #     "btxrd/few_shot/20_shot/ours_xbone_net",
-    # ],
-    # "btxrd_proposed": [
-    #     "btxrd/proposed/ours_xbone_net",
-    # ],
-    # "ctch_zeroshot": [
-    #     "ctch/baselines/zeroshot/biomedclip_zeroshot",
-    #     "ctch/baselines/zeroshot/clip_zeroshot",
-    #     "ctch/baselines/zeroshot/pubmedclip_zeroshot",
-    #     "ctch/baselines/zeroshot/medclip_zeroshot",
-    # ],
-    # "ctch_finetuned": [
-    #     "ctch/baselines/full_finetuned/fft_biomedclip",
-    #     "ctch/baselines/full_finetuned/fft_clip",
-    #     "ctch/baselines/full_finetuned/fft_pubmedclip",
-    #     "ctch/baselines/full_finetuned/fft_medclip",
-    #     "ctch/baselines/full_finetuned/fft_resnet50",
-    #     "ctch/baselines/full_finetuned/fft_densenet",
-    # ],
-    # "ctch_peft_finetuned": [
-    #     "ctch/baselines/peft_finetuned/lora_pubmedclip",
-    #     "ctch/baselines/peft_finetuned/lora_biomedclip",
-    # ],
-    # "ctch_few_shot_1": [
-    #     "ctch/few_shot/1_shot/lora_pubmedclip",
-    #     "ctch/few_shot/1_shot/lora_biomedclip",
-    #     "ctch/few_shot/1_shot/ours_xbone_net",
-    # ],
-    # "ctch_few_shot_10": [
-    #     "ctch/few_shot/10_shot/lora_pubmedclip",
-    #     "ctch/few_shot/10_shot/lora_biomedclip",
-    #     "ctch/few_shot/10_shot/ours_xbone_net",
-    # ],
-    # "ctch_few_shot_20": [
-    #     "ctch/few_shot/20_shot/lora_pubmedclip",
-    #     "ctch/few_shot/20_shot/lora_biomedclip",
-    #     "ctch/few_shot/20_shot/ours_xbone_net",
-    # ],
-    "ctch_proposed": [
-        "ctch/proposed/ours_xbone_net",
-        "ctch/proposed/ours_xbone_net_v2",
-        # "ctch/proposed/proposed_v6",
-    ],
-    "ctch_ablation": [
-        # "ctch/ablation_study/modality/image_only",
-        # "ctch/ablation_study/modality/text_only",
-        # Evaluation-only perturbation; reuse the canonical v3 Phase-2
-        # checkpoint instead of training another identical model.
-        # "ctch/ablation_study/modality/shuffled_report",
-        # # "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
-        # # "ctch/ablation_study/finetune/xbone_highres_full_ft",
-        # # "ctch/ablation_study/finetune/xbone_highres_no_ft",
-        # # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-        # # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-        # # "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
-        # # "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
-        # # "ctch/ablation_study/architecture/phase/phase2_only",
-        # # "ctch/ablation_study/architecture/phase/phase1_merged",
-        # The fusion/classifier ablations below reuse the canonical v3 Phase-1
-        # checkpoint and can be completed later without rerunning Phase 1.
-        # "ctch/ablation_study/architecture/fusion/concat",
-        # "ctch/ablation_study/architecture/fusion/image_to_text",
-        # "ctch/ablation_study/architecture/fusion/text_to_image",
-        # "ctch/ablation_study/architecture/classifier/no_class_weight",
-        # "ctch/ablation_study/architecture/classifier/no_class_bias",
-        # "ctch/ablation_study/architecture/classifier/linear",
-        # Temporarily postponed; unlike the entries above, this requires a new
-        # Phase-1 run because it changes the Phase-1 sampler.
-        # "ctch/ablation_study/architecture/training/no_class_aware_sampling",
-    ],
-})
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CONFIG_ROOT = PROJECT_ROOT / "configs" / "experiment"
+RESULTS_ROOT = PROJECT_ROOT / "results"
 
-_ALL_REGISTERED_EXPERIMENTS = list(dict.fromkeys(
-    experiment
-    for experiments in EXPERIMENTS.values()
-    for experiment in experiments
-))
 
-# Priority groups only select experiments; they deliberately do not override
-# the configured batch size or gradient accumulation. In particular, reducing
-# the Phase-1 micro-batch would change the number of in-batch contrastive pairs
-# and therefore the training protocol.
+def discover_experiment_configs(config_root: Path = CONFIG_ROOT) -> list[str]:
+    """Return every Hydra experiment config path without its YAML suffix."""
+    return sorted(
+        path.relative_to(config_root).with_suffix("").as_posix()
+        for path in config_root.rglob("*.yaml")
+    )
+
+
+def _experiment_group(experiment: str) -> str:
+    parts = experiment.split("/")
+    dataset = parts[0]
+    if len(parts) >= 4 and parts[1:3] == ["baselines", "zeroshot"]:
+        return f"{dataset}_zeroshot"
+    if len(parts) >= 4 and parts[1:3] == ["baselines", "full_finetuned"]:
+        return f"{dataset}_finetuned"
+    if len(parts) >= 4 and parts[1:3] == ["baselines", "peft_finetuned"]:
+        return f"{dataset}_peft_finetuned"
+    if len(parts) >= 4 and parts[1] == "few_shot":
+        return f"{dataset}_few_shot_{parts[2].removesuffix('_shot')}"
+    if len(parts) >= 3 and parts[1] == "proposed":
+        return f"{dataset}_proposed"
+    if len(parts) >= 3 and parts[1] == "ablation_study":
+        return f"{dataset}_ablation"
+    return f"{dataset}_other"
+
+
+def _build_experiment_groups(experiments: list[str]) -> OrderedDict:
+    groups: dict[str, list[str]] = defaultdict(list)
+    for experiment in experiments:
+        groups[_experiment_group(experiment)].append(experiment)
+    return OrderedDict(
+        (name, sorted(values))
+        for name, values in sorted(groups.items())
+    )
+
+
+_ALL_REGISTERED_EXPERIMENTS = discover_experiment_configs()
+EXPERIMENTS = _build_experiment_groups(_ALL_REGISTERED_EXPERIMENTS)
+
+# Priority is derived instead of being maintained through commented code.
 PRIORITY_GROUPS = OrderedDict({
-    "less_important": [
-        # "btxrd/baselines/peft_finetuned/lora_pubmedclip",
-        # "btxrd/baselines/peft_finetuned/lora_biomedclip",
-        # "btxrd/few_shot/1_shot/lora_pubmedclip",
-        # "btxrd/few_shot/1_shot/lora_biomedclip",
-        # "btxrd/few_shot/10_shot/lora_pubmedclip",
-        # "btxrd/few_shot/10_shot/lora_biomedclip",
-        # "btxrd/few_shot/20_shot/lora_pubmedclip",
-        # "btxrd/few_shot/20_shot/lora_biomedclip",
-        # "ctch/baselines/peft_finetuned/lora_pubmedclip",
-        # "ctch/baselines/peft_finetuned/lora_biomedclip",
-        # "ctch/few_shot/1_shot/lora_pubmedclip",
-        # "ctch/few_shot/1_shot/lora_biomedclip",
-        # "ctch/few_shot/10_shot/lora_pubmedclip",
-        # "ctch/few_shot/10_shot/lora_biomedclip",
-        # "ctch/few_shot/20_shot/lora_pubmedclip",
-        # "ctch/few_shot/20_shot/lora_biomedclip",
-
-        # "ctch/ablation_study/modality/image_only",
-        # "ctch/ablation_study/modality/text_only",
-        # "ctch/ablation_study/finetune/xbone_highres_no_ft",
-        # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-        # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-        # "ctch/ablation_study/architecture/phase/phase2_only",
-        # "ctch/ablation_study/architecture/fusion/concat",
-        # "ctch/ablation_study/architecture/fusion/image_to_text",
-        # "ctch/ablation_study/architecture/fusion/text_to_image",
-        # "ctch/ablation_study/architecture/classifier/no_class_weight",
-        # "ctch/ablation_study/architecture/classifier/no_class_bias",
-        # "ctch/ablation_study/architecture/classifier/linear",
-    ],
     "important": [
-        # "btxrd/few_shot/1_shot/ours_xbone_net",
-        # "btxrd/few_shot/10_shot/ours_xbone_net",
-        # "btxrd/few_shot/20_shot/ours_xbone_net",
-        # "btxrd/proposed/ours_xbone_net",
-        # "ctch/few_shot/1_shot/ours_xbone_net",
-        # "ctch/few_shot/10_shot/ours_xbone_net",
-        # "ctch/few_shot/20_shot/ours_xbone_net",
-        "ctch/proposed/ours_xbone_net",
-        "ctch/proposed/ours_xbone_net_v2",
-        # "ctch/ablation_study/modality/shuffled_report",
-        # "ctch/ablation_study/modality/phase1_xray_phase2_clinical",
-        # "ctch/ablation_study/finetune/xbone_highres_full_ft",
-        # "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
-        # "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
-        # "ctch/ablation_study/architecture/phase/phase1_merged",
-        # "ctch/ablation_study/architecture/training/no_class_aware_sampling",
+        experiment
+        for experiment in _ALL_REGISTERED_EXPERIMENTS
+        if "/proposed/" in experiment or experiment.endswith("/ours_xbone_net")
+    ],
+    "less_important": [
+        experiment
+        for experiment in _ALL_REGISTERED_EXPERIMENTS
+        if "/proposed/" not in experiment
+        and not experiment.endswith("/ours_xbone_net")
     ],
 })
-
-
-def _validate_priority_groups() -> None:
-    """Require every active experiment in exactly one priority group."""
-    profiled = [
-        experiment
-        for values in PRIORITY_GROUPS.values()
-        for experiment in values
-    ]
-    duplicates = sorted({experiment for experiment in profiled if profiled.count(experiment) > 1})
-    unknown = sorted(set(profiled) - set(_ALL_REGISTERED_EXPERIMENTS))
-    missing = sorted(set(_ALL_REGISTERED_EXPERIMENTS) - set(profiled))
-    if duplicates or unknown or missing:
-        raise RuntimeError(
-            "Invalid priority-group registry: "
-            f"duplicates={duplicates}, unknown={unknown}, missing={missing}"
-        )
-
-
-_validate_priority_groups()
 
 DEFAULT_SEEDS = [42, 123, 456]
+DEFAULT_EXPERIMENT_FILE = Path(__file__).with_name("experiments.txt")
 
 METRIC_KEYS = [
     "f1_macro", "accuracy", "sensitivity", "specificity",
     "precision", "auroc_macro", "auprc_macro", "balanced_accuracy",
     "ece_15", "adaptive_ece_15", "nll", "brier_score",
+    "param_total", "param_trainable", "param_trainable_pct",
 ]
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def get_experiments(groups: list[str] | None) -> list[str]:
@@ -230,11 +104,13 @@ def get_experiments(groups: list[str] | None) -> list[str]:
         list[str]: Deduplicated list of experiment config path strings.
     """
     if not groups:
-        seen = set()
-        return [exp for group in EXPERIMENTS.values() for exp in group if not (exp in seen or seen.add(exp))]
+        return list(_ALL_REGISTERED_EXPERIMENTS)
 
     result = []
-    for g in groups:
+    for raw_group in groups:
+        g = raw_group.strip().replace("\\", "/")
+        g = g.removeprefix("configs/experiment/").removesuffix(".yaml")
+        g = g.removeprefix("group:")
         if g in EXPERIMENTS:
             result.extend(EXPERIMENTS[g])
         elif g in ("less_important", "less-important"):
@@ -258,14 +134,100 @@ def get_experiments(groups: list[str] | None) -> list[str]:
                 if "ablation" in key:
                     result.extend(exps)
         elif g in ("btxrd", "ctch"):
-            for key, exps in EXPERIMENTS.items():
-                if key.startswith(g):
-                    result.extend(exps)
+            result.extend(
+                experiment
+                for experiment in _ALL_REGISTERED_EXPERIMENTS
+                if experiment.startswith(f"{g}/")
+            )
+        elif g == "all":
+            result.extend(_ALL_REGISTERED_EXPERIMENTS)
         else:
             result.append(g)
 
     seen = set()
     return [exp for exp in result if not (exp in seen or seen.add(exp))]
+
+
+def load_experiment_switches(path: Path) -> tuple[list[str], list[str]]:
+    """Read enabled/disabled experiment selectors from a plain-text file.
+
+    Preferred syntax is one selector per line prefixed by ``+`` or ``-``.
+    Legacy ``[enabled]``/``[disabled]`` sections remain supported. A selector
+    can be an experiment path or ``group:<name>``.
+    """
+    enabled: list[str] = []
+    disabled: list[str] = []
+    section: list[str] | None = None
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8-sig").splitlines(),
+        start=1,
+    ):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        lowered = line.casefold()
+        if lowered == "[enabled]":
+            section = enabled
+            continue
+        if lowered == "[disabled]":
+            section = disabled
+            continue
+        if line.startswith("+"):
+            section = enabled
+            line = line[1:].strip()
+        elif line.startswith("-"):
+            section = disabled
+            line = line[1:].strip()
+        elif lowered.startswith("on "):
+            section = enabled
+            line = line[3:].strip()
+        elif lowered.startswith("off "):
+            section = disabled
+            line = line[4:].strip()
+        if line.startswith("[") and line.endswith("]"):
+            raise ValueError(
+                f"{path}:{line_number}: unknown section {line!r}; "
+                "use [enabled] or [disabled]."
+            )
+        if section is None:
+            raise ValueError(
+                f"{path}:{line_number}: selector appears before [enabled]/[disabled]."
+            )
+        selector = line.removeprefix("group:").strip()
+        if not selector:
+            raise ValueError(f"{path}:{line_number}: empty selector.")
+        section.append(selector)
+    return enabled, disabled
+
+
+def select_experiments(
+    groups: list[str] | None,
+    experiment_file: Path | None,
+) -> list[str]:
+    """Resolve CLI selectors and then apply switches from ``experiment_file``."""
+    if experiment_file is None:
+        return get_experiments(groups)
+
+    enabled, disabled = load_experiment_switches(experiment_file)
+    selected = (
+        get_experiments(groups)
+        if groups
+        else (get_experiments(enabled) if enabled else [])
+    )
+    disabled_set = set(get_experiments(disabled)) if disabled else set()
+    return [experiment for experiment in selected if experiment not in disabled_set]
+
+
+def validate_experiment_configs(experiments: list[str]) -> None:
+    """Reject misspelled selectors before launching expensive jobs."""
+    known = set(_ALL_REGISTERED_EXPERIMENTS)
+    unknown = sorted(set(experiments) - known)
+    if unknown:
+        raise ValueError(
+            "Unknown experiment config(s): "
+            + ", ".join(unknown)
+            + ". Use --list-configs to inspect discovered configs."
+        )
 
 
 def seed_dir(experiment: str, seed: int) -> str:
@@ -418,34 +380,227 @@ def save_results(experiment: str, seeds_metrics: dict, agg: dict) -> str:
     return path
 
 
-def print_results_table(results: dict[str, dict]):
-    """Print console summary table of experiment results.
+def discover_result_experiments(results_root: Path = RESULTS_ROOT) -> list[str]:
+    """Return known configs that have per-seed or aggregated result files."""
+    experiments: set[str] = set()
+    if not results_root.is_dir():
+        return []
+    for path in results_root.rglob("metrics.json"):
+        relative = path.parent.relative_to(results_root)
+        if relative.name.startswith("seed_"):
+            experiments.add(relative.parent.as_posix())
+    for path in results_root.rglob("aggregated_results.json"):
+        experiments.add(path.parent.relative_to(results_root).as_posix())
+    known = set(_ALL_REGISTERED_EXPERIMENTS)
+    return sorted(experiment for experiment in experiments if experiment in known)
 
-    Args:
-        results: Dict mapping experiment names to aggregated metrics dicts.
 
-    Returns:
-        None
-    """
-    print(f"\n{'='*90}")
-    print("  RESULTS SUMMARY (mean +/- std)")
-    print(f"{'='*90}")
+def discover_result_seeds(experiment: str) -> list[int]:
+    """Discover every seed with a readable metrics file for one experiment."""
+    directory = RESULTS_ROOT / experiment
+    seeds = []
+    if directory.is_dir():
+        for seed_directory in directory.glob("seed_*"):
+            try:
+                seed = int(seed_directory.name.removeprefix("seed_"))
+            except ValueError:
+                continue
+            if (seed_directory / "metrics.json").is_file():
+                seeds.append(seed)
+    return sorted(set(seeds))
 
-    header = f"  {'Experiment':<35s} {'F1 Macro':>14s} {'Accuracy':>14s} {'Sensitivity':>14s} {'AUROC':>14s}"
-    print(header)
-    print(f"  {'-'*35} {'-'*14} {'-'*14} {'-'*14} {'-'*14}")
 
-    for exp, agg in results.items():
-        name = exp.split("/")[-1]
-        cols = []
-        for key in ["f1_macro", "accuracy", "sensitivity", "auroc_macro"]:
-            if key in agg and agg[key].get("n", 0) > 0:
-                cols.append(f"{agg[key]['mean']:.4f}+/-{agg[key]['std']:.4f}")
-            else:
-                cols.append("N/A")
-        print(f"  {name:<35s} {cols[0]:>14s} {cols[1]:>14s} {cols[2]:>14s} {cols[3]:>14s}")
+def load_table_results(
+    experiments: list[str],
+    requested_seeds: list[int] | None = None,
+) -> tuple[OrderedDict, dict[str, list[int]]]:
+    """Load all available review metrics without launching evaluation."""
+    results: OrderedDict[str, dict] = OrderedDict()
+    used_seeds: dict[str, list[int]] = {}
+    for experiment in sorted(experiments):
+        seeds = requested_seeds or discover_result_seeds(experiment)
+        per_seed = {}
+        for seed in seeds:
+            metrics = load_metrics(experiment, seed)
+            if metrics:
+                per_seed[seed] = metrics
+        if per_seed:
+            results[experiment] = aggregate(per_seed)
+            used_seeds[experiment] = sorted(per_seed)
+            continue
 
-    print(f"{'='*90}\n")
+        aggregate_path = RESULTS_ROOT / experiment / "aggregated_results.json"
+        if requested_seeds is None and aggregate_path.is_file():
+            try:
+                payload = json.loads(aggregate_path.read_text(encoding="utf-8"))
+                aggregated = payload.get("aggregated", {})
+                if aggregated:
+                    results[experiment] = aggregated
+                    used_seeds[experiment] = [
+                        int(seed) for seed in payload.get("seeds", [])
+                    ]
+            except (OSError, ValueError, json.JSONDecodeError) as error:
+                print(f"  [WARN] Failed to load {aggregate_path}: {error}")
+    return results, used_seeds
+
+
+def experiment_metadata(experiment: str) -> tuple[str, str, str]:
+    """Return dataset, report category, and concise config name."""
+    parts = experiment.split("/")
+    dataset = parts[0].upper()
+    if len(parts) >= 4 and parts[1] == "baselines":
+        labels = {
+            "zeroshot": "Baselines / Zero-shot",
+            "full_finetuned": "Baselines / Full fine-tuning",
+            "peft_finetuned": "Baselines / PEFT",
+        }
+        category = labels.get(parts[2], f"Baselines / {parts[2]}")
+    elif len(parts) >= 4 and parts[1] == "few_shot":
+        category = f"Few-shot / {parts[2].replace('_', ' ')}"
+    elif len(parts) >= 3 and parts[1] == "proposed":
+        category = "Proposed"
+    elif len(parts) >= 3 and parts[1] == "ablation_study":
+        category = "Ablation / " + " / ".join(parts[2:-1])
+    else:
+        category = "Other"
+    return dataset, category, parts[-1]
+
+
+def _format_metric(aggregated: dict, key: str, digits: int = 3) -> str:
+    metric = aggregated.get(key)
+    if not metric or metric.get("n", 0) < 1:
+        return "—"
+    return f"{metric['mean']:.{digits}f}±{metric['std']:.{digits}f}"
+
+
+def _format_parameter(aggregated: dict, key: str) -> str:
+    metric = aggregated.get(key)
+    if not metric:
+        return "—"
+    value = float(metric["mean"])
+    if key == "param_trainable_pct":
+        return f"{value:.2f}%"
+    return f"{value / 1_000_000.0:.2f}M"
+
+
+def _result_seed_count(aggregated: dict) -> int:
+    return max(
+        (
+            int(metric.get("n", 0))
+            for metric in aggregated.values()
+            if isinstance(metric, dict)
+        ),
+        default=0,
+    )
+
+
+def export_results_csv(
+    results: dict[str, dict],
+    used_seeds: dict[str, list[int]],
+    output: Path,
+) -> None:
+    """Export the same grouped review data in a machine-readable format."""
+    rows = []
+    for experiment, aggregated in sorted(results.items()):
+        dataset, category, config = experiment_metadata(experiment)
+        row = {
+            "dataset": dataset,
+            "category": category,
+            "config": config,
+            "experiment": experiment,
+            "seeds": " ".join(str(seed) for seed in used_seeds.get(experiment, [])),
+            "n_seeds": _result_seed_count(aggregated),
+        }
+        for metric in METRIC_KEYS:
+            summary = aggregated.get(metric, {})
+            row[f"{metric}_mean"] = summary.get("mean")
+            row[f"{metric}_std"] = summary.get("std")
+        rows.append(row)
+    if not rows:
+        return
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def print_results_table(
+    results: dict[str, dict],
+    used_seeds: dict[str, list[int]] | None = None,
+) -> None:
+    """Print results grouped by dataset and configuration family."""
+    if not results:
+        print("\nNo result metrics were found for the requested scope.")
+        return
+
+    used_seeds = used_seeds or {}
+    grouped: dict[str, dict[str, list[tuple[str, str, dict]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for experiment, aggregated in results.items():
+        dataset, category, config = experiment_metadata(experiment)
+        grouped[dataset][category].append((config, experiment, aggregated))
+
+    print("\n" + "=" * 142)
+    print("RESULT REVIEW — mean±std across seeds")
+    print("=" * 142)
+    for dataset in sorted(grouped):
+        print(f"\nDATASET: {dataset}")
+        print("=" * 142)
+        for category in sorted(grouped[dataset]):
+            rows = sorted(grouped[dataset][category], key=lambda item: item[0])
+            print(f"\n[{category}]")
+            print(
+                f"{'Config':<32} {'Seeds':>11} {'F1 macro':>13} {'Bal. acc.':>13} "
+                f"{'Accuracy':>13} {'Sensitivity':>13} {'Specificity':>13}"
+            )
+            print("-" * 115)
+            for config, experiment, aggregated in rows:
+                seed_label = ",".join(
+                    str(seed) for seed in used_seeds.get(experiment, [])
+                ) or f"n={_result_seed_count(aggregated)}"
+                print(
+                    f"{config:<32} {seed_label:>11} "
+                    f"{_format_metric(aggregated, 'f1_macro'):>13} "
+                    f"{_format_metric(aggregated, 'balanced_accuracy'):>13} "
+                    f"{_format_metric(aggregated, 'accuracy'):>13} "
+                    f"{_format_metric(aggregated, 'sensitivity'):>13} "
+                    f"{_format_metric(aggregated, 'specificity'):>13}"
+                )
+
+            print()
+            print(
+                f"{'Config':<32} {'Precision':>13} {'AUROC':>13} {'AUPRC':>13} "
+                f"{'ECE':>13} {'Adapt. ECE':>13} {'NLL':>13} {'Brier':>13}"
+            )
+            print("-" * 142)
+            for config, _, aggregated in rows:
+                print(
+                    f"{config:<32} "
+                    f"{_format_metric(aggregated, 'precision'):>13} "
+                    f"{_format_metric(aggregated, 'auroc_macro'):>13} "
+                    f"{_format_metric(aggregated, 'auprc_macro'):>13} "
+                    f"{_format_metric(aggregated, 'ece_15'):>13} "
+                    f"{_format_metric(aggregated, 'adaptive_ece_15'):>13} "
+                    f"{_format_metric(aggregated, 'nll'):>13} "
+                    f"{_format_metric(aggregated, 'brier_score'):>13}"
+                )
+
+            print()
+            print(
+                f"{'Config':<32} {'Parameters':>13} {'Trainable':>13} "
+                f"{'Trainable %':>13}"
+            )
+            print("-" * 75)
+            for config, _, aggregated in rows:
+                print(
+                    f"{config:<32} "
+                    f"{_format_parameter(aggregated, 'param_total'):>13} "
+                    f"{_format_parameter(aggregated, 'param_trainable'):>13} "
+                    f"{_format_parameter(aggregated, 'param_trainable_pct'):>13}"
+                )
+    print("\n" + "=" * 142)
 
 
 # ============================================================
@@ -460,6 +615,25 @@ def main():
     )
     parser.add_argument("--group", "-g", nargs="+", default=None,
                         help="Experiment groups to run or direct config path.")
+    parser.add_argument(
+        "--experiment-file",
+        type=Path,
+        default=DEFAULT_EXPERIMENT_FILE,
+        help=(
+            "Text file with [enabled]/[disabled] selectors "
+            f"(default: {DEFAULT_EXPERIMENT_FILE})."
+        ),
+    )
+    parser.add_argument(
+        "--ignore-experiment-file",
+        action="store_true",
+        help="Ignore the text switches and select experiments only from --group.",
+    )
+    parser.add_argument(
+        "--list-configs",
+        action="store_true",
+        help="List every discovered config grouped by dataset/category and exit.",
+    )
     parser.add_argument(
         "--priority-group",
         choices=tuple(PRIORITY_GROUPS),
@@ -479,16 +653,36 @@ def main():
         action="store_true",
         help="Do not retrain a seed when its best_phase2.pth already exists.",
     )
-    parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS,
-                        help=f"Seeds to run (default: {DEFAULT_SEEDS})")
-    parser.add_argument("--train-only", action="store_true",
-                        help="Only train models and save checkpoints, skip evaluation")
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=None,
+        help=(
+            f"Seeds to run (training default: {DEFAULT_SEEDS}); "
+            "--table discovers all available seeds when omitted."
+        ),
+    )
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument("--train-only", action="store_true",
+                            help="Only train models and save checkpoints")
+    mode_group.add_argument("--eval-only", action="store_true",
+                            help="Only evaluate existing checkpoints")
+    mode_group.add_argument("--table", action="store_true",
+                            help="Review existing results without training/evaluation")
     parser.add_argument("--phase2-only", "-p2", action="store_true",
                         help="Skip Phase 1 contrastive training, only train Phase 2 classifier")
-    parser.add_argument("--eval-only", action="store_true",
-                        help="Skip training, only evaluate + aggregate")
-    parser.add_argument("--table", action="store_true",
-                        help="Only print results from existing aggregated JSON files")
+    parser.add_argument(
+        "--table-selected-only",
+        action="store_true",
+        help="With --table, review only configs enabled by experiments.txt.",
+    )
+    parser.add_argument(
+        "--table-output",
+        type=Path,
+        default=Path("results/summary/run_all_table.csv"),
+        help="CSV exported by --table.",
+    )
     parser.add_argument("--bootstrap", action="store_true",
                         help="Compute paired sample-level bootstrap CIs during evaluation")
     parser.add_argument("--n-bootstrap", type=int, default=10_000,
@@ -513,15 +707,71 @@ def main():
         and args.gradient_accumulation_steps < 1
     ):
         parser.error("--gradient-accumulation-steps must be positive")
+    if args.phase2_only and (args.eval_only or args.table):
+        parser.error("--phase2-only is only valid for training modes")
+    if args.table_selected_only and not args.table:
+        parser.error("--table-selected-only requires --table")
 
-    experiments = get_experiments(args.group)
+    if args.list_configs:
+        for dataset in ("BTXRD", "CTCH"):
+            print(f"\n{dataset}")
+            print("=" * len(dataset))
+            for group, values in EXPERIMENTS.items():
+                if group.startswith(dataset.lower()):
+                    print(f"\n[{group}]")
+                    for experiment in values:
+                        print(f"  {experiment}")
+        return
+
+    experiment_file = None
+    uses_switch_file = not args.ignore_experiment_file and (
+        not args.table or args.table_selected_only
+    )
+    if uses_switch_file:
+        experiment_file = args.experiment_file.expanduser().resolve()
+        if not experiment_file.is_file():
+            parser.error(f"Experiment switch file not found: {experiment_file}")
+    try:
+        if args.table and not args.table_selected_only:
+            experiments = (
+                get_experiments(args.group)
+                if args.group
+                else discover_result_experiments()
+            )
+        else:
+            experiments = select_experiments(args.group, experiment_file)
+        validate_experiment_configs(experiments)
+    except ValueError as error:
+        parser.error(str(error))
     if args.priority_group is not None:
         priority_set = set(PRIORITY_GROUPS[args.priority_group])
         experiments = [
             experiment for experiment in experiments if experiment in priority_set
         ]
     if not experiments:
-        parser.error("No experiments matched the requested group/priority.")
+        scope = "result files" if args.table else "requested switches/groups"
+        parser.error(f"No experiments matched the {scope}.")
+
+    if args.table:
+        table_results, used_seeds = load_table_results(
+            experiments,
+            requested_seeds=args.seeds,
+        )
+        print_results_table(table_results, used_seeds)
+        table_output = (
+            args.table_output
+            if args.table_output.is_absolute()
+            else PROJECT_ROOT / args.table_output
+        )
+        export_results_csv(table_results, used_seeds, table_output)
+        if table_results:
+            print(f"Review CSV -> {table_output}")
+        missing = sorted(set(experiments) - set(table_results))
+        if missing:
+            print(f"\nConfigs without readable metrics ({len(missing)}):")
+            for experiment in missing:
+                print(f"  {experiment}")
+        return
 
     if args.dry_run:
         priority_label = args.priority_group
@@ -530,10 +780,12 @@ def main():
                 priority_label = args.group[0]
         priority_label = priority_label or "custom/all"
         print(f"Selected {len(experiments)} experiments for {priority_label}:")
+        if experiment_file is not None:
+            print(f"Switch file: {experiment_file}")
         for experiment in experiments:
             print(f"  {experiment}")
         return
-    seeds = args.seeds
+    seeds = args.seeds or DEFAULT_SEEDS
     total_runs = sum(
         1 if "zeroshot" in experiment else len(seeds)
         for experiment in experiments

@@ -2,7 +2,7 @@
 # Modality ablation: bypass the visual path and classify from clinical text only.
 
 defaults:
-  - /experiment/ctch/proposed/ours_xbone_net_v3
+  - /experiment/ctch/proposed/ours_xbone_net
   - _self_
 
 experiment_name: ctch/ablation_study/modality/text_only
