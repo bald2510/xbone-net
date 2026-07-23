@@ -120,12 +120,17 @@ EXPERIMENTS = OrderedDict({
 CTCH_TRAINING_TIME_EXPERIMENTS = [
     # "ctch/proposed/ours_xbone_net",
     # "ctch/baselines/peft_finetuned/lora_biomedclip",
-    "ctch/baselines/full_finetuned/fft_biomedclip",
-    "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-    "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-    "ctch/ablation_study/finetune/xbone_highres_no_ft",
-    "ctch/ablation_study/finetune/xbone_highres_full_ft",
-    "ctch/ablation_study/architecture/phase/phase2_only",
+    # "ctch/baselines/full_finetuned/fft_biomedclip",
+    # "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+    # "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+    # "ctch/ablation_study/finetune/xbone_highres_no_ft",
+    # "ctch/ablation_study/finetune/xbone_highres_full_ft",
+    # "ctch/ablation_study/architecture/phase/phase2_only",
+    # "btxrd/few_shot/20_shot/ours_xbone_net",
+    "ctch/ablation_study/architecture/fusion/image_to_text",
+    "ctch/ablation_study/architecture/fusion/text_to_image",
+    "ctch/ablation_study/architecture/classifier/no_class_weight",
+    "ctch/ablation_study/architecture/classifier/linear",
 ]
 
 BTXRD_TRAINING_TIME_EXPERIMENTS = [
@@ -249,8 +254,6 @@ def run_one(script: str, experiment: str, seed: int, extra_args: list | None = N
         f"+experiment={experiment}",
         f"++seed={seed}",
         f"++params.model_dir={sd}/",
-        f"++params.phase1.checkpoint_path={os.path.join(sd, 'best_phase1.pth')}",
-        f"++params.phase1.merged_checkpoint_path={os.path.join(sd, 'merged_phase1.pth')}",
         f"++params.phase2.checkpoint_path={os.path.join(sd, 'best_phase2.pth')}",
     ]
 

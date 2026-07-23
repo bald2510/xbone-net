@@ -12,6 +12,20 @@ from torch.utils.data import Dataset
 from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
 
 
+BTXRD_CLASS_NAMES = (
+    "normal",
+    "osteochondroma",
+    "osteosarcoma",
+    "multiple osteochondromas",
+    "simple bone cyst",
+    "other bt",
+    "giant cell tumor",
+    "synovial osteochondroma",
+    "other mt",
+    "osteofibroma",
+)
+
+
 class BTXRDDataset(Dataset):
     """Pair BTXRD radiographs with reports and multiclass labels."""
 

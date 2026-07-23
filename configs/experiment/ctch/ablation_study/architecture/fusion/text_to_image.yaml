@@ -8,6 +8,12 @@ defaults:
 experiment_name: ctch/ablation_study/architecture/fusion/text_to_image
 
 params:
+  run_phase1: false
+  phase1:
+    enabled: false
+    checkpoint_path: checkpoints/ctch/proposed/ours_xbone_net/seed_${seed}/best_phase1.pth
   phase2:
+    init_from_phase1_checkpoint: true
+    init_from_phase1_merged: false
     fusion_params:
       attention_direction: text_to_image

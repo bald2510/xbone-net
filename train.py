@@ -1150,6 +1150,16 @@ def main(cfg: DictConfig) -> None:
                 merge_peft_adapters(model)
             else:
                 print("\n[Chuyển đổi] Giữ nguyên LoRA adapters (KHÔNG hợp nhất) cho Phase 2.")
+        elif init_from_merged:
+            raise FileNotFoundError(
+                "Phase 2 requested a merged Phase-1 checkpoint, but it was not "
+                f"found at: {cp_merged!r}"
+            )
+        elif init_from_phase1:
+            raise FileNotFoundError(
+                "Phase 2 requested a Phase-1 checkpoint, but it was not found "
+                f"at: {cp_p1!r}"
+            )
         else:
             print(
                 "\n[Phase 2 Setup] Phase 1 was skipped and no Phase-1 "
