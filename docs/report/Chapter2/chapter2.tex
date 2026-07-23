@@ -118,7 +118,7 @@ Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn p
 
 Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, Tinh chỉnh Hiệu quả Tham số (Parameter-Efficient Fine-Tuning -- PEFT) đã nổi lên như một giải pháp thay thế. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp PEFT được chia thành ba hướng tiếp cận chính:
 
-\subsection{Tinh chỉnh sử dụng câu nhắc (Prompt Tuning)}
+\subsection{Tinh chỉnh sử dụng câu nhắc}
 Hướng tiếp cận này chèn thêm các tham số (vector) có thể học được vào không gian đầu vào của mô hình mà không thay đổi cấu trúc mạng bên trong.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Tiết kiệm tham số tối đa, bảo toàn nguyên vẹn tri thức của mô hình gốc, đặc biệt hiệu quả trong các kịch bản học ít mẫu (few-shot) hoặc không mẫu (zero-shot).
@@ -126,7 +126,7 @@ Hướng tiếp cận này chèn thêm các tham số (vector) có thể học �
 \end{itemize}
 Trong lĩnh vực y tế, PLIP \cite{PLIP} kết hợp đặc trưng thị giác với câu nhắc hiệu quả, đạt 0,896 AUC chỉ với 5\% dữ liệu PanNuke. BiomedCoOp \cite{BiomedCoOp} tích hợp mô hình ngôn ngữ lớn để tự động sinh các câu nhắc ngữ nghĩa, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản.
 
-\subsection{Tinh chỉnh bộ điều hợp (Adapter Tuning)}
+\subsection{Tinh chỉnh bộ điều hợp}
 Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ (adapters) vào giữa các lớp kiến trúc của mạng học sâu.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Tính mô-đun hóa cao, dễ dàng thêm/bớt các adapter cho các tác vụ khác nhau mà không can thiệp vào tham số gốc.
@@ -134,7 +134,7 @@ Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ (adapters) v�
 \end{itemize}
 Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức.
 
-\subsection{Tinh chỉnh chọn lọc (Selective Tuning)}
+\subsection{Tinh chỉnh chọn lọc}
 Hướng đi này không thêm bất kỳ tham số mới nào, mà chỉ chọn lọc ra một lượng nhỏ các tham số quan trọng nhất của mô hình gốc để cập nhật.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Không làm thay đổi kiến trúc mô hình, hoàn toàn không gây tăng độ trễ (zero inference latency) do tham số cập nhật được hợp nhất trực tiếp vào trọng số gốc.
@@ -182,7 +182,7 @@ Nổi bật nhất trong nhóm này là cơ chế thích ứng hạng thấp LoR
 \section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
 Phát hiện dữ liệu ngoài phân phối (Out-of-Distribution Detection -- OOD Detection) là bài toán xác định các mẫu dữ liệu không thuộc phân phối của tập huấn luyện nhằm nâng cao độ tin cậy và tính an toàn của các hệ thống học sâu. Trong lĩnh vực chẩn đoán hình ảnh y khoa, khả năng phát hiện các trường hợp chưa từng xuất hiện hoặc khác biệt đáng kể so với dữ liệu huấn luyện có ý nghĩa quan trọng nhằm giảm nguy cơ đưa ra các dự đoán sai với độ tin cậy cao. Các phương pháp OOD hiện nay có thể được chia thành các nhóm chính sau đây.
 
-\subsection{Các phương pháp hậu xử lý dựa trên đầu ra mô hình (Post-hoc Methods)}
+\subsection{Các phương pháp hậu xử lý dựa trên đầu ra mô hình}
 Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô hình đã được huấn luyện mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình.
 \begin{itemize}
   \item \textbf{Maximum Softmax Probability (MSP):} Sử dụng xác suất Softmax lớn nhất làm độ tin cậy của dự đoán. Các mẫu có xác suất cực đại thấp được xem là ứng viên OOD. Tuy nhiên, các mạng nơ-ron sâu thường có xu hướng dự đoán quá tự tin (overconfidence), làm giảm hiệu quả của phương pháp.
@@ -192,7 +192,7 @@ Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô h
   trong đó $f_i(x)$ là logit của lớp thứ $i$ và $T$ là hệ số nhiệt độ. Dữ liệu ID thường có mức năng lượng thấp hơn so với dữ liệu OOD.
 \end{itemize}
 
-\subsection{Các phương pháp dựa trên không gian đặc trưng (Feature-space-based Methods)}
+\subsection{Các phương pháp dựa trên không gian đặc trưng}
 Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nhóm phương pháp này thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Ý tưởng chính là đo khoảng cách giữa embedding của mẫu kiểm thử và phân bố đặc trưng của dữ liệu huấn luyện. Một số độ đo khoảng cách phổ biến bao gồm:
 \begin{itemize}
   \item \textbf{Khoảng cách Euclidean:}
@@ -206,7 +206,7 @@ Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nh�
   trong đó $\Sigma_k$ là ma trận hiệp phương sai của lớp $k$. Khác với Euclidean và Cosine, Mahalanobis khai thác thêm thông tin về phương sai và tương quan giữa các chiều đặc trưng, nhờ đó phản ánh chính xác hơn mức độ bất thường của mẫu kiểm thử đối với phân bố của từng lớp, đặc biệt trong các trường hợp Near-OOD.
 \end{itemize}
 
-\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD (Representation Learning)}
+\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD}
 Các phương pháp trong nhóm này không trực tiếp thực hiện phát hiện OOD mà tập trung xây dựng không gian đặc trưng có tính phân biệt cao, từ đó nâng cao hiệu quả của các phương pháp phát hiện OOD dựa trên khoảng cách. Một số hướng tiếp cận tiêu biểu gồm:
 \begin{itemize}
   \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
