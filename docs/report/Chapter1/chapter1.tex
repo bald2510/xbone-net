@@ -17,24 +17,24 @@ Tuy nhiên, việc chuyển giao các mô hình ngôn ngữ trực quan y khoa s
 \section{Động lực nghiên cứu}
 \subsection{Kịch bản thực tế}
 
-Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-quang, quy trình chẩn đoán bệnh lý xương thường tuân theo Hình \ref{fig:diagram} bao gồm khám lâm sàng, chỉ định chụp X-quang, phân tích hình ảnh và kết hợp với các thông tin bệnh án để đưa ra chẩn đoán cuối cùng. Sau khi ảnh X-quang được thu nhận, bác sĩ chẩn đoán hình ảnh sẽ đánh giá các dấu hiệu bất thường như vị trí tổn thương, hình thái gãy xương, khối u hoặc các biến đổi bệnh lý khác, đồng thời đối chiếu với các thông tin lâm sàng như triệu chứng, tiền sử bệnh và cơ chế chấn thương để đưa ra kết quả đọc phim.
-
-Hệ thống được đề xuất trong luận văn được thiết kế nhằm hỗ trợ quá trình phân tích ảnh X-quang bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản chứa thông tin lâm sàng để dự đoán lớp bệnh lý của bệnh nhân như thể hiện ở Hình \ref{fig:diagram_XBone_net}. Việc kết hợp hai nguồn dữ liệu giúp mô hình tận dụng các thông tin bổ sung, từ đó nâng cao khả năng học biểu diễn và cải thiện hiệu quả phân loại so với việc chỉ sử dụng một phương thức dữ liệu.
-
-Cần lưu ý rằng hệ thống được nghiên cứu như một công cụ hỗ trợ phân tích và không thay thế kết luận của bác sĩ. Các đầu ra của mô hình chỉ mang tính tham khảo, hiệu quả lâm sàng thực tế cần được đánh giá thêm thông qua nghiên cứu độc lập với sự tham gia của chuyên gia y tế. Về lý tưởng, hệ thống được kỳ vọng sẽ giúp rút ngắn thời gian đọc phim, giảm nguy cơ bỏ sót tổn thương và nâng cao hiệu quả chẩn đoán, đặc biệt tại các cơ sở y tế có khối lượng bệnh nhân lớn hoặc nguồn nhân lực chuyên khoa còn hạn chế.
-
 \begin{figure}[H]
 \centering
-    \includegraphics[width=0.8\linewidth]{images/diagram.png}
-    \caption{Sơ đồ quy trình khám chữa bệnh giản hóa (Tham khảo từ quy trình thực tế tại Bệnh viện Nguyễn Tri Phương \cite{QuyTrinhBVNTP}).}
-    \label{fig:diagram}
+    \includegraphics[width=0.8\linewidth]{images/procedure.png}
+    \caption{Sơ đồ quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam).}
+    \label{fig:procedure}
 \end{figure}
 
+Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-quang, quy trình chẩn đoán bệnh lý xương thường tuân theo Hình \ref{fig:procedure} bao gồm các bước: bác sĩ chính khai thác bệnh sử, khám lâm sàng, chỉ định chụp X-quang. Sau đó, bác sĩ đọc ảnh sẽ phân tích ảnh X-quang và kết hợp với các ngữ cảnh lâm sàng để đưa ra nhận định cận lâm sàng. Cuối cùng, bác sĩ chính sử dụng tất cả các thông tin kể trên để làm căn cứ cho quyết định chẩn đoán cuối cùng và hướng xử trí.
+
+Hệ thống được đề xuất trong luận văn được thiết kế nhằm hỗ trợ quá trình phân tích ảnh X-quang bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản chứa bệnh sử để dự đoán lớp bệnh lý của bệnh nhân như thể hiện ở Hình \ref{fig:procedureXbone}. Việc kết hợp hai nguồn dữ liệu giúp mô hình tận dụng các thông tin bổ sung, từ đó nâng cao khả năng học biểu diễn và cải thiện hiệu quả phân loại so với việc chỉ sử dụng một phương thức dữ liệu.
+
+Cần lưu ý rằng hệ thống được nghiên cứu như một công cụ hỗ trợ phân tích và không thay thế kết luận của bác sĩ. Các đầu ra của mô hình chỉ mang tính hỗ trợ, hiệu quả lâm sàng thực tế cần được đánh giá thêm thông qua nghiên cứu độc lập với sự tham gia của chuyên gia y tế. Về ý tưởng, hệ thống được kỳ vọng sẽ giúp rút ngắn thời gian đọc phim, giảm nguy cơ bỏ sót tổn thương và nâng cao hiệu quả chẩn đoán, đặc biệt tại các cơ sở y tế có khối lượng bệnh nhân lớn hoặc nguồn nhân lực chuyên khoa còn hạn chế.
+
 \begin{figure}[H]
 \centering
-    \includegraphics[width=0.9\linewidth]{images/diagram_XBone_net.png}
-    \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích.}
-    \label{fig:diagram_XBone_net}
+    \includegraphics[width=0.9\linewidth]{images/procedureXbone.png}
+    \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam).}
+    \label{fig:procedureXbone}
 \end{figure}
 
 
