@@ -11,7 +11,7 @@ defaults:
   - /dataset@dataset: ctch
   - _self_
 
-experiment_name: ctch/proposed/ours_xbone_net_v3
+experiment_name: ctch/proposed/ours_xbone_net
 seed: 42
 
 model:

@@ -168,164 +168,165 @@ Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu 
 
 \section{Độ đo đánh giá}
 \label{sec:evaluation_metrics}
-BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp đơn nhãn. Số
-lớp $C$ phụ thuộc vào bộ dữ liệu: $C=10$ đối với BTXRD và $C=22$ đối với CTCH.
-Phần này chỉ trình bày bảy đại lượng được sử dụng trong báo cáo kết quả. Các chỉ số đánh giá được tính toán dựa trên các khái niệm cơ bản cho từng lớp $c \in \{1, 2, \dots, C\}$:
-\begin{itemize}
-    \item \textbf{True Positive ($TP_c$):} Số lượng mẫu thuộc lớp $c$ được dự đoán chính xác vào lớp $c$.
-    \item \textbf{False Positive ($FP_c$):} Số lượng mẫu thuộc lớp khác nhưng bị mô hình dự đoán nhầm vào lớp $c$.
-    \item \textbf{True Negative ($TN_c$):} Số lượng mẫu không thuộc lớp $c$ được dự đoán chính xác không thuộc lớp $c$.
-    \item \textbf{False Negative ($FN_c$):} Số lượng mẫu thuộc lớp $c$ nhưng bị mô hình dự đoán nhầm vào lớp khác.
-\end{itemize}
+BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp đơn nhãn, với $C=10$ đối với BTXRD và $C=22$ đối với CTCH. Đối với một tập đánh giá gồm $N$ mẫu, $y_i$ và $\widehat{y}_i$ lần lượt ký hiệu nhãn thật và nhãn dự đoán của mẫu thứ $i$, còn $p_{ic}$ là xác suất mô hình gán cho lớp $c$. Khi xem lớp $c$ là lớp dương và các lớp còn lại là lớp âm, $TP_c$, $FP_c$ và $FN_c$ lần lượt là số dương tính thật, dương tính giả và âm tính giả của lớp đó. Các độ đo được chia thành ba nhóm nhằm tách biệt hiệu năng phân loại, khả năng nhận diện dữ liệu ngoài phân phối và đặc tính của cơ chế chú ý--dung hợp.
 
+\subsection{Độ đo phân loại}
 
-\subsection{Độ chính xác}
+\subsubsection{Accuracy}
 
-\textbf{Mục đích:} Đo tỷ lệ mẫu được phân loại đúng trên toàn bộ tập đánh giá.
+Accuracy, hay độ chính xác tổng thể, biểu thị tỷ lệ mẫu có nhãn dự đoán trùng với nhãn thật trên toàn bộ tập đánh giá.
 
-\textbf{Công thức:}
-\begin{equation}
-    \operatorname{Acc}
-      =\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}(y_i=\hat{y}_i)
-\end{equation}
+\begin{equation}\operatorname{Accuracy}=\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}\left(y_i=\widehat{y}_i\right).\label{eq:ch4_accuracy}\end{equation}
 
-\textbf{Lý do sử dụng:} Độ chính xác cung cấp một chỉ số tổng quát, dễ diễn giải và thuận tiện khi đối chiếu với các nghiên cứu trước. Tuy nhiên, do độ đo này có thể bị chi phối bởi lớp phổ biến, nó được báo cáo cùng các độ đo cân bằng lớp; giá trị cao hơn là tốt hơn.
+Trong Công thức \ref{eq:ch4_accuracy}, $N$ là số mẫu đánh giá, $y_i$ là nhãn thật, $\widehat{y}_i$ là nhãn dự đoán và $\mathbb{I}(\cdot)$ là hàm chỉ thị nhận giá trị một khi điều kiện đúng và bằng không trong trường hợp còn lại.
 
-\subsection{Độ chính xác cân bằng}
+Accuracy được sử dụng vì có cách diễn giải trực tiếp và được báo cáo phổ biến trong phân loại ảnh y khoa. Tuy nhiên, độ đo này có thể bị chi phối bởi các lớp có nhiều mẫu, do đó không được sử dụng riêng lẻ mà được đọc cùng Balanced Accuracy và Macro-F1. Giá trị cao hơn biểu thị tỷ lệ dự đoán đúng lớn hơn.
 
-\textbf{Mục đích:} Đo độ phủ trung bình của các lớp, qua đó phản ánh khả năng
-nhận diện cả lớp phổ biến và lớp ít mẫu.
+\subsubsection{Balanced Accuracy}
 
-\textbf{Công thức:}
-\begin{equation}
-    \operatorname{Balanced\,Acc}
-      =\frac{1}{C}\sum_{c=1}^{C}
-       \frac{TP_c}{TP_c+FN_c}
-\end{equation}
+Balanced Accuracy tính trung bình độ nhạy của từng lớp, nhờ đó mỗi lớp đóng góp như nhau vào kết quả bất kể tần suất xuất hiện trong tập đánh giá.
 
-\textbf{Lý do sử dụng:} Độ chính xác cân bằng trao trọng số bằng nhau cho từng
-lớp nên phù hợp hơn độ chính xác khi dữ liệu mất cân bằng. Độ đo này cho biết mô hình có duy trì khả năng bao phủ trên các lớp hiếm hay không; giá trị cao hơn là tốt hơn.
+\begin{equation}\operatorname{Balanced\ Accuracy}=\frac{1}{C}\sum_{c=1}^{C}\frac{TP_c}{TP_c+FN_c}.\label{eq:ch4_balanced_accuracy}\end{equation}
 
-\subsection{Macro F1-Score}
+Trong Công thức \ref{eq:ch4_balanced_accuracy}, $C$ là tổng số lớp, $TP_c$ là số mẫu lớp $c$ được dự đoán đúng và $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác. Tỷ số $TP_c/(TP_c+FN_c)$ là recall của lớp $c$.
 
-\textbf{Mục đích:} Đánh giá đồng thời độ chuẩn xác và độ phủ của từng lớp trước
-khi tổng hợp kết quả trên toàn bộ bài toán.
+Balanced Accuracy được sử dụng để giảm ảnh hưởng của mất cân bằng lớp trên BTXRD và CTCH. Độ đo này cho biết liệu khả năng nhận diện có được duy trì trên các lớp ít mẫu thay vì chủ yếu phản ánh lớp phổ biến. Giá trị cao hơn biểu thị recall trung bình giữa các lớp tốt hơn.
 
-\textbf{Công thức:}
-\begin{equation}
-    P_c =\frac{TP_c}{TP_c+FP_c}
-\end{equation}
+\subsubsection{Macro-F1}
 
-\begin{equation}
-    R_c =\frac{TP_c}{TP_c+FN_c}
-\end{equation}
+Macro-F1 tổng hợp đồng thời precision và recall của từng lớp, sau đó lấy trung bình không trọng số trên toàn bộ lớp. Dạng viết theo các thành phần của ma trận nhầm lẫn giúp công thức không cần định nghĩa thêm precision và recall riêng biệt.
 
-\begin{equation}
-    \operatorname{Macro\text{-}F1}
-      =\frac{1}{C}\sum_{c=1}^{C}
-        \frac{2P_cR_c}{P_c+R_c}
-\end{equation}
+\begin{equation}\operatorname{Macro\text{-}F1}=\frac{1}{C}\sum_{c=1}^{C}\frac{2TP_c}{2TP_c+FP_c+FN_c}.\label{eq:ch4_macro_f1}\end{equation}
 
-Khi mẫu số bằng 0, mã đánh giá gán giá trị 0 cho thành phần tương ứng.
+Trong Công thức \ref{eq:ch4_macro_f1}, $C$ là tổng số lớp, $TP_c$ là số dự đoán đúng lớp $c$, $FP_c$ là số mẫu lớp khác bị dự đoán nhầm thành lớp $c$ và $FN_c$ là số mẫu lớp $c$ bị dự đoán thành lớp khác. Thành phần của lớp có mẫu số bằng không được quy ước bằng không.
 
-\textbf{Lý do sử dụng:} Macro-F1 lấy trung bình không trọng số trên các lớp và
-phạt các trường hợp có độ chuẩn xác hoặc độ phủ thấp. Vì vậy, đây là độ đo chính để chọn checkpoint và so sánh các mô hình trong nghiên cứu; giá trị cao hơn là tốt hơn.
+Macro-F1 được sử dụng làm độ đo chính để lựa chọn checkpoint vì một lớp chỉ đạt F1 cao khi precision và recall đều được duy trì. Phép trung bình macro hạn chế việc kết quả của lớp phổ biến che khuất sai số tại lớp hiếm. Giá trị cao hơn biểu thị sự cân bằng tốt hơn giữa hai loại sai số.
 
-\subsection{Macro AUROC}
+\subsubsection{Macro-AUROC}
 
-\textbf{Mục đích:} Đánh giá khả năng mô hình xếp hạng mẫu của mỗi lớp cao hơn
-các mẫu không thuộc lớp đó trên toàn bộ các ngưỡng quyết định.
+Macro-AUROC đánh giá khả năng xếp hạng xác suất của từng lớp theo chiến lược one-versus-rest trên toàn bộ ngưỡng, sau đó trao trọng số bằng nhau cho các lớp hợp lệ.
 
-\textbf{Công thức:} Với $x_c^{+}$ và $x_c^{-}$ lần lượt là mẫu dương và mẫu âm đối với phần còn lại của lớp $c$,
-\begin{equation}
-    \operatorname{AUROC}_c =\Pr\!\left[p_c(x_c^{+})>p_c(x_c^{-})\right]
-        +\frac{1}{2}\Pr\!\left[p_c(x_c^{+})=p_c(x_c^{-})\right]
-\end{equation}
+\begin{equation}\operatorname{Macro\text{-}AUROC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\int_{0}^{1}\operatorname{TPR}_{c}(u)\,\mathrm{d}u.\label{eq:ch4_macro_auroc}\end{equation}
 
-\begin{equation}
-    \operatorname{Macro\,AUROC}
-      =\frac{1}{|\mathcal{C}_v|}
-        \sum_{c\in\mathcal{C}_v}\operatorname{AUROC}_c
-\end{equation}
-trong đó $\mathcal{C}_v$ là tập lớp có đủ cả mẫu dương và mẫu âm.
+Trong Công thức \ref{eq:ch4_macro_auroc}, $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ, $u\in[0,1]$ là một mức false-positive rate và $\operatorname{TPR}_{c}(u)$ là true-positive rate của lớp $c$ tại mức $u$. Tích phân là diện tích dưới đường ROC của lớp $c$.
 
-\textbf{Lý do sử dụng:} Macro AUROC đánh giá chất lượng xếp hạng độc lập với
-một ngưỡng phân loại cố định và trao trọng số như nhau cho các lớp hợp lệ. Độ
-đo này bổ sung cho Macro-F1, vốn phụ thuộc vào quyết định argmax; giá trị cao
-hơn là tốt hơn.
+Macro-AUROC được sử dụng vì không phụ thuộc vào một ngưỡng quyết định duy nhất và phản ánh chất lượng xếp hạng xác suất trước phép argmax. Độ đo này bổ sung cho Macro-F1 nhưng có thể ít nhạy hơn với mất cân bằng dương--âm, vì vậy cần được đọc cùng Macro-AUPRC. Giá trị cao hơn biểu thị khả năng xếp hạng tốt hơn.
 
-\subsection{AUROC-OOD}
+\subsubsection{Macro-AUPRC}
 
-Giao thức OOD hiện chỉ áp dụng cho CTCH. Gọi $s(x)$ là điểm OOD, trong đó giá
-trị cao hơn biểu thị bằng chứng ngoài phân phối mạnh hơn.
+Macro-AUPRC đánh giá sự đánh đổi giữa precision và recall cho từng lớp theo chiến lược one-versus-rest, sau đó lấy trung bình không trọng số trên các lớp hợp lệ. Phù hợp với cách tính trong thực nghiệm, diện tích của mỗi lớp được ước lượng bằng average precision không nội suy.
 
-\textbf{Mục đích:} Đánh giá khả năng xếp hạng mẫu OOD cao hơn mẫu trong phân
-phối (ID) trên toàn bộ các ngưỡng.
+\begin{equation}\operatorname{AP}_{c}=\sum_{k=1}^{K_c}\left(R_{c,k}-R_{c,k-1}\right)P_{c,k}.\label{eq:ch4_ap_class}\end{equation}
 
-\textbf{Công thức:}
-\begin{equation}
-    \operatorname{AUROC}_{OOD}
-      =\Pr\!\left[s(x_{ood})>s(x_{id})\right]
-       +\frac{1}{2}\Pr\!\left[s(x_{ood})=s(x_{id})\right]
-\end{equation}
+Trong Công thức \ref{eq:ch4_ap_class}, $\operatorname{AP}_{c}$ là average precision của lớp $c$, $K_c$ là số điểm ngưỡng trên đường precision--recall, còn $P_{c,k}$ và $R_{c,k}$ lần lượt là precision và recall tại điểm thứ $k$; $R_{c,0}=0$ là mức recall khởi đầu.
 
-\textbf{Lý do sử dụng:} AUROC-OOD không phụ thuộc vào một điểm vận hành duy
-nhất và cho phép so sánh thống nhất các hàm điểm OOD khác nhau; giá trị cao hơn
-là tốt hơn.
+\begin{equation}\operatorname{Macro\text{-}AUPRC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\operatorname{AP}_{c}.\label{eq:ch4_macro_auprc}\end{equation}
 
-\subsection{FPR@95\% ID-TPR}
+Trong Công thức \ref{eq:ch4_macro_auprc}, $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ và $\operatorname{AP}_{c}$ là đại lượng được xác định trong Công thức \ref{eq:ch4_ap_class}.
 
-\textbf{Mục đích:} Đo tỷ lệ mẫu OOD bị chấp nhận nhầm như ID khi hệ thống phải
-giữ lại ít nhất 95\% mẫu ID.
+Macro-AUPRC được sử dụng vì nhạy với chất lượng nhận diện lớp dương khi số mẫu dương ít hơn đáng kể số mẫu âm. Độ đo này giúp phát hiện trường hợp AUROC tương đối cao nhưng precision của lớp hiếm vẫn thấp. Giá trị cao hơn biểu thị sự đánh đổi precision--recall tốt hơn; khi diễn giải cần đối chiếu với tỷ lệ lưu hành của từng lớp.
 
-\textbf{Công thức:} Tỷ lệ chấp nhận đúng ID tại ngưỡng $\tau$ là
-\begin{equation}
-    \operatorname{IDTPR}(\tau)
-      =\frac{1}{N_{id}}\sum_{x\in D_{id}}
-       \mathbb{I}\!\left[s(x)\leq\tau\right]
-\end{equation}
-Trong độ đo benchmark, $\tau_{95}$ được chọn trên đường ROC để tỷ lệ OOD bị
-chấp nhận nhầm là nhỏ nhất trong các ngưỡng thỏa
-$\operatorname{IDTPR}(\tau)\geq0{.}95$. Khi đó,
-\begin{equation}
-    \operatorname{FPR@95\%}
-      =\frac{1}{N_{ood}}\sum_{x\in D_{ood}}
-       \mathbb{I}\!\left[s(x)\leq\tau_{95}\right]
-\end{equation}
+\subsubsection{Expected Calibration Error}
 
-\textbf{Lý do sử dụng:} FPR@95\% phản ánh trực tiếp chi phí chấp nhận nhầm OOD
-tại một mức duy trì dữ liệu ID cao, nên có ý nghĩa vận hành rõ hơn AUROC-OOD;
-giá trị thấp hơn là tốt hơn. Ngưỡng benchmark này được xác định từ cả score ID
-và OOD của tập đánh giá; nó khác với ngưỡng triển khai chỉ được hiệu chỉnh trên
-validation ID.
+Expected Calibration Error (ECE) đánh giá mức phù hợp giữa độ tin cậy dự đoán và tần suất dự đoán đúng quan sát được. Các mẫu được chia vào $M$ khoảng theo xác suất lớn nhất của mô hình trước khi so sánh độ tin cậy trung bình với độ chính xác thực nghiệm trong từng khoảng.
 
-\subsection{Khoảng tin cậy bootstrap 95\%}
+\begin{equation}\operatorname{ECE}=\sum_{m=1}^{M}\frac{|B_m|}{N}\left|\operatorname{Acc}(B_m)-\operatorname{Conf}(B_m)\right|.\label{eq:ch4_ece}\end{equation}
 
-\textbf{Mục đích:} Ước lượng độ bất định của Acc, Balanced Acc, Macro-F1,
-Macro AUROC, AUROC-OOD và FPR@95\% trên tập đánh giá hữu hạn.
+Trong Công thức \ref{eq:ch4_ece}, $M$ là số khoảng độ tin cậy, $B_m$ là tập mẫu thuộc khoảng thứ $m$, $|B_m|$ là số mẫu trong khoảng, $N$ là tổng số mẫu, $\operatorname{Acc}(B_m)$ là tỷ lệ dự đoán đúng và $\operatorname{Conf}(B_m)$ là trung bình xác suất lớn nhất trong khoảng. Báo cáo sử dụng $M=15$ khoảng có độ rộng bằng nhau.
 
-\textbf{Công thức:} Từ tập đánh giá $D$ có $N$ mẫu, ở lần lặp thứ $b$ tạo
-$D^{*(b)}$ bằng cách lấy $N$ mẫu có hoàn lại và tính
-\begin{equation}
-    \hat{\theta}^{*(b)}=m\!\left(D^{*(b)}\right)
-    \qquad b=1,\ldots,B
-\end{equation}
-với $m$ là độ đo cần báo cáo. Khoảng tin cậy percentile 95\% được xác định bởi
-\begin{equation}
-    \operatorname{CI}_{95\%}(\theta)
-      =\left[
-        Q_{0{.}025}\!\left(\{\hat{\theta}^{*(b)}\}_{b=1}^{B}\right)
-        Q_{0{.}975}\!\left(\{\hat{\theta}^{*(b)}\}_{b=1}^{B}\right)
-       \right]
-\end{equation}
-trong đó $Q_q$ là phân vị bậc $q$. Pipeline sử dụng $B=10.000$ cho phân loại
-và $B=2.000$ cho OOD.
+ECE được sử dụng vì một mô hình có Accuracy cao vẫn có thể đưa ra xác suất quá tự tin hoặc thiếu tự tin. Trong bài toán hỗ trợ phân tích ảnh y khoa, mức tin cậy cần được diễn giải thận trọng, đặc biệt khi được dùng để sắp xếp ca hoặc hỗ trợ cơ chế từ chối. Giá trị ECE thấp hơn biểu thị độ hiệu chuẩn tốt hơn, nhưng độ đo vẫn phụ thuộc vào cách chia khoảng.
 
-\textbf{Lý do sử dụng:} Bootstrap không yêu cầu giả định phân phối chuẩn cho
-các độ đo phi tuyến như Macro-F1 hoặc AUROC và cung cấp miền bất định dễ báo
-cáo cùng ước lượng điểm. Khoảng tin cậy được dùng để mô tả độ ổn định của từng
-mô hình, không được diễn giải riêng như một kiểm định ý nghĩa cho chênh lệch
-giữa hai mô hình.
+\subsubsection{Confusion Matrix}
+
+Confusion Matrix, hay ma trận nhầm lẫn, ghi nhận số mẫu của từng lớp thật được phân bố vào từng lớp dự đoán. Hàng của ma trận tương ứng với nhãn thật và cột tương ứng với nhãn dự đoán.
+
+\begin{equation}\boldsymbol{M}_{ab}=\sum_{i=1}^{N}\mathbb{I}\left(y_i=a\right)\mathbb{I}\left(\widehat{y}_i=b\right).\label{eq:ch4_confusion_matrix}\end{equation}
+
+Trong Công thức \ref{eq:ch4_confusion_matrix}, $\boldsymbol{M}\in\mathbb{N}^{C\times C}$ là ma trận nhầm lẫn, $\boldsymbol{M}_{ab}$ là số mẫu có nhãn thật $a$ nhưng được dự đoán thành lớp $b$, $N$ là số mẫu và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Các phần tử trên đường chéo là dự đoán đúng, còn các phần tử ngoài đường chéo biểu thị các cặp lớp bị nhầm lẫn.
+
+Confusion Matrix được sử dụng vì các độ đo tổng hợp không cho biết mô hình thường nhầm giữa những bệnh lý nào. Ma trận hỗ trợ nhận diện thiên lệch về lớp phổ biến, các cặp bệnh có biểu hiện gần nhau và lớp hiếm bị bỏ sót. Độ đo này không có quy tắc cao hơn hoặc thấp hơn cho toàn ma trận; kết quả thuận lợi được thể hiện bằng khối lượng tập trung trên đường chéo.
+
+\subsection{Độ đo phát hiện dữ liệu ngoài phân phối}
+
+Đối với đánh giá OOD, $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập trong phân phối và ngoài phân phối, còn $N_{\mathrm{ID}}$ và $N_{\mathrm{OOD}}$ là số mẫu tương ứng. Mọi detector được quy đổi về cùng quy ước $s(x)$ là điểm bất thường, trong đó giá trị lớn hơn biểu thị bằng chứng OOD mạnh hơn. Quy ước này cần được cố định trước khi tính các độ đo để tránh đảo chiều kết quả.
+
+\subsubsection{AUROC-OOD}
+
+AUROC-OOD biểu thị xác suất một mẫu OOD ngẫu nhiên nhận điểm bất thường cao hơn một mẫu ID ngẫu nhiên, đồng thời tính một nửa đóng góp cho trường hợp hai điểm bằng nhau.
+
+\begin{equation}\operatorname{AUROC}_{\mathrm{OOD}}=\Pr\left[s(x_{\mathrm{OOD}})>s(x_{\mathrm{ID}})\right]+\frac{1}{2}\Pr\left[s(x_{\mathrm{OOD}})=s(x_{\mathrm{ID}})\right].\label{eq:ch4_auroc_ood}\end{equation}
+
+Trong Công thức \ref{eq:ch4_auroc_ood}, $x_{\mathrm{OOD}}$ và $x_{\mathrm{ID}}$ là các mẫu được lấy lần lượt từ $\mathcal{D}_{\mathrm{OOD}}$ và $\mathcal{D}_{\mathrm{ID}}$, $s(\cdot)$ là hàm điểm bất thường và $\Pr(\cdot)$ là xác suất của quan hệ xếp hạng.
+
+AUROC-OOD được sử dụng để so sánh khả năng phân tách tổng quát của các detector trên toàn bộ ngưỡng. Độ đo không phụ thuộc vào một tỷ lệ ID/OOD cụ thể tại một điểm vận hành, nhưng có thể che khuất hiệu năng ở vùng false-positive rate thấp. Giá trị cao hơn biểu thị khả năng xếp hạng OOD tốt hơn.
+
+\subsubsection{AUPR-Out}
+
+AUPR-Out xem OOD là lớp dương và đánh giá sự đánh đổi giữa precision và recall khi ngưỡng của điểm bất thường thay đổi. Diện tích được ước lượng bằng average precision không nội suy để thống nhất với cách tính trong thực nghiệm.
+
+\begin{equation}\operatorname{AUPR\text{-}Out}=\sum_{k=1}^{K}\left(R_{k}^{\mathrm{OOD}}-R_{k-1}^{\mathrm{OOD}}\right)P_{k}^{\mathrm{OOD}}.\label{eq:ch4_aupr_out}\end{equation}
+
+Trong Công thức \ref{eq:ch4_aupr_out}, $K$ là số điểm ngưỡng trên đường precision--recall, $P_{k}^{\mathrm{OOD}}$ và $R_{k}^{\mathrm{OOD}}$ lần lượt là precision và recall của lớp OOD tại điểm thứ $k$, còn $R_{0}^{\mathrm{OOD}}=0$ là mức recall khởi đầu.
+
+AUPR-Out được sử dụng vì tập OOD thường có quy mô nhỏ hơn tập ID và precision phản ánh trực tiếp mức độ nhiễu trong các cảnh báo OOD. Độ đo bổ sung cho AUROC-OOD bằng cách nhấn mạnh chất lượng cảnh báo khi tỷ lệ lớp không cân bằng. Giá trị cao hơn biểu thị đường precision--recall tốt hơn, nhưng cần được đối chiếu với tỷ lệ OOD vì mức ngẫu nhiên của AUPR-Out bằng tỷ lệ lớp dương.
+
+\subsubsection{FPR@95\%TPR}
+
+Trong báo cáo, FPR@95\%TPR sử dụng ID làm lớp dương theo quy ước phổ biến của giao thức OOD: một mẫu ID được chấp nhận khi $s(x)\leq\tau$, còn một mẫu có $s(x)>\tau$ bị từ chối như OOD. Ngưỡng benchmark được chọn để giữ đúng ít nhất 95\% mẫu ID.
+
+\begin{equation}\tau_{95}=\inf\left\{\tau:\frac{1}{N_{\mathrm{ID}}}\sum_{x\in\mathcal{D}_{\mathrm{ID}}}\mathbb{I}\left[s(x)\leq\tau\right]\geq0{,}95\right\}.\label{eq:ch4_fpr95_threshold}\end{equation}
+
+Trong Công thức \ref{eq:ch4_fpr95_threshold}, $\tau_{95}$ là ngưỡng nhỏ nhất đạt ID-TPR ít nhất $0{,}95$, $N_{\mathrm{ID}}$ là số mẫu ID, $\mathcal{D}_{\mathrm{ID}}$ là tập ID, $s(x)$ là điểm bất thường và $\mathbb{I}(\cdot)$ là hàm chỉ thị của quyết định chấp nhận ID.
+
+\begin{equation}\operatorname{FPR@95\%TPR}=\frac{1}{N_{\mathrm{OOD}}}\sum_{x\in\mathcal{D}_{\mathrm{OOD}}}\mathbb{I}\left[s(x)\leq\tau_{95}\right].\label{eq:ch4_fpr95}\end{equation}
+
+Trong Công thức \ref{eq:ch4_fpr95}, $N_{\mathrm{OOD}}$ là số mẫu OOD, $\mathcal{D}_{\mathrm{OOD}}$ là tập OOD, $s(x)\leq\tau_{95}$ biểu thị một mẫu OOD bị chấp nhận nhầm như ID và $\tau_{95}$ là ngưỡng được xác định trong Công thức \ref{eq:ch4_fpr95_threshold}.
+
+FPR@95\%TPR được sử dụng để phản ánh trực tiếp tỷ lệ OOD lọt qua detector khi hệ thống phải duy trì mức chấp nhận ID cao. Độ đo này cung cấp góc nhìn vận hành mà AUROC-OOD không thể hiện đầy đủ. Giá trị thấp hơn là tốt hơn; ngưỡng benchmark được tính để so sánh detector và cần được phân biệt với ngưỡng triển khai chỉ được hiệu chỉnh trên validation ID.
+
+\subsection{Độ đo phân tích chú ý và dung hợp}
+
+Các độ đo trong nhóm này được tính trên tập mẫu phân tích nhằm mô tả hành vi bên trong mô-đun chú ý chéo. Chúng không được xem là bằng chứng trực tiếp rằng mô hình định vị đúng tổn thương hoặc đưa ra giải thích có quan hệ nhân quả. Hai hướng dung hợp được ký hiệu bởi $\mathcal{M}=\{I\leftarrow T,T\leftarrow I\}$, tương ứng với ngữ cảnh văn bản bổ sung cho ảnh và ngữ cảnh ảnh bổ sung cho văn bản.
+
+\subsubsection{Attention Entropy}
+
+Attention Entropy đo mức phân tán của trọng số chú ý trên các token ngữ cảnh hợp lệ. Entropy được chuẩn hóa theo số token để các chuỗi có độ dài khác nhau có thể được đối chiếu trên cùng thang đo.
+
+\begin{equation}\operatorname{H}_{\mathrm{att}}^{(m)}=\frac{1}{N}\sum_{i=1}^{N}\frac{-\sum_{j=1}^{L_i^{(m)}}a_{ij}^{(m)}\log\left(a_{ij}^{(m)}+\epsilon\right)}{\log L_i^{(m)}}.\label{eq:ch4_attention_entropy}\end{equation}
+
+Trong Công thức \ref{eq:ch4_attention_entropy}, $m\in\mathcal{M}$ là một hướng chú ý, $N$ là số mẫu, $L_i^{(m)}$ là số token key hợp lệ của mẫu $i$, $a_{ij}^{(m)}$ là trọng số chú ý của token thứ $j$ sau khi đã tổng hợp các head và chuẩn hóa để tổng bằng một, còn $\epsilon$ là hằng số dương nhỏ dùng để tránh $\log 0$. Giá trị được chuẩn hóa nằm gần khoảng từ không đến một.
+
+Attention Entropy được sử dụng để phát hiện attention quá tập trung vào rất ít token hoặc gần như phân bố đều trên mọi token. Giá trị thấp biểu thị phân bố tập trung, còn giá trị cao biểu thị phân bố rộng; không có chiều tốt hơn tuyệt đối vì mức tập trung phù hợp phụ thuộc nội dung mẫu và hướng chú ý. Độ đo cần được đọc cùng can thiệp đầu ra thay vì dùng riêng để kết luận về tính giải thích.
+
+\subsubsection{Fusion Contribution}
+
+Fusion Contribution mô tả tỷ phần đóng góp hỗ trợ của từng hướng dung hợp dựa trên mức giảm xác suất của lớp mục tiêu khi hướng đó bị loại bỏ. Chỉ phần giảm dương được sử dụng trong tỷ lệ để một nhánh làm tăng xác suất mục tiêu không bị triệt tiêu bởi một nhánh có tác động ngược chiều.
+
+\begin{equation}\operatorname{FC}_{m}=\frac{\sum_{i=1}^{N}\left[\Delta p_i^{(m)}\right]_{+}}{\sum_{r\in\mathcal{M}}\sum_{i=1}^{N}\left[\Delta p_i^{(r)}\right]_{+}+\epsilon}.\label{eq:ch4_fusion_contribution}\end{equation}
+
+Trong Công thức \ref{eq:ch4_fusion_contribution}, $\operatorname{FC}_{m}$ là tỷ phần đóng góp của hướng $m$, $\mathcal{M}$ là tập hai hướng dung hợp, $N$ là số mẫu, $\Delta p_i^{(m)}$ là độ giảm xác suất sau can thiệp trên mẫu $i$, $[z]_{+}=\max(z,0)$ giữ lại phần dương và $\epsilon$ là hằng số nhỏ bảo đảm mẫu số khác không.
+
+Fusion Contribution được sử dụng để so sánh mức phụ thuộc tương đối của dự đoán vào hai hướng truyền thông tin. Giá trị lớn hơn cho một hướng chỉ biểu thị hướng đó chiếm tỷ phần lớn hơn trong tổng tác động hỗ trợ đã quan sát; độ đo không chứng minh phương thức tương ứng quan trọng hơn về mặt lâm sàng và không thay thế đánh giá ablation trên tập kiểm thử.
+
+\subsubsection{Attention Context Cosine}
+
+Attention Context Cosine đo mức đồng hướng giữa hai vector ngữ cảnh do hai nhánh chú ý chéo tạo ra trước khi chúng được đưa vào MLP dung hợp.
+
+\begin{equation}\operatorname{Cos}_{\mathrm{ctx}}=\frac{1}{N}\sum_{i=1}^{N}\frac{\left(\boldsymbol{c}_{i}^{I\leftarrow T}\right)^{\mathsf{T}}\boldsymbol{c}_{i}^{T\leftarrow I}}{\left\|\boldsymbol{c}_{i}^{I\leftarrow T}\right\|_{2}\left\|\boldsymbol{c}_{i}^{T\leftarrow I}\right\|_{2}}.\label{eq:ch4_attention_context_cosine}\end{equation}
+
+Trong Công thức \ref{eq:ch4_attention_context_cosine}, $N$ là số mẫu, $\boldsymbol{c}_{i}^{I\leftarrow T}$ là ngữ cảnh văn bản được truy hồi cho nhánh ảnh, $\boldsymbol{c}_{i}^{T\leftarrow I}$ là ngữ cảnh ảnh được truy hồi cho nhánh văn bản, ký hiệu $\mathsf{T}$ biểu thị chuyển vị và $\|\cdot\|_2$ là chuẩn Euclid.
+
+Attention Context Cosine được sử dụng để khảo sát liệu hai hướng chú ý tạo thông tin tương đồng, gần trực giao hay đối nghịch trong không gian biểu diễn. Giá trị gần một biểu thị hai context đồng hướng, gần không biểu thị mức đồng hướng thấp và giá trị âm biểu thị xu hướng đối nghịch. Không có chiều tốt hơn tuyệt đối vì hai nhánh có thể hữu ích khi mang thông tin bổ sung thay vì lặp lại nhau.
+
+\subsubsection{Prediction Drop after Intervention}
+
+Prediction Drop after Intervention đo thay đổi xác suất của lớp mục tiêu khi một nhánh dung hợp bị đặt về không trong khi các thành phần còn lại được giữ nguyên. Lớp mục tiêu là lớp được mô hình đầy đủ dự đoán trước can thiệp.
+
+\begin{equation}\operatorname{PD}_{m}=\frac{1}{N}\sum_{i=1}^{N}\left[p_{i,\widehat{y}_i}^{\mathrm{full}}-p_{i,\widehat{y}_i}^{(-m)}\right].\label{eq:ch4_prediction_drop}\end{equation}
+
+Trong Công thức \ref{eq:ch4_prediction_drop}, $\operatorname{PD}_{m}$ là độ giảm xác suất trung bình khi loại bỏ hướng $m$, $N$ là số mẫu, $\widehat{y}_i$ là lớp dự đoán của mô hình đầy đủ, $p_{i,\widehat{y}_i}^{\mathrm{full}}$ là xác suất của lớp đó trước can thiệp và $p_{i,\widehat{y}_i}^{(-m)}$ là xác suất sau khi vector của hướng $m$ bị đặt về không.
+
+Prediction Drop được sử dụng để kiểm tra liệu tín hiệu được mô-đun dung hợp tạo ra có ảnh hưởng thực tế đến đầu ra hay không. Giá trị dương lớn cho thấy việc loại bỏ nhánh làm giảm độ tin cậy của dự đoán ban đầu, giá trị gần không cho thấy tác động nhỏ và giá trị âm cho thấy xác suất tăng sau khi loại bỏ. Vì can thiệp có thể tạo biểu diễn khác phân phối huấn luyện, kết quả được diễn giải như bằng chứng chức năng bổ trợ thay vì quan hệ nhân quả đầy đủ.
 
 \section{Thiết lập thực nghiệm}
 Phần này trình bày các thiết lập thực nghiệm, bao gồm môi trường phần cứng và phần mềm, cũng như các siêu tham số được sử dụng trong quá trình huấn luyện mô hình. Các thiết lập này nhằm đảm bảo tính nhất quán và khả năng tái tạo của các thí nghiệm.
@@ -439,8 +440,7 @@ bộ tham số của backbone được giữ cố định; mô hình không đư
 \textbf{Mục đích thực nghiệm:} Thí nghiệm khảo sát khả năng chuyển trực tiếp
 tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xương. Thiết lập này cung cấp một mốc tham chiếu không sử dụng mẫu huấn luyện của bộ dữ liệu đích, qua đó cho phép xem xét mức độ phù hợp ban đầu của các mô hình ngôn ngữ trực quan
 
-\textbf{Dữ liệu và độ đo:} Bốn mô hình được đánh giá độc lập trên tập kiểm thử
-của BTXRD và CTCH; các tập huấn luyện và đánh giá không được sử dụng. Các độ đo báo cáo gồm độ chính xác, độ chính xác cân bằng, Điểm Macro-F1 và Macro AUROC theo định nghĩa tại Mục \ref{sec:evaluation_metrics}. Do suy luận zero-shot là xác định khoảng tin cậy bootstrap 95\% với $B=10.000$ lần lấy mẫu lại được dùng để mô tả độ bất định do tập kiểm thử hữu hạn, thay vì độ biến thiên giữa các lần huấn luyện.
+\textbf{Dữ liệu và độ đo:} Bốn mô hình được đánh giá độc lập trên tập kiểm thử của BTXRD và CTCH; các tập huấn luyện và validation không được sử dụng để cập nhật mô hình. Các độ đo báo cáo gồm Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE theo định nghĩa tại Mục \ref{sec:evaluation_metrics}; Confusion Matrix được sử dụng để phân tích các cặp lớp thường bị nhầm lẫn. Do suy luận zero-shot không có biến thiên từ quá trình huấn luyện, khoảng tin cậy bootstrap 95\% với $B=10.000$ lần lấy mẫu lại được dùng để mô tả độ bất định do tập kiểm thử hữu hạn.
 
 \subsection{So sánh với các mô hình nền tảng}
 \label{subsec:foundation_model_comparison}
@@ -457,7 +457,7 @@ của BTXRD và CTCH; các tập huấn luyện và đánh giá không được 
 
 \textbf{Mục đích thực nghiệm:} Thiết lập mẫu hạn chế đánh giá khả năng học khi số mẫu gán nhãn bị giới hạn và mức suy giảm so với khi huấn luyện trên toàn bộ dữ liệu khi áp dụng kỹ thuật LoRA. Thiết lập toàn bộ dữ liệu cung cấp đối sánh tổng thể giữa mô hình ảnh đơn phương thức, các mô hình ngôn ngữ trực quan y khoa được tinh chỉnh và pipeline đề xuất. Đối sánh tinh chỉnh hiệu quả tham số được dùng để xem xét liệu các mô hình ngôn ngữ trực quan y khoa có thể đạt được hiệu suất tương tự như mô hình tinh chỉnh toàn bộ khi chỉ được huấn luyện với một số lượng nhỏ tham số.
 
-\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, đánh giá, kiểm thử cố định. Kết quả chính được tổng hợp trên ba hạt giống 42, 123 và 456 bằng độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC; điểm Macro-F1 là độ đo dùng để chọn mô hình tốt nhất trên tập đánh giá. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm mô tả đánh đổi giữa hiệu năng dự đoán và chi phí suy luận, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại cũng được báo cáo.
+\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, validation và kiểm thử cố định. Kết quả được tổng hợp trên ba hạt giống 42, 123 và 456 bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE; Macro-F1 là độ đo dùng để lựa chọn checkpoint trên tập validation, còn Confusion Matrix hỗ trợ phân tích sai số theo cặp lớp. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm mô tả đánh đổi giữa hiệu năng dự đoán và chi phí suy luận, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại cũng được báo cáo.
 
 \subsection{Đánh giá thành phần}
 \label{subsec:component_evaluation}
@@ -477,7 +477,7 @@ của BTXRD và CTCH; các tập huấn luyện và đánh giá không được 
 
 \textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm lần lượt xem xét vai trò của việc bảo toàn chi tiết ảnh độ phân giải cao, chiến lược cập nhật mô hình kế thừa, hướng trao đổi thông tin giữa hai phương thức và lựa chọn đầu phân loại trong điều kiện mất cân bằng lớp. Thiết kế kế thừa cùng cấu hình giúp giới hạn thay đổi trong từng phép so sánh, từ đó hỗ trợ diễn giải chênh lệch theo thành phần.
 
-\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Các độ đo được sử dụng bao gồm độ chính xác, độ chính xác cân bằng, điểm Macro-F1 và Macro AUROC để đánh giá hiệu năng phân loại, kèm khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
+\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Hiệu năng phân loại được đánh giá bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE, kèm Confusion Matrix cho các biến thể cần phân tích sai số theo lớp và khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
 
 \subsection{OOD hậu xử lý}
 \label{subsec:ood_postprocessing}
@@ -496,10 +496,12 @@ nhãn theo các bệnh lý u xương; riêng lớp bình thường có ngữ ngh
 với CTCH. Vì bệnh sử \texttt{clinical\_v2} của BTXRD là văn bản tổng hợp, kết quả
 trên nguồn này được diễn giải như khả năng phát hiện OOD đa phương thức, không
 được dùng làm bằng chứng riêng cho dịch chuyển miền ảnh. Report mismatch được tạo bằng
-cách ghép ảnh với bệnh sử khác lớp, còn ghép cùng lớp là phân tích phụ. Hai độ đo
-chính là AUROC-OOD và FPR@95\% ID-TPR; khoảng tin cậy bootstrap 95\% được tính
-với $B=2.000$ lần lấy mẫu lại. AUROC-OOD cao hơn và FPR@95\% thấp hơn biểu thị
-khả năng phân tách tốt hơn.
+cách ghép ảnh với bệnh sử khác lớp, còn ghép cùng lớp là phân tích phụ. Ba độ đo
+chính là AUROC-OOD, AUPR-Out và FPR@95\%TPR theo quy ước ID-TPR; khoảng tin cậy
+bootstrap 95\% được tính với $B=2.000$ lần lấy mẫu lại. AUROC-OOD và AUPR-Out
+cao hơn biểu thị khả năng phân tách hoặc chất lượng cảnh báo tốt hơn, trong khi
+FPR@95\%TPR thấp hơn biểu thị ít mẫu OOD bị chấp nhận nhầm hơn tại mức giữ lại
+95\% ID.
 
 \subsection{Giải thích và biểu diễn}
 \label{subsec:explainability_representation}
@@ -521,16 +523,15 @@ diễn khảo sát mức độ kết cụm theo lớp và khoảng cách giữa 
 từng không gian nhúng. CTCH chưa có annotation vùng tổn thương trong protocol,
 do đó nhóm này không báo cáo IoU, Dice hoặc độ chính xác định vị.
 
-\textbf{Dữ liệu và độ đo.} Đặc trưng train và test của CTCH được dùng cho phân
-tích hình học; attribution chỉ được tính trên tập con test đã chọn. Các độ đo
-attribution gồm độ giảm logit và xác suất khi loại bỏ nhánh, completeness error
-của Integrated Gradients, AUC của đường deletion/insertion, tương quan hạng
-Spearman giữa các phương pháp, độ ổn định dưới nhiễu và tương quan sau khi ngẫu
-nhiên hóa classifier. Chất lượng biểu diễn được mô tả bằng Silhouette cosine,
-Davies--Bouldin, Calinski--Harabasz, NMI, ARI, Balanced Acc của bộ phân loại tâm
-lớp gần nhất và kNN, cùng biên độ tương đồng tới tâm lớp đúng. Các đại lượng này
-được xem là chỉ báo định lượng bổ trợ cho minh họa trực quan, không phải bằng
-chứng định vị tổn thương.
+\textbf{Dữ liệu và độ đo.} Phân tích được thực hiện trên tập con test CTCH đã
+chọn và báo cáo Attention Entropy riêng cho hai hướng chú ý, Fusion Contribution
+của từng hướng, Attention Context Cosine giữa hai vector ngữ cảnh và Prediction
+Drop after Intervention khi lần lượt loại bỏ từng nhánh dung hợp. Các phân tích
+hình học biểu diễn khác được trình bày như kết quả bổ sung và không thuộc bộ độ
+đo chính được định nghĩa tại Mục \ref{sec:evaluation_metrics}. Các đại lượng chú
+ý và dung hợp được xem là chỉ báo định lượng bổ trợ cho phân tích cơ chế, không
+phải bằng chứng trực tiếp về khả năng định vị tổn thương hoặc quan hệ nhân quả
+lâm sàng.
 
 % Khối kết quả dưới đây thuộc phiên bản báo cáo trước và được giữ lại để truy
 % vết; bản kết quả canonical hiện hành được trình bày sau khi khối này kết thúc.

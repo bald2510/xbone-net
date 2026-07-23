@@ -2,230 +2,236 @@
 \label{Chapter3}
 
 \section{Tổng quan phương pháp đề xuất}
-
-Dựa trên các nghiên cứu liên quan, nhóm đề xuất xây dựng một hệ thống học sâu đa phương thức nhằm khai thác đồng thời thông tin từ ảnh X-quang và dữ liệu lâm sàng văn bản. Đặc biệt, hệ thống được thiết kế với khả năng học trong điều kiện ít mẫu và phát hiện dữ liệu ngoài phân phối. Cụ thể, kiến trúc bao gồm các thành phần chính như sau:
-    \begin{itemize}
-        \item \textbf{Bộ mã hóa ảnh:} Kế thừa ViT-Base của BiomedCLIP \cite{BiomedCLIP}, kết hợp nhánh ảnh toàn cục và lưới lát cục bộ độ phân giải cao.
-        \item \textbf{Bộ mã hóa văn bản:} Kế thừa lại mô hình PubMedBERT của phương pháp BiomedCLIP \cite{BiomedCLIP}
-        \item \textbf{Bộ dung hợp dữ liệu:} Kỹ thuật Bidirectional Cross-Attention được xây dựng dựa trên cơ chế cross-attention nhằm học mối quan hệ ngữ nghĩa giữa đặc trưng hình ảnh và đặc trưng văn bản y khoa.
-        \item \textbf{Bộ phân loại:} Dùng empirical centroid head không tham số; nhãn được quyết định bởi độ tương đồng cosine với trung tâm lớp tính trực tiếp từ embedding của tập train. Đặc trưng dung hợp đồng thời được dùng để hiệu chuẩn điểm OOD hậu xử lý trên tập validation.
-
-    \end{itemize}
-Đồng thời, các trọng số attention được khai thác để trực quan hóa và giải thích kết quả dự đoán.
-
-\section{Pipeline cuối cùng}
 \label{sec:final-pipeline}
 
-Để tránh lựa chọn mô hình hậu nghiệm theo kết quả kiểm thử, nghiên cứu cố định XBone-Net trước khi thực hiện các thí nghiệm rời rạc. Pipeline cuối cùng gồm các bước sau:
-\begin{enumerate}
-    \item \textbf{Tiền xử lý ảnh độ phân giải cao:} pipeline loại bỏ vùng đệm máy chụp bằng quy tắc bảo toàn năng lượng tương phản thận trọng, tạo một global view giữ nguyên tỉ lệ và chọn đúng bốn local view $224\times224$. Hai vùng bảo đảm độ phủ theo trục giải phẫu chính và hai vùng focal được chọn bằng năng lượng texture kết hợp phạt chồng lấp; toàn bộ quy trình chỉ dùng tín hiệu ảnh, không dùng nhãn, hộp tổn thương hay mô hình đề xuất vùng.
-    \item \textbf{Mã hóa đa tỉ lệ:} BiomedCLIP trích xuất một đặc trưng ảnh toàn cục và token cục bộ từ bốn vùng sparse-focal. Mỗi vùng giữ lại CLS token đã được tiền huấn luyện và một patch-summary token, tạo ngân sách cố định tám token. Bộ resampler nhẹ truyền trực tiếp các token này, đồng thời bổ sung embedding tọa độ đã chuẩn hóa qua một cổng vô hướng bị chặn để thông tin vị trí không lấn át nội dung. Trong khi huấn luyện, gradient từ nhánh local được truyền vào visual LoRA; activation của từng nhóm tile được tính lại khi backward bằng gradient checkpointing để giới hạn bộ nhớ.
-    \item \textbf{Pha 1 -- căn chỉnh ngữ nghĩa:} Vision Encoder và Text Encoder được thích nghi bằng LoRA với cặp ảnh--bệnh sử lâm sàng. Hàm Semantic Matching Loss sử dụng quan hệ đồng lớp làm mục tiêu mềm. Báo cáo kết quả X-quang không được dùng vì có nguy cơ chứa trực tiếp tên bệnh.
-    \item \textbf{Pha 2 -- dung hợp và phân loại:} các LoRA adapter được giữ ở dạng tách rời và tiếp tục được tối ưu cùng bộ chú ý chéo hai chiều. Đầu empirical centroid được tính từ toàn bộ embedding train và không được cập nhật bởi optimizer. Hàm mục tiêu chỉ là Cross-Entropy có trọng số theo effective number.
-    \item \textbf{Suy luận và phát hiện OOD:} ảnh X-quang và bệnh sử lâm sàng đi qua đúng nhánh tiền xử lý và dung hợp của pha 2. Nhãn ID được xác định bởi empirical centroid có độ tương đồng lớn nhất; điểm OOD được hiệu chuẩn hậu xử lý trên đặc trưng dung hợp của tập validation, không dùng mẫu test để chọn ngưỡng.
-\end{enumerate}
+Nhóm nghiên cứu đề xuất XBone-Net như một pipeline học sâu đa phương thức dành cho phân loại ảnh X-quang xương, trong đó ảnh cung cấp bằng chứng hình thái và bệnh sử lâm sàng cung cấp ngữ cảnh liên quan đến tình trạng của người bệnh trước khi ảnh được diễn giải. Pipeline kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, thích nghi hai bộ mã hóa bằng LoRA, bảo toàn đồng thời thông tin toàn cục và chi tiết cục bộ của ảnh, trao đổi thông tin giữa hai phương thức bằng chú ý chéo hai chiều, sau đó đưa biểu diễn dung hợp vào bộ phân loại dựa trên tâm lớp thực nghiệm. Báo cáo kết quả X-quang không được sử dụng làm đầu vào của pipeline chính nhằm hạn chế nguy cơ mô hình dựa vào từ khóa chẩn đoán thay vì học mối liên hệ giữa hình ảnh và bệnh sử.
 
-Trọng số LoRA không được hợp nhất vào backbone sau pha 1 trong pipeline cuối cùng, vì thao tác này đồng thời làm mất khả năng tiếp tục thích nghi backbone ở pha 2. Phiên bản hợp nhất và đóng băng được giữ như một thí nghiệm rời rạc về chiến lược tối ưu.
+Quy trình được chia thành quá trình huấn luyện ngoại tuyến và quá trình suy luận trực tuyến. Cách phân chia này làm rõ thành phần nào được cập nhật từ dữ liệu huấn luyện và thành phần nào chỉ thực hiện truyền thuận khi hệ thống tiếp nhận một ca mới. Trong cả hai quá trình, ảnh và văn bản đi qua cùng một quy tắc tiền xử lý và cùng một kiến trúc mã hóa; khác biệt chủ yếu nằm ở việc tính gradient, cập nhật tham số và ước lượng tâm lớp.
 
-% \section{Đánh giá BioMedCLIP và đề xuất cải tiến}
-% Với việc được tiền huấn luyện trên bộ dữ liệu PMC-15M, đã bao gồm ảnh X-quang, nhóm quyết định sử dụng mô hình BioMedCLIP làm mô hình cơ sở để phát triển hệ thống phân loại. Trước tiên, nhóm thực hiện đánh giá khả năng phân loại ảnh X-quang xương của mô hình BiomedCLIP \cite{BiomedCLIP} thuần túy để đánh giá khả năng phân loại với một tác vụ riêng biệt ở miền ảnh X-Quang xương, yêu cầu một độ chính xác cao với độ nhầm lẫn thấp để đáp ứng với yêu cầu thực tế, đặc biệt là trong lĩnh vực y khoa.
+\subsection{Huấn luyện hai giai đoạn trong quá trình ngoại tuyến (Offline)}
 
-% Bộ dữ liệu được sử dụng để đánh giá là BTXRD, gồm tổng cộng 3.746 hình ảnh, trong đó phân bổ thành 1.879 ảnh xương bình thường, 1.525 ảnh u xương lành tính và 342 ảnh u xương ác tính.
+Trong giai đoạn thứ nhất, ảnh X-quang và bệnh sử lâm sàng tương ứng được đưa qua hai bộ mã hóa để tạo biểu diễn trong một không gian chung. Mục tiêu khớp ngữ nghĩa được sử dụng để tăng mức tương hợp của cặp ảnh--văn bản tương ứng và ghi nhận quan hệ giữa các mẫu cùng lớp, qua đó giảm việc xem mọi cặp không trùng chỉ số là cặp âm. Mini-batch được lấy mẫu có nhận biết lớp để tăng khả năng mỗi lớp đóng góp nhiều hơn một mẫu vào cùng một batch, nhờ đó quan hệ đồng lớp trong mục tiêu mềm có thể được quan sát trực tiếp. Ở giai đoạn này, trọng số nền của BiomedCLIP được giữ cố định; các adapter LoRA và các thành phần tổng hợp đặc trưng ảnh cục bộ được cập nhật. Bộ dung hợp chú ý chéo và bộ phân loại chưa tham gia vào mục tiêu tối ưu của giai đoạn thứ nhất.
 
-% \subsection{Quá trình phân loại của mô hình BiomedCLIP}
-% Mô hình BiomedCLIP gốc trong thiết lập \textit{zero-shot} thực hiện quá trình phân loại dựa trên cơ chế đối sánh Hình ảnh - Văn bản (Vision-Language Matching) thay vì sử dụng các lớp phân loại (classification head) truyền thống. Quy trình này bao gồm 5 bước cốt lõi sau:
+Trong giai đoạn thứ hai, các adapter LoRA được giữ ở dạng tách rời và tiếp tục được cập nhật thay vì hợp nhất vào trọng số nền. Biểu diễn ảnh và văn bản được đưa qua chú ý chéo hai chiều để hình thành biểu diễn dung hợp, sau đó các tâm lớp được ước lượng từ toàn bộ biểu diễn của tập huấn luyện. Hàm mất mát phân loại cập nhật adapter LoRA, thành phần biểu diễn ảnh cục bộ, mô-đun dung hợp và độ lệch riêng của từng lớp; các tâm lớp là thống kê thực nghiệm nên không nhận gradient. Việc tách hai giai đoạn giúp quá trình thích nghi không gian ảnh--văn bản được thực hiện trước khi tối ưu trực tiếp ranh giới quyết định của bài toán phân loại.
 
-% \begin{enumerate}
-%     \item \textbf{Xây dựng bộ mô tả văn bản (Text Prompting):} Các nhãn phân loại rời rạc được chuyển đổi thành các câu lệnh mang ngữ nghĩa lâm sàng phong phú nhằm cung cấp thông tin ngữ cảnh cho mô hình (Ví dụ: "A radiograph showing {tên\_bệnh\_lý}").
-%     \item \textbf{Trích xuất đặc trưng văn bản (Text Encoding):} Các câu mô tả được đưa qua nhánh \textit{Text Encoder} (kiến trúc PubMedBERT) để chuyển đổi thành các vector đặc trưng văn bản (\textit{text embeddings}) trong không gian biểu diễn chung.
-%     \item \textbf{Trích xuất đặc trưng hình ảnh (Image Encoding):} Ảnh X-quang đầu vào được xử lý qua nhánh \textit{Vision Encoder} (kiến trúc Vision Transformer - ViT) để trích xuất vector đặc trưng hình ảnh (\textit{image embedding}) đại diện cho các thông tin thị giác.
-%     \item \textbf{Tính toán độ tương đồng (Cosine Similarity):} Mô hình tiến hành đo lường khoảng cách giữa vector hình ảnh với tất cả các vector văn bản thông qua phép toán độ tương đồng Cosine. Cặp ảnh - văn bản có sự tương hợp cao nhất về mặt ngữ nghĩa y khoa sẽ đạt điểm số lớn nhất.
-%     \item \textbf{Đưa ra dự đoán cuối cùng:} Các điểm số tương đồng được chuẩn hóa thông qua hàm Softmax để chuyển thành phân phối xác suất. Lớp tương ứng với câu mô tả có xác suất cao nhất sẽ được lựa chọn làm kết quả dự đoán của mô hình.
-% \end{enumerate}
+Sau mỗi epoch của giai đoạn thứ hai, tâm lớp được ước lượng lại bằng trạng thái hiện tại của bộ mã hóa trước khi đánh giá trên tập validation. Checkpoint được lựa chọn theo độ đo đã xác định trước trên tập validation, sau đó tâm lớp được tính lại một lần cuối từ tập huấn luyện bằng checkpoint được chọn. Tập kiểm thử không tham gia vào quá trình cập nhật tham số, lựa chọn checkpoint hoặc ước lượng tâm lớp.
 
-% \subsection{Kết quả phân loại}
+\subsection{Suy luận trong quá trình trực tuyến (Online)}
 
-% \begin{table}[htbp]
-% \centering
-% \caption{Các chỉ số đánh giá tổng quan (Aggregated/Macro)}
-% \label{tab:macro_metrics}
-% \begin{tabular}{|l|c|}
-% \hline
-% \textbf{Chỉ số (Metric)} & \textbf{Giá trị} \\
-% \hline
-% Độ chính xác (Accuracy) & 0.3381 \\
-% F1 Macro & 0.1056 \\
-% AUROC Macro & 0.5773 \\
-% Độ nhạy (Sensitivity Macro) & 0.1499 \\
-% Độ đặc hiệu (Specificity Macro) & 0.9064 \\
-% Độ chuẩn xác (Precision Macro) & 0.1123 \\
-% \hline
-% \end{tabular}
-% \end{table}
+Trong quá trình trực tuyến, một ảnh X-quang và bệnh sử lâm sàng của ca cần phân tích được xử lý bằng đúng pipeline đã sử dụng trong giai đoạn thứ hai. Các tham số của bộ mã hóa, adapter LoRA, mô-đun dung hợp, tâm lớp và độ lệch lớp đều được cố định; hệ thống chỉ thực hiện truyền thuận để tạo biểu diễn dung hợp, tính điểm của từng lớp và trả về lớp có điểm lớn nhất. Quá trình này không yêu cầu cập nhật gradient, không ước lượng lại tâm lớp từ mẫu mới và không sử dụng thông tin từ tập kiểm thử để điều chỉnh quyết định.
 
+Biểu diễn dung hợp và đầu ra phân loại có thể được chuyển sang mô-đun OOD hậu xử lý đã hiệu chỉnh bằng dữ liệu huấn luyện và validation. Mô-đun OOD không làm thay đổi dự đoán phân loại bên trong XBone-Net mà bổ sung một tín hiệu về mức độ phù hợp của mẫu với phân phối đã quan sát. Vì vậy, kết quả phân loại và cảnh báo OOD được xem là hai đầu ra có mục đích khác nhau: đầu ra thứ nhất lựa chọn lớp gần nhất trong tập lớp đã biết, còn đầu ra thứ hai xem xét liệu mẫu có đủ tương đồng với dữ liệu trong phân phối hay không.
 
-% \begin{itemize}
-%     \item \textbf{Độ đặc hiệu cao (Specificity = 0.9064):} Mô hình làm rất tốt việc \textit{loại trừ}. Nghĩa là khi nó dự đoán một ca là "không mắc bệnh" (âm tính), thì khả năng cao là bệnh nhân thực sự không mắc bệnh.
-%     \item \textbf{Độ nhạy cực thấp (Sensitivity = 0.1499):} Đây là "báo động đỏ" trong y tế. Độ nhạy chỉ đạt $\sim$15\% có nghĩa là mô hình \textbf{bỏ sót tới 85\% các ca thực sự có khối u} (Âm tính giả - False Negative cao). Mô hình đang có xu hướng an toàn là dự đoán mọi thứ thành lớp Bình thường (Normal).
-%     \item \textbf{Độ chuẩn xác (Precision = 0.1123) và F1 Macro (0.1056) rất thấp:} Khi mô hình quyết định cảnh báo một ca là khối u, thì phần lớn các cảnh báo đó là sai (Dương tính giả - False Positive cao). F1 Macro thấp ($\sim$10.5\%) cho thấy mô hình xử lý cực kỳ kém trên toàn bộ các lớp.
-%     \item \textbf{Độ chính xác tổng (Accuracy = 0.3381):} Chỉ có khoảng 33.8\% tổng số mẫu được dự đoán đúng. Tuy nhiên, trong y tế, Accuracy là một chỉ số "đánh lừa" nếu dữ liệu bị mất cân bằng.
-%     \item \textbf{AUROC Macro (0.5773):} Chỉ số này nhỉnh hơn mức độ đoán mò (0.5) một chút. Nó chứng tỏ mô hình BiomedCLIP gốc chưa có đủ khả năng phân biệt (discrimination) rõ ràng giữa các ranh giới của các loại u xương.
-% \end{itemize}
+\section{Các thành phần của pipeline}
 
-% \begin{table}[htbp]
-% \centering
-% \caption{Chỉ số F1 (F1-score) chi tiết theo từng lớp}
-% \label{tab:f1_per_class}
-% \begin{tabular}{|l|c|}
-% \hline
-% \textbf{Lớp chẩn đoán (Class)} & \textbf{F1-Score} \\
-% \hline
-% Normal (Bình thường) & 0.5790 \\
-% Simple bone cyst (Nang xương đơn giản) & 0.1935 \\
-% Osteosarcoma (Sarcoma xương) & 0.1250 \\
-% Giant cell tumor (U tế bào khổng lồ) & 0.1212 \\
-% Osteofibroma (U xơ xương) & 0.0375 \\
-% Osteochondroma (U sụn xương) & 0.0000 \\
-% Multiple osteochondromas (Đa u sụn xương) & 0.0000 \\
-% Other bt (U lành tính khác) & 0.0000 \\
-% Synovial osteochondroma (U sụn màng hoạt dịch) & 0.0000 \\
-% Other mt (U ác tính khác) & 0.0000 \\
-% \hline
-% \end{tabular}
-% \end{table}
+\subsection{Đầu vào và tiền xử lý (Input and Preprocessing)}
 
-% Bảng F1-Score \ref{tab:f1_per_class} từng lớp chính là minh chứng rõ ràng nhất cho tình trạng \textbf{mất cân bằng dữ liệu (data imbalance)}:
-% \begin{itemize}
-%     \item \textbf{Lớp Normal (0.5790):} Là lớp có kết quả cao nhất. Điều này dễ hiểu vì dữ liệu y tế luôn có số lượng ảnh bình thường áp đảo. Mô hình đã học được "thiên kiến" (bias), dẫn đến việc dự đoán ưu tiên lớp này để tối ưu Accuracy tổng.
-%     \item \textbf{Các lớp có số liệu thấp (Osteosarcoma, Giant cell tumor, Simple bone cyst):} Chỉ đạt mức F1 từ 0.12 đến 0.19. Dù Sarcoma xương (Osteosarcoma) là một bệnh lý có đặc điểm hình ảnh khá đặc trưng, mô hình zero-shot vẫn gặp khó khăn trong việc nhận diện chính xác.
-%     \item \textbf{Các lớp bị điểm 0 tuyệt đối (Osteochondroma, Synovial osteochondroma, \dots):} Mô hình hoàn toàn "mù" trước các lớp này (không đoán trúng được ca nào). Điều này xảy ra khi đặc trưng hình ảnh của các khối u này quá hiếm hoặc quá phức tạp để mô hình gốc có thể nội suy ra được mà không qua quá trình huấn luyện (fine-tuning).
-% \end{itemize}
+Mỗi mẫu huấn luyện gồm một ảnh X-quang, một bệnh sử lâm sàng và một nhãn lớp duy nhất. Tập dữ liệu huấn luyện được ký hiệu như sau.
 
+\begin{equation}\mathcal{D}_{\mathrm{train}}=\left\{\left(X_i,R_i,y_i\right)\right\}_{i=1}^{N}.\label{eq:ch3_training_set}\end{equation}
 
-% \subsection{Kết luận}
-% Các kết quả này chỉ ra ba hạn chế chính của mô hình:
-%         \begin{enumerate}
-%             \item Khoảng cách miền giữa dữ liệu tiền huấn luyện và ảnh X-quang xương;
-%             \item Thiếu thông tin ngữ cảnh lâm sàng khi mô hình gốc gần như chỉ sử dụng ảnh;
-%             \item Chưa xử lý được đặc tính đa nhãn, mất cân bằng dữ liệu của bài toán.
-%         \end{enumerate}
-% Do đó, việc tinh chỉnh lại mô hình để cải hiện hiệu năng, giảm khoảng cách miền và đáp ứng bài toán thiếu hụt dữ liệu là cần thiết, nghiên cứu đề xuất một kiến trúc đa phương thức gồm hai giai đoạn huấn luyện:
-%     \begin{enumerate}
-%         \item Thích nghi miền dựa trên LoRA để các vector đặc trưng mang tính khả tách.
-%         \item Hợp nhất ảnh–văn bản bằng cơ chế chú ý chéo hai chiều và học phân loại đa nhãn dựa trên mạng nguyên mẫu.
-%     \end{enumerate}
-% Các cải tiến cụ thể hơn sẽ được trình bày trong phần tiếp theo.
+Trong Công thức \ref{eq:ch3_training_set}, $N$ là số mẫu huấn luyện, $X_i$ là ảnh X-quang gốc của mẫu thứ $i$, $R_i$ là bệnh sử lâm sàng tương ứng và $y_i\in\{1,\ldots,K\}$ là nhãn của một trong $K$ lớp. Ký hiệu $\mathcal{D}_{\mathrm{train}}$ chỉ tập huấn luyện và không bao gồm tập validation hoặc tập kiểm thử.
 
-% \subsection{Đề xuất cải tiến}
-% Dựa trên những hạn chế của mô hình gốc, nghiên cứu đề xuất các thay đổi quan trọng sau:
+Ảnh X-quang thường có độ phân giải và tỷ lệ khung hình khác nhau, trong khi bộ mã hóa thị giác kế thừa nhận đầu vào có kích thước cố định. Pipeline vì vậy tạo một ảnh toàn cục để giữ bố cục giải phẫu và bốn ảnh cục bộ để giữ lại chi tiết tại các vùng giàu thông tin. Ảnh toàn cục được tạo bằng phép biến đổi giữ tỷ lệ và thêm biên khi cần thiết, sau đó được chuẩn hóa theo quy tắc đầu vào của bộ mã hóa thị giác.
 
-% \textbf{Lựa chọn cách finetuning với đặc thù ít dữ liệu:} LoRA được lựa chọn vì đây là phương pháp tinh chỉnh hiệu quả về tham số, cho phép thích nghi BioMedCLIP với miền ảnh X-quang xương mà vẫn bảo toàn tri thức tiền huấn luyện. So với tinh chỉnh toàn bộ tham số, LoRA giảm nguy cơ quá khớp dữ liệu và quên thảm khốc trong bối cảnh dữ liệu y khoa có quy mô hạn chế và phân phối mất cân bằng. Mặc dù nghiên cứu sử dụng toàn bộ dữ liệu hiện có, nhiều lớp vẫn chỉ chứa số lượng mẫu rất ít. Do đó, bài toán ở cấp độ từng lớp mang đặc tính học ít mẫu, và LoRA giúp hệ thống duy trì khả năng thích nghi tốt trong các trường hợp này.
+\begin{equation}X_i^{g}=\mathcal{T}_{g}\left(X_i\right)\in\mathbb{R}^{3\times H\times W}.\label{eq:ch3_global_view}\end{equation}
 
-% \textbf{Lựa chọn mục tiêu huấn luyện cho học biểu diễn:} Loss tương phản gốc của BioMedCLIP (InfoNCE) giả định quan hệ một-một giữa ảnh và văn bản, do đó chưa phù hợp với dữ liệu X-quang xương, nơi một ảnh có thể tương ứng với nhiều mô tả ngữ nghĩa và nhiều nhãn đồng thời. Vì vậy, nghiên cứu thay thế hàm mất mát tương phản bằng hàm mất mát tương ứng ngữ nghĩa (Semantic Matching Loss) nhằm khai thác mức độ tương đồng ngữ nghĩa giữa ảnh và văn bản, giảm ảnh hưởng của các cặp âm tính giả và hỗ trợ tốt hơn cho bài toán đa nhãn. Tuy nhiên, Semantic Matching Loss không trực tiếp xử lý mất cân bằng dữ liệu. Do đó, ở giai đoạn phân loại đa nhãn, nghiên cứu kết hợp thêm các hàm mất mát chuyên biệt như hàm mất mát không đối xứng (Asymmetric Loss) để tăng khả năng nhận diện các lớp hiếm.
+Trong Công thức \ref{eq:ch3_global_view}, $\mathcal{T}_{g}$ là phép tiền xử lý ảnh toàn cục, $X_i^{g}$ là ảnh toàn cục của mẫu thứ $i$, ba kênh đầu vào được tạo theo định dạng mà backbone yêu cầu, còn $H=W=224$ là chiều cao và chiều rộng đưa vào bộ mã hóa. Phép biến đổi này không sử dụng nhãn hoặc vị trí tổn thương.
 
-% \textbf{Xử lý đa nhãn và mất cân bằng dữ liệu trong học phân loại:} Do bài toán được xây dựng theo hướng phân loại đa nhãn với dữ liệu mất cân bằng nghiêm trọng, hàm mất mát Cross-Entropy không còn phù hợp vì giả định các lớp loại trừ lẫn nhau. Nghiên cứu sử dụng kiến trúc mạng nguyên mẫu (Prototypical Network) dạng tham số (Parametric Prototypical Network) kết hợp với hàm mất mát không đối xứng nhằm tối ưu hiệu suất trên các lớp hiếm.
+Đối với nhánh cục bộ, ảnh nguồn trước hết được xác định vùng nội dung nhằm hạn chế các biên đen và vùng đệm của thiết bị chụp. Bốn cửa sổ được chọn theo chiến lược sparse-focal: hai cửa sổ hỗ trợ bao phủ dọc theo trục chính của vùng giải phẫu và hai cửa sổ ưu tiên vùng có năng lượng kết cấu cao, đồng thời hạn chế chồng lấp quá mức với các vùng đã chọn. Mỗi cửa sổ được ánh xạ về ảnh nguồn và biến đổi thành một local view có cùng kích thước đầu vào với ảnh toàn cục.
 
-% \textbf{Phát hiện OOD (Out-of-Distribution):} Việc phát hiện dữ liệu ngoài phân phối (OOD) được thực hiện dựa trên khoảng cách Cosine giữa các đặc trưng và các nguyên mẫu (prototypes) trong không gian biểu diễn chung, thay vì xác suất Softmax. Mô hình có thể được huấn luyện chỉ với dữ liệu trong phân phối, và sau đó nếu có dữ liệu OOD, có thể mở rộng bằng cách bổ sung hàm mất mát OOD Margin Loss để ép các mẫu ngoài phân phối nằm xa tất cả các nguyên mẫu, tăng khả năng phân biệt dữ liệu bất thường.
+\begin{equation}\mathcal{X}_i^{\ell}=\left\{X_{i,m}^{\ell}=\mathcal{T}_{\ell}\left(X_i;b_{i,m}\right)\right\}_{m=1}^{M}.\label{eq:ch3_local_views}\end{equation}
 
-\section{Giai đoạn huấn luyện}
-Giai đoạn huấn luyện nhằm xây dựng bộ tham số cho mô hình, thiết lập không gian biểu diễn chung và học cách dung hợp giữa đặc trưng hình ảnh X-quang và ngữ nghĩa y khoa.
+Trong Công thức \ref{eq:ch3_local_views}, $\mathcal{X}_i^{\ell}$ là tập local view của mẫu thứ $i$, $M=4$ là số vùng cục bộ cố định, $b_{i,m}$ là hộp tọa độ của vùng thứ $m$ trên ảnh nguồn, $\mathcal{T}_{\ell}$ là phép cắt, đổi kích thước và chuẩn hóa vùng ảnh, còn $X_{i,m}^{\ell}\in\mathbb{R}^{3\times224\times224}$ là local view thứ $m$. Các hộp $b_{i,m}$ chỉ được xác định từ tín hiệu ảnh, không sử dụng nhãn, bounding box tổn thương hoặc một mô hình phát hiện được huấn luyện riêng.
 
-Giai đoạn huấn luyện gồm hai công đoạn: thích nghi miền (domain adaptation) và tinh chỉnh có giám sát. Công đoạn thứ nhất giúp mô hình thích nghi từ miền dữ liệu tiền huấn luyện sang ảnh X-quang xương; công đoạn thứ hai tối ưu đồng thời biểu diễn, dung hợp đa phương thức và phân loại trên tập dữ liệu mục tiêu.
+Bệnh sử lâm sàng được chuẩn hóa về mã hóa ký tự, khoảng trắng và các ký hiệu không mang nội dung trước khi token hóa. Chuỗi được cắt hoặc đệm đến độ dài tối đa, đồng thời một attention mask được tạo để phân biệt token nội dung với token đệm.
 
-\subsection{Học biểu diễn với kỹ thuật LoRA}
-\begin{figure}[H]
-\centering
-    \includegraphics[width=1\linewidth]{images/domain-adaption.png}
-    \caption{Sơ đồ chung của hệ thống trong công đoạn học biểu diễn.}
-    \label{fig:domain-adaption}
-\end{figure}
+\begin{equation}\left(\boldsymbol{u}_i,\boldsymbol{m}_i\right)=\mathcal{T}_{t}\left(R_i\right).\label{eq:ch3_text_preprocess}\end{equation}
 
-Trong công đoạn này, mô hình học biểu diễn để các cặp ảnh X-quang và bệnh sử lâm sàng tương ứng nằm gần nhau trong không gian chung bằng hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss). Việc dùng cùng nguồn văn bản clinical ở cả hai pha bảo đảm nhất quán giữa huấn luyện và suy luận, đồng thời loại bỏ báo cáo kết quả X-quang có nguy cơ rò rỉ nhãn. Dữ liệu được đưa vào hai bộ mã hóa, chiếu vào không gian chung và chuẩn hóa trước khi tính độ tương đồng. Các mẫu cùng lớp tạo thành cụm ngữ nghĩa, trong khi các mẫu khác lớp được tách biệt.
+Trong Công thức \ref{eq:ch3_text_preprocess}, $\mathcal{T}_{t}$ là bộ tiền xử lý và token hóa văn bản, $\boldsymbol{u}_i\in\mathbb{N}^{L}$ là chuỗi chỉ số token, $\boldsymbol{m}_i\in\{0,1\}^{L}$ là attention mask và $L$ là độ dài chuỗi sau khi cắt hoặc đệm. Giá trị một trong $\boldsymbol{m}_i$ biểu thị token hợp lệ, còn giá trị không biểu thị vị trí đệm không được tham gia vào phép chú ý.
 
-Nhóm thực hiện tinh chỉnh (fine-tuning) đồng thời Vision Encoder và Text Encoder bằng kỹ thuật LoRA (Low-Rank Adaptation). LoRA được lựa chọn vì đây là phương pháp tinh chỉnh hiệu quả về tham số, cho phép thích nghi BioMedCLIP với miền ảnh X-quang xương mà vẫn bảo toàn tri thức tiền huấn luyện.
+\subsection{Bộ mã hóa (Encoders)}
 
-Mặc dù nghiên cứu sử dụng toàn bộ dữ liệu hiện có, nhiều lớp vẫn chỉ chứa số lượng mẫu rất ít. Do đó, bài toán ở cấp độ từng lớp mang đặc tính few-shot, và LoRA giúp hệ thống duy trì khả năng thích nghi tốt trong các trường hợp này. Nghiên cứu lựa chọn LoRA thay vì QLoRA vì mục tiêu chính là thích nghi miền hiệu quả trong điều kiện dữ liệu hạn chế, thay vì tối ưu bộ nhớ cho các mô hình siêu lớn. BioMedCLIP có quy mô tham số vừa phải, cho phép huấn luyện hiệu quả với LoRA trên phần cứng hiện có mà không cần lượng tử hóa. Ngoài ra, việc giữ nguyên trọng số ở độ chính xác đầy đủ giúp bảo toàn các đặc trưng hình ảnh tinh vi của ảnh X-quang xương, vốn rất quan trọng đối với việc nhận diện các tổn thương nhỏ và các lớp hiếm.
+Hai bộ mã hóa được kế thừa từ BiomedCLIP để tận dụng không gian biểu diễn ảnh--văn bản đã được tiền huấn luyện trên dữ liệu y sinh. Bộ mã hóa thị giác xử lý ảnh toàn cục và các local view bằng cùng một tập trọng số, trong khi bộ mã hóa văn bản xử lý chuỗi token của bệnh sử. Đầu ra của hai nhánh được chiếu về cùng chiều $D=512$, nhờ đó có thể được căn chỉnh ở giai đoạn thứ nhất và trao đổi thông tin trong mô-đun dung hợp ở giai đoạn thứ hai.
 
-Để cập nhật trọng số của ma trận LoRA, nhóm sử dụng \textbf{Hàm mất mát Khớp ngữ nghĩa (Semantic Matching Loss - $\mathcal{L}_{SM}$)} nhằm đồng bộ hóa không gian biểu diễn đa phương thức. Loss tương phản gốc của BioMedCLIP (InfoNCE) giả định quan hệ một-một giữa ảnh và văn bản. Giả định này chưa phù hợp khi nhiều bệnh nhân thuộc cùng một lớp bệnh có các mô tả lâm sàng khác nhau nhưng vẫn chia sẻ nội dung ngữ nghĩa liên quan đến lớp.
+\subsubsection{Bộ mã hóa thị giác (Visual Encoder)}
 
-Vì vậy, nghiên cứu thay thế mục tiêu một-một bằng Semantic Matching Loss nhằm khai thác quan hệ đồng lớp giữa ảnh và văn bản, qua đó giảm ảnh hưởng của các cặp âm tính giả. Semantic Matching Loss không trực tiếp xử lý mất cân bằng dữ liệu; ở pha phân loại đa lớp, nghiên cứu sử dụng Cross-Entropy có trọng số theo effective number và label smoothing để tăng ảnh hưởng của các lớp hiếm.
+Bộ mã hóa thị giác sử dụng Vision Transformer của BiomedCLIP. Ảnh toàn cục được chia thành các patch, kết hợp với token đại diện và embedding vị trí, sau đó đi qua các lớp Transformer. Token đại diện ở đầu ra được chiếu về không gian chung để tạo đặc trưng toàn cục.
 
-Mức độ tương đồng Cosine giữa đặc trưng ảnh $z_i^I$ và đặc trưng văn bản $z_j^T$:
-    \begin{equation}
-    \operatorname{sim}(z_i^I, z_j^T) = \frac{z_i^I \cdot z_j^T}{\|z_i^I\| \|z_j^T\|}
-    \end{equation}
+\begin{equation}\boldsymbol{g}_i^{I}=\mathcal{P}_{I}\left(\mathcal{E}_{I}\left(X_i^{g}\right)_{\mathrm{CLS}}\right)\in\mathbb{R}^{D}.\label{eq:ch3_global_visual_embedding}\end{equation}
 
-Hàm mất mát được sử dụng là Semantic Matching Loss $\mathcal{L}_{\mathrm{SM}}$ được định nghĩa dựa trên ma trận mục tiêu mềm $s_{ij}$:
-    \begin{equation}
-    \mathcal{L}_{\mathrm{SM}} = -\frac{1}{N} \sum_{i=1}^{N} \sum_{j=1}^{N} s_{ij} \log \frac{\exp\left(\operatorname{sim}(z_i^I,z_j^T)/\tau\right)}{\sum_{k=1}^{N} \exp\left(\operatorname{sim}(z_i^I,z_k^T)/\tau\right)}
-    \end{equation}
-trong đó, $N$ là kích thước mini-batch, $s_{ij}$ là ma trận mục tiêu xác định các mẫu chung lớp, và $\tau$ là siêu tham số nhiệt độ (temperature) giúp điều chỉnh độ nhạy của hàm phạt đối với các mẫu âm tính (negative samples). Bằng cách tối ưu $\mathcal{L}_{SM}$, mô hình đẩy các đặc trưng giải phẫu X-quang cục bộ hội tụ chặt chẽ về đúng định nghĩa y khoa của chúng trong không gian chung.
+Trong Công thức \ref{eq:ch3_global_visual_embedding}, $\mathcal{E}_{I}$ là bộ mã hóa thị giác, chỉ số $\mathrm{CLS}$ chỉ token đại diện của ảnh, $\mathcal{P}_{I}$ là phép chiếu thị giác sang không gian biểu diễn chung, $\boldsymbol{g}_i^{I}$ là embedding ảnh toàn cục và $D=512$ là số chiều đặc trưng.
 
-Công đoạn thích nghi miền giúp các cặp ảnh và bệnh sử lâm sàng cùng lớp hội tụ trong không gian biểu diễn, thay vì xem mọi cặp không trùng chỉ số là âm tính như mục tiêu tương phản một-một. Trong pha 1, đạo hàm từ $\mathcal{L}_{SM}$ cập nhật các ma trận $A \in \mathrm{R}^{r \times k}$ và $B \in \mathrm{R}^{d \times r}$ (với hạng $r \ll \min(d, k)$) của LoRA. Sang pha 2, các adapter này không bị hợp nhất hay đóng băng mà tiếp tục được tối ưu cùng mô-đun dung hợp và bộ phân loại.
+Mỗi local view đi qua cùng bộ mã hóa thị giác. Đối với từng vùng, pipeline giữ lại token CLS và một lưới $2\times2$ thu được bằng pooling thích nghi trên các patch token. Cách tổng hợp này tạo năm token cho mỗi vùng, gồm một token mang nội dung tổng quát của vùng và bốn token giữ phân bố không gian thô bên trong vùng.
 
+\begin{equation}\boldsymbol{L}_{i,m}^{I}=\mathcal{P}_{I}\left(\operatorname{Concat}\left[\mathcal{E}_{I}\left(X_{i,m}^{\ell}\right)_{\mathrm{CLS}},\operatorname{Pool}_{2\times2}\left(\mathcal{E}_{I}\left(X_{i,m}^{\ell}\right)_{\mathrm{patch}}\right)\right]\right)\in\mathbb{R}^{5\times D}.\label{eq:ch3_tile_tokens}\end{equation}
 
-\subsection{Học phân loại đa lớp với empirical centroid head}
-\begin{figure}[H]
-\centering
-    \includegraphics[width=1\linewidth]{images/fusion-learning.png}
-    \caption{Sơ đồ chung của hệ thống trong công đoạn học phân loại đa lớp.}
-    \label{fig:fusion-learning}
-\end{figure}
-Trong công đoạn này, nhóm tối ưu khả năng khai thác và dung hợp dữ liệu bằng kỹ thuật chú ý chéo hai chiều để học liên hệ giữa đặc trưng toàn cục của ảnh X-quang với token cục bộ của bệnh sử lâm sàng và giữa đặc trưng toàn cục của văn bản với token ảnh cục bộ.
+Trong Công thức \ref{eq:ch3_tile_tokens}, $\boldsymbol{L}_{i,m}^{I}$ là tập token của local view thứ $m$, ký hiệu $\mathrm{patch}$ chỉ chuỗi patch token ở đầu ra của bộ mã hóa, $\operatorname{Pool}_{2\times2}$ là phép pooling thích nghi tạo bốn vùng không gian, $\operatorname{Concat}$ là phép ghép theo chiều token và $\mathcal{P}_{I}$ là phép chiếu được áp dụng theo từng token. Số chiều của mỗi token sau phép chiếu được ký hiệu là $D$.
 
-Đầu vào của công đoạn này là các cặp ảnh X-quang và bệnh sử lâm sàng. Hai hướng cross-attention lần lượt dùng token ảnh toàn cục làm query trên chuỗi token văn bản và token văn bản toàn cục làm query trên chuỗi token ảnh. Mỗi output attention được cộng residual với global query tương ứng rồi chuẩn hóa để tạo hai nhánh tăng cường $h_I$ và $h_T$. Chỉ $[h_I;h_T]$ được nối và đưa qua MLP dung hợp $1024\rightarrow512\rightarrow512$ cùng LayerNorm để tạo vector 512 chiều trước đầu phân loại; raw global embeddings không được nối lại và không có learned skip ở tầng fusion cuối. Sai khác giữa dự đoán và nhãn thực tế cập nhật LoRA adapter, các phép chiếu, hai khối cross-attention và MLP dung hợp; các centroid không nhận gradient.
+Token của bốn local view được ghép thành một chuỗi có ngân sách cố định. Cấu trúc cố định này giúp mô-đun dung hợp nhận cùng số token ảnh đối với mọi mẫu, không phụ thuộc kích thước ban đầu của ảnh X-quang.
 
-Sau quá trình dung hợp đa phương thức, mỗi mẫu train được biểu diễn bởi vector đặc trưng $z_i\in\mathbb{R}^{D}$. Với lớp $k$ có $N_k$ mẫu, trung tâm thực nghiệm được tính trực tiếp bằng trung bình embedding:
+\begin{equation}\boldsymbol{L}_{i}^{I}=\operatorname{Concat}_{m=1}^{M}\left(\boldsymbol{L}_{i,m}^{I}\right)\in\mathbb{R}^{P\times D}.\label{eq:ch3_all_local_tokens}\end{equation}
 
-\begin{equation}
-c_k=\frac{1}{N_k}\sum_{i:y_i=k}z_i.
-\end{equation}
+Trong Công thức \ref{eq:ch3_all_local_tokens}, $\boldsymbol{L}_{i}^{I}$ là toàn bộ chuỗi token cục bộ, $M=4$ là số local view và $P=5M=20$ là tổng số token cục bộ. Phép ghép giữ nguyên thứ tự vùng và thứ tự token bên trong từng vùng.
 
-Các $c_k$ được lưu dưới dạng buffer, không phải \textit{learnable parameter} và không nhận gradient. Centroid được khởi tạo từ toàn bộ tập train trước pha 2, tính lại sau mỗi epoch bằng encoder hiện tại trước khi đánh giá validation, và tính lại một lần cuối từ checkpoint encoder tốt nhất trước khi lưu mô hình. Trong từng epoch, centroid được giữ cố định để gradient của hàm phân loại chỉ cập nhật LoRA adapter và mô-đun dung hợp. Cách xây dựng này là empirical centroid classifier đúng nghĩa mà không yêu cầu episodic training.
+Do các vùng cục bộ được lấy từ những vị trí khác nhau trên ảnh nguồn, tọa độ chuẩn hóa của mỗi vùng được ánh xạ thành embedding không gian và cộng vào token tương ứng. Một hệ số có thể học kiểm soát cường độ của tín hiệu tọa độ để thông tin vị trí bổ sung cho nội dung thị giác mà không thay thế nội dung đó.
 
-Mức độ tương đồng giữa embedding $z_i$ và từng centroid được tính bằng cosine trên các vector chuẩn hóa $L_2$:
+\begin{equation}\widetilde{\boldsymbol{L}}_{i}^{I}=\boldsymbol{L}_{i}^{I}+\gamma\,\mathcal{P}_{s}\left(\boldsymbol{B}_{i}\right).\label{eq:ch3_spatial_tokens}\end{equation}
 
-\begin{equation}
-s(z_i,c_k)=\frac{z_i\cdot c_k}{\|z_i\|_2\|c_k\|_2}.
-\end{equation}
+Trong Công thức \ref{eq:ch3_spatial_tokens}, $\boldsymbol{B}_{i}$ chứa tọa độ đã chuẩn hóa của bốn hộp cục bộ, $\mathcal{P}_{s}$ là phép chiếu tọa độ sang không gian $D$ chiều, $\gamma$ là hệ số vô hướng có thể học và $\widetilde{\boldsymbol{L}}_{i}^{I}$ là chuỗi token cục bộ đã bổ sung vị trí. Embedding của một hộp được lặp cho năm token xuất phát từ hộp đó.
 
-Điểm tương đồng được nhân với hệ số tỷ lệ cố định $\alpha=15$ nhằm điều chỉnh độ sắc nét của phân bố xác suất, sau đó đưa qua Softmax:
+Trong giai đoạn thứ nhất, chuỗi token cục bộ được tổng hợp bằng attention pooling có điều kiện theo embedding toàn cục. Cơ chế này cho phép mức đóng góp của các vùng thay đổi theo từng ảnh thay vì sử dụng trung bình không trọng số.
 
-\begin{equation}
-p_{ik}=
-\frac{\exp(\alpha\,s(z_i,c_k))}
-{\sum_{j=1}^{K}\exp(\alpha\,s(z_i,c_j))}.
-\end{equation}
+\begin{equation}e_{i,p}=\boldsymbol{w}_{a}^{\mathsf{T}}\tanh\left(\boldsymbol{W}_{g}\boldsymbol{g}_{i}^{I}+\boldsymbol{W}_{\ell}\widetilde{\boldsymbol{L}}_{i,p}^{I}\right).\label{eq:ch3_local_attention_score}\end{equation}
 
-Hàm mất mát duy nhất trong pha 2 là Cross-Entropy có trọng số lớp:
+Trong Công thức \ref{eq:ch3_local_attention_score}, $e_{i,p}$ là điểm chú ý chưa chuẩn hóa của token cục bộ thứ $p$, $\widetilde{\boldsymbol{L}}_{i,p}^{I}$ là token cục bộ tương ứng, $\boldsymbol{W}_{g}$ và $\boldsymbol{W}_{\ell}$ là các ma trận chiếu có thể học, $\boldsymbol{w}_{a}$ là vector tham số của attention pooling và $\tanh$ là hàm kích hoạt.
 
-\begin{equation}
-\mathcal{L}_{\mathrm{P2}}
-=
--\frac{1}{N}
-\sum_{i=1}^{N}
-w_{y_i}\log p_{i,y_i},
-\end{equation}
+\begin{equation}a_{i,p}=\frac{\exp\left(e_{i,p}\right)}{\sum_{q=1}^{P}\exp\left(e_{i,q}\right)}.\label{eq:ch3_local_attention_weight}\end{equation}
 
-trong đó $y_i$ là nhãn đúng và $w_k$ tỷ lệ nghịch với effective number $(1-\beta^{N_k})/(1-\beta)$ của lớp $k$, sau đó được chuẩn hóa để trung bình trọng số của các lớp hiện diện bằng 1. Pipeline cuối cùng dùng $\beta=0{,}999$ và không dùng label smoothing. Pull--push Prototypical Loss, margin và hệ số $\lambda$ bị loại bỏ vì chúng tối ưu các prototype tham số thay vì phản ánh đúng định nghĩa empirical centroid. Mỗi lớp cấu hình phải xuất hiện trong train subset; với few-shot, bộ chia dữ liệu phải lấy đúng $k$ mẫu cho từng lớp trước khi tính centroid.
+Trong Công thức \ref{eq:ch3_local_attention_weight}, $a_{i,p}$ là trọng số đã chuẩn hóa của token thứ $p$, $P=20$ là tổng số token cục bộ và chỉ số $q$ duyệt qua toàn bộ token cục bộ của cùng một ảnh. Các trọng số không âm và có tổng bằng một.
 
-\section{Giai đoạn online}
-\begin{figure}[H]
-\centering
-    \includegraphics[width=1\linewidth]{images/online.png}
-    \caption{Sơ đồ chung của hệ thống trong giai đoạn online.}
-    \label{fig:online}
-\end{figure}
+\begin{equation}\boldsymbol{z}_{i}^{I}=\operatorname{Norm}_{2}\left(\boldsymbol{g}_{i}^{I}+\lambda_{\ell}\sum_{p=1}^{P}a_{i,p}\widetilde{\boldsymbol{L}}_{i,p}^{I}\right).\label{eq:ch3_phase1_visual_embedding}\end{equation}
 
-Sơ đồ của hệ thống trong giai đoạn online được trình bày trong Hình \ref{fig:online}. Ảnh X-quang được đưa qua cùng nhánh ảnh toàn cục và lưới lát độ phân giải cao như khi huấn luyện; bệnh sử lâm sàng được mã hóa bởi nhánh văn bản. Hai nguồn đặc trưng được dung hợp bằng cross-attention hai chiều và MLP trước khi so sánh với các empirical centroid đã lưu để dự đoán nhãn bệnh lý. Song song, đặc trưng dung hợp được chấm điểm OOD bằng bộ phát hiện đã hiệu chuẩn trên tập validation; mẫu vượt ngưỡng được đánh dấu là ngoài phân phối thay vì chỉ dựa vào xác suất Softmax. Các trọng số attention có thể được chiếu ngược về tọa độ ảnh nguồn để tạo bản đồ nhiệt hỗ trợ giải thích dự đoán.
+Trong Công thức \ref{eq:ch3_phase1_visual_embedding}, $\boldsymbol{z}_{i}^{I}$ là embedding thị giác dùng cho mục tiêu căn chỉnh ở giai đoạn thứ nhất, $\operatorname{Norm}_{2}$ là phép chuẩn hóa theo chuẩn Euclid, $\lambda_{\ell}=0{,}25$ là hệ số điều tiết đóng góp của nhánh cục bộ và tổng có trọng số biểu diễn thông tin cục bộ liên quan đến ngữ cảnh toàn cục.
 
-\section{Đóng góp của phương pháp}
-\begin{itemize}
-    \item \textbf{Cơ chế Cross-Attention có hướng dẫn tri thức:} Việc sử dụng cơ chế Cross-Attention có hướng dẫn tri thức giúp mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý,
-thay vì các vùng nền không liên quan. Điều này không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
-    \item \textbf{Cơ chế fusion ở nhiều cấp độ:} Việc kết hợp đặc trưng toàn cục và cục bộ thông qua Cross-Attention hai chiều và MLP dung hợp giúp mô hình khai thác tối đa dữ liệu
-và học được các mối liên hệ phức tạp giữa hai nguồn dữ liệu, từ đó cải thiện hiệu suất phân loại và khả năng giải thích của mô hình.
-    \item \textbf{Giảm nguy cơ suy giảm không gian ngữ nghĩa trong bối cảnh dữ liệu hạn chế:}
-Cơ chế cập nhật tham số bằng LoRA giúp các bộ mã hóa thích nghi với dữ liệu y khoa đích mà không làm mất mát các tri thức đã học. Điều này giúp hạn chế hiện tượng overfitting và giảm độ phức tạp tính toán.
-    \item \textbf{Cơ chế phát hiện dữ liệu ngoài phân phối:} Empirical centroid cung cấp tâm lớp nhất quán với embedding train, còn ngưỡng OOD được hiệu chuẩn hậu xử lý trên tập validation mà không sử dụng dữ liệu test.
-\end{itemize}
+\subsubsection{Bộ mã hóa văn bản (Text Encoder)}
+
+Bộ mã hóa văn bản kế thừa PubMedBERT của BiomedCLIP và nhận chuỗi token cùng attention mask của bệnh sử. Chuỗi đặc trưng đầu ra giữ lại thông tin ở mức token để phục vụ chú ý chéo, trong khi token đại diện được chiếu sang không gian chung để phục vụ căn chỉnh và tạo query toàn cục.
+
+\begin{equation}\boldsymbol{H}_{i}^{T}=\mathcal{P}_{T}\left(\mathcal{E}_{T}\left(\boldsymbol{u}_{i},\boldsymbol{m}_{i}\right)\right)\in\mathbb{R}^{L\times D}.\label{eq:ch3_text_token_embeddings}\end{equation}
+
+Trong Công thức \ref{eq:ch3_text_token_embeddings}, $\mathcal{E}_{T}$ là bộ mã hóa văn bản, $\mathcal{P}_{T}$ là phép chiếu được áp dụng theo từng token, $\boldsymbol{u}_{i}$ là chuỗi chỉ số token, $\boldsymbol{m}_{i}$ là attention mask, $L$ là chiều dài chuỗi và $\boldsymbol{H}_{i}^{T}$ là ma trận biểu diễn theo token sau phép chiếu về $D$ chiều. Các vị trí đệm được loại khỏi phép chú ý bằng attention mask.
+
+\begin{equation}\boldsymbol{z}_{i}^{T}=\operatorname{Norm}_{2}\left(\boldsymbol{H}_{i,0}^{T}\right)\in\mathbb{R}^{D}.\label{eq:ch3_global_text_embedding}\end{equation}
+
+Trong Công thức \ref{eq:ch3_global_text_embedding}, $\boldsymbol{H}_{i,0}^{T}$ là token đại diện ở vị trí đầu chuỗi sau phép chiếu, $\operatorname{Norm}_{2}$ là phép chuẩn hóa $L_2$ và $\boldsymbol{z}_{i}^{T}$ là embedding văn bản toàn cục.
+
+Nhóm nghiên cứu sử dụng LoRA \cite{Hu2022LoRA} để thích nghi các phép chiếu được lựa chọn trong cả hai bộ mã hóa. Trọng số tiền huấn luyện không bị thay thế; phần cập nhật được biểu diễn bằng tích của hai ma trận hạng thấp.
+
+\begin{equation}\boldsymbol{W}'=\boldsymbol{W}+\frac{\alpha_{L}}{r}\boldsymbol{B}\boldsymbol{A}.\label{eq:ch3_lora}\end{equation}
+
+Trong Công thức \ref{eq:ch3_lora}, $\boldsymbol{W}\in\mathbb{R}^{d\times k}$ là ma trận trọng số tiền huấn luyện được giữ cố định, $\boldsymbol{W}'$ là trọng số hiệu dụng khi truyền thuận, $\boldsymbol{A}\in\mathbb{R}^{r\times k}$ và $\boldsymbol{B}\in\mathbb{R}^{d\times r}$ là hai ma trận được huấn luyện, $r$ là hạng LoRA và $\alpha_{L}$ là hệ số tỷ lệ. Điều kiện $r\ll\min(d,k)$ làm cho số tham số cần cập nhật nhỏ hơn đáng kể so với tinh chỉnh toàn bộ ma trận $\boldsymbol{W}$.
+
+Trong giai đoạn thứ nhất, độ tương đồng giữa embedding ảnh và embedding văn bản được tính bằng cosine. Do hai embedding đã được chuẩn hóa, tích vô hướng tương ứng với độ tương đồng cosine; công thức tổng quát vẫn được trình bày để làm rõ đại lượng được tối ưu.
+
+\begin{equation}s_{ij}=\frac{\left(\boldsymbol{z}_{i}^{I}\right)^{\mathsf{T}}\boldsymbol{z}_{j}^{T}}{\left\|\boldsymbol{z}_{i}^{I}\right\|_{2}\left\|\boldsymbol{z}_{j}^{T}\right\|_{2}}.\label{eq:ch3_cross_modal_similarity}\end{equation}
+
+Trong Công thức \ref{eq:ch3_cross_modal_similarity}, $s_{ij}$ là mức tương đồng giữa ảnh thứ $i$ và bệnh sử thứ $j$, $\boldsymbol{z}_{i}^{I}$ là embedding thị giác, $\boldsymbol{z}_{j}^{T}$ là embedding văn bản, ký hiệu $\mathsf{T}$ biểu thị chuyển vị và $\|\cdot\|_{2}$ là chuẩn Euclid.
+
+Mục tiêu mềm phân bổ trọng số lớn cho cặp tương ứng và một phần trọng số cho các cặp khác thuộc cùng lớp. Phân phối mục tiêu theo hàng được xây dựng như sau.
+
+\begin{equation}q_{ij}=\frac{\rho\,\mathbb{1}\left[i=j\right]+\left(1-\rho\right)\mathbb{1}\left[y_i=y_j\right]}{\sum_{n=1}^{B}\left(\rho\,\mathbb{1}\left[i=n\right]+\left(1-\rho\right)\mathbb{1}\left[y_i=y_n\right]\right)}.\label{eq:ch3_semantic_target}\end{equation}
+
+Trong Công thức \ref{eq:ch3_semantic_target}, $q_{ij}$ là xác suất mục tiêu của cặp ảnh $i$ và văn bản $j$, $B$ là kích thước mini-batch, $\rho\in[0,1]$ là hệ số ưu tiên cặp tương ứng, $\mathbb{1}[\cdot]$ là hàm chỉ thị và $y_i,y_j$ là nhãn lớp. Mẫu số chuẩn hóa tổng trọng số mục tiêu của mỗi ảnh bằng một; khi trong mini-batch có nhiều mẫu cùng lớp, các mẫu này nhận trọng số mềm thay vì bị xem hoàn toàn là cặp âm.
+
+Xác suất dự đoán theo hướng ảnh sang văn bản được tính từ toàn bộ văn bản trong cùng mini-batch.
+
+\begin{equation}p_{ij}^{I\rightarrow T}=\frac{\exp\left(s_{ij}/\tau\right)}{\sum_{n=1}^{B}\exp\left(s_{in}/\tau\right)}.\label{eq:ch3_image_to_text_probability}\end{equation}
+
+Trong Công thức \ref{eq:ch3_image_to_text_probability}, $p_{ij}^{I\rightarrow T}$ là xác suất văn bản $j$ tương ứng với ảnh $i$, $s_{ij}$ là độ tương đồng ảnh--văn bản, $\tau>0$ là nhiệt độ và $B$ là kích thước mini-batch. Nhiệt độ nhỏ tạo phân phối sắc hơn, còn nhiệt độ lớn tạo phân phối phẳng hơn.
+
+Xác suất theo hướng văn bản sang ảnh được tính đối xứng trên toàn bộ ảnh trong mini-batch.
+
+\begin{equation}p_{ji}^{T\rightarrow I}=\frac{\exp\left(s_{ij}/\tau\right)}{\sum_{n=1}^{B}\exp\left(s_{nj}/\tau\right)}.\label{eq:ch3_text_to_image_probability}\end{equation}
+
+Trong Công thức \ref{eq:ch3_text_to_image_probability}, $p_{ji}^{T\rightarrow I}$ là xác suất ảnh $i$ tương ứng với văn bản $j$, mẫu số duyệt qua các ảnh có chỉ số $n$ trong mini-batch, còn $s_{ij}$, $\tau$ và $B$ có ý nghĩa như trong Công thức \ref{eq:ch3_image_to_text_probability}.
+
+Hàm mất mát khớp ngữ nghĩa lấy trung bình hai hướng để tránh ưu tiên riêng nhánh ảnh hoặc nhánh văn bản.
+
+\begin{equation}\mathcal{L}_{\mathrm{SM}}=-\frac{1}{2B}\sum_{i=1}^{B}\sum_{j=1}^{B}q_{ij}\left(\log p_{ij}^{I\rightarrow T}+\log p_{ji}^{T\rightarrow I}\right).\label{eq:ch3_semantic_matching_loss}\end{equation}
+
+Trong Công thức \ref{eq:ch3_semantic_matching_loss}, $\mathcal{L}_{\mathrm{SM}}$ là hàm mất mát của giai đoạn thứ nhất, $q_{ij}$ là mục tiêu mềm, $p_{ij}^{I\rightarrow T}$ và $p_{ji}^{T\rightarrow I}$ là hai phân phối dự đoán, còn $B$ là kích thước mini-batch. Gradient của hàm mất mát này cập nhật adapter LoRA và thành phần tổng hợp token ảnh cục bộ nhưng không cập nhật mô-đun dung hợp hoặc bộ phân loại.
+
+\subsection{Bộ dung hợp (Cross-Attention)}
+
+Bộ dung hợp chỉ được tối ưu và sử dụng từ giai đoạn thứ hai. Đầu vào thị giác gồm token toàn cục cùng 20 token cục bộ đã bổ sung tọa độ, trong khi đầu vào văn bản gồm embedding toàn cục và chuỗi token bệnh sử. Hai hướng chú ý có vai trò bổ sung: hướng ảnh sang văn bản dùng ngữ cảnh lâm sàng để làm giàu token ảnh toàn cục, còn hướng văn bản sang ảnh dùng bằng chứng thị giác toàn cục và cục bộ để làm giàu token văn bản toàn cục.
+
+\begin{equation}\boldsymbol{V}_{i}=\operatorname{Concat}\left[\boldsymbol{g}_{i}^{I},\widetilde{\boldsymbol{L}}_{i}^{I}\right]\in\mathbb{R}^{(P+1)\times D}.\label{eq:ch3_visual_sequence}\end{equation}
+
+Trong Công thức \ref{eq:ch3_visual_sequence}, $\boldsymbol{V}_{i}$ là chuỗi token thị giác dùng cho dung hợp, $\boldsymbol{g}_{i}^{I}$ là token ảnh toàn cục, $\widetilde{\boldsymbol{L}}_{i}^{I}$ là $P=20$ token cục bộ đã bổ sung tọa độ và $D=512$ là chiều đặc trưng. Vì vậy, chuỗi thị giác có tổng cộng $P+1=21$ token.
+
+Ở hướng ảnh sang văn bản, token ảnh toàn cục đóng vai trò query, còn chuỗi token văn bản đóng vai trò key và value. Attention mask của văn bản được áp dụng trước Softmax để token đệm không nhận trọng số.
+
+\begin{equation}\boldsymbol{A}_{i}^{I\leftarrow T}=\operatorname{Softmax}\left(\frac{\left(\boldsymbol{g}_{i}^{I}\boldsymbol{W}_{Q}^{I}\right)\left(\boldsymbol{H}_{i}^{T}\boldsymbol{W}_{K}^{T}\right)^{\mathsf{T}}}{\sqrt{d_{h}}}+\boldsymbol{M}_{i}^{T}\right).\label{eq:ch3_image_queries_text_attention}\end{equation}
+
+Trong Công thức \ref{eq:ch3_image_queries_text_attention}, $\boldsymbol{A}_{i}^{I\leftarrow T}$ là phân bố chú ý từ token ảnh đến các token văn bản, $\boldsymbol{W}_{Q}^{I}$ và $\boldsymbol{W}_{K}^{T}$ là ma trận chiếu query và key, $d_h$ là chiều của mỗi attention head, $\boldsymbol{M}_{i}^{T}$ là mặt nạ cộng có giá trị không tại token hợp lệ và giá trị âm lớn tại token đệm, còn $\operatorname{Softmax}$ chuẩn hóa trọng số theo chiều token văn bản.
+
+\begin{equation}\boldsymbol{h}_{i}^{I}=\operatorname{LN}\left(\boldsymbol{g}_{i}^{I}+\boldsymbol{A}_{i}^{I\leftarrow T}\left(\boldsymbol{H}_{i}^{T}\boldsymbol{W}_{V}^{T}\right)\right).\label{eq:ch3_text_enhanced_image}\end{equation}
+
+Trong Công thức \ref{eq:ch3_text_enhanced_image}, $\boldsymbol{h}_{i}^{I}$ là biểu diễn ảnh đã được bổ sung ngữ cảnh văn bản, $\boldsymbol{W}_{V}^{T}$ là ma trận chiếu value của nhánh văn bản, $\operatorname{LN}$ là Layer Normalization và phép cộng với $\boldsymbol{g}_{i}^{I}$ tạo kết nối residual giúp giữ thông tin ảnh ban đầu.
+
+Ở hướng văn bản sang ảnh, embedding văn bản toàn cục đóng vai trò query, còn chuỗi 21 token thị giác đóng vai trò key và value. Hướng này cho phép một biểu diễn văn bản tổng quát lựa chọn thông tin từ bố cục toàn cục và các vùng ảnh cục bộ.
+
+\begin{equation}\boldsymbol{A}_{i}^{T\leftarrow I}=\operatorname{Softmax}\left(\frac{\left(\boldsymbol{z}_{i}^{T}\boldsymbol{W}_{Q}^{T}\right)\left(\boldsymbol{V}_{i}\boldsymbol{W}_{K}^{I}\right)^{\mathsf{T}}}{\sqrt{d_{h}}}\right).\label{eq:ch3_text_queries_image_attention}\end{equation}
+
+Trong Công thức \ref{eq:ch3_text_queries_image_attention}, $\boldsymbol{A}_{i}^{T\leftarrow I}$ là phân bố chú ý từ embedding văn bản đến chuỗi token thị giác, $\boldsymbol{W}_{Q}^{T}$ và $\boldsymbol{W}_{K}^{I}$ là các ma trận chiếu query và key, $\boldsymbol{V}_{i}$ là chuỗi thị giác và $d_h$ là chiều của mỗi attention head.
+
+\begin{equation}\boldsymbol{h}_{i}^{T}=\operatorname{LN}\left(\boldsymbol{z}_{i}^{T}+\boldsymbol{A}_{i}^{T\leftarrow I}\left(\boldsymbol{V}_{i}\boldsymbol{W}_{V}^{I}\right)\right).\label{eq:ch3_image_enhanced_text}\end{equation}
+
+Trong Công thức \ref{eq:ch3_image_enhanced_text}, $\boldsymbol{h}_{i}^{T}$ là biểu diễn văn bản đã được bổ sung thông tin thị giác, $\boldsymbol{W}_{V}^{I}$ là ma trận chiếu value của nhánh ảnh, $\operatorname{LN}$ là Layer Normalization và kết nối residual giữ lại nội dung của embedding văn bản toàn cục.
+
+Hai biểu diễn tăng cường được ghép và đưa qua MLP để tạo embedding dung hợp dùng chung cho bộ phân loại. MLP giảm vector ghép từ $2D=1024$ chiều về $D=512$ chiều, sau đó tiếp tục chiếu trong không gian $D$ chiều và chuẩn hóa đầu ra. Các embedding toàn cục thô không được ghép lại thêm một lần nữa sau bước này.
+
+\begin{equation}\boldsymbol{z}_{i}^{F}=\operatorname{LN}\left(\boldsymbol{W}_{2}\,\phi\left(\boldsymbol{W}_{1}\operatorname{Concat}\left[\boldsymbol{h}_{i}^{I},\boldsymbol{h}_{i}^{T}\right]+\boldsymbol{b}_{1}\right)+\boldsymbol{b}_{2}\right)\in\mathbb{R}^{D}.\label{eq:ch3_fused_embedding}\end{equation}
+
+Trong Công thức \ref{eq:ch3_fused_embedding}, $\boldsymbol{z}_{i}^{F}$ là embedding dung hợp, $\boldsymbol{W}_{1}$ và $\boldsymbol{W}_{2}$ là hai ma trận trọng số của MLP, $\boldsymbol{b}_{1}$ và $\boldsymbol{b}_{2}$ là các vector độ lệch, $\phi$ là hàm kích hoạt phi tuyến, $\operatorname{Concat}$ là phép ghép theo chiều đặc trưng và $D=512$ là chiều đầu ra.
+
+\subsection{Bộ phân loại dựa trên tâm lớp thực nghiệm (Classifier)}
+
+Bộ phân loại biểu diễn mỗi lớp bằng trung bình embedding dung hợp của các mẫu huấn luyện thuộc lớp đó. Tâm lớp không phải là tham số tự do và không được optimizer cập nhật; khi bộ mã hóa hoặc bộ dung hợp thay đổi, các tâm được ước lượng lại từ tập huấn luyện. Thiết kế này giữ cho đại diện lớp gắn trực tiếp với hình học của không gian biểu diễn hiện tại.
+
+\begin{equation}\boldsymbol{c}_{k}=\frac{1}{N_{k}}\sum_{i:y_i=k}\boldsymbol{z}_{i}^{F}.\label{eq:ch3_empirical_centroid}\end{equation}
+
+Trong Công thức \ref{eq:ch3_empirical_centroid}, $\boldsymbol{c}_{k}\in\mathbb{R}^{D}$ là tâm thực nghiệm của lớp $k$, $N_k$ là số mẫu huấn luyện thuộc lớp đó, $\boldsymbol{z}_{i}^{F}$ là embedding dung hợp của mẫu thứ $i$ và điều kiện $y_i=k$ giới hạn phép tổng trên các mẫu có nhãn $k$. Mỗi lớp trong cấu hình phải có ít nhất một mẫu huấn luyện để tâm lớp được xác định.
+
+Độ tương đồng giữa một mẫu và từng tâm lớp được tính bằng cosine, nhờ đó quyết định phụ thuộc chủ yếu vào hướng của embedding thay vì độ lớn tuyệt đối của vector.
+
+\begin{equation}r_{ik}=\frac{\left(\boldsymbol{z}_{i}^{F}\right)^{\mathsf{T}}\boldsymbol{c}_{k}}{\left\|\boldsymbol{z}_{i}^{F}\right\|_{2}\left\|\boldsymbol{c}_{k}\right\|_{2}}.\label{eq:ch3_centroid_similarity}\end{equation}
+
+Trong Công thức \ref{eq:ch3_centroid_similarity}, $r_{ik}$ là độ tương đồng cosine giữa mẫu $i$ và lớp $k$, $\boldsymbol{z}_{i}^{F}$ là embedding dung hợp, $\boldsymbol{c}_{k}$ là tâm lớp, ký hiệu $\mathsf{T}$ biểu thị chuyển vị và $\|\cdot\|_2$ là chuẩn Euclid.
+
+Điểm phân loại kết hợp độ tương đồng với một hệ số tỷ lệ cố định và một độ lệch riêng cho từng lớp. Độ lệch lớp được khởi tạo bằng không và được học trong giai đoạn thứ hai, qua đó cho phép điều chỉnh ranh giới quyết định mà không biến tâm thực nghiệm thành prototype tham số.
+
+\begin{equation}\ell_{ik}=\alpha_{c}\,r_{ik}+b_{k}.\label{eq:ch3_classifier_logit}\end{equation}
+
+Trong Công thức \ref{eq:ch3_classifier_logit}, $\ell_{ik}$ là logit của mẫu $i$ đối với lớp $k$, $r_{ik}$ là độ tương đồng với tâm lớp, $\alpha_c=15$ là hệ số tỷ lệ cố định và $b_k$ là class-specific bias có thể học của lớp $k$.
+
+Logit của tất cả các lớp được chuẩn hóa bằng Softmax để tạo phân phối xác suất dự đoán.
+
+\begin{equation}p_{ik}=\frac{\exp\left(\ell_{ik}\right)}{\sum_{j=1}^{K}\exp\left(\ell_{ij}\right)}.\label{eq:ch3_class_probability}\end{equation}
+
+Trong Công thức \ref{eq:ch3_class_probability}, $p_{ik}$ là xác suất dự đoán lớp $k$ cho mẫu $i$, $\ell_{ik}$ là logit tương ứng, $K$ là tổng số lớp và chỉ số $j$ duyệt qua toàn bộ lớp trong bài toán.
+
+Để hạn chế việc các lớp có nhiều mẫu chi phối hàm mục tiêu, trọng số lớp được xây dựng từ số mẫu hiệu dụng \cite{Cui2019ClassBalanced}. Đại lượng số mẫu hiệu dụng của lớp $k$ được xác định như sau.
+
+\begin{equation}E_{k}=\frac{1-\beta^{N_k}}{1-\beta}.\label{eq:ch3_effective_number}\end{equation}
+
+Trong Công thức \ref{eq:ch3_effective_number}, $E_k$ là số mẫu hiệu dụng của lớp $k$, $N_k$ là số mẫu thực tế của lớp và $\beta\in[0,1)$ là hệ số kiểm soát mức bão hòa. Khi số mẫu tăng, đóng góp bổ sung của các mẫu mới giảm dần thay vì tăng tuyến tính không giới hạn.
+
+Nghịch đảo số mẫu hiệu dụng được chuẩn hóa để trọng số trung bình của các lớp bằng một, đồng thời có thể được chặn trên nhằm hạn chế gradient quá lớn ở lớp rất hiếm.
+
+\begin{equation}w_k=\frac{K\,E_k^{-1}}{\sum_{j=1}^{K}E_j^{-1}}.\label{eq:ch3_class_weight}\end{equation}
+
+Trong Công thức \ref{eq:ch3_class_weight}, $w_k$ là trọng số của lớp $k$, $E_k^{-1}$ là nghịch đảo số mẫu hiệu dụng và $K$ là tổng số lớp. Việc chuẩn hóa không làm các lớp có tần suất bằng nhau, mà chỉ thay đổi mức đóng góp tương đối của chúng vào hàm mất mát.
+
+Label smoothing được áp dụng để tránh mục tiêu one-hot tuyệt đối và giảm mức quá tự tin của đầu phân loại. Phân phối mục tiêu sau làm trơn được xác định như sau.
+
+\begin{equation}\widetilde{y}_{ik}=\left(1-\varepsilon\right)\mathbb{1}\left[y_i=k\right]+\frac{\varepsilon}{K}.\label{eq:ch3_label_smoothing}\end{equation}
+
+Trong Công thức \ref{eq:ch3_label_smoothing}, $\widetilde{y}_{ik}$ là xác suất mục tiêu của lớp $k$ đối với mẫu $i$, $\varepsilon=0{,}05$ là hệ số label smoothing, $\mathbb{1}[y_i=k]$ là hàm chỉ thị của nhãn đúng và $K$ là tổng số lớp.
+
+Hàm mất mát của giai đoạn thứ hai là Cross-Entropy có trọng số lớp trên phân phối mục tiêu đã làm trơn. Pipeline không bổ sung Prototypical Loss dạng pull--push vì các tâm lớp được xác định bằng thống kê của tập huấn luyện thay vì được học như tham số tự do.
+
+\begin{equation}\mathcal{L}_{\mathrm{P2}}=-\frac{1}{B}\sum_{i=1}^{B}\sum_{k=1}^{K}w_{k}\widetilde{y}_{ik}\log p_{ik}.\label{eq:ch3_phase2_loss}\end{equation}
+
+Trong Công thức \ref{eq:ch3_phase2_loss}, $\mathcal{L}_{\mathrm{P2}}$ là hàm mất mát của giai đoạn thứ hai, $B$ là kích thước mini-batch, $w_k$ là trọng số của lớp $k$, $\widetilde{y}_{ik}$ là mục tiêu đã làm trơn và $p_{ik}$ là xác suất dự đoán. Gradient của hàm mất mát cập nhật các tham số có thể học của pipeline nhưng không cập nhật trực tiếp các tâm $\boldsymbol{c}_k$.
+
+Trong quá trình trực tuyến, lớp dự đoán là lớp có logit lớn nhất. Quy tắc này tương đương lựa chọn tâm lớp có điểm cosine đã hiệu chỉnh lớn nhất.
+
+\begin{equation}\widehat{y}_{i}=\underset{k\in\{1,\ldots,K\}}{\operatorname{arg\,max}}\;\ell_{ik}.\label{eq:ch3_prediction}\end{equation}
+
+Trong Công thức \ref{eq:ch3_prediction}, $\widehat{y}_{i}$ là nhãn dự đoán của mẫu $i$, $k$ là chỉ số lớp, $K$ là tổng số lớp và $\ell_{ik}$ là logit đã kết hợp độ tương đồng tâm lớp với class-specific bias. Quy tắc dự đoán sử dụng các tâm và độ lệch lớp đã được cố định sau quá trình huấn luyện ngoại tuyến.
+
+\section{Tóm tắt chương}
+
+Chương này trình bày XBone-Net theo một luồng thống nhất từ đầu vào đến quyết định phân loại. Trong quá trình ngoại tuyến, giai đoạn thứ nhất thích nghi hai bộ mã hóa và nhánh ảnh cục bộ bằng mục tiêu khớp ngữ nghĩa, còn giai đoạn thứ hai tiếp tục thích nghi biểu diễn đồng thời học chú ý chéo, MLP dung hợp và độ lệch lớp dưới mục tiêu Cross-Entropy có trọng số. Trong quá trình trực tuyến, cùng pipeline tiền xử lý, mã hóa và dung hợp được sử dụng với toàn bộ tham số đã cố định; nhãn được xác định bằng khoảng cách tới các tâm lớp thực nghiệm. Cấu trúc này cho phép tách rõ vai trò của bảo toàn chi tiết ảnh, mã hóa bệnh sử, tương tác liên phương thức và ra quyết định dựa trên hình học của tập huấn luyện.
