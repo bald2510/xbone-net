@@ -52,12 +52,15 @@ MODULE_TO_DISTRIBUTION = {
     "yaml": "PyYAML",
 }
 
-# Hugging Face Trainer loads Accelerate at runtime instead of through a normal
-# project import, so an AST-only scan cannot discover it.
+# Some libraries are loaded indirectly at runtime, so an AST-only scan cannot
+# reliably map them to their independently distributed packages.
 RUNTIME_DISTRIBUTIONS = {
     "accelerate": "required by transformers.Trainer at runtime",
     "deep-translator": (
         "used by data/CTCH/preprocess_ctch.py to materialize English OOD reports"
+    ),
+    "tensorboard": (
+        "required by torch.utils.tensorboard.SummaryWriter in TrainingLogger"
     ),
 }
 
