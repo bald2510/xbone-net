@@ -62,7 +62,7 @@
 - ctch/ablation_study/architecture/fusion/text_to_image
 
 # Training phases
-+ ctch/ablation_study/architecture/phase/phase1_merged
+- ctch/ablation_study/architecture/phase/phase1_merged
 + ctch/ablation_study/architecture/phase/phase2_only
 
 # Image preprocessing
