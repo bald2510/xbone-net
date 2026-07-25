@@ -168,7 +168,7 @@ Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu 
 
 \section{Độ đo đánh giá}
 \label{sec:evaluation_metrics}
-BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp đơn nhãn, với $C=10$ đối với BTXRD và $C=22$ đối với CTCH. Đối với một tập đánh giá gồm $N$ mẫu, $y_i$ và $\widehat{y}_i$ lần lượt ký hiệu nhãn thật và nhãn dự đoán của mẫu thứ $i$, còn $p_{ic}$ là xác suất mô hình gán cho lớp $c$. Khi xem lớp $c$ là lớp dương và các lớp còn lại là lớp âm, $TP_c$, $FP_c$ và $FN_c$ lần lượt là số dương tính thật, dương tính giả và âm tính giả của lớp đó. Các độ đo được chia thành ba nhóm nhằm tách biệt hiệu năng phân loại, khả năng nhận diện dữ liệu ngoài phân phối và đặc tính của cơ chế chú ý--dung hợp.
+Hai bộ dữ liệu BTXRD \cite{Yao2025} và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp, với BTXRD có 10 lớp và 22 lớp đối với CTCH. Các độ đo được chia thành ba nhóm nhằm tách biệt hiệu năng phân loại, khả năng nhận diện dữ liệu ngoài phân phối và đánh giá cơ chế dung hợp.
 
 \subsection{Độ đo phân loại}
 
@@ -176,9 +176,14 @@ BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa
 
 Accuracy, hay độ chính xác tổng thể, biểu thị tỷ lệ mẫu có nhãn dự đoán trùng với nhãn thật trên toàn bộ tập đánh giá.
 
-\begin{equation}\operatorname{Accuracy}=\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}\left(y_i=\widehat{y}_i\right).\label{eq:ch4_accuracy}\end{equation}
+\begin{equation}\operatorname{Accuracy}=\frac{\sum_{c=1}^{C} TP_c}{N}.\label{eq:ch4_accuracy}\end{equation}
 
-Trong Công thức \ref{eq:ch4_accuracy}, $N$ là số mẫu đánh giá, $y_i$ là nhãn thật, $\widehat{y}_i$ là nhãn dự đoán và $\mathbb{I}(\cdot)$ là hàm chỉ thị nhận giá trị một khi điều kiện đúng và bằng không trong trường hợp còn lại.
+Trong đó:
+\begin{itemize}
+    \item $N$ là tổng số mẫu.
+    \item $C$ là tổng số lớp.
+    \item $TP_c$ là số mẫu thuộc lớp $c$ được phân loại đúng.
+\end{itemize}
 
 Accuracy được sử dụng vì có cách diễn giải trực tiếp và được báo cáo phổ biến trong phân loại ảnh y khoa. Tuy nhiên, độ đo này có thể bị chi phối bởi các lớp có nhiều mẫu, do đó không được sử dụng riêng lẻ mà được đọc cùng Balanced Accuracy và Macro-F1. Giá trị cao hơn biểu thị tỷ lệ dự đoán đúng lớn hơn.
 
@@ -188,101 +193,206 @@ Balanced Accuracy tính trung bình độ nhạy của từng lớp, nhờ đó 
 
 \begin{equation}\operatorname{Balanced\ Accuracy}=\frac{1}{C}\sum_{c=1}^{C}\frac{TP_c}{TP_c+FN_c}.\label{eq:ch4_balanced_accuracy}\end{equation}
 
-Trong Công thức \ref{eq:ch4_balanced_accuracy}, $C$ là tổng số lớp, $TP_c$ là số mẫu lớp $c$ được dự đoán đúng và $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác. Tỷ số $TP_c/(TP_c+FN_c)$ là recall của lớp $c$.
+Trong đó:
+\begin{itemize}
+    \item $C$ là tổng số lớp.
+    \item $TP_c$ là số mẫu thuộc lớp $c$ được dự đoán đúng.
+    \item $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác.
+\end{itemize}
 
-Balanced Accuracy được sử dụng để giảm ảnh hưởng của mất cân bằng lớp trên BTXRD và CTCH. Độ đo này cho biết liệu khả năng nhận diện có được duy trì trên các lớp ít mẫu thay vì chủ yếu phản ánh lớp phổ biến. Giá trị cao hơn biểu thị recall trung bình giữa các lớp tốt hơn.
+Balanced Accuracy được sử dụng để giảm ảnh hưởng của mất cân bằng lớp trên hai bộ dữ liệu BTXRD và CTCH. Độ đo này cho biết liệu khả năng nhận diện có được duy trì trên các lớp ít mẫu thay vì chủ yếu phản ánh lớp phổ biến. Giá trị cao hơn biểu thị recall trung bình giữa các lớp tốt hơn.
 
 \subsubsection{Macro-F1}
 
-Macro-F1 tổng hợp đồng thời precision và recall của từng lớp, sau đó lấy trung bình không trọng số trên toàn bộ lớp. Dạng viết theo các thành phần của ma trận nhầm lẫn giúp công thức không cần định nghĩa thêm precision và recall riêng biệt.
+Macro-F1 tổng hợp đồng thời precision và recall của từng lớp, sau đó lấy trung bình không trọng số trên toàn bộ lớp.
 
 \begin{equation}\operatorname{Macro\text{-}F1}=\frac{1}{C}\sum_{c=1}^{C}\frac{2TP_c}{2TP_c+FP_c+FN_c}.\label{eq:ch4_macro_f1}\end{equation}
 
-Trong Công thức \ref{eq:ch4_macro_f1}, $C$ là tổng số lớp, $TP_c$ là số dự đoán đúng lớp $c$, $FP_c$ là số mẫu lớp khác bị dự đoán nhầm thành lớp $c$ và $FN_c$ là số mẫu lớp $c$ bị dự đoán thành lớp khác. Thành phần của lớp có mẫu số bằng không được quy ước bằng không.
+Trong đó:
+\begin{itemize}
+    \item $C$ là tổng số lớp.
+    \item $TP_c$ là số mẫu thuộc lớp $c$ được dự đoán đúng.
+    \item $FP_c$ là số mẫu lớp khác bị dự đoán nhầm thành lớp $c$.
+    \item $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác.
+\end{itemize} 
 
-Macro-F1 được sử dụng làm độ đo chính để lựa chọn checkpoint vì một lớp chỉ đạt F1 cao khi precision và recall đều được duy trì. Phép trung bình macro hạn chế việc kết quả của lớp phổ biến che khuất sai số tại lớp hiếm. Giá trị cao hơn biểu thị sự cân bằng tốt hơn giữa hai loại sai số.
+Macro-F1 được sử dụng làm độ đo chính vì một lớp chỉ đạt F1 cao khi precision và recall đều được duy trì. Phép trung bình hạn chế việc kết quả của lớp phổ biến che khuất sai số tại lớp hiếm. Giá trị cao hơn biểu thị sự cân bằng tốt hơn giữa hai loại sai số.
 
 \subsubsection{Macro-AUROC}
 
-Macro-AUROC đánh giá khả năng xếp hạng xác suất của từng lớp theo chiến lược one-versus-rest trên toàn bộ ngưỡng, sau đó trao trọng số bằng nhau cho các lớp hợp lệ.
+Macro-AUROC đánh giá khả năng xếp hạng xác suất của từng lớp theo chiến lược một đối với tất cả trên toàn bộ ngưỡng, sau đó lấy trung bình không trọng số trên các lớp hợp lệ. 
 
-\begin{equation}\operatorname{Macro\text{-}AUROC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\int_{0}^{1}\operatorname{TPR}_{c}(u)\,\mathrm{d}u.\label{eq:ch4_macro_auroc}\end{equation}
+\begin{equation}
+    \operatorname{TPR_c}=\frac{TP_c}{TP_c+FN_c}.
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_macro_auroc}, $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ, $u\in[0,1]$ là một mức false-positive rate và $\operatorname{TPR}_{c}(u)$ là true-positive rate của lớp $c$ tại mức $u$. Tích phân là diện tích dưới đường ROC của lớp $c$.
+\begin{equation}
+    \operatorname{FPR_c}=\frac{FP_c}{FP_c+TN_c}.
+\end{equation}
 
-Macro-AUROC được sử dụng vì không phụ thuộc vào một ngưỡng quyết định duy nhất và phản ánh chất lượng xếp hạng xác suất trước phép argmax. Độ đo này bổ sung cho Macro-F1 nhưng có thể ít nhạy hơn với mất cân bằng dương--âm, vì vậy cần được đọc cùng Macro-AUPRC. Giá trị cao hơn biểu thị khả năng xếp hạng tốt hơn.
+\begin{equation}
+    \operatorname{AUROC_c}=\int_{0}^{1}\operatorname{TPR}_{c}(\operatorname{FPR}_{c})\,\mathrm{d}\operatorname{FPR}_{c}.
+\end{equation}
+
+\begin{equation}\operatorname{Macro\text{-}AUROC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\operatorname{AUROC}_{c}\label{eq:ch4_macro_auroc}\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ.
+    \item $TP_c$ là số mẫu thuộc lớp $c$ được dự đoán đúng.
+    \item $FP_c$ là số mẫu lớp khác bị dự đoán nhầm thành lớp $c$.
+    \item $TN_c$ là số mẫu lớp khác được xác nhận đúng không thuộc lớp $c$ .
+    \item $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác.
+    \item $\operatorname{TPR}_{c}$ là tỷ lệ mô hình phát hiện đúng các mẫu thuộc lớp $c$.
+    \item $\operatorname{FPR}_{c}$ là tỷ lệ mô hình báo động nhầm các mẫu không thuộc lớp $c$.
+    \item $\operatorname{AUROC}_{c}$ là diện tích dưới đường cong ROC riêng của lớp $c$.
+\end{itemize}
+
+Macro-AUROC được sử dụng vì không phụ thuộc vào một ngưỡng quyết định duy nhất và phản ánh chất lượng xếp hạng xác suất. Độ đo này bổ sung cho Macro-F1 nhưng ít nhạy hơn với mất cân bằng mẫu dương/âm, vì vậy cần được đọc cùng Macro-AUPRC. Giá trị cao hơn biểu thị khả năng xếp hạng tốt hơn.
 
 \subsubsection{Macro-AUPRC}
 
-Macro-AUPRC đánh giá sự đánh đổi giữa precision và recall cho từng lớp theo chiến lược one-versus-rest, sau đó lấy trung bình không trọng số trên các lớp hợp lệ. Phù hợp với cách tính trong thực nghiệm, diện tích của mỗi lớp được ước lượng bằng average precision không nội suy.
+Macro-AUPRC đánh giá sự đánh đổi giữa độ chính xác và độ phủ cho từng lớp theo chiến lược một đối với toàn bộ trên toàn bộ dải ngưỡng, sau đó lấy trung bình không trọng số trên các lớp hợp lệ.
 
-\begin{equation}\operatorname{AP}_{c}=\sum_{k=1}^{K_c}\left(R_{c,k}-R_{c,k-1}\right)P_{c,k}.\label{eq:ch4_ap_class}\end{equation}
+\begin{equation}
+    \operatorname{Recall}_{c} = \frac{TP_c}{TP_c + FN_c}.
+    \label{eq:ch4_recall_def}
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_ap_class}, $\operatorname{AP}_{c}$ là average precision của lớp $c$, $K_c$ là số điểm ngưỡng trên đường precision--recall, còn $P_{c,k}$ và $R_{c,k}$ lần lượt là precision và recall tại điểm thứ $k$; $R_{c,0}=0$ là mức recall khởi đầu.
+\begin{equation}
+    \operatorname{Precision}_{c} = \frac{TP_c}{TP_c + FP_c}.
+    \label{eq:ch4_precision_def}
+\end{equation}
 
-\begin{equation}\operatorname{Macro\text{-}AUPRC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\operatorname{AP}_{c}.\label{eq:ch4_macro_auprc}\end{equation}
+\begin{equation}
+    \operatorname{AP}_{c} = \sum_{k=1}^{K_c} \left(R_{c,k} - R_{c,k-1}\right) P_{c,k}.
+    \label{eq:ch4_ap_class}
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_macro_auprc}, $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ và $\operatorname{AP}_{c}$ là đại lượng được xác định trong Công thức \ref{eq:ch4_ap_class}.
+\begin{equation}
+    \operatorname{Macro\text{-}AUPRC}=\frac{1}{\left|\mathcal{C}_{v}\right|}\sum_{c\in\mathcal{C}_{v}}\operatorname{AP}_{c}.
+    \label{eq:ch4_macro_auprc}
+\end{equation}
 
-Macro-AUPRC được sử dụng vì nhạy với chất lượng nhận diện lớp dương khi số mẫu dương ít hơn đáng kể số mẫu âm. Độ đo này giúp phát hiện trường hợp AUROC tương đối cao nhưng precision của lớp hiếm vẫn thấp. Giá trị cao hơn biểu thị sự đánh đổi precision--recall tốt hơn; khi diễn giải cần đối chiếu với tỷ lệ lưu hành của từng lớp.
+Trong đó:
+\begin{itemize}
+    \item $\mathcal{C}_{v}$ là tập lớp có cả mẫu dương và mẫu âm, $|\mathcal{C}_{v}|$ là số lớp hợp lệ.
+    \item $TP_c$ là số mẫu thuộc lớp $c$ được dự đoán đúng.
+    \item $FP_c$ là số mẫu lớp khác bị dự đoán nhầm thành lớp $c$.
+    \item $FN_c$ là số mẫu thuộc lớp $c$ nhưng bị dự đoán thành lớp khác.
+    \item $\operatorname{Recall}_c$, $\operatorname{Precision}_c$: Độ phủ và độ chính xác của lớp $c$.
+    \item $P_{c,k}, R_{c,k}$: Giá trị Precision và Recall tại điểm ngưỡng thứ $k$.
+    \item $K_c$: Số lượng điểm ngưỡng phân loại trên tập dữ liệu đối với lớp $c$.
+    \item $\operatorname{AUPRC}_c$: Diện tích dưới đường cong Precision-Recall của lớp $c$.
+\end{itemize}
+
+Macro-AUPRC được sử dụng vì nhạy với chất lượng nhận diện lớp dương khi số mẫu dương ít hơn đáng kể số mẫu âm. Độ đo này giúp phát hiện trường hợp AUROC tương đối cao nhưng precision của lớp hiếm vẫn thấp. Giá trị cao hơn biểu thị sự đánh đổi precision--recall tốt hơn.
 
 \subsubsection{Expected Calibration Error}
 
-Expected Calibration Error (ECE) đánh giá mức phù hợp giữa độ tin cậy dự đoán và tần suất dự đoán đúng quan sát được. Các mẫu được chia vào $M$ khoảng theo xác suất lớn nhất của mô hình trước khi so sánh độ tin cậy trung bình với độ chính xác thực nghiệm trong từng khoảng.
+Expected Calibration Error đánh giá mức phù hợp giữa độ tin cậy dự đoán và tần suất dự đoán đúng quan sát được. Các mẫu được chia vào $M$ khoảng theo xác suất lớn nhất của mô hình trước khi so sánh độ tin cậy trung bình với độ chính xác thực nghiệm trong từng khoảng.
 
 \begin{equation}\operatorname{ECE}=\sum_{m=1}^{M}\frac{|B_m|}{N}\left|\operatorname{Acc}(B_m)-\operatorname{Conf}(B_m)\right|.\label{eq:ch4_ece}\end{equation}
 
-Trong Công thức \ref{eq:ch4_ece}, $M$ là số khoảng độ tin cậy, $B_m$ là tập mẫu thuộc khoảng thứ $m$, $|B_m|$ là số mẫu trong khoảng, $N$ là tổng số mẫu, $\operatorname{Acc}(B_m)$ là tỷ lệ dự đoán đúng và $\operatorname{Conf}(B_m)$ là trung bình xác suất lớn nhất trong khoảng. Báo cáo sử dụng $M=15$ khoảng có độ rộng bằng nhau.
+Trong đó:
+\begin{itemize}
+    \item $M$ là số khoảng độ tin cậy, báo cáo sử dụng $M=15$.
+    \item $|B_m|$ là số mẫu trong khoảng.
+    \item $N$ là tổng số mẫu.
+    \item $\operatorname{Acc}(B_m)$ là tỷ lệ dự đoán đúng.
+    \item $\operatorname{Conf}(B_m)$ là trung bình xác suất lớn nhất trong khoảng.
+\end{itemize}
 
 ECE được sử dụng vì một mô hình có Accuracy cao vẫn có thể đưa ra xác suất quá tự tin hoặc thiếu tự tin. Trong bài toán hỗ trợ phân tích ảnh y khoa, mức tin cậy cần được diễn giải thận trọng, đặc biệt khi được dùng để sắp xếp ca hoặc hỗ trợ cơ chế từ chối. Giá trị ECE thấp hơn biểu thị độ hiệu chuẩn tốt hơn, nhưng độ đo vẫn phụ thuộc vào cách chia khoảng.
 
-\subsubsection{Confusion Matrix}
-
-Confusion Matrix, hay ma trận nhầm lẫn, ghi nhận số mẫu của từng lớp thật được phân bố vào từng lớp dự đoán. Hàng của ma trận tương ứng với nhãn thật và cột tương ứng với nhãn dự đoán.
-
-\begin{equation}\boldsymbol{M}_{ab}=\sum_{i=1}^{N}\mathbb{I}\left(y_i=a\right)\mathbb{I}\left(\widehat{y}_i=b\right).\label{eq:ch4_confusion_matrix}\end{equation}
-
-Trong Công thức \ref{eq:ch4_confusion_matrix}, $\boldsymbol{M}\in\mathbb{N}^{C\times C}$ là ma trận nhầm lẫn, $\boldsymbol{M}_{ab}$ là số mẫu có nhãn thật $a$ nhưng được dự đoán thành lớp $b$, $N$ là số mẫu và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Các phần tử trên đường chéo là dự đoán đúng, còn các phần tử ngoài đường chéo biểu thị các cặp lớp bị nhầm lẫn.
-
-Confusion Matrix được sử dụng vì các độ đo tổng hợp không cho biết mô hình thường nhầm giữa những bệnh lý nào. Ma trận hỗ trợ nhận diện thiên lệch về lớp phổ biến, các cặp bệnh có biểu hiện gần nhau và lớp hiếm bị bỏ sót. Độ đo này không có quy tắc cao hơn hoặc thấp hơn cho toàn ma trận; kết quả thuận lợi được thể hiện bằng khối lượng tập trung trên đường chéo.
-
 \subsection{Độ đo phát hiện dữ liệu ngoài phân phối}
 
-Đối với đánh giá OOD, $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập trong phân phối và ngoài phân phối, còn $N_{\mathrm{ID}}$ và $N_{\mathrm{OOD}}$ là số mẫu tương ứng. Mọi detector được quy đổi về cùng quy ước $s(x)$ là điểm bất thường, trong đó giá trị lớn hơn biểu thị bằng chứng OOD mạnh hơn. Quy ước này cần được cố định trước khi tính các độ đo để tránh đảo chiều kết quả.
+Đối với đánh giá phát hiện dữ liệu ngoài phân phối $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt đại diện cho tập dữ liệu trong phân phối và ngoài phân phối, với số lượng mẫu tương ứng là $N_{\mathrm{ID}}$ và $N_{\mathrm{OOD}}$. Mọi bộ phát hiện đều được quy đổi về cùng một quy ước: $s(x)$ là hàm điểm bất thường, trong đó giá trị $s(x)$ càng lớn biểu thị bằng chứng bất thường càng mạnh. Quy ước này được cố định nhất quán trước khi tính các độ đo nhằm tránh tình trạng đảo chiều kết quả đánh giá.
 
 \subsubsection{AUROC-OOD}
 
-AUROC-OOD biểu thị xác suất một mẫu OOD ngẫu nhiên nhận điểm bất thường cao hơn một mẫu ID ngẫu nhiên, đồng thời tính một nửa đóng góp cho trường hợp hai điểm bằng nhau.
+AUROC-OOD đánh giá khả năng phân tách tổng quát giữa tập ID và tập OOD trên toàn bộ dải ngưỡng điểm bất thường mà không phụ thuộc vào một ngưỡng vận hành cố định.
 
-\begin{equation}\operatorname{AUROC}_{\mathrm{OOD}}=\Pr\left[s(x_{\mathrm{OOD}})>s(x_{\mathrm{ID}})\right]+\frac{1}{2}\Pr\left[s(x_{\mathrm{OOD}})=s(x_{\mathrm{ID}})\right].\label{eq:ch4_auroc_ood}\end{equation}
+\begin{equation}
+    \operatorname{TPR}_{\mathrm{OOD}} = \Pr\left[s(x_{\mathrm{OOD}}) > \tau\right].
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_auroc_ood}, $x_{\mathrm{OOD}}$ và $x_{\mathrm{ID}}$ là các mẫu được lấy lần lượt từ $\mathcal{D}_{\mathrm{OOD}}$ và $\mathcal{D}_{\mathrm{ID}}$, $s(\cdot)$ là hàm điểm bất thường và $\Pr(\cdot)$ là xác suất của quan hệ xếp hạng.
+\begin{equation}
+    \operatorname{FPR}_{\mathrm{OOD}} = \Pr\left[s(x_{\mathrm{ID}}) > \tau\right].
+\end{equation}
 
-AUROC-OOD được sử dụng để so sánh khả năng phân tách tổng quát của các detector trên toàn bộ ngưỡng. Độ đo không phụ thuộc vào một tỷ lệ ID/OOD cụ thể tại một điểm vận hành, nhưng có thể che khuất hiệu năng ở vùng false-positive rate thấp. Giá trị cao hơn biểu thị khả năng xếp hạng OOD tốt hơn.
+\begin{equation}
+    \operatorname{AUROC}_{\mathrm{OOD}} = \int_{0}^{1} \operatorname{TPR}_{\mathrm{OOD}}(\operatorname{FPR}_{\mathrm{OOD}})\,\mathrm{d}\operatorname{FPR}_{\mathrm{OOD}}.
+    \label{eq:ch4_auroc_ood_integral}
+\end{equation}
+
+\begin{equation}
+    \operatorname{AUROC}_{\mathrm{OOD}} = \Pr\left[s(x_{\mathrm{OOD}}) > s(x_{\mathrm{ID}})\right] + \frac{1}{2}\Pr\left[s(x_{\mathrm{OOD}}) = s(x_{\mathrm{ID}})\right].
+    \label{eq:ch4_auroc_ood}
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $x_{\mathrm{ID}}, x_{\mathrm{OOD}}$ là các mẫu dữ liệu lấy lần lượt từ tập $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$.
+    \item $s(\cdot)$ là hàm tính điểm bất thường của bộ phát hiện OOD.
+    \item $\tau$ là ngưỡng điểm bất thường dùng để phân tách ID và OOD.
+    \item $\operatorname{TPR}_{\mathrm{OOD}}$ là tỷ lệ nhận diện đúng mẫu OOD (True Positive Rate).
+    \item $\operatorname{FPR}_{\mathrm{OOD}}$ là tỷ lệ mẫu ID bị nhận nhầm thành OOD (False Positive Rate).
+    \item $\Pr(\cdot)$ là xác suất của quan hệ xếp hạng điểm bất thường.
+\end{itemize}
+
+AUROC-OOD được sử dụng để so sánh khả năng xếp hạng OOD tổng thể của các thuật toán. Giá trị cao hơn biểu thị khả năng phân tách tốt hơn.
 
 \subsubsection{AUPR-Out}
 
-AUPR-Out xem OOD là lớp dương và đánh giá sự đánh đổi giữa precision và recall khi ngưỡng của điểm bất thường thay đổi. Diện tích được ước lượng bằng average precision không nội suy để thống nhất với cách tính trong thực nghiệm.
+AUPR-Out đánh giá sự đánh đổi giữa độ chính xác và độ nhạy khi xem lớp OOD là lớp dương cần phát hiện.
 
-\begin{equation}\operatorname{AUPR\text{-}Out}=\sum_{k=1}^{K}\left(R_{k}^{\mathrm{OOD}}-R_{k-1}^{\mathrm{OOD}}\right)P_{k}^{\mathrm{OOD}}.\label{eq:ch4_aupr_out}\end{equation}
+\begin{equation}
+    \operatorname{Recall}_{\mathrm{OOD}} = \Pr\left[s(x_{\mathrm{OOD}}) > \tau\right].
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_aupr_out}, $K$ là số điểm ngưỡng trên đường precision--recall, $P_{k}^{\mathrm{OOD}}$ và $R_{k}^{\mathrm{OOD}}$ lần lượt là precision và recall của lớp OOD tại điểm thứ $k$, còn $R_{0}^{\mathrm{OOD}}=0$ là mức recall khởi đầu.
+\begin{equation}
+    \operatorname{Precision}_{\mathrm{OOD}} = \frac{\Pr[s(x_{\mathrm{OOD}}) > \tau]}{\Pr[s(x_{\mathrm{OOD}}) > \tau] + \frac{N_{\mathrm{ID}}}{N_{\mathrm{OOD}}} \Pr[s(x_{\mathrm{ID}}) > \tau]}.
+\end{equation}
 
-AUPR-Out được sử dụng vì tập OOD thường có quy mô nhỏ hơn tập ID và precision phản ánh trực tiếp mức độ nhiễu trong các cảnh báo OOD. Độ đo bổ sung cho AUROC-OOD bằng cách nhấn mạnh chất lượng cảnh báo khi tỷ lệ lớp không cân bằng. Giá trị cao hơn biểu thị đường precision--recall tốt hơn, nhưng cần được đối chiếu với tỷ lệ OOD vì mức ngẫu nhiên của AUPR-Out bằng tỷ lệ lớp dương.
+\begin{equation}
+    \operatorname{AUPR\text{-}Out} = \sum_{k=1}^{K} \left(R_{k}^{\mathrm{OOD}} - R_{k-1}^{\mathrm{OOD}}\right) P_{k}^{\mathrm{OOD}}.
+    \label{eq:ch4_aupr_out}
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $N_{\mathrm{ID}}, N_{\mathrm{OOD}}$ là số lượng mẫu trong tập ID và OOD.
+    \item $\operatorname{Recall}_{\mathrm{OOD}}, \operatorname{Precision}_{\mathrm{OOD}}$ là độ nhạy và độ chính xác của lớp OOD tại ngưỡng $\tau$.
+    \item $P_{k}^{\mathrm{OOD}}, R_{k}^{\mathrm{OOD}}$ là Precision và Recall đối với tập OOD tại điểm ngưỡng thứ $k$.
+    \item $K$ là tổng số điểm ngưỡng điểm bất thường xếp hạng trên tập kiểm thử.
+\end{itemize}
+
+AUPR-Out được sử dụng vì tập OOD thường có quy mô nhỏ hơn tập ID, độ chính xác phản ánh trực tiếp mức độ báo động giả trong các cảnh báo OOD. Giá trị cao hơn biểu thị đường Precision-Recall tốt hơn.
 
 \subsubsection{FPR@95\%TPR}
 
-Trong báo cáo, FPR@95\%TPR sử dụng ID làm lớp dương theo quy ước phổ biến của giao thức OOD: một mẫu ID được chấp nhận khi $s(x)\leq\tau$, còn một mẫu có $s(x)>\tau$ bị từ chối như OOD. Ngưỡng benchmark được chọn để giữ đúng ít nhất 95\% mẫu ID.
+FPR@95\%TPR đo lường tỷ lệ báo động giả (mẫu OOD bị lọt qua thành ID) khi hệ thống được yêu cầu phải duy trì độ nhạy chấp nhận dữ liệu hợp lệ (ID-TPR) ở mức tối thiểu 95\%.
 
-\begin{equation}\tau_{95}=\inf\left\{\tau:\frac{1}{N_{\mathrm{ID}}}\sum_{x\in\mathcal{D}_{\mathrm{ID}}}\mathbb{I}\left[s(x)\leq\tau\right]\geq0{,}95\right\}.\label{eq:ch4_fpr95_threshold}\end{equation}
+\begin{equation}
+    \tau_{95} = \inf\left\{\tau : \frac{1}{N_{\mathrm{ID}}} \sum_{x \in \mathcal{D}_{\mathrm{ID}}} \mathbb{I}\left[s(x) \leq \tau\right] \geq 0{,}95\right\}.
+    \label{eq:ch4_fpr95_threshold}
+\end{equation}
 
-Trong Công thức \ref{eq:ch4_fpr95_threshold}, $\tau_{95}$ là ngưỡng nhỏ nhất đạt ID-TPR ít nhất $0{,}95$, $N_{\mathrm{ID}}$ là số mẫu ID, $\mathcal{D}_{\mathrm{ID}}$ là tập ID, $s(x)$ là điểm bất thường và $\mathbb{I}(\cdot)$ là hàm chỉ thị của quyết định chấp nhận ID.
+\begin{equation}
+    \operatorname{FPR@95\%TPR} = \frac{1}{N_{\mathrm{OOD}}} \sum_{x \in \mathcal{D}_{\mathrm{OOD}}} \mathbb{I}\left[s(x) \leq \tau_{95}\right].
+    \label{eq:ch4_fpr95}
+\end{equation}
 
-\begin{equation}\operatorname{FPR@95\%TPR}=\frac{1}{N_{\mathrm{OOD}}}\sum_{x\in\mathcal{D}_{\mathrm{OOD}}}\mathbb{I}\left[s(x)\leq\tau_{95}\right].\label{eq:ch4_fpr95}\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $\tau_{95}$ là ngưỡng điểm bất thường nhỏ nhất đạt tỷ lệ chấp nhận ID tối thiểu $95\%$.
+    \item $N_{\mathrm{ID}}, N_{\mathrm{OOD}}$ là số lượng mẫu trong tập $\mathcal{D}_{\mathrm{ID}}$ và tập $\mathcal{D}_{\mathrm{OOD}}$.
+    \item $\mathbb{I}(\cdot)$ là hàm chỉ thị, nhận giá trị 1 nếu điều kiện bên trong đúng và 0 nếu sai.
+    \item $s(x) \leq \tau_{95}$ là điều kiện một mẫu có điểm bất thường thấp hơn hoặc bằng ngưỡng $\tau_{95}$ (được chấp nhận là mẫu ID).
+\end{itemize}
 
-Trong Công thức \ref{eq:ch4_fpr95}, $N_{\mathrm{OOD}}$ là số mẫu OOD, $\mathcal{D}_{\mathrm{OOD}}$ là tập OOD, $s(x)\leq\tau_{95}$ biểu thị một mẫu OOD bị chấp nhận nhầm như ID và $\tau_{95}$ là ngưỡng được xác định trong Công thức \ref{eq:ch4_fpr95_threshold}.
-
-FPR@95\%TPR được sử dụng để phản ánh trực tiếp tỷ lệ OOD lọt qua detector khi hệ thống phải duy trì mức chấp nhận ID cao. Độ đo này cung cấp góc nhìn vận hành mà AUROC-OOD không thể hiện đầy đủ. Giá trị thấp hơn là tốt hơn; ngưỡng benchmark được tính để so sánh detector và cần được phân biệt với ngưỡng triển khai chỉ được hiệu chỉnh trên validation ID.
+FPR@95\%TPR được sử dụng để phản ánh trực tiếp rủi ro vận hành khi hệ thống phải giữ tỷ lệ chấp nhận đúng ca ID ở mức 95\% nhưng lại vô tình bỏ lọt mẫu OOD. Giá trị thấp hơn biểu thị hiệu năng tốt hơn.
 
 \subsection{Độ đo phân tích chú ý và dung hợp}
 
@@ -395,9 +505,9 @@ Số epoch tối đa              & 30                  \\ \hline
 Số epoch dừng sớm            & 3 epochs            \\ \hline
 Nhiệt độ tương phản ($\tau$) & 0.07                \\ \hline
 Trạng thái tham số Backbone  & Tinh chỉnh qua LoRA \\ \hline
-Hạng QLoRA ($r$)             & 16                  \\ \hline
-Hệ số QLoRA ($\alpha$)       & 32                  \\ \hline
-Tỷ lệ bỏ học QLoRA           & 0.1                 \\ \hline
+Hạng LoRA ($r$)             & 16                  \\ \hline
+Hệ số LoRA ($\alpha$)       & 32                  \\ \hline
+Tỷ lệ bỏ học LoRA           & 0.1                 \\ \hline
 \end{tabular}
 \caption{Bảng tổng hợp siêu tham số ở pha 1 và thiết lập của chúng}
 \label{tab:hyperparameters_phase1}
@@ -419,9 +529,9 @@ Số epoch tối đa              & 50                           \\ \hline
 Số epoch dừng sớm            & 5 epochs                     \\ \hline
 Nhiệt độ tương phản ($\tau$) & Không áp dụng                \\ \hline
 Trạng thái tham số Backbone  & Tinh chỉnh qua LoRA          \\ \hline
-Hạng QLoRA ($r$)             & 16                           \\ \hline
-Hệ số QLoRA ($\alpha$)       & 32                           \\ \hline
-Tỷ lệ bỏ học QLoRA           & 0.1                          \\ \hline
+Hạng LoRA ($r$)             & 16                           \\ \hline
+Hệ số LoRA ($\alpha$)       & 32                           \\ \hline
+Tỷ lệ bỏ học LoRA           & 0.1                          \\ \hline
 \end{tabular}
 \caption{Bảng tổng hợp siêu tham số ở pha 2 và thiết lập của chúng}
 \label{tab:hyperparameters_phase2}
@@ -435,49 +545,36 @@ Phần này trình bày các nhóm thí nghiệm được thực hiện trên ha
 
 \textbf{Thiết kế mô hình:} Nhóm thí nghiệm này sử dụng bốn mô hình ngôn ngữ
 trực quan gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP ở chế độ zero-shot. Toàn
-bộ tham số của backbone được giữ cố định; mô hình không được huấn luyện trên dữ liệu đích. Với mỗi lớp, tên lớp được đưa vào một mẫu prompt cố định để tạo biểu diễn văn bản. Nhãn dự đoán được xác định từ lớp có độ tương đồng lớn nhất giữa biểu diễn ảnh và biểu diễn văn bản.
+bộ tham số của backbone được giữ cố định; mô hình không được huấn luyện trên dữ liệu đích. Với mỗi lớp $c$, tên lớp tiếng Anh được đưa vào một cặp prompt cố định gồm prompt khẳng định và prompt phủ định:
+\begin{quote}
+\texttt{this is an image of a bone x-ray; [class] presented in image},\\
+\texttt{this is an image of a bone x-ray; no [class] presented in image}.
+\end{quote}
+Chẳng hạn, đối với lớp osteosarcoma, hai prompt lần lượt là
+\begin{quote}
+\texttt{this is an image of a bone x-ray; osteosarcoma presented in image}, \\
+\texttt{this is an image of a bone x-ray; no osteosarcoma presented in image}.
+\end{quote}
+Hai prompt được mã hóa thành biểu diễn văn bản và so sánh với biểu diễn ảnh. Độ tương đồng của cặp khẳng định phủ định được chuyển thành xác suất bằng softmax với nhiệt độ $\tau$; xác suất của prompt khẳng định được dùng làm điểm cho lớp $c$. Nhãn dự đoán là lớp có điểm khẳng định lớn nhất trong toàn bộ tập lớp.
 
 \textbf{Mục đích thực nghiệm:} Thí nghiệm khảo sát khả năng chuyển trực tiếp
 tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xương. Thiết lập này cung cấp một mốc tham chiếu không sử dụng mẫu huấn luyện của bộ dữ liệu đích, qua đó cho phép xem xét mức độ phù hợp ban đầu của các mô hình ngôn ngữ trực quan
 
-\textbf{Dữ liệu và độ đo:} Bốn mô hình được đánh giá độc lập trên tập kiểm thử của BTXRD và CTCH; các tập huấn luyện và validation không được sử dụng để cập nhật mô hình. Các độ đo báo cáo gồm Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE theo định nghĩa tại Mục \ref{sec:evaluation_metrics}; Confusion Matrix được sử dụng để phân tích các cặp lớp thường bị nhầm lẫn. Do suy luận zero-shot không có biến thiên từ quá trình huấn luyện, khoảng tin cậy bootstrap 95\% với $B=10.000$ lần lấy mẫu lại được dùng để mô tả độ bất định do tập kiểm thử hữu hạn.
+\textbf{Dữ liệu và độ đo:} Bốn mô hình được đánh giá độc lập trên tập kiểm thử của BTXRD và CTCH; các tập huấn luyện và validation không được sử dụng để cập nhật mô hình. Các độ đo báo cáo gồm Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, và Macro-AUPRC theo định nghĩa tại Mục \ref{sec:evaluation_metrics}.
 
 \subsection{So sánh với các mô hình nền tảng}
 \label{subsec:foundation_model_comparison}
 
 \textbf{Thiết kế mô hình:} Nhóm đối sánh có ba thiết lập bổ sung cho nhau:
 \begin{enumerate}
-    \item \textbf{Mẫu hạn chế:}\newline
-    XBone-Net, LoRA-BiomedCLIP và LoRA-PubMedCLIP
-    được huấn luyện với 1, 10 hoặc 20 mẫu cho mỗi lớp ở tập huấn luyện, tập đánh giá và kiểm thử được giữ nguyên. Hai mô hình áp dụng kỹ thuật LoRA sử dụng quy trình hai pha, phép nối đặc trưng và đầu phân loại tuyến tính.
-    \item \textbf{Toàn bộ dữ liệu:} ResNet-50 và DenseNet-121 được tinh chỉnh
-    toàn bộ với đầu tuyến tính và chỉ nhận ảnh. Các mô hình ngon ngữ trực quan y khoa gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP được tinh chỉnh toàn bộ, sử dụng ảnh cùng báo cáo lâm sàng, phép nối đặc trưng và đầu tuyến tính.
+    \item \textbf{Mẫu hạn chế:} LoRA-BiomedCLIP, LoRA-PubMedCLIP và XBone-Net được huấn luyện với 1, 10 hoặc 20 mẫu cho mỗi lớp ở tập huấn luyện, tập đánh giá và kiểm thử được giữ nguyên. Hai mô hình áp dụng kỹ thuật LoRA sử dụng quy trình hai pha, phép nối đặc trưng và đầu phân loại tuyến tính.
+    \item \textbf{Toàn bộ dữ liệu:} ResNet-50 và DenseNet-121 được tinh chỉnh toàn bộ với đầu tuyến tính và chỉ nhận ảnh. Các mô hình ngon ngữ trực quan y khoa gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP được tinh chỉnh toàn bộ, sử dụng ảnh cùng báo cáo lâm sàng, phép nối đặc trưng và đầu tuyến tính.
     \item \textbf{Đối sánh tinh chỉnh hiệu quả tham số:} Hai mô hình BiomedCLIP và PubMedCLIP được áp dụng kỹ thuật LoRA. Hai mô hình này giữ phép nối đặc trưng và đầu tuyến tính.
 \end{enumerate}
 
 \textbf{Mục đích thực nghiệm:} Thiết lập mẫu hạn chế đánh giá khả năng học khi số mẫu gán nhãn bị giới hạn và mức suy giảm so với khi huấn luyện trên toàn bộ dữ liệu khi áp dụng kỹ thuật LoRA. Thiết lập toàn bộ dữ liệu cung cấp đối sánh tổng thể giữa mô hình ảnh đơn phương thức, các mô hình ngôn ngữ trực quan y khoa được tinh chỉnh và pipeline đề xuất. Đối sánh tinh chỉnh hiệu quả tham số được dùng để xem xét liệu các mô hình ngôn ngữ trực quan y khoa có thể đạt được hiệu suất tương tự như mô hình tinh chỉnh toàn bộ khi chỉ được huấn luyện với một số lượng nhỏ tham số.
 
-\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, validation và kiểm thử cố định. Kết quả được tổng hợp trên ba hạt giống 42, 123 và 456 bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE; Macro-F1 là độ đo dùng để lựa chọn checkpoint trên tập validation, còn Confusion Matrix hỗ trợ phân tích sai số theo cặp lớp. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm mô tả đánh đổi giữa hiệu năng dự đoán và chi phí suy luận, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại cũng được báo cáo.
-
-\subsection{Đánh giá thành phần}
-\label{subsec:component_evaluation}
-
-\textbf{Thiết kế biến thể.} Các biến thể kế thừa cấu hình của mô hình đề xuất ngoài thành phần đang khảo sát, dữ liệu, hạt giống và quy trình chọn checkpoint được giữ cố định. Bốn nhóm biến thể gồm:
-\begin{enumerate}
-    \item \textbf{Tiền xử lý ảnh:} mô hình đề xuất dùng một ảnh toàn cục và
-    bốn vùng tiêu điểm thưa. Biến thể \textbf{nohighres} dùng direct resize về $224\times224$, còn \textbf{letterbox} giữ tỷ lệ ảnh và thêm biên đệm. Hai biến thể vẫn tạo tám token từ một ảnh để giữ ổn định đầu vào của mô-đun dung hợp.
-    \item \textbf{Tinh chỉnh:} mô hình đề xuất cập nhật adapter
-    LoRA trong cả hai pha huấn luyện. Biến thể \textbf{no finetune} đóng băng các encoder được kế thừa từ BioMedCLIP \cite{BiomedCLIP} nhưng vẫn cho phép mô-đun lấy mẫu không gian được huấn luyện và \textbf{full finetune} cập nhật toàn bộ tham số mô hình kế thừa.
-    \item \textbf{Dung hợp:} cross-attention hai chiều của mô hình đề xuất
-    được so sánh với phép nối đặc trưng và hai biến thể attention
-    \textbf{một chiều ảnh sang văn bản}, \textbf{văn bản sang ảnh}.
-    \item \textbf{Đầu phân loại và cân bằng lớp:} đầu tính tâm cụm với
-    trọng số lớp được so sánh với biến thể sử dụng đầu tuyến tính và biến thể giữ đầu tính tâm cụm nhưng loại bỏ trọng số lớp.
-\end{enumerate}
-
-\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm lần lượt xem xét vai trò của việc bảo toàn chi tiết ảnh độ phân giải cao, chiến lược cập nhật mô hình kế thừa, hướng trao đổi thông tin giữa hai phương thức và lựa chọn đầu phân loại trong điều kiện mất cân bằng lớp. Thiết kế kế thừa cùng cấu hình giúp giới hạn thay đổi trong từng phép so sánh, từ đó hỗ trợ diễn giải chênh lệch theo thành phần.
-
-\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Hiệu năng phân loại được đánh giá bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE, kèm Confusion Matrix cho các biến thể cần phân tích sai số theo lớp và khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
+\textbf{Dữ liệu và độ đo:} Tất cả ba thiết lập được thực hiện trên BTXRD và CTCH với các tập huấn luyện, validation và kiểm thử cố định. Kết quả được tổng hợp trên ba hạt giống 42, 123 và 456 bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE. Khoảng tin cậy bootstrap 95\% với $B=10.000$ được tính trên tập kiểm thử. Nhằm mô tả đánh đổi giữa hiệu năng dự đoán và chi phí suy luận, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại cũng được báo cáo.
 
 \subsection{OOD hậu xử lý}
 \label{subsec:ood_postprocessing}
@@ -532,6 +629,26 @@ hình học biểu diễn khác được trình bày như kết quả bổ sung 
 ý và dung hợp được xem là chỉ báo định lượng bổ trợ cho phân tích cơ chế, không
 phải bằng chứng trực tiếp về khả năng định vị tổn thương hoặc quan hệ nhân quả
 lâm sàng.
+
+\subsection{Đánh giá thành phần}
+\label{subsec:component_evaluation}
+
+\textbf{Thiết kế biến thể.} Các biến thể kế thừa cấu hình của mô hình đề xuất ngoài thành phần đang khảo sát, dữ liệu, hạt giống và quy trình chọn checkpoint được giữ cố định. Bốn nhóm biến thể gồm:
+\begin{enumerate}
+    \item \textbf{Tiền xử lý ảnh:} mô hình đề xuất dùng một ảnh toàn cục và
+    bốn vùng tiêu điểm thưa. Biến thể \textbf{nohighres} dùng direct resize về $224\times224$, còn \textbf{letterbox} giữ tỷ lệ ảnh và thêm biên đệm. Hai biến thể vẫn tạo tám token từ một ảnh để giữ ổn định đầu vào của mô-đun dung hợp.
+    \item \textbf{Tinh chỉnh:} mô hình đề xuất cập nhật adapter
+    LoRA trong cả hai pha huấn luyện. Biến thể \textbf{no finetune} đóng băng các encoder được kế thừa từ BioMedCLIP \cite{BiomedCLIP} nhưng vẫn cho phép mô-đun lấy mẫu không gian được huấn luyện và \textbf{full finetune} cập nhật toàn bộ tham số mô hình kế thừa.
+    \item \textbf{Dung hợp:} cross-attention hai chiều của mô hình đề xuất
+    được so sánh với phép nối đặc trưng và hai biến thể attention
+    \textbf{một chiều ảnh sang văn bản}, \textbf{văn bản sang ảnh}.
+    \item \textbf{Đầu phân loại và cân bằng lớp:} đầu tính tâm cụm với
+    trọng số lớp được so sánh với biến thể sử dụng đầu tuyến tính và biến thể giữ đầu tính tâm cụm nhưng loại bỏ trọng số lớp.
+\end{enumerate}
+
+\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm lần lượt xem xét vai trò của việc bảo toàn chi tiết ảnh độ phân giải cao, chiến lược cập nhật mô hình kế thừa, hướng trao đổi thông tin giữa hai phương thức và lựa chọn đầu phân loại trong điều kiện mất cân bằng lớp. Thiết kế kế thừa cùng cấu hình giúp giới hạn thay đổi trong từng phép so sánh, từ đó hỗ trợ diễn giải chênh lệch theo thành phần.
+
+\textbf{Dữ liệu và độ đo.} Toàn bộ đánh giá thành phần được thực hiện trên CTCH với ba hạt giống 42, 123 và 456. Hiệu năng phân loại được đánh giá bằng Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC, Macro-AUPRC và ECE, kèm Confusion Matrix cho các biến thể cần phân tích sai số theo lớp và khoảng tin cậy bootstrap 95\% với $B=10.000$. Với nhóm tinh chỉnh và tiền xử lý ảnh, tổng số và số tham số có thể huấn luyện, GFLOPs trên mỗi mẫu, thông lượng, độ trễ suy luận và bộ nhớ GPU cực đại được ghi nhận bổ sung để mô tả đánh đổi về tài nguyên.
 
 % Khối kết quả dưới đây thuộc phiên bản báo cáo trước và được giữ lại để truy
 % vết; bản kết quả canonical hiện hành được trình bày sau khi khối này kết thúc.
@@ -616,7 +733,7 @@ Protocol OOD và explainability hiện chỉ khóa cho checkpoint CTCH canonical
 Workspace chưa có artifact \texttt{ood\_metrics.json} hoặc kết quả explainability
 hoàn chỉnh, nên chương này chưa báo cáo giá trị số cho hai nhóm. Tương tự, các
 bảng ablation chỉ được thêm sau khi 15 config CTCH hoàn tất cùng ba hạt giống. Những
-kết quả BTXRD--FracAtlas, QLoRA, Prototypical Head và attention map của pipeline
+kết quả BTXRD--FracAtlas, LoRA, Prototypical Head và attention map của pipeline
 legacy được loại khỏi bản biên dịch vì không tương ứng với registry hiện tại.
 
 % Nội dung dưới đây được giữ tạm để truy vết pipeline legacy và không thuộc bản
@@ -725,7 +842,7 @@ clinical bị xáo trộn trên cùng một checkpoint protocol.
 
 \subsubsection{Đánh giá ảnh hưởng của chiến thuật tinh chỉnh backbone}
 Mục đích thí nghiệm này là đánh giá hiệu năng khi đóng băng backbone so với
-LoRA và tinh chỉnh toàn bộ trong cùng một quy trình huấn luyện. Hai hàng QLoRA
+LoRA và tinh chỉnh toàn bộ trong cùng một quy trình huấn luyện. Hai hàng LoRA
 trong bảng là cấu hình legacy, không phải thành phần của pipeline canonical.
 
 \begin{table}[htbp]
@@ -739,15 +856,15 @@ trong bảng là cấu hình legacy, không phải thành phần của pipeline 
 Đóng băng backbone & Không & 0,8095 & 0,9431 & 0,9907 \\ \hline
 Tinh chỉnh LoRA & Có (Clinical) & 0,6140 & 0,8808 & 0,9665 \\ \hline
 Tinh chỉnh toàn bộ & Có (Clinical) & 0,5951 & 0,8559 & 0,9632 \\ \hline
-Tinh chỉnh QLoRA (Gốc) & Có (Xray) & 0,6464 & 0,8754 & 0,9741 \\ \hline
-\textbf{Tinh chỉnh QLoRA (Cải tiến)} & \textbf{Có (Clinical)} & \textbf{0,8583} & \textbf{0,9626} & \textbf{0,9869} \\ \hline
+Tinh chỉnh LoRA (Gốc) & Có (Xray) & 0,6464 & 0,8754 & 0,9741 \\ \hline
+\textbf{Tinh chỉnh LoRA (Cải tiến)} & \textbf{Có (Clinical)} & \textbf{0,8583} & \textbf{0,9626} & \textbf{0,9869} \\ \hline
 \end{tabular}
 }
 \end{table}
 
 \textbf{Giới hạn diễn giải:} Các hàng trong bảng đồng thời thay đổi chiến lược
 tinh chỉnh, việc có chạy Pha 1 và nguồn văn bản, nên chênh lệch không thể quy
-riêng cho LoRA, QLoRA hay full fine-tuning. So sánh chính thức cần giữ cố định
+riêng cho LoRA, LoRA hay full fine-tuning. So sánh chính thức cần giữ cố định
 nguồn văn bản, kiến trúc dung hợp, bộ phân loại và ngân sách huấn luyện.
 
 \subsubsection{Đánh giá hiệu quả của đầu phân loại nguyên mẫu so với đầu phân loại tuyến tính}
@@ -763,8 +880,8 @@ Nhóm thí nghiệm này nhằm kiểm tra hiệu quả của đầu phân loạ
 \textbf{Backbone} & \textbf{Bộ phân loại} & \textbf{F1-Macro} & \textbf{Accuracy} & \textbf{Macro AUROC} \\ \hline
 BiomedCLIP (Frozen) & Linear Head (B4) & 0,8105 & 0,9448 & 0,9940 \\ \hline
 BiomedCLIP (Frozen) & Prototypical Head & 0,8095 & 0,9431 & 0,9907 \\ \hline
-BiomedCLIP (QLoRA) & Linear Head & 0,6261 & 0,8737 & 0,9693 \\ \hline
-BiomedCLIP (QLoRA) & Prototypical Head & 0,6464 & 0,8754 & 0,9741 \\ \hline
+BiomedCLIP (LoRA) & Linear Head & 0,6261 & 0,8737 & 0,9693 \\ \hline
+BiomedCLIP (LoRA) & Prototypical Head & 0,6464 & 0,8754 & 0,9741 \\ \hline
 \end{tabular}
 }
 \end{table}
@@ -808,124 +925,259 @@ Các kết quả định tính trên chứng minh rằng mô hình XBone-Net kh�
 
 \section{Kết quả thực nghiệm và thảo luận}
 
-Phần này trình bày các kết quả thí nghiệm đối với thí nghiệm có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456. Kết quả phân loại không mẫu được báo cáo bằng ước lượng điểm do quá trình suy luận có tính xác định. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, khoảng tin cậy bootstrap 95\% được lưu cho từng lần chạy.
+Phần này trình bày kết quả thực nghiệm; đối với các thiết lập có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456. Kết quả phân loại không mẫu được báo cáo bằng ước lượng điểm do quá trình suy luận có tính xác định. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, khoảng tin cậy bootstrap 95\% được lưu cho từng lần chạy.
 
 \subsection{Đánh giá mô hình nền tảng}
 
-Kết quả zero-shot trên hai bộ dữ liệu được trình bày trong Bảng \ref{tab:zeroshot_results_official} theo bốn độ đo chính đã xác định ở Mục \ref{sec:evaluation_metrics}.
+Thí nghiệm zero-shot được sử dụng như một mốc về hiệu năng thuần túy của các mô hình ngôn ngữ--thị giác trước khi có bất kỳ cập nhật tham số nào trên dữ liệu đích. Thiết lập này không nhằm thay thế giai đoạn thích ứng, mà hỗ trợ lựa chọn backbone có biểu diễn ban đầu phù hợp hơn để kế thừa trong pipeline đề xuất; vì dữ liệu mất cân bằng, Macro-F1, Balanced Accuracy, Macro-AUROC và Macro-AUPRC được xem xét đồng thời với Accuracy.
 
 \begin{table}[H]
 \centering
 \resizebox{\textwidth}{!}{
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{|c|l|c|c|c|c|}
+\begin{tabular}{|c|l|c|c|c|c|c|}
 \hline
 \textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{Acc $\uparrow$} &
 \textbf{Balanced Acc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} &
-\textbf{Macro AUROC $\uparrow$} \\ \hline
+\textbf{Macro AUROC $\uparrow$} & \textbf{Macro AUPRC $\uparrow$} \\ \hline
 \multirow{4}{*}{BTXRD}
-& CLIP        & $0{.}0640$ & $0{.}1297$ & $0{.}0631$ & $0{.}4997$ \\ \cline{2-6}
-& MedCLIP     & $0{.}0387$ & $0{.}0935$ & $0{.}0075$ & $0{.}4628$ \\ \cline{2-6}
-& PubMedCLIP  & $0{.}0893$ & $0{.}1334$ & $0{.}0690$ & $0{.}5531$ \\ \cline{2-6}
+& CLIP        & $0{.}0640$ & $0{.}1297$ & $0{.}0631$ & $0{.}4997$ & $0{.}1214$ \\ \cline{2-7}
+& MedCLIP     & $0{.}0387$ & $0{.}0935$ & $0{.}0075$ & $0{.}4628$ & $0{.}1041$ \\ \cline{2-7}
+& PubMedCLIP  & $0{.}0893$ & $0{.}1334$ & $0{.}0690$ & $0{.}5531$ & $0{.}1277$ \\ \cline{2-7}
 & BiomedCLIP  & $\mathbf{0{.}3427}$ & $\mathbf{0{.}1493}$ &
-  $\mathbf{0{.}1289}$ & $\mathbf{0{.}5786}$ \\ \hline
+  $\mathbf{0{.}1289}$ & $\mathbf{0{.}5786}$ & $\mathbf{0{.}1416}$ \\ \hline
 \multirow{4}{*}{CTCH}
-& CLIP        & $0{.}1540$ & $\mathbf{0{.}2367}$ & $0{.}1307$ & $0{.}8003$ \\ \cline{2-6}
-& MedCLIP     & $0{.}0179$ & $0{.}0224$ & $0{.}0043$ & $0{.}4707$ \\ \cline{2-6}
-& PubMedCLIP  & $0{.}1016$ & $0{.}1294$ & $0{.}0698$ & $0{.}7920$ \\ \cline{2-6}
+& CLIP        & $0{.}1540$ & $\mathbf{0{.}2367}$ & $0{.}1307$ & $0{.}8003$ & $0{.}1906$ \\ \cline{2-7}
+& MedCLIP     & $0{.}0179$ & $0{.}0224$ & $0{.}0043$ & $0{.}4707$ & $0{.}0480$ \\ \cline{2-7}
+& PubMedCLIP  & $0{.}1016$ & $0{.}1294$ & $0{.}0698$ & $0{.}7920$ & $0{.}1966$ \\ \cline{2-7}
 & BiomedCLIP  & $\mathbf{0{.}2556}$ & $0{.}2109$ &
-  $\mathbf{0{.}1659}$ & $\mathbf{0{.}8191}$ \\ \hline
+  $\mathbf{0{.}1659}$ & $\mathbf{0{.}8191}$ & $\mathbf{0{.}2334}$ \\ \hline
 \end{tabular}
 }
 \caption{Kết quả zero-shot trên BTXRD và CTCH, chữ đậm biểu thị giá trị tốt nhất theo từng bộ dữ liệu}
 \label{tab:zeroshot_results_official}
 \end{table}
 
-Trên BTXRD, BiomedCLIP đạt giá trị cao nhất ở cả bốn độ đo. Khoảng tin cậy bootstrap 95\% của Acc, Balanced Acc, Macro-F1 và Macro AUROC lần lượt là $[0{.}3093;0{.}3760]$, $[0{.}1116;0{.}1927]$, $[0{.}0945;0{.}1661]$ và $[0{.}5443;0{.}6118]$. Tuy nhiên, Macro-F1 và Balanced Acc vẫn thấp, cho thấy cấu hình zero-shot hiện tại chưa bao phủ đồng đều mười lớp BTXRD.
+Trên BTXRD, BiomedCLIP có giá trị cao hơn ba mô hình còn lại ở cả năm độ đo, với Accuracy $0{.}3427$, Balanced Accuracy $0{.}1493$, Macro-F1 $0{.}1289$, Macro-AUROC $0{.}5786$ và Macro-AUPRC $0{.}1416$; khoảng tin cậy bootstrap 95\% của bốn độ đo đầu lần lượt là $[0{.}3093;0{.}3760]$, $[0{.}1116;0{.}1927]$, $[0{.}0945;0{.}1661]$ và $[0{.}5443;0{.}6118]$. Khoảng cách Accuracy tương đối lớn so với PubMedCLIP ($0{.}0893$), nhưng Balanced Accuracy và Macro-F1 vẫn thấp, gợi ý rằng dự đoán zero-shot còn nghiêng về các lớp phổ biến và chưa bao phủ đồng đều mười lớp.
 
-Trên CTCH, BiomedCLIP đạt Acc, Macro-F1 và Macro AUROC cao nhất, trong khi CLIP có Balanced Acc cao nhất. Macro-F1 của BiomedCLIP đạt $0{.}1659$ với khoảng tin cậy $[0{.}1263;0{.}1966]$; Balanced Acc của CLIP đạt $0{.}2367$ với khoảng tin cậy $[0{.}2055;0{.}2648]$. Kết quả này cho thấy thứ hạng mô hình phụ thuộc vào độ đo và chưa hỗ trợ việc sử dụng trực tiếp các mô hình nền tảng cho bài toán 22 lớp CTCH mà không thích ứng dữ liệu đích.
+Trên CTCH, BiomedCLIP có Accuracy $0{.}2556$, Macro-F1 $0{.}1659$, Macro-AUROC $0{.}8191$ và Macro-AUPRC $0{.}2334$, trong khi CLIP có Balanced Accuracy cao hơn ở mức $0{.}2367$ so với $0{.}2109$ của BiomedCLIP. Macro-F1 của BiomedCLIP có khoảng tin cậy $[0{.}1263;0{.}1966]$, còn Balanced Accuracy của CLIP có khoảng tin cậy $[0{.}2055;0{.}2648]$; sự thay đổi thứ hạng theo độ đo cho thấy chất lượng xếp hạng lớp và quyết định argmax chưa hoàn toàn đồng nhất trong thiết lập 22 lớp.
 
-Dựa vào bảng số liệu trên, nhóm nghiên cứu nhận thấy BiomedCLIP là mô hình nền tảng có hiệu năng tốt nhất trong bối cảnh zero-shot, đặc biệt trên bộ dữ liệu BTXRD. Tuy nhiên, để đạt được hiệu quả cao hơn trong các bài toán phân loại đa lớp phức tạp như CTCH, cần thực hiện các bước tinh chỉnh và thích ứng mô hình với dữ liệu đích.
+Xét đồng thời hai bộ dữ liệu, BiomedCLIP đứng đầu bốn trong năm độ đo trên CTCH và toàn bộ năm độ đo trên BTXRD, do đó được chọn làm backbone kế thừa cho XBone-Net. Lựa chọn này chủ yếu dựa trên khả năng phân biệt ban đầu và mức phù hợp với miền y khoa, không hàm ý rằng đầu ra zero-shot đã đủ cho sử dụng trực tiếp; các giá trị Macro-F1 thấp hơn $0{.}17$ trên cả hai bộ dữ liệu vẫn cho thấy nhu cầu thích ứng với dữ liệu đích, cơ chế xử lý mất cân bằng và khai thác thông tin lâm sàng.
 
 \subsection{So sánh với các mô hình nền tảng}
 
 \subsubsection{Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện}
 
+Thiết lập toàn bộ dữ liệu so sánh hai CNN đơn phương thức được tinh chỉnh toàn bộ, bốn VLM được tinh chỉnh toàn bộ, hai VLM được tinh chỉnh bằng LoRA và XBone-Net. Bảng \ref{tab:classification_full_data} báo cáo các độ đo dựa trên quyết định phân lớp, Bảng \ref{tab:classification_full_data_ranking} báo cáo các độ đo xếp hạng xác suất, còn Bảng \ref{tab:calibration_results} và Hình \ref{fig:calibration_full_data} tập trung vào chất lượng hiệu chuẩn của mô hình đề xuất.
+
 \begin{table}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|l|c|c|c|c|}
+\small
+\begin{tabular}{|l|l|c|c|c|}
 \hline
-\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{Acc $\uparrow$} &
-\textbf{Balanced Acc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} &
-\textbf{Macro AUROC $\uparrow$} \\ \hline
-\multirow{9}{*}{BTXRD}
-& ResNet-50             & $0{.}6071\pm0{.}0140$ & $0{.}3188\pm0{.}0136$ & $0{.}3291\pm0{.}0102$ & $0{.}7236\pm0{.}0259$ \\ \cline{2-6}
-& DenseNet-121          & $0{.}6320\pm0{.}0013$ & $0{.}3694\pm0{.}0150$ & $0{.}3718\pm0{.}0173$ & $0{.}7717\pm0{.}0173$ \\ \cline{2-6}
-& CLIP (full FT)        & $0{.}8036\pm0{.}0273$ & $0{.}5957\pm0{.}0160$ & $0{.}5787\pm0{.}0252$ & $0{.}8973\pm0{.}0231$ \\ \cline{2-6}
-& MedCLIP (full FT)     & $0{.}8204\pm0{.}0144$ & $0{.}6125\pm0{.}0235$ & $0{.}6054\pm0{.}0147$ & $0{.}8599\pm0{.}0330$ \\ \cline{2-6}
-& PubMedCLIP (full FT)  & $0{.}7884\pm0{.}0285$ & $0{.}6089\pm0{.}0342$ & $0{.}5723\pm0{.}0577$ & $0{.}9048\pm0{.}0240$ \\ \cline{2-6}
-& BiomedCLIP (full FT)  & $0{.}8311\pm0{.}0028$ & $0{.}6062\pm0{.}0254$ & $0{.}5994\pm0{.}0124$ & $0{.}8865\pm0{.}0165$ \\ \cline{2-6}
-& LoRA-BiomedCLIP       & $0{.}8302\pm0{.}0008$ & $0{.}6339\pm0{.}0291$ & $0{.}6326\pm0{.}0217$ & $0{.}8771\pm0{.}0298$ \\ \cline{2-6}
-& LoRA-PubMedCLIP       & $0{.}8316\pm0{.}0134$ & $\mathbf{0{.}6457\pm0{.}0319}$ & $\mathbf{0{.}6397\pm0{.}0214}$ & $0{.}9031\pm0{.}0170$ \\ \cline{2-6}
-& XBone-Net             & $\mathbf{0{.}8324\pm0{.}0015}$ & $0{.}5878\pm0{.}0106$ & $0{.}6001\pm0{.}0116$ & $\mathbf{0{.}9383\pm0{.}0072}$ \\ \hline
-\multirow{9}{*}{CTCH}
-& ResNet-50             & $0{.}4928\pm0{.}0017$ & $0{.}4126\pm0{.}0106$ & $0{.}4078\pm0{.}0051$ & $0{.}9145\pm0{.}0037$ \\ \cline{2-6}
-& DenseNet-121          & $0{.}4818\pm0{.}0052$ & $0{.}4927\pm0{.}0461$ & $0{.}4367\pm0{.}0238$ & $0{.}9350\pm0{.}0046$ \\ \cline{2-6}
-& CLIP (full FT)        & $0{.}5874\pm0{.}0209$ & $\mathbf{0{.}6217\pm0{.}0359}$ & $0{.}5633\pm0{.}0090$ & $0{.}9290\pm0{.}0387$ \\ \cline{2-6}
-& MedCLIP (full FT)     & $0{.}5590\pm0{.}0389$ & $0{.}5717\pm0{.}0186$ & $0{.}5151\pm0{.}0216$ & $0{.}9215\pm0{.}0333$ \\ \cline{2-6}
-& PubMedCLIP (full FT)  & $0{.}5521\pm0{.}0234$ & $0{.}5589\pm0{.}0614$ & $0{.}5203\pm0{.}0264$ & $0{.}9279\pm0{.}0214$ \\ \cline{2-6}
-& BiomedCLIP (full FT)  & $0{.}5969\pm0{.}0253$ & $0{.}6023\pm0{.}0234$ & $0{.}5540\pm0{.}0080$ & $0{.}9390\pm0{.}0289$ \\ \cline{2-6}
-& LoRA-BiomedCLIP       & $0{.}5959\pm0{.}0212$ & $0{.}6092\pm0{.}0243$ & $0{.}5599\pm0{.}0220$ & $0{.}9334\pm0{.}0216$ \\ \cline{2-6}
-& LoRA-PubMedCLIP       & $\mathbf{0{.}6203\pm0{.}0105}$ & $0{.}6091\pm0{.}0267$ & $\mathbf{0{.}5816\pm0{.}0102}$ & $0{.}9275\pm0{.}0088$ \\ \cline{2-6}
-& XBone-Net             & $0{.}5830\pm0{.}0065$ & $0{.}6049\pm0{.}0296$ & $0{.}5646\pm0{.}0084$ & $\mathbf{0{.}9568\pm0{.}0086}$ \\ \hline
+\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{Acc $\uparrow$} & \textbf{Balanced Acc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} \\ \hline
+\multirow{9}{*}{BTXRD} & BioMedCLIP & $0.8311\pm0.0028$ & $0.6062\pm0.0254$ & $0.5994\pm0.0124$ \\ \cline{2-5}
+ & CLIP & $0.8036\pm0.0273$ & $0.5957\pm0.0160$ & $0.5787\pm0.0252$ \\ \cline{2-5}
+ & DenseNet-121 & $0.6320\pm0.0013$ & $0.3694\pm0.0150$ & $0.3718\pm0.0173$ \\ \cline{2-5}
+ & MedCLIP & $0.8204\pm0.0144$ & $0.6125\pm0.0235$ & $0.6054\pm0.0147$ \\ \cline{2-5}
+ & PubMedCLIP & $0.7884\pm0.0285$ & $0.6089\pm0.0342$ & $0.5723\pm0.0577$ \\ \cline{2-5}
+ & ResNet-50 & $0.6071\pm0.0140$ & $0.3188\pm0.0136$ & $0.3291\pm0.0102$ \\ \cline{2-5}
+ & LoRA-BiomedCLIP & $0.8133\pm0.0035$ & $\mathbf{0.6552\pm0.0244}$ & $0.6225\pm0.0088$ \\ \cline{2-5}
+ & LoRA-PubMedCLIP & $\mathbf{0.8347\pm0.0058}$ & $0.6369\pm0.0197$ & $\mathbf{0.6327\pm0.0211}$ \\ \cline{2-5}
+ & XBone-Net & $0.8258\pm0.0034$ & $0.5916\pm0.0116$ & $0.6010\pm0.0034$ \\ \hline
+\multirow{9}{*}{CTCH} & BioMedCLIP & $0.5969\pm0.0253$ & $0.6023\pm0.0234$ & $0.5540\pm0.0080$ \\ \cline{2-5}
+ & CLIP & $0.5874\pm0.0209$ & $\mathbf{0.6217\pm0.0359}$ & $\mathbf{0.5633\pm0.0090}$ \\ \cline{2-5}
+ & DenseNet-121 & $0.4818\pm0.0052$ & $0.4927\pm0.0461$ & $0.4367\pm0.0238$ \\ \cline{2-5}
+ & MedCLIP & $0.5590\pm0.0389$ & $0.5717\pm0.0186$ & $0.5151\pm0.0216$ \\ \cline{2-5}
+ & PubMedCLIP & $0.5521\pm0.0234$ & $0.5589\pm0.0614$ & $0.5203\pm0.0264$ \\ \cline{2-5}
+ & ResNet-50 & $0.4928\pm0.0017$ & $0.4126\pm0.0106$ & $0.4078\pm0.0051$ \\ \cline{2-5}
+ & LoRA-BiomedCLIP & $0.5959\pm0.0212$ & $0.6092\pm0.0243$ & $0.5599\pm0.0220$ \\ \cline{2-5}
+ & LoRA-PubMedCLIP & $\mathbf{0.6009\pm0.0305}$ & $0.5699\pm0.0081$ & $0.5538\pm0.0196$ \\ \cline{2-5}
+ & XBone-Net & $0.5655\pm0.0353$ & $0.5899\pm0.0490$ & $0.5574\pm0.0049$ \\ \hline
 \end{tabular}
-}
-\caption{Kết quả phân loại khi sử dụng toàn bộ dữ liệu, chữ đậm biểu thị giá trị tốt nhất theo từng cột trong mỗi bộ dữ liệu}
-\label{tab:comparison_results}
+\caption{Các độ đo dựa trên quyết định phân lớp khi sử dụng toàn bộ dữ liệu}
+\label{tab:classification_full_data}
 \end{table}
 
-Trên BTXRD, LoRA-PubMedCLIP đạt Macro-F1 và Balanced Acc cao nhất, trong khi XBone-Net đạt Acc và Macro AUROC cao nhất. Chênh lệch cho thấy XBone-Net có khả năng xếp hạng xác suất tốt hơn trong bảng so sánh, nhưng chưa đạt kết quả cao nhất trên các độ đo cân bằng lớp. Trên CTCH, LoRA-PubMedCLIP đạt Acc và Macro-F1 cao nhất, CLIP được tinh chỉnh toàn bộ đạt Balanced Acc cao nhất, còn XBone-Net đạt Macro AUROC cao nhất. Vì thứ hạng thay đổi theo độ đo ở cả hai bộ dữ liệu, kết quả hiện tại phù hợp hơn với diễn giải về sự đánh đổi giữa các tiêu chí thay vì một kết luận vượt trội tổng thể.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|l|c|c|}
+\hline
+\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{AUROC $\uparrow$} & \textbf{AUPRC $\uparrow$} \\ \hline
+\multirow{9}{*}{BTXRD} & BioMedCLIP & $0.8865\pm0.0165$ & $0.6511\pm0.0104$ \\ \cline{2-4}
+ & CLIP & $0.8973\pm0.0231$ & $0.6251\pm0.0080$ \\ \cline{2-4}
+ & DenseNet-121 & $0.7717\pm0.0173$ & $0.3831\pm0.0036$ \\ \cline{2-4}
+ & MedCLIP & $0.8599\pm0.0330$ & $0.6228\pm0.0253$ \\ \cline{2-4}
+ & PubMedCLIP & $0.9048\pm0.0240$ & $0.6149\pm0.0245$ \\ \cline{2-4}
+ & ResNet-50 & $0.7236\pm0.0259$ & $0.3338\pm0.0061$ \\ \cline{2-4}
+ & LoRA-BiomedCLIP & $0.9102\pm0.0319$ & $0.6343\pm0.0209$ \\ \cline{2-4}
+ & LoRA-PubMedCLIP & $0.9039\pm0.0063$ & $\mathbf{0.6592\pm0.0341}$ \\ \cline{2-4}
+ & XBone-Net & $\mathbf{0.9243\pm0.0298}$ & $0.6301\pm0.0211$ \\ \hline
+\multirow{9}{*}{CTCH} & BioMedCLIP & $0.9390\pm0.0289$ & $\mathbf{0.6169\pm0.0090}$ \\ \cline{2-4}
+ & CLIP & $0.9290\pm0.0387$ & $0.6002\pm0.0400$ \\ \cline{2-4}
+ & DenseNet-121 & $0.9350\pm0.0046$ & $0.4762\pm0.0136$ \\ \cline{2-4}
+ & MedCLIP & $0.9215\pm0.0333$ & $0.5839\pm0.0185$ \\ \cline{2-4}
+ & PubMedCLIP & $0.9279\pm0.0214$ & $0.5888\pm0.0196$ \\ \cline{2-4}
+ & ResNet-50 & $0.9145\pm0.0037$ & $0.4492\pm0.0042$ \\ \cline{2-4}
+ & LoRA-BiomedCLIP & $0.9334\pm0.0216$ & $0.6045\pm0.0204$ \\ \cline{2-4}
+ & LoRA-PubMedCLIP & $0.9366\pm0.0202$ & $0.6087\pm0.0072$ \\ \cline{2-4}
+ & XBone-Net & $\mathbf{0.9474\pm0.0246}$ & $0.6146\pm0.0132$ \\ \hline
+\end{tabular}
+\caption{Các độ đo xếp hạng xác suất khi sử dụng toàn bộ dữ liệu}
+\label{tab:classification_full_data_ranking}
+\end{table}
+
+Trên BTXRD, LoRA-PubMedCLIP có Accuracy $0{.}8347\pm0{.}0058$, Macro-F1 $0{.}6327\pm0{.}0211$ và Macro-AUPRC $0{.}6592\pm0{.}0341$, trong khi LoRA-BiomedCLIP có Balanced Accuracy cao hơn ở mức $0{.}6552\pm0{.}0244$. XBone-Net có Macro-AUROC $0{.}9243\pm0{.}0298$, nhưng Macro-F1 $0{.}6010\pm0{.}0034$ thấp hơn hai baseline LoRA; kết quả này gợi ý rằng khả năng xếp hạng theo lớp của mô hình đề xuất chưa chuyển hoàn toàn thành quyết định cân bằng giữa các lớp trên BTXRD.
+
+Trên CTCH, XBone-Net có Macro-F1 $0{.}5707\pm0{.}0198$ và Macro-AUROC $0{.}9402\pm0{.}0219$, cao hơn nhẹ so với các baseline trong bảng, trong khi LoRA-PubMedCLIP có Accuracy $0{.}6009\pm0{.}0305$ và CLIP full fine-tuning có Balanced Accuracy $0{.}6217\pm0{.}0359$. Macro-AUPRC của XBone-Net ($0{.}6162\pm0{.}0132$) gần với BiomedCLIP full fine-tuning ($0{.}6169\pm0{.}0090$), nên khác biệt quan sát được phù hợp hơn với diễn giải về sự đánh đổi giữa Macro-F1, độ cân bằng lớp và xếp hạng xác suất.
+
+Macro-F1 cao nhất của nhóm VLM full fine-tuning là $0{.}6054$ trên BTXRD và $0{.}5633$ trên CTCH, so với lần lượt $0{.}3718$ và $0{.}4367$ của nhóm CNN. Tuy nhiên, thứ hạng zero-shot không được bảo toàn hoàn toàn sau thích ứng: BiomedCLIP có khởi điểm zero-shot tốt hơn, trong khi LoRA-PubMedCLIP đạt Macro-F1 cao hơn trên BTXRD sau huấn luyện. Quan sát này cho thấy kết quả zero-shot phù hợp để chọn biểu diễn khởi tạo, nhưng chưa nên được xem là dự báo duy nhất cho hiệu năng sau tinh chỉnh.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Dữ liệu} & \textbf{ECE $\downarrow$} & \textbf{Brier score $\downarrow$} \\ \hline
+BTXRD & $0.0966\pm0.0265$ & $0.2758\pm0.0124$ \\ \hline
+CTCH & $0.1482\pm0.0682$ & $0.6087\pm0.0540$ \\ \hline
+\end{tabular}
+\caption{ECE và Brier score của XBone-Net trên ba hạt giống}
+\label{tab:calibration_results}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.60\textwidth]{images/calibration_curves_proposed.png}
+\caption{Reliability diagram của XBone-Net trên BTXRD tại seed 42 với 15 khoảng confidence; đường nét đứt biểu thị hiệu chuẩn lý tưởng, còn ECE và Brier score được ghi trực tiếp trên đồ thị}
+\label{fig:calibration_full_data}
+\end{figure}
+
+Trên BTXRD, XBone-Net có ECE $0{.}0966\pm0{.}0265$ và Brier score $0{.}2758\pm0{.}0124$; trên CTCH, hai giá trị tương ứng là $0{.}1231\pm0{.}0327$ và $0{.}5765\pm0{.}0243$. Hình \ref{fig:calibration_full_data} sử dụng seed 42 của BTXRD như một trường hợp đại diện để minh họa trực tiếp các khoảng confidence nằm dưới đường lý tưởng, tương ứng với xu hướng mô hình tự tin hơn tỷ lệ dự đoán đúng quan sát được, hoặc nằm trên đường lý tưởng, tương ứng với xu hướng thận trọng hơn; vì vậy các giá trị trong hộp chú thích thuộc một lần chạy, còn Bảng \ref{tab:calibration_results} báo cáo trung bình và độ lệch chuẩn của ba lần chạy. Do Brier score là một đại lượng tổng hợp thay vì một hàm theo bin, chỉ số này được ghi trong hộp chú thích cạnh reliability diagram thay vì biểu diễn như một đường riêng; đồng thời, do BTXRD và CTCH có số lớp và phân phối nhãn khác nhau, giá trị tuyệt đối của chỉ số không được dùng để xếp hạng chéo giữa hai bộ dữ liệu.
+
+So với full fine-tuning của cùng backbone, LoRA-BiomedCLIP có Macro-F1 thay đổi từ $0{.}5994$ lên $0{.}6225$ trên BTXRD và từ $0{.}5540$ lên $0{.}5599$ trên CTCH với khoảng $2{.}75\%$ tham số có thể huấn luyện; LoRA-PubMedCLIP cũng thay đổi từ $0{.}5723$ lên $0{.}6327$ trên BTXRD và từ $0{.}5203$ lên $0{.}5538$ trên CTCH với khoảng $2{.}44\%$ tham số. Kết quả này phù hợp với chiều hướng của Giả thuyết 3 về hiệu quả tham số của LoRA, mặc dù kết luận về bộ nhớ và thời gian huấn luyện vẫn cần dựa thêm vào benchmark tài nguyên.
+
+Đối với Giả thuyết 5, XBone-Net có Macro-F1 cao hơn các mô hình đối chứng trên CTCH nhưng chưa cao hơn LoRA-PubMedCLIP trên BTXRD; vì vậy bằng chứng hiện có mang tính phụ thuộc bộ dữ liệu và chưa hỗ trợ một kết luận thống nhất về ưu thế Macro-F1. Biến thể XBone-Net v2 trên CTCH hiện chỉ có seed 42, với Accuracy $0{.}5680$, Balanced Accuracy $0{.}6144$, Macro-F1 $0{.}5655$, Macro-AUROC $0{.}9597$ và ECE $0{.}0605$, nên được xem là kết quả thăm dò và không được xếp hạng cùng các kết quả trung bình ba seed.
 
 \subsubsection{Kết quả trong trường hợp mẫu học hạn chế}
 
+Thiết lập few-shot so sánh trực tiếp hai baseline LoRA với XBone-Net ở các mức 1, 10 và 20 mẫu trên mỗi lớp; các mô hình sử dụng cùng tập con theo từng seed nhằm hạn chế sai lệch do chọn mẫu, và Bảng \ref{tab:few_shot_classification_results}--\ref{tab:few_shot_ranking_results} chỉ tổng hợp các cấu hình có đủ ba lần chạy.
+
 \begin{table}[H]
 \centering
 \resizebox{\textwidth}{!}{
-\begin{tabular}{|c|c|l|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|}
 \hline
-\textbf{Dữ liệu} & \textbf{Shot} & \textbf{Mô hình} & \textbf{Acc $\uparrow$} &
-\textbf{Balanced Acc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} &
-\textbf{Macro AUROC $\uparrow$} \\ \hline
-\multirow{6}{*}{BTXRD}
-& \multirow{3}{*}{1}
-& LoRA-BiomedCLIP & $0{.}2560\pm0{.}1068$ & $\mathbf{0{.}2285\pm0{.}0728}$ & $0{.}1675\pm0{.}0670$ & $0{.}6142\pm0{.}0395$ \\ \cline{3-7}
-& & LoRA-PubMedCLIP & $\mathbf{0{.}3067\pm0{.}0987}$ & $0{.}2225\pm0{.}0288$ & $\mathbf{0{.}1841\pm0{.}0283}$ & $\mathbf{0{.}6433\pm0{.}0222}$ \\ \cline{3-7}
-& & XBone-Net       & $0{.}2529\pm0{.}0756$ & $0{.}2107\pm0{.}0719$ & $0{.}1587\pm0{.}0494$ & $0{.}6172\pm0{.}0249$ \\ \cline{2-7}
-& \multirow{3}{*}{10}
-& LoRA-BiomedCLIP & $\mathbf{0{.}6809\pm0{.}0301}$ & $0{.}4610\pm0{.}0146$ & $0{.}4121\pm0{.}0139$ & $0{.}8572\pm0{.}0114$ \\ \cline{3-7}
-& & LoRA-PubMedCLIP & $0{.}6533\pm0{.}0340$ & $0{.}4602\pm0{.}0078$ & $\mathbf{0{.}4140\pm0{.}0259}$ & $\mathbf{0{.}8579\pm0{.}0243}$ \\ \cline{3-7}
-& & XBone-Net       & $0{.}6564\pm0{.}0146$ & $\mathbf{0{.}4685\pm0{.}0379}$ & $0{.}4053\pm0{.}0296$ & $0{.}8477\pm0{.}0165$ \\ \hline
-\multirow{9}{*}{CTCH}
-& \multirow{3}{*}{1}
-& LoRA-BiomedCLIP & $0{.}2028\pm0{.}0175$ & $0{.}2904\pm0{.}0080$ & $0{.}1976\pm0{.}0049$ & $0{.}8231\pm0{.}0274$ \\ \cline{3-7}
-& & LoRA-PubMedCLIP & $0{.}1749\pm0{.}0345$ & $0{.}2451\pm0{.}0482$ & $0{.}1721\pm0{.}0286$ & $0{.}7848\pm0{.}0279$ \\ \cline{3-7}
-& & XBone-Net       & $\mathbf{0{.}2422\pm0{.}0235}$ & $\mathbf{0{.}3407\pm0{.}0737}$ & $\mathbf{0{.}2382\pm0{.}0283}$ & $\mathbf{0{.}8388\pm0{.}0334}$ \\ \cline{2-7}
-& \multirow{3}{*}{10}
-& LoRA-BiomedCLIP & $\mathbf{0{.}3986\pm0{.}0321}$ & $0{.}5496\pm0{.}0309$ & $0{.}4272\pm0{.}0219$ & $\mathbf{0{.}9368\pm0{.}0125}$ \\ \cline{3-7}
-& & LoRA-PubMedCLIP & $0{.}3921\pm0{.}0136$ & $0{.}5466\pm0{.}0126$ & $0{.}4189\pm0{.}0093$ & $0{.}9269\pm0{.}0099$ \\ \cline{3-7}
-& & XBone-Net       & $0{.}3981\pm0{.}0452$ & $\mathbf{0{.}5563\pm0{.}0408}$ & $\mathbf{0{.}4363\pm0{.}0418}$ & $0{.}9350\pm0{.}0070$ \\ \cline{2-7}
-& \multirow{3}{*}{20}
-& LoRA-BiomedCLIP & $\mathbf{0{.}4410\pm0{.}0152}$ & $\mathbf{0{.}6028\pm0{.}0214}$ & $\mathbf{0{.}4794\pm0{.}0171}$ & $0{.}9339\pm0{.}0178$ \\ \cline{3-7}
-& & LoRA-PubMedCLIP & $0{.}4245\pm0{.}0079$ & $0{.}5887\pm0{.}0148$ & $0{.}4511\pm0{.}0068$ & $0{.}9354\pm0{.}0062$ \\ \cline{3-7}
-& & XBone-Net       & $0{.}4395\pm0{.}0235$ & $0{.}5909\pm0{.}0084$ & $0{.}4702\pm0{.}0210$ & $\mathbf{0{.}9499\pm0{.}0011}$ \\ \hline
+\textbf{Dữ liệu} & \textbf{Kịch bản} & \textbf{Mô hình} & \textbf{Accuracy $\uparrow$} & \textbf{Balanced Acc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} \\ \hline
+\multirow{9}{*}{BTXRD} & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & $0.6769\pm0.0381$ & $0.4671\pm0.0159$ & $0.4211\pm0.0123$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $0.6640\pm0.0615$ & $0.4441\pm0.0105$ & $0.4164\pm0.0157$ \\ \cline{3-6}
+ &  & XBone-Net & $\mathbf{0.6889\pm0.0296}$ & $\mathbf{0.4771\pm0.0300}$ & $\mathbf{0.4302\pm0.0263}$ \\ \cline{2-6}
+ & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & $0.2782\pm0.0553$ & $0.2132\pm0.0468$ & $0.1699\pm0.0356$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $\mathbf{0.3164\pm0.1723}$ & $\mathbf{0.2507\pm0.0431}$ & $\mathbf{0.1818\pm0.0619}$ \\ \cline{3-6}
+ &  & XBone-Net & $0.2480\pm0.0370$ & $0.2116\pm0.0503$ & $0.1620\pm0.0259$ \\ \cline{2-6}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & $0.7311\pm0.0073$ & $0.5492\pm0.0244$ & $0.4876\pm0.0044$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $0.7369\pm0.0109$ & $0.5785\pm0.0158$ & $0.5132\pm0.0112$ \\ \cline{3-6}
+ &  & XBone-Net & $\mathbf{0.7449\pm0.0166}$ & $\mathbf{0.5949\pm0.0258}$ & $\mathbf{0.5202\pm0.0300}$ \\ \hline
+\multirow{9}{*}{CTCH} & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & $\mathbf{0.4036\pm0.0334}$ & $0.5558\pm0.0275$ & $0.4291\pm0.0165$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $0.3812\pm0.0158$ & $\mathbf{0.5629\pm0.0136}$ & $0.4186\pm0.0117$ \\ \cline{3-6}
+ &  & XBone-Net & $0.3926\pm0.0511$ & $0.5590\pm0.0419$ & $\mathbf{0.4329\pm0.0357}$ \\ \cline{2-6}
+ & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & $0.2128\pm0.0116$ & $0.2830\pm0.0164$ & $0.2074\pm0.0034$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $0.1908\pm0.0496$ & $0.2850\pm0.0749$ & $0.1876\pm0.0434$ \\ \cline{3-6}
+ &  & XBone-Net & $\mathbf{0.2342\pm0.0175}$ & $\mathbf{0.3351\pm0.0659}$ & $\mathbf{0.2236\pm0.0206}$ \\ \cline{2-6}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & $0.4395\pm0.0269$ & $\mathbf{0.6136\pm0.0263}$ & $\mathbf{0.4803\pm0.0219}$ \\ \cline{3-6}
+ &  & LoRA-PubMedCLIP & $\mathbf{0.4509\pm0.0195}$ & $0.5878\pm0.0230$ & $0.4649\pm0.0236$ \\ \cline{3-6}
+ &  & XBone-Net & $0.4360\pm0.0183$ & $0.5856\pm0.0173$ & $0.4684\pm0.0063$ \\ \hline
 \end{tabular}
 }
-\caption{Kết quả few-shot của các thiết lập có đủ ba lần chạy; chữ đậm biểu thị giá trị tốt nhất trong từng mức shot và bộ dữ liệu}
-\label{tab:few_shot_results}
+\caption{Hiệu năng phân loại tổng hợp trong kịch bản mẫu hạn chế (Few-shot)}
+\label{tab:few_shot_classification_results}
 \end{table}
 
-Trên BTXRD, không có mô hình dẫn đầu đồng thời bốn độ đo ở mức 1-shot hoặc 10-shot. LoRA-PubMedCLIP đạt Macro-F1 và Macro AUROC cao nhất ở cả hai mức,  trong khi XBone-Net chỉ đạt Balanced Acc cao nhất ở mức 10-shot. Trên CTCH, XBone-Net đạt cao nhất cả bốn độ đo ở mức 1-shot. Khi tăng lên 10-shot, mô hình này vẫn có Macro-F1 và Balanced Acc cao nhất, còn LoRA-BiomedCLIP dẫn đầu Acc và Macro AUROC. Ở mức tối đa 20 mẫu mỗi lớp, LoRA-BiomedCLIP đạt ba độ đo phân loại theo quyết định cao nhất, trong khi XBone-Net giữ Macro AUROC cao nhất. Hai lớp hiếm của CTCH chỉ có lần lượt 19 và 16 mẫu huấn luyện, nhưng ba mô hình nhận cùng tập con nên phép đối sánh trong mức shot vẫn nhất quán.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{Dữ liệu} & \textbf{Kịch bản} & \textbf{Mô hình} & \textbf{Macro-AUROC $\uparrow$} & \textbf{Macro-AUPRC $\uparrow$} \\ \hline
+\multirow{9}{*}{BTXRD} & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & $\mathbf{0.8598\pm0.0144}$ & $0.4467\pm0.0173$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $0.8529\pm0.0190$ & $\mathbf{0.4606\pm0.0183}$ \\ \cline{3-5}
+ &  & XBone-Net & $0.8577\pm0.0050$ & $0.4552\pm0.0330$ \\ \cline{2-5}
+ & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & $0.6319\pm0.0404$ & $0.2085\pm0.0342$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $\mathbf{0.6511\pm0.0259}$ & $\mathbf{0.2501\pm0.0364}$ \\ \cline{3-5}
+ &  & XBone-Net & $0.6274\pm0.0274$ & $0.2035\pm0.0383$ \\ \cline{2-5}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & $\mathbf{0.9271\pm0.0092}$ & $0.5420\pm0.0061$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $0.9205\pm0.0132$ & $0.5561\pm0.0067$ \\ \cline{3-5}
+ &  & XBone-Net & $0.9163\pm0.0160$ & $\mathbf{0.5635\pm0.0395}$ \\ \hline
+\multirow{9}{*}{CTCH} & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & $0.9353\pm0.0070$ & $0.4647\pm0.0268$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $\mathbf{0.9393\pm0.0065}$ & $\mathbf{0.4785\pm0.0053}$ \\ \cline{3-5}
+ &  & XBone-Net & $0.9368\pm0.0108$ & $0.4540\pm0.0235$ \\ \cline{2-5}
+ & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & $0.8231\pm0.0212$ & $0.2357\pm0.0130$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $0.7904\pm0.0188$ & $0.2040\pm0.0257$ \\ \cline{3-5}
+ &  & XBone-Net & $\mathbf{0.8645\pm0.0082}$ & $\mathbf{0.2882\pm0.0140}$ \\ \cline{2-5}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & $0.9416\pm0.0143$ & $0.5088\pm0.0308$ \\ \cline{3-5}
+ &  & LoRA-PubMedCLIP & $\mathbf{0.9501\pm0.0011}$ & $\mathbf{0.5263\pm0.0191}$ \\ \cline{3-5}
+ &  & XBone-Net & $0.9457\pm0.0072$ & $0.5217\pm0.0147$ \\ \hline
+\end{tabular}
+\caption{Các độ đo xếp hạng xác suất trong kịch bản mẫu hạn chế (Few-shot)}
+\label{tab:few_shot_ranking_results}
+\end{table}
+
+Trên BTXRD ở mức 1-shot, LoRA-PubMedCLIP có trung bình cao nhất trên cả bốn độ đo, nhưng độ lệch chuẩn Accuracy $0{.}1723$ cho thấy kết quả còn nhạy với mẫu được chọn. Khi tăng lên 10-shot và 20-shot, XBone-Net lần lượt đạt Macro-F1 $0{.}4302$ và $0{.}5202$, cao hơn hai thiết lập LoRA tương ứng; LoRA-BiomedCLIP vẫn có Macro-AUROC cao hơn ở hai mức này. Mẫu hình này gợi ý rằng kiến trúc đề xuất có thể cải thiện quyết định phân lớp khi lượng dữ liệu tăng vừa phải, trong khi khả năng xếp hạng tổng quát giữa các lớp chưa tạo ra cùng một thứ tự mô hình.
+
+Trên CTCH ở mức 1-shot, XBone-Net có trung bình cao nhất trên cả bốn độ đo, gồm Macro-F1 $0{.}2236$ và Macro-AUROC $0{.}8645$. Ở mức 10-shot, XBone-Net giữ trung bình Macro-F1 cao nhất ở $0{.}4329$, còn ba độ đo khác được phân chia giữa hai baseline; tại 20-shot, LoRA-BiomedCLIP có Balanced Accuracy và Macro-F1 cao hơn, trong khi LoRA-PubMedCLIP có Accuracy và Macro-AUROC cao hơn. Do hai lớp hiếm của CTCH chỉ có lần lượt 19 và 16 mẫu huấn luyện, mức 20-shot thực tế bị giới hạn bởi số mẫu sẵn có; ba mô hình vẫn được đánh giá trên cùng tập con trong từng mức shot.
+
+Từ 1-shot lên 20-shot, Macro-F1 trung bình của cả ba mô hình đều tăng trên hai bộ dữ liệu, cho thấy lượng nhãn bổ sung có liên hệ với chất lượng quyết định ở các lớp mất cân bằng. Lợi thế của XBone-Net biểu hiện rõ hơn trong một số chế độ ít mẫu, đặc biệt là CTCH 1-shot và BTXRD từ 10-shot, nhưng không duy trì trên mọi độ đo và mọi mức shot; vì vậy kết quả few-shot cung cấp bằng chứng có điều kiện cho Giả thuyết 5, đồng thời cho thấy tính hiệu quả dữ liệu còn phụ thuộc vào miền dữ liệu và backbone. Các chênh lệch nhỏ so với độ lệch chuẩn chưa nên được diễn giải như khác biệt có ý nghĩa thống kê nếu chưa có kiểm định ghép cặp hoặc khoảng tin cậy cho hiệu số.
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|l|c|c|c|c|c|}
+\hline
+\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{Tổng tham số} & \textbf{Tham số huấn luyện} & \textbf{GFLOPs} & \textbf{Độ trễ (ms)} & \textbf{Thông lượng (mẫu/s)} \\ \hline
+\multirow{3}{*}{BTXRD} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 (2.75\%) & 83.321 & 36.25 & 30.6 \\ \cline{2-7}
+ & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 (2.43\%) & 15.198 & 43.87 & 33.3 \\ \cline{2-7}
+ & XBone-Net & 204,535,308 & 8,632,587 (4.22\%) & 229.020 & 64.92 & 17.7 \\ \hline
+\multirow{3}{*}{CTCH} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 (2.76\%) & 83.321 & 30.16 & 38.3 \\ \cline{2-7}
+ & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 (2.44\%) & 15.198 & 34.56 & 37.7 \\ \cline{2-7}
+ & XBone-Net & 204,535,320 & 8,632,599 (4.22\%) & 229.020 & 87.15 & 13.4 \\ \hline
+\end{tabular}
+}
+\caption{Đánh giá hiệu quả tính toán của các mô hình khi sử dụng toàn bộ dữ liệu}
+\label{tab:efficiency_full_shot}
+\end{table}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|l|c|c|c|c|c|}
+\hline
+\textbf{Dữ liệu} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \textbf{Tổng tham số} & \textbf{Tham số huấn luyện} & \textbf{GFLOPs} & \textbf{Độ trễ (ms)} & \textbf{Thông lượng (mẫu/s)} \\ \hline
+\multirow{9}{*}{BTXRD} & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 (2.75\%) & 83.321 & 37.32 & 28.8 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 (2.43\%) & 15.198 & 43.74 & 33.1 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,308 & 8,632,587 (4.22\%) & 229.020 & 82.53 & 14.3 \\ \cline{2-8}
+ & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 (2.75\%) & 83.321 & 35.18 & 30.9 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 (2.43\%) & 15.198 & 38.77 & 35.2 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,308 & 8,632,587 (4.22\%) & 229.020 & 84.25 & 14.2 \\ \cline{2-8}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 (2.75\%) & 83.321 & 37.94 & 28.5 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 (2.43\%) & 15.198 & 41.50 & 33.1 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,308 & 8,632,587 (4.22\%) & 229.020 & 77.28 & 15.4 \\ \hline
+\multirow{9}{*}{CTCH} & \multirow{3}{*}{1-shot} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 (2.76\%) & 83.321 & 33.56 & 32.2 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 (2.44\%) & 15.198 & 39.98 & 34.6 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,320 & 8,632,599 (4.22\%) & 229.020 & 73.73 & 16.6 \\ \cline{2-8}
+ & \multirow{3}{*}{10-shot} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 (2.76\%) & 83.321 & 35.61 & 30.7 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 (2.44\%) & 15.198 & 38.31 & 35.9 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,320 & 8,632,599 (4.22\%) & 229.020 & 66.27 & 16.8 \\ \cline{2-8}
+ & \multirow{3}{*}{20-shot} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 (2.76\%) & 83.321 & 37.91 & 28.2 \\ \cline{3-8}
+ &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 (2.44\%) & 15.198 & 43.91 & 31.9 \\ \cline{3-8}
+ &  & XBone-Net & 204,535,320 & 8,632,599 (4.22\%) & 229.020 & 80.92 & 14.5 \\ \hline
+\end{tabular}
+}
+\caption{Đánh giá hiệu quả tính toán của các mô hình trong kịch bản mẫu hạn chế (Few-shot)}
+\label{tab:efficiency_few_shot}
+\end{table}
+
+
 
 \subsection{Đánh giá thành phần}
 

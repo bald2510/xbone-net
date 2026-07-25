@@ -68,18 +68,30 @@
 
 \begin{document}
 
-\input{Title/title.tex}
-% Sasu trang Title, các bạn chèn nhận xét gủa GVHD và GVPB. Nhận xét sẽ được giáo vụ phát sau buổi bảo vệ để các bạn đóng quyển.
+\pagestyle{empty}
+\include{Title/title}
+% Sau trang Title, các bạn chèn nhận xét của GVHD và GVPB. Nhận xét sẽ được giáo vụ phát sau buổi bảo vệ để các bạn đóng quyển.
 
-\pagenumbering{roman} % Đánh số i, ii, iii, ...
-
+% Lời cam đoan
+\pagenumbering{roman}
+\pagestyle{plain}
 \addcontentsline{toc}{chapter}{Lời cam đoan}
 \include{Appendix/reassurances}
 
+% Bắt đầu đánh số La Mã (i) từ Lời cảm ơn
 \addcontentsline{toc}{chapter}{Lời cảm ơn}
 \include{Appendix/thanks}
 
+% Đề cương chi tiết (KHÔNG đánh số trang)
+% Lưu số trang La Mã trước khi vào đề cương để Mục lục nối tiếp ngay sau Lời cảm ơn
+\newcounter{savedromanpage}
+\setcounter{savedromanpage}{\value{page}}
+
 \include{Appendix/decuong}
+
+% Phục hồi số trang La Mã nối tiếp (ii, iii...) cho Mục lục và Tóm tắt
+\setcounter{page}{\value{savedromanpage}}
+\pagestyle{plain}
 
 % Mục lục, danh sách hình, danh sách bảng
 \addcontentsline{toc}{chapter}{Mục lục} \tableofcontents \listoffigures \listoftables
