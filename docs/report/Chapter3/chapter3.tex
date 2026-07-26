@@ -4,15 +4,15 @@
 \section{Tổng quan phương pháp đề xuất}
 \label{sec:final-pipeline}
 
-Nhóm nghiên cứu đề xuất XBone-Net như một pipeline học sâu đa phương thức dành cho phân loại ảnh X-quang xương, trong đó ảnh cung cấp bằng chứng hình thái và bệnh sử lâm sàng cung cấp ngữ cảnh liên quan đến tình trạng của người bệnh trước khi ảnh được diễn giải. Pipeline kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, thích nghi hai bộ mã hóa bằng LoRA, bảo toàn đồng thời thông tin toàn cục và chi tiết cục bộ của ảnh, trao đổi thông tin giữa hai phương thức bằng chú ý chéo hai chiều, sau đó đưa biểu diễn dung hợp vào bộ phân loại dựa trên tâm lớp thực nghiệm. Báo cáo kết quả X-quang không được sử dụng làm đầu vào của pipeline chính nhằm hạn chế nguy cơ mô hình dựa vào từ khóa chẩn đoán thay vì học mối liên hệ giữa hình ảnh và bệnh sử.
+Nhóm nghiên cứu đề xuất XBone-Net như một pipeline học sâu đa phương thức dành cho phân loại ảnh X-quang xương, trong đó ảnh cung cấp bằng chứng hình thái và bệnh sử lâm sàng cung cấp ngữ cảnh liên quan đến tình trạng của người bệnh trước khi ảnh được diễn giải. Pipeline kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, thích nghi miền dữ liệu cho hai bộ mã hóa bằng LoRA, sử dụng đồng thời thông tin toàn cục và chi tiết cục bộ của ảnh, trao đổi thông tin giữa hai phương thức bằng chú ý chéo hai chiều, sau đó đưa biểu diễn dung hợp vào bộ phân loại dựa trên tâm lớp thực nghiệm. Báo cáo kết quả X-quang không được sử dụng làm đầu vào của pipeline chính nhằm hạn chế nguy cơ mô hình dựa vào từ khóa chẩn đoán thay vì học mối liên hệ giữa hình ảnh và bệnh sử.
 
 Quy trình được chia thành quá trình huấn luyện ngoại tuyến và quá trình suy luận trực tuyến. Cách phân chia này làm rõ thành phần nào được cập nhật từ dữ liệu huấn luyện và thành phần nào chỉ thực hiện truyền thuận khi hệ thống tiếp nhận một ca mới. Trong cả hai quá trình, ảnh và văn bản đi qua cùng một quy tắc tiền xử lý và cùng một kiến trúc mã hóa; khác biệt chủ yếu nằm ở việc tính gradient, cập nhật tham số và ước lượng tâm lớp.
 
 \subsection{Huấn luyện hai giai đoạn trong quá trình ngoại tuyến (Offline)}
 
-Trong giai đoạn thứ nhất, ảnh X-quang và bệnh sử lâm sàng tương ứng được đưa qua hai bộ mã hóa để tạo biểu diễn trong một không gian chung. Mục tiêu khớp ngữ nghĩa được sử dụng để tăng mức tương hợp của cặp ảnh--văn bản tương ứng và ghi nhận quan hệ giữa các mẫu cùng lớp, qua đó giảm việc xem mọi cặp không trùng chỉ số là cặp âm. Mini-batch được lấy mẫu có nhận biết lớp để tăng khả năng mỗi lớp đóng góp nhiều hơn một mẫu vào cùng một batch, nhờ đó quan hệ đồng lớp trong mục tiêu mềm có thể được quan sát trực tiếp. Ở giai đoạn này, trọng số nền của BiomedCLIP được giữ cố định; các adapter LoRA và các thành phần tổng hợp đặc trưng ảnh cục bộ được cập nhật. Bộ dung hợp chú ý chéo và bộ phân loại chưa tham gia vào mục tiêu tối ưu của giai đoạn thứ nhất.
+Trong giai đoạn thứ nhất, ảnh X-quang và bệnh sử lâm sàng tương ứng được đưa qua hai bộ mã hóa để tạo biểu diễn trong một không gian chung. Mục tiêu khớp ngữ nghĩa được sử dụng để tăng mức tương hợp của cặp ảnh-văn bản tương ứng và ghi nhận quan hệ giữa các mẫu cùng lớp, qua đó giảm việc xem mọi cặp không trùng chỉ số là cặp âm. Mini-batch được lấy mẫu có nhận biết lớp để tăng khả năng mỗi lớp đóng góp nhiều hơn một mẫu vào cùng một batch, nhờ đó quan hệ đồng lớp trong mục tiêu mềm có thể được quan sát trực tiếp. Ở giai đoạn này, trọng số nền của BiomedCLIP được giữ cố định; các adapter LoRA và các thành phần tổng hợp đặc trưng ảnh cục bộ được cập nhật. Bộ dung hợp chú ý chéo và bộ phân loại chưa tham gia vào mục tiêu tối ưu của giai đoạn thứ nhất.
 
-Trong giai đoạn thứ hai, các adapter LoRA được giữ ở dạng tách rời và tiếp tục được cập nhật thay vì hợp nhất vào trọng số nền. Biểu diễn ảnh và văn bản được đưa qua chú ý chéo hai chiều để hình thành biểu diễn dung hợp, sau đó các tâm lớp được ước lượng từ toàn bộ biểu diễn của tập huấn luyện. Hàm mất mát phân loại cập nhật adapter LoRA, thành phần biểu diễn ảnh cục bộ, mô-đun dung hợp và độ lệch riêng của từng lớp; các tâm lớp là thống kê thực nghiệm nên không nhận gradient. Việc tách hai giai đoạn giúp quá trình thích nghi không gian ảnh--văn bản được thực hiện trước khi tối ưu trực tiếp ranh giới quyết định của bài toán phân loại.
+Trong giai đoạn thứ hai, các adapter LoRA được giữ ở dạng tách rời và tiếp tục được cập nhật thay vì hợp nhất vào trọng số nền. Biểu diễn ảnh và văn bản được đưa qua chú ý chéo hai chiều để hình thành biểu diễn dung hợp, sau đó các tâm lớp được ước lượng từ toàn bộ biểu diễn của tập huấn luyện. Hàm mất mát phân loại cập nhật adapter LoRA, thành phần biểu diễn ảnh cục bộ, mô-đun dung hợp và độ lệch riêng của từng lớp; các tâm lớp là thống kê thực nghiệm nên không nhận gradient. Việc tách hai giai đoạn giúp quá trình thích nghi không gian ảnh-văn bản được thực hiện trước khi tối ưu trực tiếp ranh giới quyết định của bài toán phân loại.
 
 Sau mỗi epoch của giai đoạn thứ hai, tâm lớp được ước lượng lại bằng trạng thái hiện tại của bộ mã hóa trước khi đánh giá trên tập validation. Checkpoint được lựa chọn theo độ đo đã xác định trước trên tập validation, sau đó tâm lớp được tính lại một lần cuối từ tập huấn luyện bằng checkpoint được chọn. Tập kiểm thử không tham gia vào quá trình cập nhật tham số, lựa chọn checkpoint hoặc ước lượng tâm lớp.
 
@@ -52,7 +52,7 @@ Trong Công thức \ref{eq:ch3_text_preprocess}, $\mathcal{T}_{t}$ là bộ ti�
 
 \subsection{Bộ mã hóa (Encoders)}
 
-Hai bộ mã hóa được kế thừa từ BiomedCLIP để tận dụng không gian biểu diễn ảnh--văn bản đã được tiền huấn luyện trên dữ liệu y sinh. Bộ mã hóa thị giác xử lý ảnh toàn cục và các local view bằng cùng một tập trọng số, trong khi bộ mã hóa văn bản xử lý chuỗi token của bệnh sử. Đầu ra của hai nhánh được chiếu về cùng chiều $D=512$, nhờ đó có thể được căn chỉnh ở giai đoạn thứ nhất và trao đổi thông tin trong mô-đun dung hợp ở giai đoạn thứ hai.
+Hai bộ mã hóa được kế thừa từ BiomedCLIP để tận dụng không gian biểu diễn ảnh-văn bản đã được tiền huấn luyện trên dữ liệu y sinh. Bộ mã hóa thị giác xử lý ảnh toàn cục và các local view bằng cùng một tập trọng số, trong khi bộ mã hóa văn bản xử lý chuỗi token của bệnh sử. Đầu ra của hai nhánh được chiếu về cùng chiều $D=512$, nhờ đó có thể được căn chỉnh ở giai đoạn thứ nhất và trao đổi thông tin trong mô-đun dung hợp ở giai đoạn thứ hai.
 
 \subsubsection{Bộ mã hóa thị giác (Visual Encoder)}
 
@@ -128,7 +128,7 @@ Xác suất dự đoán theo hướng ảnh sang văn bản được tính từ 
 
 \begin{equation}p_{ij}^{I\rightarrow T}=\frac{\exp\left(s_{ij}/\tau\right)}{\sum_{n=1}^{B}\exp\left(s_{in}/\tau\right)}.\label{eq:ch3_image_to_text_probability}\end{equation}
 
-Trong Công thức \ref{eq:ch3_image_to_text_probability}, $p_{ij}^{I\rightarrow T}$ là xác suất văn bản $j$ tương ứng với ảnh $i$, $s_{ij}$ là độ tương đồng ảnh--văn bản, $\tau>0$ là nhiệt độ và $B$ là kích thước mini-batch. Nhiệt độ nhỏ tạo phân phối sắc hơn, còn nhiệt độ lớn tạo phân phối phẳng hơn.
+Trong Công thức \ref{eq:ch3_image_to_text_probability}, $p_{ij}^{I\rightarrow T}$ là xác suất văn bản $j$ tương ứng với ảnh $i$, $s_{ij}$ là độ tương đồng ảnh-văn bản, $\tau>0$ là nhiệt độ và $B$ là kích thước mini-batch. Nhiệt độ nhỏ tạo phân phối sắc hơn, còn nhiệt độ lớn tạo phân phối phẳng hơn.
 
 Xác suất theo hướng văn bản sang ảnh được tính đối xứng trên toàn bộ ảnh trong mini-batch.
 
@@ -220,7 +220,7 @@ Label smoothing được áp dụng để tránh mục tiêu one-hot tuyệt đ�
 
 Trong Công thức \ref{eq:ch3_label_smoothing}, $\widetilde{y}_{ik}$ là xác suất mục tiêu của lớp $k$ đối với mẫu $i$, $\varepsilon=0{,}05$ là hệ số label smoothing, $\mathbb{1}[y_i=k]$ là hàm chỉ thị của nhãn đúng và $K$ là tổng số lớp.
 
-Hàm mất mát của giai đoạn thứ hai là Cross-Entropy có trọng số lớp trên phân phối mục tiêu đã làm trơn. Pipeline không bổ sung Prototypical Loss dạng pull--push vì các tâm lớp được xác định bằng thống kê của tập huấn luyện thay vì được học như tham số tự do.
+Hàm mất mát của giai đoạn thứ hai là Cross-Entropy có trọng số lớp trên phân phối mục tiêu đã làm trơn. Pipeline không bổ sung Prototypical Loss dạng pull-push vì các tâm lớp được xác định bằng thống kê của tập huấn luyện thay vì được học như tham số tự do.
 
 \begin{equation}\mathcal{L}_{\mathrm{P2}}=-\frac{1}{B}\sum_{i=1}^{B}\sum_{k=1}^{K}w_{k}\widetilde{y}_{ik}\log p_{ik}.\label{eq:ch3_phase2_loss}\end{equation}
 
