@@ -15,9 +15,12 @@ from sklearn.covariance import LedoitWolf
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
-OOD_PROTOCOL_VERSION = 2
+OOD_PROTOCOL_VERSION = 4
 MAHALANOBIS_SCORE_DEFINITION = (
-    "minimum_class_conditional_classical_mahalanobis_distance"
+    "minimum_class_conditional_mahalanobis_distance_to_empirical_centroid"
+)
+COSINE_CENTROIDS_SCORE_DEFINITION = (
+    "one_minus_maximum_cosine_similarity_to_empirical_centroid"
 )
 
 
@@ -129,7 +132,9 @@ class OODDetector:
         self._fitted = True
         return self
 
-    def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
+    def score_mahalanobis_centroid(
+        self, test_embeddings: np.ndarray
+    ) -> np.ndarray:
         """Return the classical Mahalanobis distance to the nearest ID class.
 
         For each class this computes ``sqrt((x-mu)^T Sigma^-1 (x-mu))``
@@ -156,6 +161,29 @@ class OODDetector:
         # from floating-point roundoff.  Zero-clipping preserves the classical
         # non-negative distance before taking the square root.
         return np.sqrt(np.maximum(squared_scores, 0.0))
+
+    def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
+        """Backward-compatible alias for ``score_mahalanobis_centroid``."""
+        return self.score_mahalanobis_centroid(test_embeddings)
+
+    def score_cosine_centroids(
+        self, test_embeddings: np.ndarray
+    ) -> np.ndarray:
+        """Return cosine distance to the nearest empirical class centroid.
+
+        Both samples and class means are L2-normalized so the score is
+        ``1 - max_c cosine(z, mu_c)``. Larger values indicate stronger OOD
+        evidence and match the geometry used by the empirical-centroid head.
+        """
+        if not self._fitted or not self.class_means:
+            raise RuntimeError("Call fit() before cosine-centroid scoring.")
+        test_embeddings = _l2_normalize(test_embeddings)
+        centers = _l2_normalize(np.stack(list(self.class_means.values()), axis=0))
+        if test_embeddings.shape[1] != centers.shape[1]:
+            raise ValueError(
+                "Test and empirical-centroid embedding dimensions differ."
+            )
+        return 1.0 - (test_embeddings @ centers.T).max(axis=1)
 
     def score_knn(
         self,
@@ -221,29 +249,28 @@ class OODDetector:
         anchor_text_embeddings = _l2_normalize(anchor_text_embeddings)
         return 1.0 - (test_img_embeddings @ anchor_text_embeddings.T).max(axis=1)
 
-    def score(self, test_embeddings: np.ndarray, method: str = "mahalanobis", **kwargs) -> np.ndarray:
-        if method == "mahalanobis":
-            return self.score_mahalanobis(test_embeddings)
+    def score(
+        self,
+        test_embeddings: np.ndarray,
+        method: str = "mahalanobis_centroid",
+        **kwargs,
+    ) -> np.ndarray:
+        if method == "mahalanobis_centroid":
+            return self.score_mahalanobis_centroid(test_embeddings)
+        if method == "cosine_centroids":
+            return self.score_cosine_centroids(test_embeddings)
         if method == "knn":
             return self.score_knn(
                 test_embeddings,
                 k=kwargs.get("k", 5),
                 exclude_self=kwargs.get("exclude_self", False),
             )
-        if method == "energy":
-            return self.score_energy(kwargs["logits"], kwargs.get("temperature", 1.0))
-        if method == "msp":
-            return self.score_msp(kwargs["logits"])
         if method == "entropy":
             return self.score_entropy(kwargs["logits"])
-        if method == "max_logit":
-            return self.score_max_logit(kwargs["logits"])
-        if method == "text_anchor":
-            return self.score_text_anchor(test_embeddings, kwargs["anchor_text_embeddings"])
         raise ValueError(
             "Unknown OOD method: "
-            f"{method}. Choose mahalanobis, knn, energy, msp, entropy, "
-            "max_logit, or text_anchor."
+            f"{method}. Choose cosine_centroids, mahalanobis_centroid, "
+            "knn, or entropy."
         )
 
 
@@ -262,55 +289,16 @@ def calibrate_ood_threshold(
         return float(np.quantile(scores, quantile, interpolation="higher"))
 
 
-def _open_set_metrics(
-    id_scores: np.ndarray,
-    ood_scores: np.ndarray,
-    id_correct: np.ndarray,
-) -> dict[str, float]:
-    """Compute OSCR and correct-classification rates at fixed OOD FPRs."""
-    correct = np.asarray(id_correct, dtype=bool).reshape(-1)
-    if correct.shape[0] != id_scores.shape[0]:
-        raise ValueError("id_correct must contain one value per ID score.")
-
-    thresholds = np.unique(np.concatenate([id_scores, ood_scores]))
-    thresholds = np.concatenate(([-np.inf], thresholds, [np.inf]))
-    fprs = np.asarray([(ood_scores <= threshold).mean() for threshold in thresholds])
-    ccrs = np.asarray([
-        np.logical_and(id_scores <= threshold, correct).sum() / len(id_scores)
-        for threshold in thresholds
-    ])
-
-    order = np.argsort(fprs, kind="stable")
-    fprs = fprs[order]
-    ccrs = ccrs[order]
-    unique_fprs = np.unique(fprs)
-    envelope = np.asarray([ccrs[fprs == value].max() for value in unique_fprs])
-    integrate = getattr(np, "trapezoid", None)
-    if integrate is None:  # NumPy < 2.0
-        integrate = np.trapz
-    oscr = float(integrate(envelope, unique_fprs))
-
-    result = {"oscr": oscr}
-    for target in (0.01, 0.05, 0.10):
-        eligible = envelope[unique_fprs <= target + 1e-12]
-        result[f"ccr_at_fpr_{int(target * 100):02d}"] = (
-            float(eligible.max()) if eligible.size else 0.0
-        )
-    return result
-
-
 def evaluate_ood(
     id_scores: np.ndarray,
     ood_scores: np.ndarray,
-    calibrated_threshold: Optional[float] = None,
-    id_correct: Optional[np.ndarray] = None,
 ) -> dict:
-    """Evaluate scores under the convention ``higher = more OOD``.
+    """Return the three report metrics under ``higher = more OOD``.
 
-    ``fpr_at_95tpr`` remains a threshold-free benchmark metric whose operating
-    point uses both ID and OOD labels.  Deployment metrics are reported only
-    when ``calibrated_threshold`` was chosen independently from ID calibration
-    data.
+    AUROC-OOD and AUPR-Out designate OOD as the positive class. FPR@95%TPR
+    follows the established OOD convention: ID is positive for this operating
+    point, so FPR is the fraction of OOD samples incorrectly accepted when 95%
+    of ID samples are accepted.
     """
     id_scores = _finite_scores(id_scores, "id_scores")
     ood_scores = _finite_scores(ood_scores, "ood_scores")
@@ -320,78 +308,30 @@ def evaluate_ood(
         np.ones(ood_scores.size, dtype=np.int64),
     ])
     scores = np.concatenate([id_scores, ood_scores])
-    auroc = float(roc_auc_score(labels, scores))
+    auroc_ood = float(roc_auc_score(labels, scores))
     aupr_out = float(average_precision_score(labels, scores))
-    aupr_in = float(average_precision_score(1 - labels, -scores))
 
     # Literature-standard FPR95 treats ID acceptance as the positive decision:
     # at 95% ID TPR, FPR is the fraction of OOD samples incorrectly accepted as
     # ID. Since this module stores higher-is-OOD scores, ID confidence is -score.
-    fpr_id, tpr_id, thresholds_id = roc_curve(1 - labels, -scores, pos_label=1)
+    fpr_id, tpr_id, _ = roc_curve(1 - labels, -scores, pos_label=1)
     eligible = np.flatnonzero(tpr_id >= 0.95)
     if eligible.size:
         best = eligible[np.argmin(fpr_id[eligible])]
         fpr_at_95 = float(fpr_id[best])
-        threshold_at_95 = float(-thresholds_id[best])
     else:
         fpr_at_95 = 1.0
-        threshold_at_95 = float("nan")
 
-    # Also retain the reverse operating point explicitly: ID rejection when
-    # detecting at least 95% of OOD samples.
-    id_fpr_curve, ood_tpr_curve, _ = roc_curve(labels, scores, pos_label=1)
-    reverse_eligible = np.flatnonzero(ood_tpr_curve >= 0.95)
-    id_fpr_at_95_ood_tpr = (
-        float(id_fpr_curve[reverse_eligible].min())
-        if reverse_eligible.size
-        else 1.0
-    )
-
-    result = {
-        "auroc": auroc,
+    return {
+        "auroc_ood": auroc_ood,
         "aupr_out": aupr_out,
-        "aupr_in": aupr_in,
-        "ood_prevalence": float(ood_scores.size / (id_scores.size + ood_scores.size)),
-        "aupr_out_chance": float(
-            ood_scores.size / (id_scores.size + ood_scores.size)
-        ),
-        "aupr_in_chance": float(
-            id_scores.size / (id_scores.size + ood_scores.size)
-        ),
         "fpr_at_95tpr": fpr_at_95,
-        "threshold_at_95tpr": threshold_at_95,
-        "fpr95_definition": "ood_accepted_as_id_at_95_percent_id_tpr",
-        "id_fpr_at_95_ood_tpr": id_fpr_at_95_ood_tpr,
-        "detection_error": float(
-            np.min(0.5 * (1.0 - ood_tpr_curve) + 0.5 * id_fpr_curve)
-        ),
-        "n_id": int(id_scores.size),
-        "n_ood": int(ood_scores.size),
     }
-
-    if calibrated_threshold is not None:
-        threshold = float(calibrated_threshold)
-        if not np.isfinite(threshold):
-            raise ValueError("calibrated_threshold must be finite.")
-        id_fpr = float((id_scores > threshold).mean())
-        ood_tpr = float((ood_scores > threshold).mean())
-        result.update({
-            "calibrated_threshold": threshold,
-            "id_fpr_at_calibrated_threshold": id_fpr,
-            "ood_tpr_at_calibrated_threshold": ood_tpr,
-            "balanced_detection_accuracy": 0.5 * ((1.0 - id_fpr) + ood_tpr),
-        })
-
-    if id_correct is not None:
-        result.update(_open_set_metrics(id_scores, ood_scores, id_correct))
-    return result
 
 
 def bootstrap_ood_metrics(
     id_scores: np.ndarray,
     ood_scores: np.ndarray,
-    calibrated_threshold: Optional[float] = None,
-    id_correct: Optional[np.ndarray] = None,
     n_bootstrap: int = 2_000,
     seed: int = 42,
     alpha: float = 0.05,
@@ -428,12 +368,6 @@ def bootstrap_ood_metrics(
     if paired and (id_groups is not None or ood_groups is not None):
         raise ValueError("Paired and clustered bootstrap modes cannot be combined.")
 
-    correct = None
-    if id_correct is not None:
-        correct = np.asarray(id_correct, dtype=bool).reshape(-1)
-        if correct.shape[0] != id_scores.shape[0]:
-            raise ValueError("id_correct must contain one value per ID score.")
-
     rng = np.random.default_rng(seed)
 
     def draw_indices(length: int, groups: Optional[np.ndarray]) -> np.ndarray:
@@ -456,12 +390,8 @@ def bootstrap_ood_metrics(
         metrics = evaluate_ood(
             id_scores[id_indices],
             ood_scores[ood_indices],
-            calibrated_threshold=calibrated_threshold,
-            id_correct=correct[id_indices] if correct is not None else None,
         )
         for key, value in metrics.items():
-            if key.startswith("n_") or key.startswith("threshold") or key == "calibrated_threshold":
-                continue
             if isinstance(value, (float, int)) and np.isfinite(value):
                 samples.setdefault(key, []).append(float(value))
 

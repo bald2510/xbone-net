@@ -1,0 +1,85 @@
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\textbf{Semantic OOD}} \\ \hline
+\textbf{Biến thể} & \textbf{AUROC-OOD $\uparrow$} &
+\textbf{AUPR-Out $\uparrow$} & \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\cellcolor{gray!12}XBone-Net &
+\cellcolor{gray!12}$0{.}6285\pm0{.}0177$ &
+\cellcolor{gray!12}$0{.}1033\pm0{.}0092$ &
+\cellcolor{gray!12}$0{.}8864\pm0{.}0394$ \\ \hline
+Không high-resolution &
+$0{.}6185\pm0{.}0111$ & $0{.}0938\pm0{.}0033$ & $0{.}9242\pm0{.}0347$ \\ \hline
+Mean pooling &
+$0{.}5810\pm0{.}0441$ & $0{.}0900\pm0{.}0180$ & $\mathbf{0{.}8788\pm0{.}0347}$ \\ \hline
+Chỉ huấn luyện pha 2 &
+$0{.}5920\pm0{.}0536$ & $0{.}0870\pm0{.}0191$ & $0{.}9242\pm0{.}0262$ \\ \hline
+Nối đặc trưng &
+$0{.}5838\pm0{.}0107$ & $0{.}0924\pm0{.}0095$ & $0{.}9167\pm0{.}0262$ \\ \hline
+Văn bản truy vấn ảnh &
+$0{.}5822\pm0{.}0479$ & $0{.}1032\pm0{.}0387$ & $0{.}8939\pm0{.}0347$ \\ \hline
+Đầu tuyến tính &
+$0{.}5465\pm0{.}0336$ & $0{.}0745\pm0{.}0078$ & $0{.}9545\pm0{.}0394$ \\ \hline
+Không trọng số lớp &
+$\mathbf{0{.}6400\pm0{.}0508}$ & $\mathbf{0{.}1114\pm0{.}0187}$ & $0{.}8864\pm0{.}0455$ \\ \hline
+\end{tabular}
+
+\vspace{0.5em}
+
+\begin{tabular}{|l|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\textbf{Domain OOD--FracAtlas}} \\ \hline
+\textbf{Biến thể} & \textbf{AUROC-OOD $\uparrow$} &
+\textbf{AUPR-Out $\uparrow$} & \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\cellcolor{gray!12}XBone-Net &
+\cellcolor{gray!12}$0{.}8878\pm0{.}0793$ &
+\cellcolor{gray!12}$0{.}8734\pm0{.}0791$ &
+\cellcolor{gray!12}$0{.}4725\pm0{.}1857$ \\ \hline
+Không high-resolution &
+$0{.}7110\pm0{.}0336$ & $0{.}6804\pm0{.}0090$ & $0{.}8091\pm0{.}0721$ \\ \hline
+Mean pooling &
+$0{.}8768\pm0{.}0598$ & $0{.}8470\pm0{.}0644$ & $0{.}5530\pm0{.}1654$ \\ \hline
+Chỉ huấn luyện pha 2 &
+$0{.}8262\pm0{.}0213$ & $0{.}8238\pm0{.}0170$ & $0{.}5672\pm0{.}0482$ \\ \hline
+Nối đặc trưng &
+$\mathbf{0{.}9522\pm0{.}0353}$ & $\mathbf{0{.}9365\pm0{.}0480}$ & $\mathbf{0{.}2844\pm0{.}2504}$ \\ \hline
+Văn bản truy vấn ảnh &
+$0{.}8232\pm0{.}1092$ & $0{.}8177\pm0{.}1053$ & $0{.}5498\pm0{.}1964$ \\ \hline
+Đầu tuyến tính &
+$0{.}7836\pm0{.}0343$ & $0{.}7702\pm0{.}0285$ & $0{.}6726\pm0{.}0452$ \\ \hline
+Không trọng số lớp &
+$0{.}8140\pm0{.}0422$ & $0{.}8150\pm0{.}0309$ & $0{.}5878\pm0{.}0400$ \\ \hline
+\end{tabular}
+
+\vspace{0.5em}
+
+\begin{tabular}{|l|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\textbf{Cross-dataset OOD--BTXRD}} \\ \hline
+\textbf{Biến thể} & \textbf{AUROC-OOD $\uparrow$} &
+\textbf{AUPR-Out $\uparrow$} & \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\cellcolor{gray!12}XBone-Net &
+\cellcolor{gray!12}$0{.}8040\pm0{.}0937$ &
+\cellcolor{gray!12}$0{.}8007\pm0{.}0609$ &
+\cellcolor{gray!12}$0{.}7071\pm0{.}0678$ \\ \hline
+Không high-resolution &
+$0{.}6462\pm0{.}0238$ & $0{.}6441\pm0{.}0259$ & $0{.}8964\pm0{.}0318$ \\ \hline
+Mean pooling &
+$0{.}7997\pm0{.}0746$ & $0{.}7788\pm0{.}0797$ & $0{.}7267\pm0{.}1507$ \\ \hline
+Chỉ huấn luyện pha 2 &
+$0{.}6718\pm0{.}0331$ & $0{.}7011\pm0{.}0381$ & $0{.}8133\pm0{.}0501$ \\ \hline
+Nối đặc trưng &
+$\mathbf{0{.}8902\pm0{.}0511}$ & $\mathbf{0{.}8662\pm0{.}0621}$ & $\mathbf{0{.}5858\pm0{.}2148}$ \\ \hline
+Văn bản truy vấn ảnh &
+$0{.}6982\pm0{.}1764$ & $0{.}7146\pm0{.}1494$ & $0{.}7587\pm0{.}1794$ \\ \hline
+Đầu tuyến tính &
+$0{.}6518\pm0{.}0651$ & $0{.}6719\pm0{.}0622$ & $0{.}8378\pm0{.}0586$ \\ \hline
+Không trọng số lớp &
+$0{.}7059\pm0{.}0479$ & $0{.}7183\pm0{.}0305$ & $0{.}8129\pm0{.}0368$ \\ \hline
+\end{tabular}
+\caption{Ảnh hưởng của các biến thể XBone-Net đến OOD khi cố định score Mahalanobis-centroid; kết quả là trung bình $\pm$ độ lệch chuẩn trên ba hạt giống và chữ đậm biểu thị giá trị tốt nhất trong từng kịch bản.}
+\label{tab:ablation_ood_mahalanobis}
+\end{table}

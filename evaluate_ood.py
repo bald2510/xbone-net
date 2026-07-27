@@ -1,12 +1,14 @@
-"""Leakage-free OOD evaluation for CTCH proposed-model feature archives.
+"""Leakage-free OOD evaluation for CTCH feature archives.
 
 Protocol:
   * fit density scores on CTCH train only;
   * calibrate deployment thresholds on CTCH validation ID only;
   * evaluate once on CTCH test versus the requested OOD scenario.
 
-Every feature archive is provenance-checked and must come from the same locked
-``ctch/proposed/ours_xbone_net`` checkpoint seed.
+Every feature archive is provenance-checked and must come from the same source
+experiment, checkpoint, resolved configuration, and seed.  The canonical
+proposed model remains the default source; ablation runners must pass their
+source explicitly.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from src.utils.analysis import (
     sha256_file,
 )
 from src.utils.ood import (
+    COSINE_CENTROIDS_SCORE_DEFINITION,
     MAHALANOBIS_SCORE_DEFINITION,
     OOD_PROTOCOL_VERSION,
     OODDetector,
@@ -39,6 +42,14 @@ from src.utils.ood import (
 )
 
 
+FUSED_FEATURE_KEY = "fused_embeddings"
+RAW_FUSED_FEATURE_KEY = "fused_embeddings_raw"
+METHOD_FEATURE_KEYS = {
+    "cosine_centroids": FUSED_FEATURE_KEY,
+    "mahalanobis_centroid": RAW_FUSED_FEATURE_KEY,
+    "knn": FUSED_FEATURE_KEY,
+    "entropy": "logits",
+}
 SCENARIO_FEATURES = {
     "semantic_ood": "fused_embeddings",
     "domain_ood": "fused_embeddings",
@@ -47,14 +58,12 @@ SCENARIO_FEATURES = {
     "report_mismatch_same_class": "fused_embeddings",
 }
 SUPPORTED_METHODS = (
-    "mahalanobis",
+    "cosine_centroids",
+    "mahalanobis_centroid",
     "knn",
-    "msp",
     "entropy",
-    "energy",
-    "max_logit",
 )
-METHOD_CHOICES = SUPPORTED_METHODS + ("drl",)
+METHOD_CHOICES = SUPPORTED_METHODS
 
 
 def _labels(values: np.ndarray) -> np.ndarray:
@@ -69,9 +78,14 @@ def _validate_archive(
     provenance: dict[str, Any],
     expected_seed: int,
     expected_scenario: str,
+    expected_source_experiment: str = SOURCE_EXPERIMENT,
 ) -> None:
-    if provenance.get("source_experiment") != SOURCE_EXPERIMENT:
-        raise ValueError("OOD archives must come from the locked CTCH proposed model.")
+    if provenance.get("source_experiment") != expected_source_experiment:
+        raise ValueError(
+            "OOD archive source mismatch: expected "
+            f"{expected_source_experiment!r}, got "
+            f"{provenance.get('source_experiment')!r}."
+        )
     if int(provenance.get("seed", -1)) != int(expected_seed):
         raise ValueError(
             f"Archive seed {provenance.get('seed')} does not match --seed {expected_seed}."
@@ -81,7 +95,7 @@ def _validate_archive(
             f"Expected scenario {expected_scenario!r}, got "
             f"{provenance.get('scenario')!r}."
         )
-    required = {"labels", "logits", "image_id"}
+    required = {"labels", "logits", "image_id", FUSED_FEATURE_KEY}
     missing = required - arrays.keys()
     if missing:
         raise ValueError(f"Feature archive is missing {sorted(missing)}.")
@@ -192,32 +206,25 @@ def align_paired_id(
 
 def _score_method(
     method: str,
-    detector: OODDetector,
+    normalized_detector: OODDetector,
+    raw_detector: OODDetector,
     arrays: dict[str, np.ndarray],
-    feature_key: str,
     knn_k: int,
-    temperature: float,
 ) -> np.ndarray:
-    if method == "mahalanobis":
-        return detector.score_mahalanobis(arrays[feature_key])
+    if method == "cosine_centroids":
+        return normalized_detector.score_cosine_centroids(
+            arrays[FUSED_FEATURE_KEY]
+        )
+    if method == "mahalanobis_centroid":
+        return raw_detector.score_mahalanobis_centroid(
+            arrays[RAW_FUSED_FEATURE_KEY]
+        )
     if method == "knn":
-        return detector.score_knn(arrays[feature_key], k=knn_k)
-    if method == "drl":
-        if "drl_ood_scores" not in arrays:
-            raise ValueError(
-                "The feature archive has no 'drl_ood_scores'. Export it with "
-                "the proposed_v6 checkpoint before evaluating method='drl'."
-            )
-        return np.asarray(arrays["drl_ood_scores"], dtype=np.float64).reshape(-1)
-    logits = arrays["logits"]
-    if method == "msp":
-        return detector.score_msp(logits)
+        return normalized_detector.score_knn(
+            arrays[FUSED_FEATURE_KEY], k=knn_k
+        )
     if method == "entropy":
-        return detector.score_entropy(logits)
-    if method == "energy":
-        return detector.score_energy(logits, temperature=temperature)
-    if method == "max_logit":
-        return detector.score_max_logit(logits)
+        return normalized_detector.score_entropy(arrays["logits"])
     raise ValueError(f"Unsupported OOD method: {method}")
 
 
@@ -227,10 +234,8 @@ def run_protocol(
     id_test: dict[str, np.ndarray],
     ood: dict[str, np.ndarray],
     methods: list[str],
-    feature_key: str,
     target_id_fpr: float,
     knn_k: int,
-    temperature: float,
     n_bootstrap: int,
     bootstrap_seed: int,
     paired: bool,
@@ -241,12 +246,22 @@ def run_protocol(
         "id_test": id_test,
         "ood": ood,
     }.items():
-        if feature_key not in arrays:
-            raise ValueError(f"{name} archive has no feature {feature_key!r}.")
+        missing = [
+            key
+            for key in (FUSED_FEATURE_KEY, RAW_FUSED_FEATURE_KEY)
+            if key not in arrays
+        ]
+        if missing:
+            raise ValueError(f"{name} archive is missing required features: {missing}.")
     train_labels = _labels(train["labels"])
     if np.any(train_labels < 0):
         raise ValueError("CTCH train labels must be valid ID class indices.")
-    detector = OODDetector().fit(train[feature_key], train_labels)
+    normalized_detector = OODDetector().fit(
+        train[FUSED_FEATURE_KEY], train_labels
+    )
+    raw_detector = OODDetector().fit(
+        train[RAW_FUSED_FEATURE_KEY], train_labels
+    )
 
     id_labels = _labels(id_test["labels"])
     id_correct = id_test["logits"].argmax(axis=1) == id_labels
@@ -265,13 +280,13 @@ def run_protocol(
 
     for method_index, method in enumerate(methods):
         calibration_scores = _score_method(
-            method, detector, calibration, feature_key, knn_k, temperature
+            method, normalized_detector, raw_detector, calibration, knn_k
         )
         id_scores = _score_method(
-            method, detector, id_test, feature_key, knn_k, temperature
+            method, normalized_detector, raw_detector, id_test, knn_k
         )
         ood_scores = _score_method(
-            method, detector, ood, feature_key, knn_k, temperature
+            method, normalized_detector, raw_detector, ood, knn_k
         )
         threshold = calibrate_ood_threshold(
             calibration_scores, target_id_fpr=target_id_fpr
@@ -279,14 +294,10 @@ def run_protocol(
         metrics = evaluate_ood(
             id_scores,
             ood_scores,
-            calibrated_threshold=threshold,
-            id_correct=id_correct,
         )
         metrics["ci_95"] = bootstrap_ood_metrics(
             id_scores,
             ood_scores,
-            calibrated_threshold=threshold,
-            id_correct=id_correct,
             n_bootstrap=n_bootstrap,
             seed=bootstrap_seed + method_index,
             paired=paired,
@@ -304,16 +315,10 @@ def run_protocol(
         metrics["calibration_id_count"] = int(len(calibration_scores))
         metrics["target_calibration_id_fpr"] = float(target_id_fpr)
         metrics["score_direction"] = "higher_is_more_ood"
-        metrics["score_input"] = (
-            feature_key
-            if method in {"mahalanobis", "knn"}
-            else (
-                "dual_classifier_probability"
-                if method == "drl"
-                else "fused_classifier_logits"
-            )
-        )
-        if method == "mahalanobis":
+        metrics["score_input"] = METHOD_FEATURE_KEYS[method]
+        if method == "cosine_centroids":
+            metrics["score_definition"] = COSINE_CENTROIDS_SCORE_DEFINITION
+        if method == "mahalanobis_centroid":
             metrics["score_definition"] = MAHALANOBIS_SCORE_DEFINITION
         results[method] = metrics
         score_archive[f"{method}_calibration"] = calibration_scores
@@ -332,10 +337,6 @@ def run_protocol(
                 method: evaluate_ood(
                     score_archive[f"{method}_id"],
                     score_archive[f"{method}_ood"][mask],
-                    calibrated_threshold=float(
-                        score_archive[f"{method}_threshold"].item()
-                    ),
-                    id_correct=id_correct,
                 )
                 for method in methods
             }
@@ -346,13 +347,20 @@ def run_protocol(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source-experiment",
+        default=SOURCE_EXPERIMENT,
+        help=(
+            "Experiment recorded in every feature archive. The canonical "
+            "proposed experiment is used when omitted."
+        ),
+    )
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--scenario", choices=tuple(SCENARIO_FEATURES), required=True)
     parser.add_argument("--train-embeddings", type=Path, required=True)
     parser.add_argument("--calibration-embeddings", type=Path, required=True)
     parser.add_argument("--id-test-embeddings", type=Path, required=True)
     parser.add_argument("--ood-embeddings", type=Path, required=True)
-    parser.add_argument("--feature-key", default=None)
     parser.add_argument(
         "--methods", nargs="+", choices=METHOD_CHOICES, default=list(SUPPORTED_METHODS)
     )
@@ -375,7 +383,6 @@ def main() -> None:
     )
     parser.add_argument("--target-id-fpr", type=float, default=0.05)
     parser.add_argument("--knn-k", type=int, default=5)
-    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--n-bootstrap", type=int, default=2000)
     parser.add_argument("--bootstrap-seed", type=int, default=3107)
     parser.add_argument(
@@ -404,19 +411,43 @@ def main() -> None:
         "id_test": args.id_test_embeddings,
         "ood_test": args.ood_embeddings,
     }
-    loaded = [load_feature_archive(path) for path in archive_paths.values()]
+    source_experiment = str(args.source_experiment).strip("/")
+    if not (
+        source_experiment == SOURCE_EXPERIMENT
+        or source_experiment.startswith("ctch/ablation_study/")
+    ):
+        raise ValueError(
+            "--source-experiment must be the canonical CTCH proposed model "
+            "or an experiment below 'ctch/ablation_study/'."
+        )
+    loaded = [
+        load_feature_archive(
+            path,
+            expected_source_experiment=source_experiment,
+        )
+        for path in archive_paths.values()
+    ]
     arrays = [item[0] for item in loaded]
     provenances = [item[1] for item in loaded]
     for archive_arrays, provenance, expected in zip(
         arrays, provenances, expected_scenarios
     ):
-        _validate_archive(archive_arrays, provenance, args.seed, expected)
+        _validate_archive(
+            archive_arrays,
+            provenance,
+            args.seed,
+            expected,
+            source_experiment,
+        )
     checkpoint_sha256 = _check_shared_checkpoint(provenances)
 
+    semantic_ood_incomplete = False
+    semantic_ood_coverage: dict[str, Any] = {}
     if args.scenario == "semantic_ood":
         coverage = provenances[-1].get("coverage", {})
-        incomplete = int(coverage.get("missing_rows", 0)) > 0
-        if incomplete and not args.allow_incomplete_ood:
+        semantic_ood_coverage = dict(coverage)
+        semantic_ood_incomplete = int(coverage.get("missing_rows", 0)) > 0
+        if semantic_ood_incomplete and not args.allow_incomplete_ood:
             raise RuntimeError(
                 "Refusing to report semantic-OOD metrics from an incomplete archive. "
                 "Use --allow-incomplete-ood only for exploratory analysis."
@@ -433,17 +464,14 @@ def main() -> None:
         if np.any(ood["image_id"].astype(str) == ood["report_source_id"].astype(str)):
             raise ValueError("Report-mismatch archive contains fixed report assignments.")
 
-    feature_key = args.feature_key or SCENARIO_FEATURES[args.scenario]
     results, score_archive = run_protocol(
         train=train,
         calibration=calibration,
         id_test=id_test,
         ood=ood,
         methods=list(args.methods),
-        feature_key=feature_key,
         target_id_fpr=args.target_id_fpr,
         knn_k=args.knn_k,
-        temperature=args.temperature,
         n_bootstrap=args.n_bootstrap,
         bootstrap_seed=args.bootstrap_seed,
         paired=paired,
@@ -451,11 +479,7 @@ def main() -> None:
     primary_methods = (
         list(args.primary_methods)
         if args.primary_methods is not None
-        else (
-            ["mahalanobis", "knn"]
-            if args.scenario.startswith("domain_ood")
-            else list(args.methods)
-        )
+        else list(args.methods)
     )
     unknown_primary = sorted(set(primary_methods) - set(args.methods))
     if unknown_primary:
@@ -471,18 +495,35 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output_dir / "ood_scores.npz", **score_archive)
     output = {
-        "type": "locked_ctch_ood_evaluation",
+        "type": (
+            "locked_ctch_ood_evaluation"
+            if source_experiment == SOURCE_EXPERIMENT
+            else "ctch_ablation_ood_evaluation"
+        ),
         "ood_protocol_version": OOD_PROTOCOL_VERSION,
+        "cosine_centroids_score_definition": (
+            COSINE_CENTROIDS_SCORE_DEFINITION
+        ),
         "mahalanobis_score_definition": MAHALANOBIS_SCORE_DEFINITION,
-        "source_experiment": SOURCE_EXPERIMENT,
+        "source_experiment": source_experiment,
         "seed": int(args.seed),
+        "analysis_status": (
+            "exploratory_incomplete_ood"
+            if semantic_ood_incomplete
+            else "complete"
+        ),
+        "ood_coverage": semantic_ood_coverage,
         "checkpoint_sha256": checkpoint_sha256,
         "feature_archive_sha256": {
             role: sha256_file(path)
             for role, path in archive_paths.items()
         },
         "scenario": args.scenario,
-        "feature_key": feature_key,
+        "feature_key": FUSED_FEATURE_KEY,
+        "feature_keys_by_method": {
+            method: METHOD_FEATURE_KEYS[method]
+            for method in args.methods
+        },
         "paired_by_image_id": paired,
         "protocol": {
             "fit": "ctch_train",
@@ -491,8 +532,16 @@ def main() -> None:
             "ood_test": expected_scenarios[-1],
             "target_id_fpr": args.target_id_fpr,
             "knn_k": args.knn_k,
-            "temperature": args.temperature,
             "n_bootstrap": args.n_bootstrap,
+            "score_methods": list(args.methods),
+            "evaluation_metrics": [
+                "auroc_ood",
+                "aupr_out",
+                "fpr_at_95tpr",
+            ],
+            "fpr95_definition": (
+                "ood_accepted_as_id_at_95_percent_id_tpr"
+            ),
             "primary_methods": primary_methods,
             "scenario_role": args.scenario_role,
         },
@@ -512,9 +561,9 @@ def main() -> None:
     for method in args.methods:
         metrics = results[method]
         print(
-            f"{method:12s} AUROC={metrics['auroc']:.4f} "
+            f"{method:22s} AUROC-OOD={metrics['auroc_ood']:.4f} "
             f"AUPR-Out={metrics['aupr_out']:.4f} "
-            f"FPR@95={metrics['fpr_at_95tpr']:.4f}"
+            f"FPR@95%TPR={metrics['fpr_at_95tpr']:.4f}"
         )
     print(f"Saved: {destination}")
 

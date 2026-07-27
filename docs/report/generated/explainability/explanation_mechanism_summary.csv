@@ -1,0 +1,7 @@
+﻿metric_key,metric,component,mean,std,num_seeds
+attention_entropy,Attention Entropy chuẩn hóa,Token ảnh,0.9034669200579325,0.06877853421692261,3
+attention_entropy,Attention Entropy chuẩn hóa,Token bệnh sử,0.9510025183359782,0.03171723544408243,3
+deletion_auc,Deletion AUC,Token ảnh,0.6958686625443851,0.047744334954441955,3
+deletion_auc,Deletion AUC,Token bệnh sử,0.7005748539901987,0.05091569497387721,3
+insertion_auc,Insertion AUC,Token ảnh,0.7090442149413073,0.04369348848572483,3
+insertion_auc,Insertion AUC,Token bệnh sử,0.7054337848499982,0.046800209739912245,3

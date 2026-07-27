@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|c|}
+\hline
+Dữ liệu & Mô hình & Acc $\uparrow$ & BAcc $\uparrow$ & Macro-F1 $\uparrow$ & Macro-AUROC $\uparrow$ & Macro-AUPRC $\uparrow$ \\ \hline
+\multirow{4}{*}{BTXRD} & CLIP & $0.0640$ & $0.1297$ & $0.0631$ & $0.4997$ & $0.1214$ \\ \cline{2-7}
+ & MedCLIP & $0.0387$ & $0.0935$ & $0.0075$ & $0.4628$ & $0.1041$ \\ \cline{2-7}
+ & PubMedCLIP & $0.0893$ & $0.1334$ & $0.0690$ & $0.5531$ & $0.1277$ \\ \cline{2-7}
+ & BiomedCLIP & $\mathbf{0.3427}$ & $\mathbf{0.1493}$ & $\mathbf{0.1289}$ & $\mathbf{0.5786}$ & $\mathbf{0.1416}$ \\ \hline
+\multirow{4}{*}{CTCH} & CLIP & $0.1540$ & $\mathbf{0.2367}$ & $0.1307$ & $0.8003$ & $0.1906$ \\ \cline{2-7}
+ & MedCLIP & $0.0179$ & $0.0224$ & $0.0043$ & $0.4707$ & $0.0480$ \\ \cline{2-7}
+ & PubMedCLIP & $0.1016$ & $0.1294$ & $0.0698$ & $0.7920$ & $0.1966$ \\ \cline{2-7}
+ & BiomedCLIP & $\mathbf{0.2556}$ & $0.2109$ & $\mathbf{0.1659}$ & $\mathbf{0.8191}$ & $\mathbf{0.2334}$ \\ \hline
+\end{tabular}
+}
+\caption{Kết quả zero-shot trên BTXRD và CTCH.}
+\label{tab:ch4draft_zeroshot}
+\end{table}

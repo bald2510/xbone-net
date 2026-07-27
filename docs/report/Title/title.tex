@@ -1,62 +1,77 @@
 \begin{titlepage}
 
+% =========================================================
+% TRANG 1: TRANG BÌA CỨNG MẠ VÀNG (HARD BLUE COVER)
+% =========================================================
 \begin{center}
-\vspace*{0.3cm}
-
-TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\
-\textbf{KHOA CÔNG NGHỆ THÔNG TIN}\\[2cm]
-
-
-{ \Large \bfseries Nguyễn Văn Lê Bá Thành - Nguyễn Gia Kiệt\\[2cm] }
-
-%Tên đề tài Khóa luận tốt nghiệp/Đồ án tốt nghiệp
-
-{ \Large \bfseries PHÁT TRIỂN HỆ THỐNG PHÂN LỚP ẢNH X-QUANG VỀ XƯƠNG DỰA VÀO HỌC SÂU ĐA PHƯƠNG THỨC\\[3cm]}
-
-
-%Chọn trong các dòng sau
-\large KHÓA LUẬN TỐT NGHIỆP CỬ NHÂN\\
-%\large ĐỒ ÁN TỐT NGHIỆP CỬ NHÂN\\
-%\large THỰC TẬP TỐT NGHIỆP CỬ NHÂN\\
-%Đưa vào dòng này nếu thuộc chương trình Chất lượng cao, hoặc lớp Cử nhân tài năng
-%\large CHƯƠNG TRÌNH CHÍNH QUY\\
-\large CHƯƠNG TRÌNH CHẤT LƯỢNG CAO\\
-%\large CHƯƠNG TRÌNH CỬ NHÂN TÀI NĂNG\\[2cm]
-
-
 \begin{tikzpicture}[remember picture, overlay]
-  \draw[line width = 2pt] ($(current page.north west) + (2cm,-2cm)$) rectangle ($(current page.south east) + (-1.5cm,2cm)$);
+  % Nền màu xanh dương đậm (Royal Navy Blue) phủ kín toàn bộ trang
+  \fill[blue!85!black] (current page.north west) rectangle (current page.south east);
+  % Khung viền mạ vàng kim cách lề
+  \draw[line width = 2pt, yellow!95!black] ($(current page.north west) + (2cm,-2cm)$) rectangle ($(current page.south east) + (-1.5cm,2cm)$);
 \end{tikzpicture}
 
-\vfill Tp. Hồ Chí Minh, tháng 07/2026
+\color{yellow!95!black} % Màu chữ vàng mạ kim
+\vspace*{0.3cm}
+
+{\bfseries TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\
+KHOA CÔNG NGHỆ THÔNG TIN\\[2cm]}
+
+{\large \bfseries Nguyễn Văn Lê Bá Thành - Nguyễn Gia Kiệt\\[2cm]}
+
+{\Large \bfseries PHÁT TRIỂN HỆ THỐNG PHÂN LỚP ẢNH X-QUANG VỀ XƯƠNG DỰA VÀO HỌC SÂU ĐA PHƯƠNG THỨC\\[3cm]}
+
+{\bfseries KHÓA LUẬN TỐT NGHIỆP CỬ NHÂN CNTT\\
+CHƯƠNG TRÌNH CHẤT LƯỢNG CAO}
+
+\vfill {\bfseries TP. HỒ CHÍ MINH, THÁNG 08/2026}
 
 \end{center}
 
 \pagebreak
+\color{black} % Khôi phục màu chữ đen chuẩn cho các trang giấy trắng
 
+% =========================================================
+% TRANG 2: TRANG BÌA NGOÀI GIẤY TRẮNG (OUTER WHITE COVER)
+% =========================================================
+% \begin{center}
+% \vspace*{0.3cm}
 
+% TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\
+% \textbf{KHOA CÔNG NGHỆ THÔNG TIN}\\[2cm]
 
+% { \Large \bfseries Nguyễn Văn Lê Bá Thành - Nguyễn Gia Kiệt\\[2cm] }
+
+% { \Large \bfseries PHÁT TRIỂN HỆ THỐNG PHÂN LỚP ẢNH X-QUANG VỀ XƯƠNG DỰA VÀO HỌC SÂU ĐA PHƯƠNG THỨC\\[3cm]}
+
+% \large KHÓA LUẬN TỐT NGHIỆP CỬ NHÂN\\
+% \large CHƯƠNG TRÌNH CHẤT LƯỢNG CAO\\
+
+% \begin{tikzpicture}[remember picture, overlay]
+%   \draw[line width = 2pt] ($(current page.north west) + (2cm,-2cm)$) rectangle ($(current page.south east) + (-1.5cm,2cm)$);
+% \end{tikzpicture}
+
+% \vfill Tp. Hồ Chí Minh, tháng 07/2026
+
+% \end{center}
+
+% \pagebreak
+
+% =========================================================
+% TRANG 3: TRANG BÌA LÓT (INNER WHITE COVER - CÓ MSSV VÀ GVHD)
+% =========================================================
 \begin{center}
 \vspace*{0.3cm}
 
-TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\
-\textbf{KHOA CÔNG NGHỆ THÔNG TIN}\\[2cm]
-
+{\bfseries TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\
+KHOA CÔNG NGHỆ THÔNG TIN\\[2cm]}
 
 {\large \bfseries Nguyễn Văn Lê Bá Thành - 22127390\\} {\large \bfseries Nguyễn Gia Kiệt - 22127221\\[2cm]}
 
-%Tên đề tài Khóa luận tốt nghiệp/Đồ án tốt nghiệp
-
 { \Large \bfseries PHÁT TRIỂN HỆ THỐNG PHÂN LỚP ẢNH X-QUANG VỀ XƯƠNG DỰA VÀO HỌC SÂU ĐA PHƯƠNG THỨC\\[2cm] }
 
-
-%Chọn trong các dòng sau
-\large KHÓA LUẬN TỐT NGHIỆP CỬ NHÂN\\
-%\large ĐỒ ÁN TỐT NGHIỆP CỬ NHÂN\\
-%Đưa vào dòng này nếu thuộc chương trình Chất lượng cao, hoặc lớp Cử nhân tài năng
-%\large CHƯƠNG TRÌNH CHÍNH QUY\\[2cm]
-\large CHƯƠNG TRÌNH CHẤT LƯỢNG CAO\\[2cm]
-%\large CHƯƠNG TRÌNH CỬ NHÂN TÀI NĂNG\\[2cm]
+{\bfseries KHÓA LUẬN TỐT NGHIỆP CỬ NHÂN CNTT\\
+CHƯƠNG TRÌNH CHẤT LƯỢNG CAO\\[2cm]}
 
 \textbf{GIÁO VIÊN HƯỚNG DẪN}\\
 PGS.TS. Lý Quốc Ngọc\\
@@ -66,7 +81,7 @@ ThS. Đỗ Thị Thanh Hà
   \draw[line width = 2pt] ($(current page.north west) + (2cm,-2cm)$) rectangle ($(current page.south east) + (-1.5cm,2cm)$);
 \end{tikzpicture}
 
-\vfill Tp. Hồ Chí Minh, tháng 07/2026
+\vfill {\bfseries TP. HỒ CHÍ MINH, THÁNG 08/2026}
 
 \end{center}
 

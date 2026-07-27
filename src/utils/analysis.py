@@ -21,7 +21,6 @@ from typing import Any, Iterable, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
@@ -29,8 +28,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_EXPERIMENT = "ctch/proposed/ours_xbone_net"
 SOURCE_SEEDS = (42, 123, 456)
 EXPECTED_NUM_CLASSES = 22
-EXPECTED_TOTAL_PARAMETERS = 204_404_098
-EXPECTED_TRAINABLE_PARAMETERS = 8_501_377
+EXPECTED_TOTAL_PARAMETERS = 204_535_320
+EXPECTED_TRAINABLE_PARAMETERS = 8_632_599
 
 ANALYSIS_METADATA_KEYS = (
     "image_id",
@@ -93,44 +92,40 @@ def _absolute_dataset_paths(cfg: DictConfig) -> None:
 
 
 def compose_source_config(seed: int) -> DictConfig:
-    """Compose the locked legacy CTCH checkpoint architecture.
-
-    The trainable proposed config may evolve, but existing post-hoc archives and
-    checkpoints must remain reproducible.  These explicit overrides preserve the
-    architecture and training metadata used by the locked v1 checkpoints.
-    """
+    """Load the immutable evaluated config for the canonical CTCH checkpoint."""
     if int(seed) not in SOURCE_SEEDS:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
         )
-    with initialize_config_dir(
-        version_base="1.3",
-        config_dir=str(PROJECT_ROOT / "configs"),
-        job_name="ctch_posthoc_analysis",
-    ):
-        cfg = compose(
-            config_name="config",
-            overrides=[
-                f"+experiment={SOURCE_EXPERIMENT}",
-                f"seed={int(seed)}",
-            ],
+    metrics_path = (
+        PROJECT_ROOT
+        / "results"
+        / SOURCE_EXPERIMENT
+        / f"seed_{int(seed)}"
+        / "metrics.json"
+    )
+    if not metrics_path.is_file():
+        raise FileNotFoundError(
+            "Missing evaluated configuration for canonical analysis: "
+            f"{metrics_path}"
         )
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    resolved = metrics_payload.get("config")
+    if not isinstance(resolved, dict):
+        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+    cfg = OmegaConf.create(resolved)
     OmegaConf.set_struct(cfg, False)
-    cfg.experiment_name = SOURCE_EXPERIMENT
-    cfg.model.num_visual_tokens = 8
-    cfg.model.local_pool_grid = 1
-    for key in ("contrastive_pooling", "contrastive_attention_hidden_dim"):
-        if key in cfg.model:
-            del cfg.model[key]
-    if "use_class_bias" in cfg.model.classifier.params:
-        del cfg.model.classifier.params["use_class_bias"]
-    cfg.params.phase1.target_similarity = 0.95
-    if "class_aware_sampling" in cfg.params.phase1:
-        del cfg.params.phase1["class_aware_sampling"]
-    cfg.params.phase2.loss.label_smoothing = 0.0
-    cfg.params.phase2.loss.effective_num_beta = 0.999
-    if "max_class_weight" in cfg.params.phase2.loss:
-        del cfg.params.phase2.loss["max_class_weight"]
+    recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
+    if recorded_experiment != SOURCE_EXPERIMENT:
+        raise ValueError(
+            f"Resolved config records {recorded_experiment!r}, expected "
+            f"{SOURCE_EXPERIMENT!r}."
+        )
+    recorded_seed = int(cfg.get("seed", cfg.get("params", {}).get("seed", seed)))
+    if recorded_seed != int(seed):
+        raise ValueError(
+            f"Resolved config records seed {recorded_seed}, expected {int(seed)}."
+        )
     _absolute_dataset_paths(cfg)
     cfg.params.model_dir = str(locked_checkpoint_path(seed).parent)
     cfg.params.phase2.checkpoint_path = str(locked_checkpoint_path(seed))
@@ -502,6 +497,175 @@ def load_proposed_experiment_model(
     )
 
 
+def load_evaluated_ctch_model(
+    experiment_name: str,
+    seed: int,
+    device: Optional[torch.device] = None,
+) -> LoadedAnalysisModel:
+    """Load a canonical or ablation CTCH model from its evaluated config.
+
+    This entry point is intentionally narrower than the training CLI.  It only
+    accepts the canonical proposed model and experiments below
+    ``ctch/ablation_study``.  The architecture is reconstructed from the
+    resolved config embedded in ``metrics.json`` and checked against the saved
+    parameter fingerprint before features are exported.
+    """
+    experiment_name = str(experiment_name).strip("/")
+    seed = int(seed)
+    if experiment_name == SOURCE_EXPERIMENT:
+        return load_locked_proposed_model(
+            seed,
+            device=device,
+            strict_fingerprint=True,
+        )
+    if not experiment_name.startswith("ctch/ablation_study/"):
+        raise ValueError(
+            "Ablation analysis accepts only the canonical CTCH proposed model "
+            "or experiments below 'ctch/ablation_study/'."
+        )
+
+    metrics_path = (
+        PROJECT_ROOT / "results" / experiment_name / f"seed_{seed}" / "metrics.json"
+    )
+    if not metrics_path.is_file():
+        raise FileNotFoundError(
+            f"Missing evaluated configuration for {experiment_name}: {metrics_path}"
+        )
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    resolved = metrics_payload.get("config")
+    if not isinstance(resolved, dict):
+        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+    cfg = OmegaConf.create(resolved)
+    OmegaConf.set_struct(cfg, False)
+    recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
+    if recorded_experiment != experiment_name:
+        raise ValueError(
+            f"Resolved config records {recorded_experiment!r}, expected "
+            f"{experiment_name!r}."
+        )
+    recorded_seed = int(cfg.get("seed", cfg.get("params", {}).get("seed", seed)))
+    if recorded_seed != seed:
+        raise ValueError(
+            f"Resolved config records seed {recorded_seed}, expected {seed}."
+        )
+    if str(cfg.dataset.name) != "ctch":
+        raise ValueError("Ablation OOD analysis requires the CTCH dataset config.")
+    _absolute_dataset_paths(cfg)
+
+    checkpoint = (
+        PROJECT_ROOT
+        / "checkpoints"
+        / experiment_name
+        / f"seed_{seed}"
+        / "best_phase2.pth"
+    ).resolve()
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Missing ablation checkpoint: {checkpoint}")
+    cfg.params.model_dir = str(checkpoint.parent)
+    cfg.params.phase2.checkpoint_path = str(checkpoint)
+
+    from src.models.builder import build_model, setup_phase2_modules
+
+    seed_everything(seed)
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = build_model(cfg.model).to(device)
+    model, classifier_type, fusion_type, num_classes = setup_phase2_modules(
+        model, cfg, device
+    )
+    if int(num_classes) != EXPECTED_NUM_CLASSES:
+        raise RuntimeError(
+            f"CTCH ablation must have {EXPECTED_NUM_CLASSES} classes, "
+            f"got {num_classes}."
+        )
+
+    payload = _load_checkpoint_payload(checkpoint, device)
+    state_dict = payload.get("model_state_dict", payload)
+    if not isinstance(state_dict, dict):
+        raise TypeError("Checkpoint model_state_dict must be a mapping.")
+    state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
+    if classifier_type == "empirical_centroid":
+        _validate_checkpoint_state(state_dict)
+    result = model.load_state_dict(state_dict, strict=False)
+    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_prefixes = ("fusion.", "head.")
+    critical_missing = [
+        key
+        for key in result.missing_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    critical_unexpected = [
+        key
+        for key in result.unexpected_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    if critical_missing or critical_unexpected:
+        raise RuntimeError(
+            "Ablation checkpoint architecture mismatch. Missing critical keys: "
+            f"{critical_missing[:20]}; unexpected critical keys: "
+            f"{critical_unexpected[:20]}."
+        )
+
+    total_parameters = sum(parameter.numel() for parameter in model.parameters())
+    trainable_parameters = sum(
+        parameter.numel()
+        for parameter in model.parameters()
+        if parameter.requires_grad
+    )
+    recorded_metrics = metrics_payload.get("metrics", {})
+    expected_total = recorded_metrics.get("param_total")
+    expected_trainable = recorded_metrics.get("param_trainable")
+    if expected_total is not None and total_parameters != int(expected_total):
+        raise RuntimeError(
+            f"Parameter fingerprint mismatch for {experiment_name}: "
+            f"total={total_parameters:,}, evaluated={int(expected_total):,}."
+        )
+    if expected_trainable is not None and trainable_parameters != int(
+        expected_trainable
+    ):
+        raise RuntimeError(
+            f"Trainable-parameter fingerprint mismatch for {experiment_name}: "
+            f"current={trainable_parameters:,}, "
+            f"evaluated={int(expected_trainable):,}."
+        )
+
+    model.eval()
+    resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
+    checkpoint_sha256 = sha256_file(checkpoint)
+    provenance = {
+        "source_experiment": experiment_name,
+        "analysis_scope": "ctch_ablation_ood",
+        "seed": seed,
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": checkpoint_sha256,
+        "metrics_path": str(metrics_path.resolve()),
+        "metrics_sha256": sha256_file(metrics_path),
+        "git_revision": _git_revision(),
+        "total_parameters": total_parameters,
+        "trainable_parameters": trainable_parameters,
+        "num_classes": int(num_classes),
+        "fusion_type": fusion_type,
+        "classifier_type": classifier_type,
+        "visual_resampler": str(
+            cfg.model.get("visual_resampler", {}).get("aggregation", "none")
+        ),
+        "config_sha256": hashlib.sha256(
+            resolved_config_yaml.encode("utf-8")
+        ).hexdigest(),
+        "resolved_config": OmegaConf.to_container(cfg, resolve=True),
+        "created_at": _datetime.datetime.now(_datetime.timezone.utc).isoformat(),
+    }
+    return LoadedAnalysisModel(
+        model=model,
+        cfg=cfg,
+        checkpoint=checkpoint,
+        checkpoint_sha256=checkpoint_sha256,
+        device=device,
+        provenance=provenance,
+    )
+
+
 class AnalysisDataCollator:
     """Use the training collator while preserving sample provenance fields."""
 
@@ -696,6 +860,7 @@ def forward_analysis_batch(
         visual_local_summary = image_tokens[:, 0]
 
     output = {
+        "fused_embeddings_raw": fused,
         "fused_embeddings": F.normalize(fused, dim=-1),
         "label_discriminative_embeddings": F.normalize(fused, dim=-1),
         "visual_global_embeddings": F.normalize(image_tokens[:, 0], dim=-1),
@@ -767,7 +932,10 @@ def save_feature_archive(
     return output
 
 
-def load_feature_archive(path: Path) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+def load_feature_archive(
+    path: Path,
+    expected_source_experiment: str = SOURCE_EXPERIMENT,
+) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     path = path.resolve()
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -780,9 +948,10 @@ def load_feature_archive(path: Path) -> tuple[dict[str, np.ndarray], dict[str, A
         if "provenance_json" not in archive.files:
             raise ValueError(f"Feature archive has no provenance_json: {path}")
         provenance = json.loads(str(archive["provenance_json"].item()))
-    if provenance.get("source_experiment") != SOURCE_EXPERIMENT:
+    expected_source_experiment = str(expected_source_experiment).strip("/")
+    if provenance.get("source_experiment") != expected_source_experiment:
         raise ValueError(
-            f"Archive source is not {SOURCE_EXPERIMENT}: {path}"
+            f"Archive source is not {expected_source_experiment}: {path}"
         )
     return arrays, provenance
 

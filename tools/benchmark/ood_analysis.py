@@ -31,7 +31,11 @@ from src.utils.analysis import (
     locked_checkpoint_path,
     sha256_file,
 )
-from src.utils.ood import MAHALANOBIS_SCORE_DEFINITION, OOD_PROTOCOL_VERSION
+from src.utils.ood import (
+    COSINE_CENTROIDS_SCORE_DEFINITION,
+    MAHALANOBIS_SCORE_DEFINITION,
+    OOD_PROTOCOL_VERSION,
+)
 
 
 OOD_CONFIG = ROOT / "configs" / "analysis" / "ctch" / "ood.yaml"
@@ -66,6 +70,18 @@ OOD_FEATURE_KEYS = {
     "report_mismatch_cross_class": "fused_embeddings",
     "report_mismatch_same_class": "fused_embeddings",
 }
+OOD_SCORE_METHODS = [
+    "cosine_centroids",
+    "mahalanobis_centroid",
+    "knn",
+    "entropy",
+]
+OOD_METHOD_FEATURE_KEYS = {
+    "cosine_centroids": "fused_embeddings",
+    "mahalanobis_centroid": "fused_embeddings_raw",
+    "knn": "fused_embeddings",
+    "entropy": "logits",
+}
 
 
 def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
@@ -79,7 +95,18 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
         if str(ood_cfg.get(key)) != expected:
             raise ValueError(f"{key} is locked to {expected!r}.")
 
+    if list(ood_cfg.methods) != OOD_SCORE_METHODS:
+        raise ValueError(
+            f"OOD methods must be exactly {OOD_SCORE_METHODS}, "
+            f"got {list(ood_cfg.methods)}."
+        )
+    if dict(ood_cfg.method_feature_keys) != OOD_METHOD_FEATURE_KEYS:
+        raise ValueError(
+            "OOD method_feature_keys must be exactly "
+            f"{OOD_METHOD_FEATURE_KEYS}, got {dict(ood_cfg.method_feature_keys)}."
+        )
     expected_mahalanobis = {
+        "input_feature": "fused_embeddings_raw",
         "formulation": "classical_distance",
         "class_centers": "empirical_train_means",
         "covariance": "shared_ledoit_wolf",
@@ -87,7 +114,7 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
         "detector_l2_normalization": False,
     }
     for key, expected in expected_mahalanobis.items():
-        actual = ood_cfg.mahalanobis.get(key)
+        actual = ood_cfg.mahalanobis_centroid.get(key)
         if actual != expected:
             raise ValueError(
                 f"Unsupported Mahalanobis setting {key}={actual!r}; "
@@ -104,6 +131,11 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
             raise ValueError(
                 f"OOD scenario {scenario!r} must use feature_key "
                 f"{expected_feature!r}, got {configured_feature!r}."
+            )
+        if list(ood_cfg.scenarios[scenario].primary_methods) != OOD_SCORE_METHODS:
+            raise ValueError(
+                f"OOD scenario {scenario!r} must use exactly "
+                f"{OOD_SCORE_METHODS}."
             )
 
     expected_explain = {
@@ -227,7 +259,15 @@ def _ood_result_status(
         return False, "OOD protocol/Mahalanobis definition changed"
     if payload.get("mahalanobis_score_definition") != MAHALANOBIS_SCORE_DEFINITION:
         return False, "Mahalanobis score definition changed"
-    mahalanobis = payload.get("results", {}).get("mahalanobis", {})
+    if (
+        payload.get("cosine_centroids_score_definition")
+        != COSINE_CENTROIDS_SCORE_DEFINITION
+    ):
+        return False, "cosine-centroid score definition changed"
+    cosine = payload.get("results", {}).get("cosine_centroids", {})
+    if cosine.get("score_definition") != COSINE_CENTROIDS_SCORE_DEFINITION:
+        return False, "cosine-centroid result metadata is stale"
+    mahalanobis = payload.get("results", {}).get("mahalanobis_centroid", {})
     if mahalanobis.get("score_definition") != MAHALANOBIS_SCORE_DEFINITION:
         return False, "Mahalanobis result metadata is stale"
     expected_feature_key = OOD_FEATURE_KEYS[scenario]
@@ -237,6 +277,8 @@ def _ood_result_status(
             "OOD representation changed from "
             f"{payload.get('feature_key')!r} to {expected_feature_key!r}",
         )
+    if payload.get("feature_keys_by_method") != OOD_METHOD_FEATURE_KEYS:
+        return False, "OOD score input representation changed"
     recorded_hashes = payload.get("feature_archive_sha256")
     expected_hashes = _expected_ood_feature_hashes(seed, scenario)
     if recorded_hashes != expected_hashes:
@@ -251,10 +293,10 @@ def _ood_output(seed: int, scenario: str) -> Path:
 def _print_ood_table(results: dict[str, dict[int, dict[str, Any]]]) -> None:
     print("\nOOD RESULTS (mean +/- std across available seeds)")
     print(
-        f"{'Scenario':<34} {'Method':<13} {'Role':<10} "
-        f"{'AUROC':>16} {'AUPR-Out':>16} {'FPR@95':>16}"
+        f"{'Scenario':<34} {'Method':<24} {'Role':<10} "
+        f"{'AUROC-OOD':>16} {'AUPR-Out':>16} {'FPR@95%TPR':>16}"
     )
-    print("-" * 112)
+    print("-" * 123)
     for scenario, seed_payloads in results.items():
         methods = next(iter(seed_payloads.values())).get("results", {}) if seed_payloads else {}
         for method in methods:
@@ -263,12 +305,12 @@ def _print_ood_table(results: dict[str, dict[int, dict[str, Any]]]) -> None:
             rows = [payload["results"][method] for payload in seed_payloads.values()]
             role = "primary" if rows[0].get("primary_analysis", True) else "secondary"
             values = []
-            for key in ("auroc", "aupr_out", "fpr_at_95tpr"):
+            for key in ("auroc_ood", "aupr_out", "fpr_at_95tpr"):
                 samples = [row[key] for row in rows]
                 std = np.std(samples, ddof=1) if len(samples) > 1 else 0.0
                 values.append(f"{np.mean(samples):.4f} +/- {std:.4f}")
             print(
-                f"{scenario:<34} {method:<13} {role:<10} {values[0]:>16} "
+                f"{scenario:<34} {method:<24} {role:<10} {values[0]:>16} "
                 f"{values[1]:>16} {values[2]:>16}"
             )
 
@@ -477,8 +519,6 @@ def main() -> None:
                         str(_feature_path(seed, "ctch_test")),
                         "--ood-embeddings",
                         str(_feature_path(seed, str(scenario_cfg.archive))),
-                        "--feature-key",
-                        OOD_FEATURE_KEYS[scenario],
                         "--methods",
                         *[str(value) for value in ood_cfg.methods],
                         "--primary-methods",
@@ -489,8 +529,6 @@ def main() -> None:
                         str(float(ood_cfg.target_id_fpr)),
                         "--knn-k",
                         str(int(ood_cfg.knn_k)),
-                        "--temperature",
-                        str(float(ood_cfg.temperature)),
                         "--n-bootstrap",
                         str(args.n_bootstrap),
                         "--bootstrap-seed",

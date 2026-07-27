@@ -17,6 +17,18 @@ from src.utils.analysis import MetadataDataset
 from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
 
 
+def _file_issue(path: Path) -> Optional[str]:
+    """Return why a required file cannot be read, or ``None`` when usable."""
+    if not path.is_file():
+        return "missing"
+    try:
+        with path.open("rb") as handle:
+            handle.read(1)
+    except OSError as error:
+        return f"unreadable:{type(error).__name__}"
+    return None
+
+
 class CTCHOODDataset(Dataset):
     """CTCH semantic-OOD manifest with strict file-coverage validation.
 
@@ -67,12 +79,17 @@ class CTCHOODDataset(Dataset):
             image_id = str(row["image_id"])
             stem = Path(image_id).stem
             absent = []
-            if not (Path(self.img_dir) / image_id).is_file():
-                absent.append("image")
-            if not (Path(self.xray_report_dir) / f"{stem}.txt").is_file():
-                absent.append("xray_report")
-            if not (Path(self.clinical_report_dir) / f"{stem}.txt").is_file():
-                absent.append("clinical_report")
+            required_files = {
+                "image": Path(self.img_dir) / image_id,
+                "xray_report": Path(self.xray_report_dir) / f"{stem}.txt",
+                "clinical_report": (
+                    Path(self.clinical_report_dir) / f"{stem}.txt"
+                ),
+            }
+            for role, path in required_files.items():
+                issue = _file_issue(path)
+                if issue is not None:
+                    absent.append(f"{role}:{issue}")
             complete.append(not absent)
             if absent:
                 missing.append({"image_id": image_id, "missing": absent})
@@ -252,4 +269,3 @@ class ReportMismatchDataset(Dataset):
             }
         )
         return sample
-

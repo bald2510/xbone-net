@@ -10,7 +10,7 @@ echo ============================================================
 echo   XBone-Net Suite — Training Launcher
 echo ============================================================
 
-"%PYTHON_EXEC%" tools/run_all.py --group less_important --bootstrap %*
+"%PYTHON_EXEC%" tools/run_all.py --seeds 42 %*
 
 echo.
 echo ============================================================

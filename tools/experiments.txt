@@ -63,23 +63,23 @@
 
 # Training phases
 - ctch/ablation_study/architecture/phase/phase1_merged
-+ ctch/ablation_study/architecture/phase/phase2_only
+- ctch/ablation_study/architecture/phase/phase2_only
 
 # Image preprocessing
-+ ctch/ablation_study/architecture/preprocess/xbone_letterbox
-+ ctch/ablation_study/architecture/preprocess/xbone_mean_pooling
-+ ctch/ablation_study/architecture/preprocess/xbone_nohighres
-+ ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens
+- ctch/ablation_study/architecture/preprocess/xbone_letterbox
+- ctch/ablation_study/architecture/preprocess/xbone_mean_pooling
+- ctch/ablation_study/architecture/preprocess/xbone_nohighres
+- ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens
 
 # Fine-tuning
-+ ctch/ablation_study/finetune/xbone_highres_full_ft
-+ ctch/ablation_study/finetune/xbone_highres_no_ft
+- ctch/ablation_study/finetune/xbone_highres_full_ft
+- ctch/ablation_study/finetune/xbone_highres_no_ft
 
 # Modality
-+ ctch/ablation_study/modality/image_only
-+ ctch/ablation_study/modality/phase1_xray_phase2_clinical
-+ ctch/ablation_study/modality/shuffled_report
-+ ctch/ablation_study/modality/text_only
+- ctch/ablation_study/modality/image_only
+- ctch/ablation_study/modality/phase1_xray_phase2_clinical
+- ctch/ablation_study/modality/shuffled_report
+- ctch/ablation_study/modality/text_only
 
 # =============================================================================
 # Other CTCH experiments (disabled)
@@ -113,7 +113,7 @@
 - ctch/baselines/peft_finetuned/lora_pubmedclip
 
 # Proposed models
-- ctch/proposed/ours_xbone_net
++ ctch/proposed/ours_xbone_net
 - ctch/proposed/ours_xbone_net_v2
 - ctch/proposed/proposed_v6
 

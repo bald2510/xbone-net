@@ -212,8 +212,10 @@ def _can_resume(path: Path, loaded, scenario: str) -> bool:
     if not path.is_file():
         return False
     try:
-        _, provenance = load_feature_archive(path)
+        arrays, provenance = load_feature_archive(path)
     except (OSError, ValueError, json.JSONDecodeError):
+        return False
+    if "fused_embeddings_raw" not in arrays:
         return False
     matches_locked_source = (
         provenance.get("checkpoint_sha256") == loaded.checkpoint_sha256
@@ -329,7 +331,7 @@ def main() -> None:
             "feature_dimensions": {
                 key: list(value.shape)
                 for key, value in arrays.items()
-                if key.endswith("embeddings") or key in {"logits", "probabilities"}
+                if "embeddings" in key or key in {"logits", "probabilities"}
             },
             **scenario_metadata,
         }

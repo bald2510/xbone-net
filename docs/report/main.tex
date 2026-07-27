@@ -15,13 +15,13 @@
 \usepackage[T5]{fontenc} \usepackage[utf8]{inputenc} \DeclareTextSymbolDefault{\DH}{T1}
 
 % Tài liệu tham khảo
-\usepackage[ sorting=nty, backend=bibtex, defernumbers=true]{biblatex} \usepackage[unicode]{hyperref} % Bookmark tiếng Việt 
+\usepackage[sorting=nty, backend=bibtex, defernumbers=true]{biblatex} \usepackage[unicode]{hyperref} % Bookmark tiếng Việt
 \addbibresource{References/references.bib}
 
 \makeatletter \def\blx@maxline{77} \makeatother
 
 % Chèn hình, các hình trong luận văn được để trong thư mục Images/
-\usepackage{graphicx} \graphicspath{ {Images/} }
+\usepackage{graphicx} \usepackage{subcaption} \graphicspath{ {Images/} }
 
 % Chèn và định dạng mã nguồn
 \usepackage{listings} \usepackage{color} \definecolor{codegreen}{rgb}{0,0.6,0} \definecolor{codegray}{rgb}{0.5,0.5,0.5} \definecolor{codepurple}{rgb}{0.58,0,0.82} \definecolor{backcolour}{rgb}{0.95,0.95,0.92} \lstdefinestyle{mystyle}{ backgroundcolor=\color{backcolour}, commentstyle=\color{codegreen}, keywordstyle=\color{magenta}, numberstyle=\tiny\color{codegray}, stringstyle=\color{codepurple}, basicstyle=\footnotesize, breakatwhitespace=false, breaklines=true, captionpos=b, keepspaces=true, numbers=left, numbersep=5pt, showspaces=false, showstringspaces=false, showtabs=false, tabsize=2 } \lstset{style=mystyle}
@@ -30,7 +30,7 @@
 \usepackage{amsmath} \usepackage{amssymb} \usepackage{floatrow} \usepackage{algorithm} \usepackage[noend]{algpseudocode} \makeatletter \def\BState{\State\hskip-\ALG@thistlm} \makeatother
 
 % Bảng biểu
-\usepackage{multirow} \usepackage{array} \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\usepackage{multirow} \usepackage{array} \usepackage{colortbl} \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 
 % Các gói bổ sung cho Đề cương chi tiết (decuong.tex)
@@ -132,8 +132,7 @@
 % ===================================================================== %
 
 % Phần phụ lục
-%\include{Appendix/appendix1}
-% \include{Appendix/appendix1}
+\include{Appendix/appendix1}
 %\include{Appendix/appendix2}
 
 \end{document}

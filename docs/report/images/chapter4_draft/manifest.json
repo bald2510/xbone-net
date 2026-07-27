@@ -1,0 +1,49 @@
+{
+  "source": "existing trained results only",
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "main_figures": [
+    "ablation_macro_f1_delta.png",
+    "attention_cases.png",
+    "attention_intervention_curves.png",
+    "attention_summary.png",
+    "ctch_confusion_matrix.png",
+    "efficiency_pareto.png",
+    "fewshot_macro_f1.png",
+    "fullshot_comparison.png",
+    "ood_fracatlas_distribution.png",
+    "ood_metric_overview.png"
+  ],
+  "appendix_figures": [
+    "ablation_metric_heatmap.png",
+    "calibration_btxrd_seed123.png",
+    "calibration_ctch_seed42.png",
+    "fewshot_btxrd_line.png",
+    "fewshot_ctch_line.png",
+    "fullshot_btxrd_heatmap.png",
+    "fullshot_ctch_heatmap.png",
+    "ood_distribution_domain_ood.png",
+    "ood_distribution_domain_ood_btxrd.png",
+    "ood_distribution_report_mismatch_cross_class.png",
+    "ood_distribution_report_mismatch_same_class.png",
+    "ood_distribution_semantic_ood.png",
+    "pr_btxrd_seed123.png",
+    "pr_ctch_seed42.png",
+    "representation_overview_seed42.png",
+    "roc_btxrd_seed123.png",
+    "roc_ctch_seed42.png"
+  ],
+  "tables": [
+    "table_ablation.tex",
+    "table_attention.tex",
+    "table_efficiency.tex",
+    "table_few_shot.tex",
+    "table_full_shot.tex",
+    "table_ood.tex",
+    "table_representation.tex",
+    "table_zero_shot.tex"
+  ]
+}

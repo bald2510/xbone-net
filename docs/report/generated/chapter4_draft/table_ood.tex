@@ -1,0 +1,32 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+Kịch bản & Score & AUROC-OOD $\uparrow$ & AUPR-Out $\uparrow$ & FPR@95\%TPR $\downarrow$ \\ \hline
+\multirow{4}{*}{Semantic OOD} & Cosine-centroid & $0.5953\pm0.0223$ & $0.0961\pm0.0058$ & $0.8939\pm0.0131$ \\ \cline{2-5}
+ & Mahalanobis-centroid & $0.6254\pm0.0224$ & $0.1020\pm0.0071$ & $0.9015\pm0.0131$ \\ \cline{2-5}
+ & kNN & $\mathbf{0.6279\pm0.0161}$ & $\mathbf{0.1079\pm0.0106}$ & $\mathbf{0.8864\pm0.0000}$ \\ \cline{2-5}
+ & Entropy & $0.5657\pm0.0147$ & $0.1054\pm0.0166$ & $\mathbf{0.8864\pm0.0227}$ \\ \hline
+\multirow{4}{*}{FracAtlas} & Cosine-centroid & $0.8072\pm0.0829$ & $0.7726\pm0.0737$ & $0.6754\pm0.0872$ \\ \cline{2-5}
+ & Mahalanobis-centroid & $\mathbf{0.8851\pm0.0760}$ & $\mathbf{0.8692\pm0.0737}$ & $\mathbf{0.4763\pm0.1798}$ \\ \cline{2-5}
+ & kNN & $0.8511\pm0.0816$ & $0.8227\pm0.0773$ & $0.6003\pm0.1485$ \\ \cline{2-5}
+ & Entropy & $0.7685\pm0.0500$ & $0.7469\pm0.0542$ & $0.7167\pm0.0799$ \\ \hline
+\multirow{4}{*}{BTXRD} & Cosine-centroid & $0.7303\pm0.0853$ & $0.7272\pm0.0640$ & $0.7889\pm0.0688$ \\ \cline{2-5}
+ & Mahalanobis-centroid & $\mathbf{0.8077\pm0.0981}$ & $\mathbf{0.8083\pm0.0722}$ & $\mathbf{0.6764\pm0.1202}$ \\ \cline{2-5}
+ & kNN & $0.7713\pm0.0955$ & $0.7637\pm0.0697$ & $0.7582\pm0.1115$ \\ \cline{2-5}
+ & Entropy & $0.6699\pm0.0784$ & $0.6829\pm0.0568$ & $0.8578\pm0.0144$ \\ \hline
+\multirow{4}{*}{Mismatch khác lớp} & Cosine-centroid & $0.7386\pm0.0647$ & $0.7188\pm0.0514$ & $0.7882\pm0.0359$ \\ \cline{2-5}
+ & Mahalanobis-centroid & $0.7084\pm0.0320$ & $0.7013\pm0.0186$ & $0.7947\pm0.0230$ \\ \cline{2-5}
+ & kNN & $\mathbf{0.7616\pm0.0603}$ & $\mathbf{0.7531\pm0.0484}$ & $\mathbf{0.7364\pm0.0650}$ \\ \cline{2-5}
+ & Entropy & $0.7363\pm0.0609$ & $0.7242\pm0.0472$ & $0.7972\pm0.0302$ \\ \hline
+\multirow{4}{*}{Mismatch cùng lớp} & Cosine-centroid & $0.5471\pm0.0359$ & $0.5405\pm0.0238$ & $0.9297\pm0.0104$ \\ \cline{2-5}
+ & Mahalanobis-centroid & $0.5548\pm0.0264$ & $0.5453\pm0.0134$ & $\mathbf{0.9223\pm0.0129}$ \\ \cline{2-5}
+ & kNN & $\mathbf{0.5745\pm0.0428}$ & $\mathbf{0.5624\pm0.0291}$ & $0.9292\pm0.0157$ \\ \cline{2-5}
+ & Entropy & $0.5403\pm0.0329$ & $0.5453\pm0.0314$ & $0.9273\pm0.0164$ \\ \hline
+\end{tabular}
+}
+\caption{Kết quả OOD hậu xử lý từ fused embedding; trung bình $\pm$ độ lệch chuẩn trên ba hạt giống.}
+\label{tab:ch4draft_ood}
+\end{table}

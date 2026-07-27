@@ -1230,7 +1230,7 @@ def run_ood_calibration(
 
     id_scores = detector.score(
         all_features,
-        method="mahalanobis",
+        method="mahalanobis_centroid",
     )
 
     calibrated_threshold = float(

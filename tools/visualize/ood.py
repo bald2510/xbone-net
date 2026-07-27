@@ -19,6 +19,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+SCENARIO_DISPLAY_NAMES = {
+    "semantic_ood": "Semantic OOD",
+    "domain_ood": "FracAtlas",
+    "domain_ood_btxrd": "BTXRD",
+}
+
+METHOD_DISPLAY_NAMES = {
+    "cosine_centroids": "Cosine-centroid",
+    "mahalanobis_centroid": "Mahalanobis-centroid",
+    "knn": "kNN",
+    "entropy": "Entropy",
+}
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scores", type=Path, required=True)
@@ -30,6 +44,30 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--methods", nargs="+", default=None)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--layout-columns",
+        type=int,
+        default=3,
+        help="Number of subplot columns; use 2 for a report-ready 2x2 layout.",
+    )
+    parser.add_argument("--bins", type=int, default=35)
+    parser.add_argument("--dpi", type=int, default=300)
+    parser.add_argument("--id-label", default="CTCH-ID")
+    parser.add_argument(
+        "--ood-label",
+        default=None,
+        help="Display label for the OOD cohort; inferred from the scenario by default.",
+    )
+    parser.add_argument(
+        "--report-style",
+        action="store_true",
+        help="Use compact Vietnamese labels and titles matching the thesis figure style.",
+    )
+    parser.add_argument(
+        "--no-evidence-heatmap",
+        action="store_true",
+        help="Generate only the score-distribution figure.",
+    )
     parser.add_argument(
         "--max-heatmap-samples",
         type=int,
@@ -154,6 +192,12 @@ def _render_decision_heatmap(
 
 def main() -> None:
     args = _parse_args()
+    if args.layout_columns < 1:
+        raise ValueError("--layout-columns must be positive.")
+    if args.bins < 2:
+        raise ValueError("--bins must be at least 2.")
+    if args.dpi < 72:
+        raise ValueError("--dpi must be at least 72.")
     metrics_path = args.metrics or args.scores.with_name("ood_metrics.json")
     if not args.scores.is_file():
         raise FileNotFoundError(args.scores)
@@ -193,67 +237,103 @@ def main() -> None:
             dtype=str,
         )
 
-    columns = min(3, len(methods))
+    columns = min(args.layout_columns, len(methods))
     rows = int(np.ceil(len(methods) / columns))
     figure, axes = plt.subplots(
         rows,
         columns,
-        figsize=(6.0 * columns, 4.7 * rows),
+        figsize=(
+            (6.2 if args.report_style else 6.0) * columns,
+            (4.1 if args.report_style else 4.7) * rows,
+        ),
         squeeze=False,
         facecolor="white",
     )
     scenario = str(metrics.get("scenario", "unknown"))
-    for axis, method in zip(axes.flat, methods):
+    ood_label = (
+        args.ood_label
+        or SCENARIO_DISPLAY_NAMES.get(scenario, scenario)
+    )
+    for panel_index, (axis, method) in enumerate(zip(axes.flat, methods)):
         values = score_sets[method]
         method_metrics = metrics["results"][method]
+        common_bin_edges = np.histogram_bin_edges(
+            np.concatenate(
+                [
+                    np.asarray(values["id"], dtype=float),
+                    np.asarray(values["ood"], dtype=float),
+                ]
+            ),
+            bins=args.bins,
+        )
         axis.hist(
             values["id"],
-            bins=35,
+            bins=common_bin_edges,
             alpha=0.67,
-            label="CTCH ID test",
+            label=args.id_label,
             density=True,
-            edgecolor="black",
-            linewidth=0.35,
+            color="#4C92C3",
+            edgecolor="white",
+            linewidth=0.25,
         )
         axis.hist(
             values["ood"],
-            bins=35,
+            bins=common_bin_edges,
             alpha=0.60,
-            label=scenario,
+            label=ood_label,
             density=True,
-            edgecolor="black",
-            linewidth=0.35,
+            color="#FF9D4D",
+            edgecolor="white",
+            linewidth=0.25,
         )
         axis.axvline(
             values["threshold"],
             color="#111111",
             linestyle="--",
             linewidth=1.4,
-            label="CTCH-val ID threshold",
+            label="_nolegend_" if args.report_style else "CTCH-val ID threshold",
         )
         role = "primary" if method_metrics.get("primary_analysis", True) else "secondary"
-        axis.set_title(
-            f"{method} ({role})\n"
-            f"AUROC={method_metrics['auroc']:.3f}, "
-            f"FPR95={method_metrics['fpr_at_95tpr']:.3f}"
-        )
-        axis.set_xlabel("OOD score (higher = more OOD)")
-        axis.set_ylabel("Density")
+        method_label = METHOD_DISPLAY_NAMES.get(method, method)
+        if args.report_style:
+            axis.set_title(
+                f"{method_label}: "
+                f"AUROC={method_metrics['auroc_ood']:.3f}, "
+                f"FPR95={method_metrics['fpr_at_95tpr']:.3f}",
+                fontsize=10,
+            )
+            axis.set_xlabel("Điểm OOD (cao hơn biểu thị xu hướng OOD lớn hơn)")
+            axis.set_ylabel("Mật độ")
+            if panel_index == 0:
+                axis.legend(fontsize=8, frameon=False)
+        else:
+            axis.set_title(
+                f"{method_label} ({role})\n"
+                f"AUROC-OOD={method_metrics['auroc_ood']:.3f}, "
+                f"FPR95={method_metrics['fpr_at_95tpr']:.3f}"
+            )
+            axis.set_xlabel("OOD score (higher = more OOD)")
+            axis.set_ylabel("Density")
+            axis.legend(fontsize=8)
         axis.grid(alpha=0.25, linestyle="--")
-        axis.legend(fontsize=8)
     for axis in axes.flat[len(methods):]:
         axis.axis("off")
 
-    figure.suptitle(
-        f"CTCH proposed OOD separation: {scenario}\n"
-        "fit=CTCH train, threshold=CTCH validation ID, evaluation=CTCH test/OOD",
-        fontsize=14,
-    )
-    figure.tight_layout(rect=(0, 0, 1, 0.93))
+    if args.report_style:
+        figure.tight_layout()
+    else:
+        figure.suptitle(
+            f"CTCH proposed OOD separation: {scenario}\n"
+            "fit=CTCH train, threshold=CTCH validation ID, evaluation=CTCH test/OOD",
+            fontsize=14,
+        )
+        figure.tight_layout(rect=(0, 0, 1, 0.93))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(args.output, dpi=220, bbox_inches="tight")
+    figure.savefig(args.output, dpi=args.dpi, bbox_inches="tight")
     plt.close(figure)
     print(f"Saved: {args.output}")
+    if args.no_evidence_heatmap:
+        return
     heatmap_path = _render_decision_heatmap(
         score_sets,
         methods,
