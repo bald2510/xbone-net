@@ -1,9 +1,11 @@
 \chapter{Các công trình nghiên cứu liên quan}
 \label{Chapter2}
 
-Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng của các cách tiếp cận khác nhau, các kỹ thuật tinh chỉnh hiệu quả tham số và phương pháp phát hiện dữ liệu ngoài phân phối, từ đó đưa ra các nhận xét về các phương pháp hiện có làm tiền đề cho phương pháp đề xuất.
+Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Nhằm xác lập cơ sở cho việc thiết kế hệ thống phân loại, phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng của các cách tiếp cận khác nhau cho bài toán phân loại ảnh y khoa, các chiến lược bảo toàn thông tin trên ảnh độ phân giải cao, đặc biệt là cách kết hợp ngữ cảnh toàn cục với đặc trưng cục bộ, các kỹ thuật tinh chỉnh hiệu quả tham số và phương pháp phát hiện dữ liệu ngoài phân phối. Trên cơ sở đó, đối chiếu ưu điểm, hạn chế và mức độ phù hợp của các hướng tiếp cận hiện có đối với dữ liệu thực tế, chương xác định khoảng trống nghiên cứu và làm rõ cơ sở lựa chọn các thành phần trong phương pháp được đề xuất ở Chương 3.
 
-\section{Các hướng tiếp cận chính và các mô hình nền tàng}
+\pagebreak
+
+\section{Các hướng tiếp cận chính và các mô hình nền tảng}
 
 \subsection{Các mô hình kết hợp ngôn ngữ - ảnh xây dựng từ đầu}
 
@@ -84,44 +86,80 @@ Trong các mô hình ngôn ngữ-thị giác tổng quát, LLaVA-NeXT \cite{LLaV
 
 Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược global-local với ngân sách token cố định trong bài toán phân loại ảnh X-quang xương.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \small
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{L{2.7cm} L{3.2cm} X X}
-\toprule
-\textbf{Chiến lược} & \textbf{Đặc điểm} & \textbf{Khả năng đáp ứng} & \textbf{Hạn chế cần xem xét} \\
-\midrule
-Co giãn ảnh toàn cục &
-Một ảnh được đưa về kích thước cố định &
-Chi phí thấp và duy trì bố cục tổng thể &
-Có thể làm mất các dấu hiệu nhỏ hoặc khu trú. \\
-\addlinespace
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
 
-Xử lý trực tiếp ảnh độ phân giải cao &
-Tăng kích thước ảnh hoặc số patch &
-Giữ lại nhiều chi tiết hơn; FPT \cite{FPT} xem xét sự đánh đổi bộ nhớ trong ảnh y khoa &
-Số token và chi phí attention tăng nhanh. \\
-\addlinespace
+\begin{tabularx}{\textwidth}{
+|L{2.7cm}
+|L{3.2cm}
+|X
+|X|
+}
+\hline
+\textbf{Chiến lược}
+&
+\textbf{Đặc điểm}
+&
+\textbf{Khả năng đáp ứng}
+&
+\textbf{Hạn chế cần xem xét}
+\\
+\hline
 
-AnyRes và Higher-AnyRes &
-Kết hợp ảnh toàn cục với các ô ảnh theo lưới thích nghi; dùng nội suy có ngưỡng để giới hạn token &
-Tăng độ phủ không gian và cải thiện các tác vụ cần đọc chi tiết \cite{LLaVANeXTAblations2024} &
-Lưới đều có thể xử lý nhiều vùng không liên quan; bằng chứng chủ yếu đến từ dữ liệu phi y khoa. \\
-\addlinespace
+Co giãn ảnh toàn cục
+&
+Một ảnh được đưa về kích thước cố định
+&
+Chi phí thấp và duy trì bố cục tổng thể
+&
+Có thể làm mất các dấu hiệu nhỏ hoặc khu trú.
+\\
+\hline
 
-Latent resampling &
-Nén tập token đầu vào thành số latent cố định &
-Kiểm soát độ dài chuỗi và chi phí kết nối đa phương thức &
-Có nguy cơ làm mất tín hiệu nhỏ; phụ thuộc vào cách tối ưu truy vấn học được \cite{Jaegle2021Perceiver,Alayrac2022Flamingo}. \\
-\addlinespace
+Xử lý trực tiếp ảnh độ phân giải cao
+&
+Tăng kích thước ảnh hoặc số lượng patch
+&
+Giữ lại nhiều chi tiết hơn; FPT \cite{FPT} xem xét sự đánh đổi giữa khả năng bảo toàn chi tiết và chi phí bộ nhớ trong ảnh y khoa
+&
+Số lượng token và chi phí của cơ chế attention tăng nhanh.
+\\
+\hline
 
-Global-local đa góc nhìn &
-Kết hợp ảnh toàn cục và nhiều vùng cục bộ lấy từ ảnh gốc &
-Phù hợp với dấu hiệu bệnh lý thưa; MedBridge cho thấy cải thiện trên X-quang ngực \cite{Li2026MedBridge} &
-Tăng số lần chạy backbone; hiệu quả phụ thuộc vào cách chọn vùng và chưa được xác nhận trực tiếp trên X-quang xương. \\
-\bottomrule
+AnyRes và Higher-AnyRes
+&
+Kết hợp ảnh toàn cục với các vùng ảnh theo lưới thích nghi và giới hạn số token bằng phép nội suy
+&
+Tăng độ phủ không gian và cải thiện các tác vụ phụ thuộc vào chi tiết \cite{LLaVANeXTAblations2024}
+&
+Lưới đều có thể xử lý nhiều vùng không liên quan; bằng chứng thực nghiệm chủ yếu đến từ dữ liệu phi y khoa.
+\\
+\hline
+
+Latent resampling
+&
+Nén tập token đầu vào thành một số lượng latent cố định
+&
+Kiểm soát độ dài chuỗi và chi phí kết nối đa phương thức
+&
+Có nguy cơ làm mất các tín hiệu nhỏ và phụ thuộc vào khả năng tối ưu các truy vấn học được \cite{Jaegle2021Perceiver,Alayrac2022Flamingo}.
+\\
+\hline
+
+Global--local đa góc nhìn
+&
+Kết hợp ảnh toàn cục với nhiều vùng cục bộ được trích xuất từ ảnh gốc
+&
+Phù hợp với các dấu hiệu bệnh lý nhỏ và khu trú; MedBridge cho thấy hiệu quả trên ảnh X-quang ngực \cite{Li2026MedBridge}
+&
+Làm tăng số lần thực thi backbone; hiệu quả phụ thuộc vào cách lựa chọn vùng và chưa được kiểm chứng trực tiếp trên ảnh X-quang xương.
+\\
+\hline
 \end{tabularx}
+
 \caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính.}
 \label{tab:ch2_high_resolution}
 \end{table}
@@ -213,52 +251,56 @@ Nhóm phương pháp này tận dụng trực tiếp đầu ra của một mô h
 
 Các cải tiến của ODIN và Energy-based Score khắc phục một phần hạn chế của MSP, nhưng vẫn phụ thuộc chủ yếu vào đầu ra của bộ phân loại và chưa mô hình hóa trực tiếp phân phối của embedding.
 
-\subsection{Các phương pháp dựa trên không gian đặc trưng}
-Khác với các phương pháp chỉ sử dụng đầu ra của mô hình, nhóm phương pháp này thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Ý tưởng chính là đo khoảng cách giữa embedding của mẫu kiểm thử và phân bố đặc trưng của dữ liệu huấn luyện. Một số độ đo khoảng cách phổ biến bao gồm:
+\section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
+
+Phát hiện dữ liệu ngoài phân phối (Out-of-Distribution - OOD detection) là bài toán cốt lõi nhằm xác định các mẫu dữ liệu không thuộc phân phối của tập huấn luyện (In-Distribution - ID). Đặc biệt trong lĩnh vực phân tích ảnh y khoa, khả năng từ chối dự đoán đối với các mẫu dữ liệu lạ giúp ngăn chặn các chẩn đoán sai lệch với độ tự tin cao, từ đó đảm bảo tính an toàn của hệ thống. Dựa trên cách tiếp cận, các phương pháp OOD hiện nay được chia thành các nhóm chính sau.
+
+\subsection{Các phương pháp hậu xử lý dựa trên đầu ra (Post-hoc Output-based Methods)}
+Nhóm phương pháp này không can thiệp vào quá trình huấn luyện mà tận dụng trực tiếp đầu ra (thường là các logit hoặc xác suất) của một bộ phân loại đã được huấn luyện.
+
 \begin{itemize}
-  \item \textbf{Khoảng cách Euclidean:}
-  \[ d_E(z,c_k)=\|z-c_k\|_2. \]
-  Khoảng cách Euclidean giả định các cụm dữ liệu có dạng cầu và có phương sai đồng đều theo mọi chiều. Phương pháp đơn giản nhưng không phản ánh được sự tương quan giữa các chiều đặc trưng.
-  \item \textbf{Khoảng cách Cosine:}
-  \[ d_C(z,c_k)=1-\frac{z\cdot c_k}{\|z\|\|c_k\|}. \]
-  Khoảng cách Cosine chỉ xét hướng của vector đặc trưng và bỏ qua độ lớn (magnitude), thường được sử dụng trong các bài toán metric learning và Vision-Language Models.
-  \item \textbf{Khoảng cách Mahalanobis\cite{Lee2018MahalanobisOOD}:}
+    \item \textbf{Maximum Softmax Probability (MSP) \cite{Hendrycks2017MSP}:} Sử dụng giá trị cực đại của hàm Softmax làm độ tin cậy. Dữ liệu có xác suất cực đại thấp sẽ bị đánh dấu là OOD. Tuy nhiên, điểm yếu chí mạng của MSP là các mạng nơ-ron sâu thường mắc lỗi "tự tin thái quá" (overconfidence), dẫn đến việc gán xác suất rất cao cho cả những mẫu OOD hoàn toàn không liên quan.
+    \item \textbf{ODIN (Out-of-DIstribution detector for Neural Networks) \cite{Liang2018ODIN}:} Cải thiện MSP bằng cách sử dụng hiệu chỉnh nhiệt độ (Temperature Scaling) và thêm nhiễu đầu vào (Input Perturbation) để gia tăng sự chênh lệch logit giữa dữ liệu trong phân phối (ID - In-Distribution) và dữ liệu ngoài phân phối (OOD - Out-of-Distribution).
+    \item \textbf{Energy-based Score \cite{Liu2020EnergyOOD}:} Chuyển đổi vector logit thành hàm năng lượng thay vì xác suất Softmax:
+    \[ E(x) = -T \log \sum_i \exp\left(\frac{f_i(x)}{T}\right) \]
+    trong đó $f_i(x)$ là logit của lớp thứ $i$ và $T$ là hệ số nhiệt độ.
+    Dữ liệu ID sẽ có mức năng lượng thấp hơn so với dữ liệu OOD. Mặc dù khắc phục được một phần lỗi overconfidence, các phương pháp này vẫn bị giới hạn bởi không gian quyết định (decision boundary) mở vô tận của hàm Softmax ở lớp cuối cùng.
+\end{itemize}
+
+\subsection{Các phương pháp dựa trên độ không chắc chắn và tái tạo (Uncertainty \& Reconstruction)}
+Để tránh phụ thuộc vào đầu ra Softmax, một số nghiên cứu tiếp cận bài toán bằng cách đánh giá khả năng sinh hoặc sự bất định của mô hình.
+
+\begin{itemize}
+    \item \textbf{Reconstruction Error:} Sử dụng các mô hình sinh như Autoencoder (AE) được huấn luyện chỉ trên dữ liệu ID. Khi gặp dữ liệu OOD, sai số tái tạo (reconstruction error) sẽ tăng đột biến. Dù hiệu quả, phương pháp này gặp khó khăn khi tái tạo các ảnh y khoa có độ phân giải cao và chi tiết phức tạp.
+    \item \textbf{Monte Carlo Dropout (MC Dropout):} Kích hoạt Dropout trong quá trình kiểm thử (inference) và thực hiện dự đoán nhiều lần để tính phương sai. Tuy nhiên, việc phải suy luận nhiều lần làm tăng chi phí tính toán, không phù hợp cho các hệ thống đòi hỏi thời gian thực.
+\end{itemize}
+
+\subsection{Các phương pháp dựa trên khoảng cách trong không gian đặc trưng (Distance-based Methods)}
+Nhận thấy những hạn chế của không gian logit, các nghiên cứu gần đây chuyển hướng sang thực hiện phát hiện OOD trực tiếp trên không gian đặc trưng (embedding space). Việc đánh giá bằng khoảng cách giúp giới hạn không gian rủi ro mở (open-space risk).
+
+\begin{itemize}
+    \item \textbf{Khoảng cách Euclidean và Cosine:} 
+    Khoảng cách Euclidean đo khoảng cách hình học tuyệt đối $d_E(z, c_k) = \|z - c_k\|_2$, trong khi Cosine chỉ xét góc giữa các vector. Điểm yếu của chúng là giả định phân phối của các cụm dữ liệu có dạng hình cầu hoàn hảo và phương sai đồng đều ở mọi chiều, điều hiếm khi xảy ra trong thực tế dữ liệu phức tạp.
+    \item \textbf{Khoảng cách Mahalanobis \cite{Lee2018MahalanobisOOD}:}
+    Khắc phục điểm yếu của Euclidean bằng cách xét đến ma trận hiệp phương sai (covariance matrix), giúp đo lường khoảng cách dựa trên cả hình dáng và hướng của phân phối dữ liệu:
     \[
-    d_M(z,\mu_k)
-    =
-    (z-\mu_k)^\top
-    (\Sigma+\lambda I)^{-1}
-    (z-\mu_k),
+    d_M(z, \mu_k) = (z - \mu_k)^\top (\Sigma + \lambda I)^{-1} (z - \mu_k)
     \]
-    trong đó $z$ là embedding của mẫu kiểm thử, $\mu_k$ là tâm của lớp $k$, $\Sigma$ là ma trận hiệp phương sai dùng chung và $\lambda I$ là thành phần điều chuẩn. Mẫu được xem là OOD khi khoảng cách này vượt quá một ngưỡng được lựa chọn trên tập validation. Nhờ xét phương sai và tương quan giữa các chiều, Mahalanobis mô tả vùng phân phối của từng lớp đầy đủ hơn các khoảng cách hình học đơn giản.
+    Trong đó, $z$ là embedding của mẫu kiểm thử, $\mu_k$ là tâm cụm lớp $k$, và $\Sigma$ là ma trận hiệp phương sai. Mahalanobis mô tả ranh giới phân phối dữ liệu chính xác và mềm dẻo hơn.
 \end{itemize}
 
-\subsection{Các phương pháp học biểu diễn phục vụ phát hiện OOD}
-Các phương pháp trong nhóm này không trực tiếp thực hiện phát hiện OOD mà tập trung xây dựng không gian đặc trưng có tính phân biệt cao, từ đó nâng cao hiệu quả của các phương pháp phát hiện OOD dựa trên khoảng cách. Một số hướng tiếp cận tiêu biểu gồm:
+\subsection{Học biểu diễn phục vụ phát hiện dữ liệu ngoài phân phối}
+Sự thành công của các phương pháp dựa trên khoảng cách phụ thuộc rất lớn vào chất lượng của không gian đặc trưng. Nếu mô hình được huấn luyện bằng hàm Cross-Entropy thông thường, dữ liệu của các lớp không được tối ưu để co cụm lại, làm giảm hiệu quả của các phép đo khoảng cách. Để giải quyết vấn đề này, các kỹ thuật học biểu diễn (Representation Learning) được áp dụng.
+
 \begin{itemize}
-  \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
-  \item \textbf{Center Loss:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng.
-  \item \textbf{Prototypical Loss:} Biểu diễn mỗi lớp bởi một nguyên mẫu (prototype), được tính bằng trung bình embedding của các mẫu cùng lớp:
-  \[ c_k=\frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i). \]
-  Trong quá trình huấn luyện, embedding của các mẫu được kéo về prototype của lớp tương ứng và tách xa prototype của các lớp khác, giúp giảm phương sai nội lớp và tăng khoảng cách giữa các lớp. Nhờ đó, không gian đặc trưng trở nên phân biệt hơn, tạo điều kiện thuận lợi cho các phương pháp OOD dựa trên khoảng cách như Mahalanobis.
+    \item \textbf{Contrastive Learning:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
+    \item \textbf{Center Loss \cite{CenterLoss}:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng.
+    \item \textbf{Prototypical Networks (ProtoNet) \cite{Snell2017ProtoNet}:} Là một kiến trúc mạng học theo hệ đo (Metric Learning), ProtoNet định nghĩa trực tiếp mỗi lớp bằng một nguyên mẫu (prototype) $c_k$:
+    \[ c_k = \frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i) \]
+    Trong quá trình huấn luyện, mạng được tối ưu hóa để cực tiểu hóa khoảng cách giữa đặc trưng của dữ liệu và prototype tương ứng của nó.
 \end{itemize}
-
-\subsection{Các phương pháp sinh và định lượng độ không chắc chắn}
-Nhóm phương pháp này tiếp cận bài toán OOD thông qua khả năng mô hình hóa phân phối dữ liệu hoặc ước lượng độ không chắc chắn của mô hình.
-\begin{itemize}
-  \item \textbf{Reconstruction Error:} Các mô hình Autoencoder hoặc Variational Autoencoder được huấn luyện để tái tạo dữ liệu ID. Khi gặp dữ liệu OOD, sai số tái tạo thường tăng lên đáng kể.
-  \item \textbf{Monte Carlo Dropout:} Thực hiện nhiều lần suy luận trên ảnh đầu vào với Dropout được kích hoạt trong giai đoạn kiểm thử nhằm ước lượng độ không chắc chắn nhận thức (epistemic uncertainty). Phương sai lớn giữa các lần dự đoán là dấu hiệu cho thấy mẫu có khả năng thuộc OOD.
-\end{itemize}
-
-Hai phương pháp trên có thể hỗ trợ khi điểm tin cậy hoặc khoảng cách đặc trưng chưa phản ánh đầy đủ tính bất thường, nhưng thường yêu cầu thêm mô hình huấn luyện hoặc nhiều lần suy luận, làm tăng chi phí triển khai.
 
 \section{Bàn luận}
-
-\subsection{Xu hướng ứng dụng học sâu đa phương thức trong chẩn đoán ảnh y khoa}
-
-Học sâu đa phương thức đang trở thành một hướng tiếp cận quan trọng trong chẩn đoán ảnh y khoa. Ảnh cung cấp bằng chứng trực quan về cấu trúc giải phẫu và tổn thương, trong khi văn bản bổ sung các thông tin như triệu chứng, vị trí đau, cơ chế chấn thương và tiền sử bệnh. Việc kết hợp hai nguồn dữ liệu giúp mô hình khai thác các thông tin bổ sung cho nhau, đặc biệt khi dấu hiệu trên ảnh nhỏ hoặc có hình thái tương tự giữa nhiều lớp bệnh.
-
-Các mô hình ngôn ngữ-thị giác y khoa như BiomedCLIP \cite{BiomedCLIP} cho phép kế thừa biểu diễn đã được tiền huấn luyện trên dữ liệu ảnh-văn bản quy mô lớn. Tuy nhiên, sự khác biệt giữa dữ liệu tiền huấn luyện và ảnh X-quang xương vẫn đòi hỏi quá trình thích nghi miền. Bên cạnh đó, ảnh y khoa thường có độ phân giải cao, tạo ra sự đánh đổi giữa khả năng bảo toàn tổn thương nhỏ và chi phí xử lý token.
 
 \subsection{Hạn chế của các nghiên cứu hiện nay}
 
@@ -285,12 +327,16 @@ Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thốn
   \item LoRA cho phép mô hình bám sát dữ liệu y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát đã được tiền huấn luyện.
 \end{itemize}
 
-\textbf{Về phương pháp phát hiện OOD:} Luận văn kết hợp Weighted CE Loss và Mahalanobis Distance theo cơ chế hai giai đoạn tách biệt. Trong giai đoạn huấn luyện, Weighted CE Loss được sử dụng để tối ưu hóa việc phân loại. Sau khi mô hình được huấn luyện, Mahalanobis Distance được áp dụng theo cơ chế post-hoc để phát hiện dữ liệu ngoài phân phối. Mahalanobis được lựa chọn thay vì Euclidean hoặc Cosine vì có khả năng khai thác thêm thông tin về ma trận hiệp phương sai của từng lớp, phản ánh chính xác hơn mức độ bất thường của mẫu, đặc biệt đối với các trường hợp Near-OOD thường gặp trong dữ liệu y khoa.
+\textbf{Về xử lý ảnh độ phân giải cao:} Luận văn lựa chọn chiến lược global-local nhằm đồng thời duy trì bố cục giải phẫu toàn cục và bảo toàn các dấu hiệu bệnh lý nhỏ trên ảnh gốc. Thay vì chia ảnh thành lưới dày làm tăng chi phí tính toán, hệ thống chỉ sử dụng bốn vùng cục bộ được lựa chọn theo chiến lược sparse-focal và nén thành số token cố định. Thông tin tọa độ của từng vùng được bổ sung để duy trì quan hệ không gian, trong khi cơ chế chú ý cho phép mô hình ưu tiên các vùng phù hợp với ngữ cảnh toàn ảnh. Thiết kế này cân bằng giữa khả năng giữ lại chi tiết, độ phủ không gian và chi phí xử lý.
+
+\textbf{Về phương pháp phát hiện OOD:} Nghiên cứu đề xuất sự kết hợp tương hỗ giữa Mạng nguyên mẫu (Prototypical Networks) và khoảng cách Mahalanobis theo hai giai đoạn. Trong giai đoạn huấn luyện, hàm mất mát Entropy chéo có trọng số được kết hợp cùng Mạng nguyên mẫu để tối ưu hóa việc phân loại. Cơ chế này chủ động định hình không gian đặc trưng, ép các dữ liệu chuẩn thuộc phân phối tạo thành các cụm xung quanh các nguyên mẫu, khắc phục nhược điểm mở rộng không gian quyết định vô hạn của hàm Softmax.
+
+Trong giai đoạn suy luận, khoảng cách Mahalanobis được áp dụng ở khâu hậu kỳ (post-hoc) để phát hiện dữ liệu bất thường, thay thế cho khoảng cách Euclidean mặc định. Việc này cho phép tận dụng thông tin từ ma trận hiệp phương sai của các cụm đặc trưng đã được định hình trước đó. Nhờ vậy, hệ thống đánh giá chính xác mức độ bất thường của mẫu và nhận diện các ranh giới phân phối tinh tế hơn. Từ đó, mô hình từ chối hiệu quả các mẫu dữ liệu lạ, đặc biệt là các trường hợp có đặc trưng rất gần với dữ liệu gốc (Near-OOD) phổ biến trong ảnh y khoa, đồng thời vẫn duy trì độ chính xác cao trên tập dữ liệu chuẩn.
 
 \textbf{Về kiến trúc pipeline:} Hệ thống được thiết kế theo kiến trúc hai giai đoạn :
 \begin{itemize}
-  \item \textbf{Giai đoạn 1 - Căn chỉnh tương phản:} Chỉ huấn luyện backbone (BiomedCLIP thông qua LoRA) bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
-  \item \textbf{Giai đoạn 2 - Huấn luyện dung hợp và phân loại:} Trọng số nền của BiomedCLIP được giữ đóng băng, trong khi các adapter LoRA, spatial resampler và mô-đun dung hợp cross-attention tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
+  \item \textbf{Giai đoạn 1 - Căn chỉnh tương phản:} Chỉ huấn luyện backbone BiomedCLIP thông qua LoRA bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
+  \item \textbf{Giai đoạn 2 - Huấn luyện dung hợp và phân loại:} Tiếp tục huấn luyện backbone thông qua LoRA phục vụ cho nhiệm vụ phân loại, ngoài ra spatial resampler và mô-đun dung hợp cross-attention tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
 \end{itemize}
 
 Kiến trúc chi tiết của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày trong Chương 3.
