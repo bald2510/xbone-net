@@ -3345,12 +3345,6 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                 lat_mean = (
                     f"{latency['mean']:.2f}" if "mean" in latency else "--"
                 )
-                lat_p50 = (
-                    f"{latency['p50']:.2f}" if "p50" in latency else "--"
-                )
-                lat_p95 = (
-                    f"{latency['p95']:.2f}" if "p95" in latency else "--"
-                )
                 throughput = data.get("throughput_samples_per_second", {})
                 tp = (
                     f"{throughput['mean']:.1f}"
@@ -3375,8 +3369,6 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                     "trainable_pct": f"{pct:.2f}\\%",
                     "gflops": gflops,
                     "latency_mean": lat_mean,
-                    "latency_p50": lat_p50,
-                    "latency_p95": lat_p95,
                     "throughput": tp,
                     "peak_memory": peak_memory,
                     "is_proposed": is_proposed,
@@ -3393,7 +3385,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|l|c|l|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|}",
         r"\hline",
         r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
@@ -3412,8 +3404,16 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         for cat_idx, (cat, cat_items) in enumerate(cat_groups.items()):
             cat_span = len(cat_items)
             for cat_item_idx, item in enumerate(cat_items):
-                ds_prefix = f"\\multirow{{{ds_span}}}{{*}}{{{ds}}}" if item_counter == 0 else ""
-                cat_prefix = f"\\multirow{{{cat_span}}}{{*}}{{{cat}}}" if cat_item_idx == 0 else ""
+                ds_prefix = (
+                    f"\\multirow[c]{{{ds_span}}}{{=}}{{\\centering {ds}}}"
+                    if item_counter == 0
+                    else ""
+                )
+                cat_prefix = (
+                    f"\\multirow[c]{{{cat_span}}}{{=}}{{\\centering {cat}}}"
+                    if cat_item_idx == 0
+                    else ""
+                )
                 cell_bg = r"\cellcolor{gray!12}" if item["is_proposed"] else ""
 
                 is_last_item_of_dataset = (item_counter == ds_span - 1)
@@ -3446,10 +3446,10 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|l|c|l|c|c|c|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Trễ TB}} & \multicolumn{1}{c|}{\textbf{P50}} & \multicolumn{1}{c|}{\textbf{P95}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
-        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{3}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
+        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -3462,8 +3462,16 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         for cat_idx, (cat, cat_items) in enumerate(cat_groups.items()):
             cat_span = len(cat_items)
             for cat_item_idx, item in enumerate(cat_items):
-                ds_prefix = f"\\multirow{{{ds_span}}}{{*}}{{{ds}}}" if item_counter == 0 else ""
-                cat_prefix = f"\\multirow{{{cat_span}}}{{*}}{{{cat}}}" if cat_item_idx == 0 else ""
+                ds_prefix = (
+                    f"\\multirow[c]{{{ds_span}}}{{=}}{{\\centering {ds}}}"
+                    if item_counter == 0
+                    else ""
+                )
+                cat_prefix = (
+                    f"\\multirow[c]{{{cat_span}}}{{=}}{{\\centering {cat}}}"
+                    if cat_item_idx == 0
+                    else ""
+                )
                 cell_bg = r"\cellcolor{gray!12}" if item["is_proposed"] else ""
 
                 is_last_item_of_dataset = (item_counter == ds_span - 1)
@@ -3472,12 +3480,12 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                 if is_last_item_of_dataset:
                     row_end = r" \\ \hline"
                 elif is_last_item_of_cat:
-                    row_end = r" \\ \cline{2-9}"
+                    row_end = r" \\ \cline{2-7}"
                 else:
-                    row_end = r" \\ \cline{3-9}"
+                    row_end = r" \\ \cline{3-7}"
 
                 lines_compute.append(
-                    f"{ds_prefix} & {cat_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['throughput']} & {cell_bg}{item['latency_mean']} & {cell_bg}{item['latency_p50']} & {cell_bg}{item['latency_p95']} & {cell_bg}{item['peak_memory']}{row_end}"
+                    f"{ds_prefix} & {cat_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['throughput']} & {cell_bg}{item['latency_mean']} & {cell_bg}{item['peak_memory']}{row_end}"
                 )
                 item_counter += 1
 
