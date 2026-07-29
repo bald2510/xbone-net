@@ -634,131 +634,118 @@ Nhìn chung, XBone-Net chưa thể hiện ưu thế nhất quán ở các độ 
 
 \subsubsection{Kết quả trong trường hợp mẫu học hạn chế}
 
-Kết quả trong Bảng \ref{tab:classification_few_shot}, Bảng \ref{tab:classification_few_shot_ranking} và Hình \ref{fig:few_shot_f1_bars} cho thấy hiệu năng của các mô hình nhìn chung tăng theo số mẫu mỗi lớp, nhưng thứ hạng thay đổi theo từng thiết lập. Trên BTXRD, XBone-Net không dẫn đầu ở $1$-shot, nhưng đạt Macro-F1 cao nhất tại $10$-shot ($0{.}4302\pm0{.}0263$) và $20$-shot ($0{.}5202\pm0{.}0300$), đồng thời đứng đầu các độ đo dựa trên quyết định lớp. Tuy nhiên, mức cải thiện so với mô hình cơ sở gần nhất khá nhỏ, lần lượt là $0{.}0091$ và $0{.}0070$. Với các độ đo xếp hạng, XBone-Net chỉ đạt Macro-AUPRC cao nhất tại $20$-shot, trong khi Macro-AUROC vẫn thấp hơn LoRA-BioMedCLIP.
+Kết quả trong Bảng \ref{tab:classification_few_shot}, Bảng \ref{tab:classification_few_shot_ranking}, Hình \ref{fig:few_shot_btxrd} và Hình \ref{fig:few_shot_ctch} cho thấy hiệu năng của các mô hình nhìn chung tăng theo số mẫu mỗi lớp, nhưng thứ hạng thay đổi theo từng thiết lập. Trên BTXRD, XBone-Net không dẫn đầu ở mức $1$ mẫu, nhưng đạt Macro-F1 cao nhất tại mức $10$ mẫu ($0{.}4302\pm0{.}0263$) và $20$ mẫu ($0{.}5202\pm0{.}0300$), đồng thời đứng đầu các độ đo dựa trên quyết định lớp. Tuy nhiên, mức cải thiện so với mô hình cơ sở gần nhất khá nhỏ, lần lượt là $0{.}0091$ và $0{.}0070$. Với các độ đo xếp hạng, XBone-Net chỉ đạt Macro-AUPRC cao nhất tại mức $20$ mẫu, trong khi Macro-AUROC vẫn thấp hơn LoRA-BioMedCLIP.
 
-Trên CTCH, XBone-Net thể hiện ưu thế rõ nhất ở $1$-shot khi đạt kết quả trung bình cao nhất trên cả năm độ đo, cho thấy khả năng học tốt trong điều kiện dữ liệu cực kỳ hạn chế. Tại $10$-shot, mô hình vẫn dẫn đầu về Macro-F1 nhưng không còn vượt trội ở các độ đo khác. Khi tăng lên $20$-shot, Macro-F1 của XBone-Net thấp hơn LoRA-BioMedCLIP, còn Macro-AUROC và Macro-AUPRC thấp hơn LoRA-PubMedCLIP. Nhìn chung, XBone-Net có lợi thế trong thiết lập rất ít mẫu, nhưng không duy trì ưu thế khi lượng dữ liệu huấn luyện tăng.
+Trên CTCH, XBone-Net thể hiện ưu thế rõ nhất ở mức $1$ mẫu khi đạt kết quả trung bình cao nhất trên cả năm độ đo, cho thấy khả năng học tốt trong điều kiện dữ liệu cực kỳ hạn chế. Tại mức $10$ mẫu, mô hình vẫn dẫn đầu về Macro-F1 nhưng không còn vượt trội ở các độ đo khác. Khi tăng lên $20$ mẫu, Macro-F1 của XBone-Net thấp hơn LoRA-BioMedCLIP, còn Macro-AUROC và Macro-AUPRC thấp hơn LoRA-PubMedCLIP. Nhìn chung, XBone-Net có lợi thế trong thiết lập rất ít mẫu, nhưng không duy trì ưu thế khi lượng dữ liệu huấn luyện tăng.
 
-\begin{figure}[H]
-\centering
-\begin{subfigure}[b]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{generated/chapter4_results/few_shot_btxrd_f1_bar.png}
-    \caption{Tập dữ liệu BTXRD}
-    \label{fig:few_shot_btxrd}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{generated/chapter4_results/few_shot_ctch_f1_bar.png}
-    \caption{Tập dữ liệu CTCH}
-    \label{fig:few_shot_ctch}
-\end{subfigure}
-\caption{So sánh chỉ số Macro-F1 giữa các kịch bản mẫu hạn chế (1-shot, 10-shot, 20-shot) trên BTXRD và CTCH}
-\label{fig:few_shot_f1_bars}
-\end{figure}
+Sự khác biệt giữa BTXRD và CTCH cho thấy hiệu quả của mô hình đề xuất phụ thuộc vào cấu trúc nhãn, mức mất cân bằng, đặc điểm hình ảnh và giá trị thông tin của bệnh sử. Cơ chế dung hợp hai chiều và đầu phân loại theo tâm cụm có thể hữu ích khi dữ liệu đặc biệt khan hiếm, tiêu biểu ở CTCH $1$ mẫu. Tuy nhiên, XBone-Net dẫn đầu các độ đo quyết định lớp nhưng không đồng thời dẫn đầu Macro-AUROC hoặc Macro-AUPRC ở một số thiết lập cũng cho thấy khả năng phân lớp và xếp hạng xác suất không thay đổi đồng nhất theo số mẫu.
 
 \input{generated/chapter4_results/table_few_shot_classification}
 
 \input{generated/chapter4_results/table_few_shot_ranking}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{generated/chapter4_results/few_shot_btxrd_f1_bar.png}
+\caption{So sánh Macro-F1 giữa các thiết lập mẫu học hạn chế (1 mẫu, 10 mẫu và 20 mẫu) trên BTXRD}
+\label{fig:few_shot_btxrd}
+\end{figure}
 
-Sự khác biệt giữa BTXRD và CTCH cho thấy hiệu quả của pipeline đa phương thức phụ thuộc vào cấu trúc nhãn, mức mất cân bằng, đặc điểm hình ảnh và giá trị thông tin của bệnh sử. Cơ chế dung hợp hai chiều và đầu phân loại theo tâm cụm có thể hữu ích khi dữ liệu đặc biệt khan hiếm, tiêu biểu ở CTCH $1$-shot. Tuy nhiên, thí nghiệm few-shot chưa tách riêng ảnh hưởng của từng thành phần nên chưa thể quy mức cải thiện cho một mô-đun cụ thể. Việc XBone-Net dẫn đầu các độ đo quyết định lớp nhưng không đồng thời dẫn đầu Macro-AUROC hoặc Macro-AUPRC ở một số thiết lập cũng cho thấy khả năng phân lớp và xếp hạng xác suất không thay đổi đồng nhất theo số mẫu. Do kết quả chỉ được báo cáo dưới dạng trung bình $\pm$ độ lệch chuẩn trên ba seed, các chênh lệch nhỏ hiện chỉ nên được xem là xu hướng thực nghiệm, chưa phải bằng chứng thống kê.
-
-\input{generated/chapter4_results/table_efficiency_few_shot}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{generated/chapter4_results/few_shot_ctch_f1_bar.png}
+\caption{So sánh Macro-F1 giữa các thiết lập mẫu học hạn chế (1 mẫu, 10 mẫu và 20 mẫu) trên CTCH}
+\label{fig:few_shot_ctch}
+\end{figure}
 
 Bảng \ref{tab:efficiency_few_shot_params} và Bảng \ref{tab:efficiency_few_shot_compute} cho thấy cấu trúc và số phép toán của các mô hình không thay đổi theo mức shot. XBone-Net có khoảng $204{.}54$ triệu tham số, trong đó $4{.}22\%$ được cập nhật, đồng thời sử dụng $229{.}020$ GFLOP/mẫu, cao hơn LoRA-BioMedCLIP ($83{.}321$ GFLOP/mẫu) và LoRA-PubMedCLIP ($15{.}198$ GFLOP/mẫu). Mô hình đạt thông lượng $14{.}2$--$16{.}8$ mẫu/giây và độ trễ $66{.}27$--$84{.}25$ ms/mẫu, trong khi hai mô hình cơ sở đạt $28{.}2$--$35{.}9$ mẫu/giây và $33{.}56$--$43{.}91$ ms/mẫu.
 
-Nhìn chung, XBone-Net đạt hiệu năng cạnh tranh và thể hiện lợi thế trong một số điều kiện khan hiếm nhãn, nổi bật ở CTCH $1$-shot và các độ đo quyết định lớp trên BTXRD tại $10$--$20$-shot. Tuy nhiên, lợi thế này chưa nhất quán trên toàn bộ thiết lập và đi kèm chi phí suy luận cao hơn. Vì vậy, kết quả phù hợp hơn để khẳng định tiềm năng của pipeline đa phương thức trong một số kịch bản few-shot, thay vì kết luận mô hình luôn tổng quát hóa tốt hơn các mô hình cơ sở hoặc đã sẵn sàng cho triển khai lâm sàng.
+\input{generated/chapter4_results/table_efficiency_few_shot}
+
+Nhìn chung, XBone-Net đạt hiệu năng cạnh tranh và thể hiện lợi thế trong một số điều kiện khan hiếm nhãn, nổi bật ở CTCH với $1$ mẫu và các độ đo quyết định lớp trên BTXRD với $10$--$20$ mẫu. Tuy nhiên, lợi thế này chưa nhất quán trên toàn bộ thiết lập và đi kèm chi phí suy luận cao hơn. Vì vậy, kết quả phù hợp hơn để khẳng định tiềm năng của pipeline đa phương thức trong một số thiết lập mẫu học hạn chế, thay vì kết luận mô hình luôn tổng quát hóa tốt hơn các mô hình cơ sở hoặc đã sẵn sàng cho triển khai lâm sàng.
 
 \subsection{Đánh giá thành phần}
+
+Bảng \ref{tab:ablation_leave_one_out_classification} cho thấy không có biến thể loại bỏ nào làm giảm đồng thời cả sáu độ đo so với XBone-Net đầy đủ. Linear head đạt Accuracy và Macro-F1 cao nhất nhưng có Macro-AUROC thấp hơn cấu hình đầy đủ. Mean pooling dẫn đầu về Balanced Accuracy, Macro-AUROC và Macro-AUPRC, song có ECE cao hơn. Concat đạt ECE thấp nhất và Macro-AUROC cao, nhưng giảm Balanced Accuracy, Macro-F1 và Macro-AUPRC. Hai biến thể không sử dụng ảnh độ phân giải cao và chỉ huấn luyện pha 2 đều cải thiện Accuracy, nhưng làm giảm Balanced Accuracy và Macro-AUROC.
+
+Các kết quả cho thấy từng thành phần ảnh hưởng khác nhau đến quyết định phân lớp, khả năng xếp hạng và hiệu chuẩn. Nhánh ảnh độ phân giải cao có thể hỗ trợ các lớp ít phổ biến và cấu trúc xếp hạng, dù chưa cải thiện quyết định argmax. Pha 1 có xu hướng duy trì biểu diễn cân bằng hơn giữa các lớp, trong khi biến thể chỉ pha 2 ưu tiên Accuracy và Macro-F1. Concat và linear head cải thiện một số độ đo quyết định hoặc hiệu chuẩn nhưng làm suy giảm các độ đo xếp hạng, phản ánh sự đánh đổi giữa tối ưu ranh giới phân loại và duy trì hình học biểu diễn theo tâm lớp. Đáng chú ý, mean pooling vượt attention pooling trên phần lớn độ đo phân loại, do đó lợi ích của attention pooling chưa được xác nhận rõ ràng.
 
 \input{generated/chapter4_results/table_ablation_leave_one_out_classification}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{generated/chapter4_results/forest_accuracy.png}
+\includegraphics[width=1\textwidth]{generated/chapter4_results/forest_accuracy.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Accuracy giữa từng biến thể leave-one-out và XBone-Net trên CTCH}
 \label{fig:ablation_forest_accuracy}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{generated/chapter4_results/forest_balanced_accuracy.png}
+\includegraphics[width=1\textwidth]{generated/chapter4_results/forest_balanced_accuracy.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Balanced Accuracy giữa từng biến thể leave-one-out và XBone-Net trên CTCH}
 \label{fig:ablation_forest_balanced_accuracy}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{generated/chapter4_results/forest_f1_macro.png}
+\includegraphics[width=1\textwidth]{generated/chapter4_results/forest_f1_macro.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Macro-F1 giữa từng biến thể leave-one-out và XBone-Net trên CTCH}
 \label{fig:ablation_forest_f1_macro}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{generated/chapter4_results/forest_auroc_macro.png}
+\includegraphics[width=1\textwidth]{generated/chapter4_results/forest_auroc_macro.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUROC giữa từng biến thể leave-one-out và XBone-Net trên CTCH}
 \label{fig:ablation_forest_auroc_macro}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{generated/chapter4_results/forest_auprc_macro.png}
+\includegraphics[width=1\textwidth]{generated/chapter4_results/forest_auprc_macro.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUPRC giữa từng biến thể leave-one-out và XBone-Net trên CTCH}
 \label{fig:ablation_forest_auprc_macro}
 \end{figure}
 
-Bảng~\ref{tab:ablation_leave_one_out_classification} cho thấy không có phép loại bỏ nào làm suy giảm đồng thời cả sáu độ đo so với XBone-Net đầy đủ. Linear head đạt Accuracy và Macro-F1 cao nhất, lần lượt là $0{.}6263\pm0{.}0060$ và $0{.}5889\pm0{.}0251$, cao hơn XBone-Net ở hai độ đo này nhưng có Macro-AUROC thấp hơn, $0{.}9080\pm0{.}0099$ so với $0{.}9473\pm0{.}0246$. Mean pooling đạt Balanced Accuracy, Macro-AUROC và Macro-AUPRC cao nhất, tương ứng $0{.}6049\pm0{.}0459$, $0{.}9577\pm0{.}0082$ và $0{.}6312\pm0{.}0277$, nhưng ECE tăng từ $0{.}1032\pm0{.}0303$ lên $0{.}1506\pm0{.}0564$. Concat cho ECE thấp nhất là $0{.}0789\pm0{.}0148$ và Macro-AUROC $0{.}9566\pm0{.}0046$, trong khi Balanced Accuracy, Macro-F1 và Macro-AUPRC thấp hơn cấu hình đầy đủ. Hai biến thể không high-resolution và chỉ pha 2 đều cải thiện Accuracy, nhưng làm giảm Balanced Accuracy và Macro-AUROC.
-
-Kết quả cho thấy các thành phần tạo ra những ảnh hưởng khác nhau lên chất lượng quyết định, khả năng xếp hạng và hiệu chuẩn. Việc loại nhánh ảnh độ phân giải cao làm Accuracy tăng nhưng Balanced Accuracy, Macro-AUROC, Macro-AUPRC và ECE kém hơn, gợi ý rằng thông tin cục bộ có thể hỗ trợ một số lớp ít phổ biến hoặc cấu trúc xếp hạng dù chưa chuyển thành lợi thế cho quyết định argmax. Ngược lại, mean pooling tốt hơn attention pooling trên năm độ đo phân loại nhưng có ECE cao hơn; do đó, lợi ích phân loại của cơ chế attention pooling có tham số chưa được kết quả hiện tại xác nhận. Biến thể chỉ pha 2 cải thiện Accuracy, Macro-F1 và Macro-AUPRC nhưng giảm Balanced Accuracy, Macro-AUROC và khả năng hiệu chuẩn, cho thấy pha 1 có thể hỗ trợ cấu trúc biểu diễn và sự cân bằng giữa lớp hơn là tối ưu trực tiếp quyết định cuối. Concat cải thiện Macro-AUROC và ECE nhưng giảm Macro-F1, còn linear head cải thiện quyết định cứng nhưng giảm rõ rệt Macro-AUROC; hai đối chứng này phản ánh sự khác biệt giữa tối ưu ranh giới phân loại và duy trì hình học biểu diễn theo tâm lớp.
-
-Nhìn chung, nghiên cứu leave-one-out chưa cung cấp bằng chứng rằng cấu hình đầy đủ là phương án tối ưu cho riêng tác vụ phân loại, bởi mỗi thành phần đều đi kèm một dạng đánh đổi và một số đối chứng rút gọn đạt kết quả cao hơn. Bằng chứng thuận lợi hơn cho XBone-Net nằm ở việc nhánh ảnh độ phân giải cao, pha 1 và empirical centroid duy trì tốt hơn một số khía cạnh liên quan đến cân bằng lớp hoặc xếp hạng, trong khi attention pooling là thành phần cần được xem xét lại rõ nhất do mean pooling đạt kết quả tốt hơn trên phần lớn độ đo. Vì vậy, đóng góp của từng thành phần cần được trình bày theo tiêu chí cụ thể thay vì khẳng định cải thiện đồng đều; việc giữ cấu hình đầy đủ chỉ nên được biện minh cùng các mục tiêu bổ sung về biểu diễn và phát hiện OOD, không dựa riêng trên kết quả phân loại leave-one-out.
+Nhìn chung, thí nghiệm leave-one-out chưa chứng minh cấu hình đầy đủ là tối ưu riêng cho tác vụ phân loại, vì một số biến thể rút gọn đạt kết quả tốt hơn trên từng tiêu chí. Cấu hình đầy đủ chủ yếu duy trì tốt hơn một số khía cạnh về cân bằng lớp, khả năng xếp hạng và hình học biểu diễn, trong khi attention pooling là thành phần cần được xem xét lại. Vì vậy, đóng góp của từng mô-đun nên được trình bày theo từng mục tiêu cụ thể; việc giữ cấu hình đầy đủ cần được biện minh thêm bằng các tác vụ như phát hiện OOD, thay vì chỉ dựa trên kết quả phân loại.
 
 \clearpage
 
 \subsection{OOD hậu xử lý}
 
-Bảng~\ref{tab:ood_semantic_btxrd} tổng hợp bốn score hậu xử lý trên hai kịch
-bản OOD của XBone-Net. Tất cả score hình học được tính trên fused embedding của
-cùng checkpoint; entropy được tính từ phân phối xác suất đầu ra. Các kết quả là
-trung bình và độ lệch chuẩn trên ba hạt giống, trong đó thống kê detector được
-ước lượng từ CTCH train và ngưỡng vận hành chỉ được hiệu chỉnh trên CTCH
-validation-ID trước khi đánh giá.
+Kết quả trong Bảng \ref{tab:ood_semantic_btxrd} và Hình \ref{fig:ood_mahalanobis_semantic_btxrd} cho thấy hiệu quả phát hiện OOD của XBone-Net thay đổi đáng kể theo loại dịch chuyển dữ liệu. Trên BTXRD, Mahalanobis-centroid đạt kết quả tốt nhất trong bốn phương pháp với AUROC-OOD $0{.}8042\pm0{.}0938$, AUPR-Out $0{.}8009\pm0{.}0609$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$. Trong kịch bản Semantic OOD, các kết quả thấp hơn: Mahalanobis-centroid đạt AUROC-OOD cao nhất ($0{.}5840\pm0{.}0203$), Entropy đạt AUPR-Out cao nhất ($0{.}0634\pm0{.}0204$), còn Cosine-centroid có FPR@95\%TPR thấp nhất ($0{.}8966\pm0{.}0345$).
 
 \input{generated/chapter4_results/table_ood_semantic_btxrd}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{generated/chapter4_results/mahalanobis_semantic_btxrd_metrics.png}
-\caption{So sánh AUROC-OOD, AUPR-Out và FPR@95\%TPR của Mahalanobis-centroid trên Semantic OOD và BTXRD; thanh sai số biểu thị độ lệch chuẩn giữa ba hạt giống}
+\includegraphics[width=1.0\textwidth]{generated/chapter4_results/mahalanobis_semantic_btxrd_metrics.png}
+\caption{So sánh AUROC-OOD, AUPR-Out và FPR@95\%TPR của Mahalanobis-centroid trên Semantic OOD và BTXRD}
 \label{fig:ood_mahalanobis_semantic_btxrd}
 \end{figure}
 
-Phân tích Bảng~\ref{tab:ood_semantic_btxrd} cho thấy Mahalanobis-centroid đạt kết quả tốt nhất trên BTXRD với AUROC-OOD $0{.}8042\pm0{.}0938$, AUPR-Out $0{.}8009\pm0{.}0609$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$. Trong Semantic OOD, mức phân tách thấp hơn đáng kể: Mahalanobis-centroid đạt AUROC-OOD cao nhất là $0{.}5840\pm0{.}0203$, Entropy đạt AUPR-Out cao nhất là $0{.}0634\pm0{.}0204$, còn Cosine-centroid có FPR@95\%TPR thấp nhất là $0{.}8966\pm0{.}0345$. Hình~\ref{fig:ood_mahalanobis_semantic_btxrd} làm rõ khoảng cách này và cho thấy điểm vận hành của Semantic OOD vẫn có tỷ lệ chấp nhận nhầm cao.
+Khoảng cách giữa hai kịch bản có thể liên quan đến mức độ dịch chuyển trong không gian biểu diễn. BTXRD khác CTCH đồng thời về nguồn dữ liệu, phân bố ảnh, không gian nhãn và nội dung văn bản, do đó biểu diễn dung hợp của các mẫu này có khả năng nằm xa hơn các cụm lớp CTCH, Mahalanobis-centroid có thể tận dụng thêm phương sai và tương quan giữa các chiều để biểu diễn dạng sai khác này. Ngược lại, các mẫu Semantic OOD vẫn có thể chia sẻ vị trí giải phẫu, biểu hiện tổn thương hoặc từ khóa bệnh sử với các lớp đã biết, khiến chúng nằm gần miền biểu diễn ID dù không thuộc không gian nhãn đích. Kết quả Entropy thấp trên cả hai kịch bản cũng gợi ý rằng độ bất định của đầu phân loại chưa phản ánh đầy đủ khoảng cách hình học giữa mẫu kiểm thử và dữ liệu huấn luyện. Tuy nhiên, do hai kịch bản khác nhau trên nhiều yếu tố đồng thời, các kết quả hiện có chưa cho phép quy toàn bộ chênh lệch cho riêng miền ảnh, văn bản hoặc cấu trúc nhãn.
 
-Sự khác biệt giữa hai kịch bản có thể được giải thích từ bản chất dịch chuyển dữ liệu. BTXRD tạo ra thay đổi đồng thời về miền ảnh, không gian nhãn và nguồn văn bản, nhờ đó các mẫu có xu hướng lệch khỏi phân bố tâm lớp CTCH rõ hơn; Mahalanobis-centroid khai thác phương sai và tương quan giữa các chiều fused embedding nên phù hợp với dạng dịch chuyển có cấu trúc này. Ngược lại, Semantic OOD vẫn có thể chia sẻ vị trí giải phẫu, biểu hiện ảnh hoặc từ khóa bệnh sử với các lớp đã biết. Vì fused embedding được tối ưu cho phân loại thay vì tách ID--OOD, những mẫu này có thể nằm gần các cụm huấn luyện dù không thuộc không gian nhãn đích. AUPR-Out thấp còn phản ánh tỷ lệ mẫu OOD nhỏ trong kịch bản Semantic OOD.
-
-Kết quả cho thấy fused embedding chứa tín hiệu hữu ích để phát hiện dịch chuyển liên bộ dữ liệu mà không cần huấn luyện lại mô hình, nhưng chưa hỗ trợ tốt bất thường ngữ nghĩa gần phân phối. Mahalanobis-centroid được giữ làm score chính cho BTXRD, trong khi không có phương pháp nào đạt điểm vận hành đủ tin cậy trên Semantic OOD. Vì FPR@95\%TPR vẫn cao và độ lệch chuẩn giữa các hạt giống còn đáng kể, cơ chế OOD hiện tại chỉ nên được trình bày như tín hiệu cảnh báo hậu xử lý, không phải cơ chế từ chối tự động trong triển khai.
+Nhìn chung, biểu diễn dung hợp cung cấp tín hiệu hậu xử lý hữu ích hơn đối với dịch chuyển liên bộ dữ liệu BTXRD so với Semantic OOD gần phân phối, nhưng điểm vận hành vẫn còn hạn chế. Ngay cả với Mahalanobis-centroid trên BTXRD, FPR@95\%TPR bằng $0{.}7071$ cho thấy một tỷ lệ lớn mẫu ID vẫn có thể bị cảnh báo nhầm khi yêu cầu phát hiện $95\%$ mẫu OOD; độ lệch chuẩn tương đối lớn cũng phản ánh sự nhạy cảm theo hạt giống. Vì vậy, kết quả phù hợp để xem mô-đun OOD như một tín hiệu cảnh báo bổ trợ cho dự đoán phân loại, thay vì một cơ chế từ chối tự động hoặc bằng chứng về độ an toàn khi triển khai.
 
 \subsection{Giải thích bằng Integrated Gradients}
 
-Hai trường hợp định tính được lựa chọn nhằm minh họa cách ba nguồn thông tin của XBone-Net ảnh hưởng đến dự đoán: ảnh toàn cục, token ảnh cục bộ và token bệnh sử. Màu nóng trên ảnh hoặc văn bản biểu thị mức đóng góp ủng hộ lớn hơn đối với lớp được giải thích; các đường deletion và insertion được sử dụng để kiểm tra mức thay đổi xác suất khi lần lượt loại bỏ hoặc khôi phục các thành phần theo thứ tự attribution.
+Kết quả trong Hình \ref{fig:attention_case_2842} và Hình \ref{fig:attention_case_3021} minh họa hai hành vi khác nhau của XBone-Net khi giải thích đồng thời ảnh toàn cục, token ảnh cục bộ và token bệnh sử. Với mẫu 2842\_img-33484-00001, mô hình dự đoán đúng lớp gãy xương chày với xác suất $50{.}8\%$; khi lần lượt thay từng nguồn bằng baseline, xác suất lớp dự đoán giảm $0{.}249$ ở ảnh toàn cục, $0{.}071$ ở ảnh cục bộ và $0{.}053$ ở bệnh sử. Với mẫu 3021\_img-84263-00001, mô hình dự đoán sai lớp gãy xương ngón tay thay cho cắt cụt ngón tay với xác suất $71{.}7\%$; mức giảm tương ứng của bệnh sử và ảnh toàn cục là $0{.}622$ và $0{.}573$, trong khi ảnh cục bộ chỉ đạt $0{.}009$. Các giá trị này cho thấy mức độ phụ thuộc vào từng nguồn có thể thay đổi đáng kể giữa một dự đoán đúng và một dự đoán sai.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth]{generated/chapter4_results/attention_case_2842_img-33484-00001.png}
-\caption{Phân tích Integrated Gradients ba nguồn của mẫu 2842\_img-33484-00001 bằng XBone-Net tại hạt giống 42}
+\caption{Giải thích Integrated Gradients trên ba nguồn thông tin đối với trường hợp dự đoán đúng 2842\_img-33484-00001 tại hạt giống 42}
 \label{fig:attention_case_2842}
 \end{figure}
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth]{generated/chapter4_results/attention_case_3021_img-84263-00001.png}
-\caption{Phân tích Integrated Gradients ba nguồn của mẫu 3021\_img-84263-00001 bằng XBone-Net tại hạt giống 42}
+\caption{Giải thích Integrated Gradients trên ba nguồn thông tin đối với trường hợp dự đoán sai 3021\_img-84263-00001 tại hạt giống 42}
 \label{fig:attention_case_3021}
 \end{figure}
 
-Ở mẫu 2842\_img-33484-00001, mô hình dự đoán đúng lớp gãy xương chày với xác suất $50{.}8\%$. Nhánh ảnh toàn cục tạo mức giảm xác suất lớn nhất khi được thay bằng mô hình cơ sở ($0{.}249$), cao hơn nhánh ảnh cục bộ ($0{.}071$) và bệnh sử ($0{.}053$). Global visual IG tập trung quanh vùng khớp gối và đầu trên xương chày, trong khi các token liên quan đến ``knee'', tình trạng đau và khó đi lại cung cấp tín hiệu bổ sung. Tuy nhiên, deletion và insertion của nhánh cục bộ khá gần nhau, cho thấy attribution cục bộ trong trường hợp này có tính phân biệt hạn chế.
+Trong trường hợp dự đoán đúng, IG của nhánh ảnh toàn cục tập trung chủ yếu quanh khớp gối và đầu trên xương chày, còn các token như ``knee'', biểu hiện đau và khó đi lại cung cấp tín hiệu bổ sung phù hợp với vùng giải phẫu được xét. Đường deletion có AUC $0{.}307$ và đường insertion có AUC $0{.}543$ ở nhánh ảnh toàn cục, trong khi hai đường của nhánh ảnh cục bộ gần nhau hơn, tương ứng $0{.}462$ và $0{.}475$; kết quả này nhất quán với mức giảm xác suất lớn hơn của ảnh toàn cục. Trong trường hợp dự đoán sai, các token ``wound'', ``third'', ``finger'', ``orthopedic'' và ``trauma'' cùng vùng bàn tay trên ảnh đều đóng góp mạnh cho lớp được dự đoán, nhưng các tín hiệu này chủ yếu xác nhận vị trí và tình trạng chấn thương thay vì phân biệt đầy đủ giữa gãy xương và cắt cụt. Do đó, attribution có thể hợp lý về mặt giải phẫu hoặc ngữ nghĩa ngay cả khi ranh giới quyết định cuối cùng chưa phù hợp.
 
-Ở mẫu 3021\_img-84263-00001, mô hình dự đoán sai gãy xương ngón tay thay vì cắt cụt ngón tay với xác suất $71{.}7\%$. Mức giảm xác suất khi thay bệnh sử và ảnh toàn cục lần lượt là $0{.}622$ và $0{.}573$, trong khi nhánh cục bộ chỉ đạt $0{.}009$. Các token ``wound'', ``third'', ``finger'', ``orthopedic'' và ``trauma'' có đóng góp lớn nhưng không đủ giúp đầu phân loại phân biệt chính xác giữa gãy và cắt cụt. Trường hợp này cho thấy heatmap trực quan có thể hợp lý về mặt vị trí hoặc ngữ nghĩa nhưng không tự thân bảo đảm dự đoán đúng; do đó, các hình IG được sử dụng như phân tích hỗ trợ và không được diễn giải như bằng chứng định vị tổn thương đã được kiểm chứng lâm sàng.
+Nhìn chung, Integrated Gradients giúp truy vết nguồn thông tin mà XBone-Net sử dụng và làm rõ vai trò nổi trội của ảnh toàn cục trong trường hợp dự đoán đúng, đồng thời cho thấy văn bản và ảnh toàn cục cũng có thể củng cố một dự đoán sai. Kết quả này hỗ trợ tính minh bạch ở cấp độ trường hợp và giúp nhận diện lỗi liên quan đến sự nhập nhằng giữa các lớp gần nhau. Tuy nhiên, hai hình chỉ là phân tích định tính tại một hạt giống, heatmap ảnh cục bộ bị giới hạn bởi độ phân giải token và chưa được đối chiếu với chú thích vùng tổn thương của chuyên gia; vì vậy, các giải thích IG không nên được xem là bằng chứng định vị tổn thương đã được kiểm chứng hoặc là đánh giá định lượng cho toàn bộ tập dữ liệu.

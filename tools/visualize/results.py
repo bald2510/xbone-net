@@ -276,7 +276,7 @@ def display_value(column: str, value: Any) -> Any:
     if column == "category" and not pd.isna(value):
         s = str(value)
         s = re.sub(r"^Few-shot\s*/\s*", "", s, flags=re.IGNORECASE)
-        s = re.sub(r"(\d+)\s*shot", r"\1-shot", s, flags=re.IGNORECASE)
+        s = re.sub(r"(\d+)\s*shot", r"\1 mẫu", s, flags=re.IGNORECASE)
         return s
     return value
 
@@ -605,14 +605,14 @@ def _ordered_unique(series: pd.Series) -> list[Any]:
 def _clean_x_tick_label(val: Any) -> str:
     s = str(val)
     s = re.sub(r"^Few-shot\s*/\s*", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"(\d+)\s*shot", r"\1-shot", s, flags=re.IGNORECASE)
+    s = re.sub(r"(\d+)\s*shot", r"\1 mẫu", s, flags=re.IGNORECASE)
     return s
 
 
 def _shot_sort_key(val: Any) -> tuple[int, int | float, str]:
-    """Sort key to ensure shot categories appear in natural numeric order (1-shot, 10-shot, 20-shot)."""
+    """Sort sample-limited categories in natural numeric order."""
     s = str(val)
-    match = re.search(r"(\d+)\s*shot", s, flags=re.IGNORECASE)
+    match = re.search(r"(\d+)\s*(?:shot|mẫu)", s, flags=re.IGNORECASE)
     if match:
         return (0, int(match.group(1)), s)
     return (1, 0, s)
@@ -2052,10 +2052,14 @@ def plot_full_shot_comparison(
     output: str | Path,
     *,
     datasets: Sequence[str] = ("BTXRD", "CTCH"),
+    title_template: str = "Phân loại full-shot trên {dataset}",
+    dataset_titles: Mapping[str, str] | None = None,
+    figure_title: str | None = None,
     dpi: int = 300,
 ) -> Path:
     """Compare XBone-Net with the two nearest PEFT baselines in full-shot."""
     frame = load_frame(input_file)
+    resolved_dataset_titles = dict(dataset_titles or {})
     required = (
         "dataset",
         "category",
@@ -2179,7 +2183,11 @@ def plot_full_shot_comparison(
                     if config == "ours_xbone_net"
                     else "normal",
                 )
-        axis.set_title(f"Phân loại full-shot trên {dataset}", pad=12)
+        panel_title = resolved_dataset_titles.get(
+            str(dataset),
+            title_template.format(dataset=dataset),
+        )
+        axis.set_title(panel_title, pad=12)
         axis.set_xticks(
             positions,
             labels=[label for _, _, label in metric_specs],
@@ -2207,7 +2215,11 @@ def plot_full_shot_comparison(
         ncol=3,
         frameon=False,
     )
-    figure.tight_layout(rect=(0.0, 0.10, 1.0, 1.0))
+    if figure_title:
+        figure.suptitle(figure_title)
+    figure.tight_layout(
+        rect=(0.0, 0.10, 1.0, 0.94 if figure_title else 1.0)
+    )
     destination = _prepare_plot_output(output)
     figure.savefig(destination, dpi=dpi, bbox_inches="tight")
     plt.close(figure)
@@ -2795,6 +2807,26 @@ def _build_parser() -> argparse.ArgumentParser:
         nargs="+",
         default=["BTXRD", "CTCH"],
     )
+    full_shot_comparison.add_argument(
+        "--title-template",
+        default="Phân loại full-shot trên {dataset}",
+        help=(
+            "Panel-title template; use {dataset} for the dataset name. "
+            "Ignored for datasets overridden by --dataset-title."
+        ),
+    )
+    full_shot_comparison.add_argument(
+        "--dataset-title",
+        action="append",
+        default=[],
+        metavar="DATASET=TITLE",
+        help="Override one panel title; may be specified multiple times.",
+    )
+    full_shot_comparison.add_argument(
+        "--figure-title",
+        default=None,
+        help="Optional title centered above the complete multi-panel figure.",
+    )
     full_shot_comparison.add_argument("--dpi", type=int, default=300)
     full_shot_comparison.add_argument("--output", type=Path, required=True)
 
@@ -3244,7 +3276,7 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3.5pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|}",
         r"\hline",
         r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
@@ -3282,10 +3314,10 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3.5pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
-        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
+        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
+        r" & & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -3329,7 +3361,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     for ds_code in datasets:
         ds_display = ds_code.upper()
         for shot in shots:
-            cat_display = f"{shot}-shot"
+            cat_display = f"{shot} mẫu"
             for m_code, m_display in models:
                 exp = f"{ds_code}/few_shot/{shot}_shot/{m_code}"
                 data = _load_efficiency_json(exp)
@@ -3385,7 +3417,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|}",
         r"\hline",
         r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
@@ -3434,7 +3466,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_params.extend([
         r"\end{tabular}%",
         r"}",
-        r"\caption{Đánh giá số lượng tham số của các mô hình trong kịch bản mẫu hạn chế (Few-shot)}",
+        r"\caption{Đánh giá số lượng tham số của các mô hình trong thiết lập mẫu học hạn chế}",
         r"\label{tab:efficiency_few_shot_params}",
         r"\end{table}",
     ])
@@ -3446,10 +3478,10 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{3pt}",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|c|}",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
-        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
+        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Kịch bản}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
+        r" & & & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -3493,7 +3525,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_compute.extend([
         r"\end{tabular}%",
         r"}",
-        r"\caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình trong kịch bản mẫu hạn chế (Few-shot)}",
+        r"\caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình trong thiết lập mẫu học hạn chế}",
         r"\label{tab:efficiency_few_shot_compute}",
         r"\end{table}",
     ])
@@ -6822,10 +6854,17 @@ def main() -> None:
         return
 
     if args.command == "full-shot-comparison":
+        dataset_titles = _parse_assignments(
+            args.dataset_title,
+            option="--dataset-title",
+        )
         output = plot_full_shot_comparison(
             args.input,
             args.output,
             datasets=args.datasets,
+            title_template=args.title_template,
+            dataset_titles=dataset_titles,
+            figure_title=args.figure_title,
             dpi=args.dpi,
         )
         print(f"Full-shot comparison saved to: {output}")
