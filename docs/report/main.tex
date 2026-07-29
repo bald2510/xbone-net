@@ -30,7 +30,7 @@
 \usepackage{amsmath} \usepackage{amssymb} \usepackage{floatrow} \usepackage{algorithm} \usepackage[noend]{algpseudocode} \makeatletter \def\BState{\State\hskip-\ALG@thistlm} \makeatother
 
 % Bảng biểu
-\usepackage{multirow} \usepackage{array} \usepackage{colortbl} \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\usepackage{multirow} \usepackage{array} \usepackage{colortbl} \usepackage{longtable} \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 
 % Các gói bổ sung cho Đề cương chi tiết (decuong.tex)
@@ -95,6 +95,8 @@
 
 % Mục lục, danh sách hình, danh sách bảng
 \addcontentsline{toc}{chapter}{Mục lục} \tableofcontents \listoffigures \listoftables
+
+\include{Appendix/list_symbols}
 
 \addcontentsline{toc}{chapter}{Tóm tắt}
 \include{Appendix/tomtat}

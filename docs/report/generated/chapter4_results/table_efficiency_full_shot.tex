@@ -1,0 +1,40 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline
+\multirow[c]{3}{=}{\centering BTXRD} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 & 2.75\% \\ \cline{2-5}
+ & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 & 2.43\% \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,308 & \cellcolor{gray!12}8,632,587 & \cellcolor{gray!12}4.22\% \\ \hline
+\multirow[c]{3}{=}{\centering CTCH} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 & 2.76\% \\ \cline{2-5}
+ & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 & 2.44\% \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,320 & \cellcolor{gray!12}8,632,599 & \cellcolor{gray!12}4.22\% \\ \hline
+\end{tabular}%
+}
+\caption{Đánh giá số lượng tham số của các mô hình khi sử dụng toàn bộ dữ liệu}
+\label{tab:efficiency_full_shot_params}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\
+\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline
+\multirow[c]{3}{=}{\centering BTXRD} & LoRA-BiomedCLIP & 83.321 & 30.6 & 36.25 & 792.6 \\ \cline{2-6}
+ & LoRA-PubMedCLIP & 15.198 & 33.3 & 43.87 & 603.6 \\ \cline{2-6}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}17.7 & \cellcolor{gray!12}64.92 & \cellcolor{gray!12}835.5 \\ \hline
+\multirow[c]{3}{=}{\centering CTCH} & LoRA-BiomedCLIP & 83.321 & 38.3 & 30.16 & 792.6 \\ \cline{2-6}
+ & LoRA-PubMedCLIP & 15.198 & 37.7 & 34.56 & 603.6 \\ \cline{2-6}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}13.4 & \cellcolor{gray!12}87.15 & \cellcolor{gray!12}835.6 \\ \hline
+\end{tabular}%
+}
+\caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình khi sử dụng toàn bộ dữ liệu}
+\label{tab:efficiency_full_shot_compute}
+\end{table}

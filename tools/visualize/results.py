@@ -47,6 +47,27 @@ Generate the CTCH leave-one-component-out classification table::
         --input results/summary/run_all_table.csv \
         --output docs/report/generated/chapter4_draft/table_ablation_leave_one_out_classification.tex
 
+Run paired statistical tests for XBone-Net and the leave-one-out variants,
+then redraw the primary forest plot from the generated CSV::
+
+    python tools/visualize/results.py ablation-statistics \
+        --metrics f1_macro balanced_accuracy accuracy \
+        --n-bootstrap 10000 --n-permutations 10000 \
+        --seeds 42 123 456 \
+        --output-dir results/summary/ablation/statistics
+
+    python tools/visualize/results.py ablation-forest \
+        --input results/summary/ablation/statistics/paired_bootstrap_results.csv \
+        --metric f1_macro \
+        --output results/summary/ablation/statistics/forest_f1_macro.png
+
+Generate separate Macro-AUROC and Macro-AUPRC statistical tables::
+
+    python tools/visualize/results.py ablation-statistics \
+        --metrics auroc_macro auprc_macro --test-method bootstrap \
+        --n-bootstrap 10000 --seeds 42 123 456 \
+        --output-dir results/summary/ablation/statistics_auc
+
 Export embeddings from the canonical proposed model, then generate its
 reliability diagram::
 
@@ -378,7 +399,7 @@ def generate_latex_table(
     resize_to_textwidth: bool = False,
     bold_best: bool = True,
 ) -> str:
-    """Return LaTeX code with all column-wise maxima rendered in bold.
+    """Return a LaTeX table with bold, centered column headers.
 
     ``value_columns`` identifies columns whose numeric values participate in
     maximum selection. If omitted, every selected column that contains at least
@@ -392,8 +413,7 @@ def generate_latex_table(
     """
     frame = frame.copy()
     if "category" in frame.columns:
-        cat_order = ["1-shot", "10-shot", "20-shot"]
-        frame["_cat_rank"] = frame["category"].apply(lambda x: cat_order.index(str(x)) if str(x) in cat_order else 99)
+        frame["_cat_rank"] = frame["category"].map(_shot_sort_key)
         if "dataset" in frame.columns:
             frame = frame.sort_values(by=["dataset", "_cat_rank"], kind="stable").drop(columns=["_cat_rank"]).reset_index(drop=True)
         else:
@@ -459,7 +479,11 @@ def generate_latex_table(
         lines.append(r"\resizebox{\textwidth}{!}{%")
     lines.extend([rf"\begin{{tabular}}{{{tabular_spec}}}", r"\hline"])
     header = " & ".join(
-        labels.get(column, _latex_escape(column)) for column in selected
+        (
+            rf"\multicolumn{{1}}{{{'|c|' if index == 0 else 'c|'}}}"
+            rf"{{\textbf{{{labels.get(column, _latex_escape(column))}}}}}"
+        )
+        for index, column in enumerate(selected)
     )
     lines.append(header + r" \\ \hline")
 
@@ -1559,25 +1583,11 @@ def plot_roc_curve(
     title: str | None = None,
     dpi: int = 300,
 ) -> tuple[Path, dict[str, Any]]:
-    """Write one-vs-rest ROC curves with macro and micro summaries."""
+    """Write the macro-average one-vs-rest ROC curve."""
     plt = _load_pyplot()
     statistics = roc_curve_statistics(probabilities, labels, task=task)
-    names = _curve_class_names(statistics["num_classes"], class_names)
-    fig, axis = plt.subplots(figsize=(10.5 if show_per_class else 6.2, 6.2))
-    colors = plt.get_cmap("turbo", statistics["num_classes"])
-
-    if show_per_class:
-        for class_id, values in statistics["per_class"].items():
-            axis.plot(
-                values["fpr"],
-                values["tpr"],
-                color=colors(class_id),
-                linewidth=1.0,
-                alpha=0.58,
-                label=f"{class_id}: {names[class_id]} ({values['auc']:.3f})",
-            )
+    fig, axis = plt.subplots(figsize=(6.2, 6.2))
     macro = statistics["macro"]
-    micro = statistics["micro"]
     axis.plot(
         macro["fpr"],
         macro["tpr"],
@@ -1587,21 +1597,12 @@ def plot_roc_curve(
         zorder=5,
     )
     axis.plot(
-        micro["fpr"],
-        micro["tpr"],
-        color="#D62728",
-        linestyle=(0, (5, 3)),
-        linewidth=2.4,
-        label=f"Micro-average (AUROC = {micro['auc']:.3f})",
-        zorder=5,
-    )
-    axis.plot(
         [0.0, 1.0],
         [0.0, 1.0],
         color="#555555",
         linestyle=":",
-        linewidth=1.2,
-        label="Chance",
+        linewidth=1.4,
+        label="Random prediction",
     )
     axis.set_xlim(0.0, 1.0)
     axis.set_ylim(0.0, 1.01)
@@ -1611,17 +1612,13 @@ def plot_roc_curve(
     axis.grid(color="#D9D9D9", linewidth=0.7, alpha=0.7)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    if show_per_class:
-        axis.legend(
-            title="Class (AUROC)",
-            loc="center left",
-            bbox_to_anchor=(1.01, 0.5),
-            fontsize=7,
-            title_fontsize=8,
-            frameon=False,
-        )
-    else:
-        axis.legend(frameon=False, loc="lower right")
+    axis.legend(
+        loc="lower right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     fig.tight_layout()
     destination = _prepare_plot_output(output)
     fig.savefig(destination, dpi=dpi, bbox_inches="tight")
@@ -1640,32 +1637,15 @@ def plot_precision_recall_curve(
     title: str | None = None,
     dpi: int = 300,
 ) -> tuple[Path, dict[str, Any]]:
-    """Write one-vs-rest PR curves with macro and micro summaries."""
+    """Write the macro-average one-vs-rest precision--recall curve."""
     plt = _load_pyplot()
     statistics = precision_recall_curve_statistics(
         probabilities,
         labels,
         task=task,
     )
-    names = _curve_class_names(statistics["num_classes"], class_names)
-    fig, axis = plt.subplots(figsize=(10.5 if show_per_class else 6.2, 6.2))
-    colors = plt.get_cmap("turbo", statistics["num_classes"])
-
-    if show_per_class:
-        for class_id, values in statistics["per_class"].items():
-            axis.plot(
-                values["recall"],
-                values["precision"],
-                color=colors(class_id),
-                linewidth=1.0,
-                alpha=0.58,
-                label=(
-                    f"{class_id}: {names[class_id]} "
-                    f"({values['average_precision']:.3f})"
-                ),
-            )
+    fig, axis = plt.subplots(figsize=(6.2, 6.2))
     macro = statistics["macro"]
-    micro = statistics["micro"]
     axis.plot(
         macro["recall"],
         macro["precision"],
@@ -1674,21 +1654,13 @@ def plot_precision_recall_curve(
         label=f"Macro-average (AP = {macro['average_precision']:.3f})",
         zorder=5,
     )
-    axis.plot(
-        micro["recall"],
-        micro["precision"],
-        color="#D62728",
-        linestyle=(0, (5, 3)),
-        linewidth=2.4,
-        label=f"Micro-average (AP = {micro['average_precision']:.3f})",
-        zorder=5,
-    )
+    prevalence = float(statistics["micro"]["prevalence"])
     axis.axhline(
-        micro["prevalence"],
+        prevalence,
         color="#555555",
         linestyle=":",
-        linewidth=1.2,
-        label=f"Micro prevalence ({micro['prevalence']:.3f})",
+        linewidth=1.4,
+        label=f"Prevalence ({prevalence:.3f})",
     )
     axis.set_xlim(0.0, 1.0)
     axis.set_ylim(0.0, 1.01)
@@ -1698,17 +1670,13 @@ def plot_precision_recall_curve(
     axis.grid(color="#D9D9D9", linewidth=0.7, alpha=0.7)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    if show_per_class:
-        axis.legend(
-            title="Class (average precision)",
-            loc="center left",
-            bbox_to_anchor=(1.01, 0.5),
-            fontsize=7,
-            title_fontsize=8,
-            frameon=False,
-        )
-    else:
-        axis.legend(frameon=False, loc="lower left")
+    axis.legend(
+        loc="upper right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     fig.tight_layout()
     destination = _prepare_plot_output(output)
     fig.savefig(destination, dpi=dpi, bbox_inches="tight")
@@ -1776,7 +1744,13 @@ def plot_calibration_curve(
     axis.grid(axis="y", color="#D9D9D9", linewidth=0.7, alpha=0.8, zorder=0)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    axis.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2, frameon=False)
+    axis.legend(
+        loc="lower right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     fig.tight_layout()
     destination = _prepare_plot_output(output)
     fig.savefig(destination, dpi=dpi, bbox_inches="tight")
@@ -1799,7 +1773,7 @@ def plot_aggregate_prediction_curves(
     title_prefix: str = "Model",
     dpi: int = 300,
 ) -> dict[str, Any]:
-    """Plot mean ROC, PR, and calibration curves across multiple seeds.
+    """Plot mean macro ROC, macro PR, and calibration curves across seeds.
 
     Each input must contain predictions for the same test set. Curves are
     interpolated on common grids before computing the seed-wise mean and sample
@@ -1847,49 +1821,51 @@ def plot_aggregate_prediction_curves(
             for stats in roc_stats
         ]
     )
-    micro_tpr = np.stack(
-        [
-            np.interp(roc_grid, stats["micro"]["fpr"], stats["micro"]["tpr"])
-            for stats in roc_stats
-        ]
-    )
     macro_auc = _mean_std([stats["macro"]["auc"] for stats in roc_stats])
     micro_auc = _mean_std([stats["micro"]["auc"] for stats in roc_stats])
     figure, axis = plt.subplots(figsize=(6.4, 5.6))
-    for curves, color, label, auc_values, linestyle in (
-        (macro_tpr, "#1769D2", "Macro-average", macro_auc, "-"),
-        (micro_tpr, "#D62728", "Micro-average", micro_auc, (0, (5, 3))),
-    ):
-        mean_curve = curves.mean(axis=0)
-        std_curve = curves.std(axis=0, ddof=1)
-        axis.plot(
-            roc_grid,
-            mean_curve,
-            color=color,
-            linestyle=linestyle,
-            linewidth=2.5,
-            label=(
-                f"{label} (AUROC = {auc_values[0]:.3f}"
-                f" ± {auc_values[1]:.3f})"
-            ),
-        )
-        axis.fill_between(
-            roc_grid,
-            np.clip(mean_curve - std_curve, 0.0, 1.0),
-            np.clip(mean_curve + std_curve, 0.0, 1.0),
-            color=color,
-            alpha=0.14,
-            linewidth=0,
-        )
-    axis.plot([0, 1], [0, 1], color="#555555", linestyle=":", label="Chance")
+    mean_macro_tpr = macro_tpr.mean(axis=0)
+    std_macro_tpr = macro_tpr.std(axis=0, ddof=1)
+    axis.plot(
+        roc_grid,
+        mean_macro_tpr,
+        color="#1769D2",
+        linewidth=2.5,
+        label=(
+            f"Macro-average (AUROC = {macro_auc[0]:.3f}"
+            f" ± {macro_auc[1]:.3f})"
+        ),
+    )
+    axis.fill_between(
+        roc_grid,
+        np.clip(mean_macro_tpr - std_macro_tpr, 0.0, 1.0),
+        np.clip(mean_macro_tpr + std_macro_tpr, 0.0, 1.0),
+        color="#1769D2",
+        alpha=0.14,
+        linewidth=0,
+    )
+    axis.plot(
+        [0.0, 1.0],
+        [0.0, 1.0],
+        color="#555555",
+        linestyle=":",
+        linewidth=1.4,
+        label="Random prediction",
+    )
     axis.set(xlim=(0, 1), ylim=(0, 1.01))
     axis.set_xlabel("False-positive rate")
     axis.set_ylabel("True-positive rate")
-    axis.set_title(f"{title_prefix} — ROC trung bình trên {len(inputs)} seed")
+    axis.set_title(f"{title_prefix} ROC trung bình trên {len(inputs)} seed")
     axis.grid(color="#D9D9D9", linewidth=0.7, alpha=0.7)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    axis.legend(frameon=False, loc="lower right")
+    axis.legend(
+        loc="lower right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     figure.tight_layout()
     roc_output = destination_dir / f"{prefix}_roc_{len(inputs)}seed.png"
     figure.savefig(roc_output, dpi=dpi, bbox_inches="tight")
@@ -1906,16 +1882,6 @@ def plot_aggregate_prediction_curves(
             for stats in pr_stats
         ]
     )
-    micro_precision = np.stack(
-        [
-            np.interp(
-                recall_grid,
-                stats["micro"]["recall"][::-1],
-                stats["micro"]["precision"][::-1],
-            )
-            for stats in pr_stats
-        ]
-    )
     macro_ap = _mean_std(
         [stats["macro"]["average_precision"] for stats in pr_stats]
     )
@@ -1926,45 +1892,49 @@ def plot_aggregate_prediction_curves(
         np.mean([stats["micro"]["prevalence"] for stats in pr_stats])
     )
     figure, axis = plt.subplots(figsize=(6.4, 5.6))
-    for curves, color, label, ap_values, linestyle in (
-        (macro_precision, "#1769D2", "Macro-average", macro_ap, "-"),
-        (micro_precision, "#D62728", "Micro-average", micro_ap, (0, (5, 3))),
-    ):
-        mean_curve = curves.mean(axis=0)
-        std_curve = curves.std(axis=0, ddof=1)
-        axis.plot(
-            recall_grid,
-            mean_curve,
-            color=color,
-            linestyle=linestyle,
-            linewidth=2.5,
-            label=f"{label} (AP = {ap_values[0]:.3f} ± {ap_values[1]:.3f})",
-        )
-        axis.fill_between(
-            recall_grid,
-            np.clip(mean_curve - std_curve, 0.0, 1.0),
-            np.clip(mean_curve + std_curve, 0.0, 1.0),
-            color=color,
-            alpha=0.14,
-            linewidth=0,
-        )
+    mean_macro_precision = macro_precision.mean(axis=0)
+    std_macro_precision = macro_precision.std(axis=0, ddof=1)
+    axis.plot(
+        recall_grid,
+        mean_macro_precision,
+        color="#1769D2",
+        linewidth=2.5,
+        label=(
+            f"Macro-average (AP = {macro_ap[0]:.3f}"
+            f" ± {macro_ap[1]:.3f})"
+        ),
+    )
+    axis.fill_between(
+        recall_grid,
+        np.clip(mean_macro_precision - std_macro_precision, 0.0, 1.0),
+        np.clip(mean_macro_precision + std_macro_precision, 0.0, 1.0),
+        color="#1769D2",
+        alpha=0.14,
+        linewidth=0,
+    )
     axis.axhline(
         prevalence,
         color="#555555",
         linestyle=":",
-        linewidth=1.2,
-        label=f"Micro prevalence ({prevalence:.3f})",
+        linewidth=1.4,
+        label=f"Prevalence ({prevalence:.3f})",
     )
     axis.set(xlim=(0, 1), ylim=(0, 1.01))
     axis.set_xlabel("Recall")
     axis.set_ylabel("Precision")
     axis.set_title(
-        f"{title_prefix} — Precision–Recall trung bình trên {len(inputs)} seed"
+        f"{title_prefix} Precision–Recall trung bình trên {len(inputs)} seed"
     )
     axis.grid(color="#D9D9D9", linewidth=0.7, alpha=0.7)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    axis.legend(frameon=False, loc="lower left")
+    axis.legend(
+        loc="upper right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     figure.tight_layout()
     pr_output = destination_dir / f"{prefix}_pr_{len(inputs)}seed.png"
     figure.savefig(pr_output, dpi=dpi, bbox_inches="tight")
@@ -2034,12 +2004,18 @@ def plot_aggregate_prediction_curves(
     axis.set_xlabel("Độ tin cậy trung bình")
     axis.set_ylabel("Độ chính xác quan sát")
     axis.set_title(
-        f"{title_prefix} — hiệu chuẩn trung bình trên {len(inputs)} seed"
+        f"{title_prefix} Hiệu chuẩn trung bình trên {len(inputs)} seed"
     )
     axis.grid(color="#D9D9D9", linewidth=0.7, alpha=0.7)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    axis.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), frameon=False)
+    axis.legend(
+        loc="lower right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.9,
+    )
     figure.tight_layout()
     calibration_output = (
         destination_dir / f"{prefix}_calibration_{len(inputs)}seed.png"
@@ -2069,6 +2045,484 @@ def plot_aggregate_prediction_curves(
     )
     summary["outputs"]["summary"] = str(summary_output)
     return summary
+
+
+def plot_full_shot_comparison(
+    input_file: str | Path,
+    output: str | Path,
+    *,
+    datasets: Sequence[str] = ("BTXRD", "CTCH"),
+    dpi: int = 300,
+) -> Path:
+    """Compare XBone-Net with the two nearest PEFT baselines in full-shot."""
+    frame = load_frame(input_file)
+    required = (
+        "dataset",
+        "category",
+        "config",
+        "accuracy_mean",
+        "accuracy_std",
+        "balanced_accuracy_mean",
+        "balanced_accuracy_std",
+        "f1_macro_mean",
+        "f1_macro_std",
+        "auroc_macro_mean",
+        "auroc_macro_std",
+        "auprc_macro_mean",
+        "auprc_macro_std",
+    )
+    _require_columns(frame, required)
+    model_specs = (
+        (
+            "lora_biomedclip",
+            "Baselines / PEFT",
+            "LoRA-BiomedCLIP",
+            REPORT_PALETTE["orange"],
+        ),
+        (
+            "lora_pubmedclip",
+            "Baselines / PEFT",
+            "LoRA-PubMedCLIP",
+            REPORT_PALETTE["green"],
+        ),
+        (
+            "ours_xbone_net",
+            "Proposed",
+            "XBone-Net",
+            REPORT_PALETTE["blue"],
+        ),
+    )
+    metric_specs = (
+        ("accuracy_mean", "accuracy_std", "Accuracy"),
+        ("balanced_accuracy_mean", "balanced_accuracy_std", "Balanced Acc."),
+        ("f1_macro_mean", "f1_macro_std", "Macro-F1"),
+        ("auroc_macro_mean", "auroc_macro_std", "Macro-AUROC"),
+        ("auprc_macro_mean", "auprc_macro_std", "Macro-AUPRC"),
+    )
+
+    plt = _load_pyplot()
+    figure, axes = plt.subplots(
+        1,
+        len(datasets),
+        figsize=(13.2, 5.2),
+        sharey=True,
+        squeeze=False,
+    )
+    positions = np.arange(len(metric_specs), dtype=float)
+    width = 0.25
+    for dataset_index, dataset in enumerate(datasets):
+        axis = axes[0, dataset_index]
+        label_rows: list[
+            tuple[Any, np.ndarray, np.ndarray, str]
+        ] = []
+        for model_index, (
+            config,
+            category,
+            model_label,
+            color,
+        ) in enumerate(model_specs):
+            selected = frame[
+                (frame["dataset"].astype(str) == str(dataset))
+                & (frame["category"].astype(str) == category)
+                & (frame["config"].astype(str) == config)
+            ]
+            if len(selected) != 1:
+                raise ValueError(
+                    f"Expected one full-shot row for {dataset}/{config}; "
+                    f"found {len(selected)}."
+                )
+            row = selected.iloc[0]
+            values = np.asarray(
+                [float(row[mean_column]) for mean_column, _, _ in metric_specs]
+            )
+            errors = np.asarray(
+                [float(row[std_column]) for _, std_column, _ in metric_specs]
+            )
+            offsets = positions + (model_index - 1) * width
+            bars = axis.bar(
+                offsets,
+                values,
+                width=width,
+                yerr=errors,
+                capsize=3,
+                color=color,
+                edgecolor="#333333",
+                linewidth=1.0,
+                error_kw={
+                    "ecolor": "#333333",
+                    "elinewidth": 1.2,
+                    "capthick": 1.2,
+                },
+                label=model_label,
+            )
+            label_rows.append((bars, values, errors, config))
+        for metric_index in range(len(metric_specs)):
+            group_top = max(
+                values[metric_index] + errors[metric_index]
+                for _, values, errors, _ in label_rows
+            )
+            for model_index, (
+                bars,
+                values,
+                _,
+                config,
+            ) in enumerate(label_rows):
+                bar = bars[metric_index]
+                axis.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    group_top + 0.010 + model_index * 0.032,
+                    f"{values[metric_index]:.3f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=7.5,
+                    fontweight="bold"
+                    if config == "ours_xbone_net"
+                    else "normal",
+                )
+        axis.set_title(f"Phân loại full-shot trên {dataset}", pad=12)
+        axis.set_xticks(
+            positions,
+            labels=[label for _, _, label in metric_specs],
+            rotation=20,
+            ha="right",
+        )
+        axis.set_ylim(0.0, 1.07)
+        axis.grid(
+            axis="y",
+            color="#D9D9D9",
+            linestyle="--",
+            linewidth=0.8,
+            alpha=0.8,
+        )
+        axis.set_axisbelow(True)
+        axis.spines["top"].set_visible(False)
+        axis.spines["right"].set_visible(False)
+    axes[0, 0].set_ylabel("Giá trị độ đo")
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    figure.legend(
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.02),
+        ncol=3,
+        frameon=False,
+    )
+    figure.tight_layout(rect=(0.0, 0.10, 1.0, 1.0))
+    destination = _prepare_plot_output(output)
+    figure.savefig(destination, dpi=dpi, bbox_inches="tight")
+    plt.close(figure)
+    return destination
+
+
+FULL_SHOT_BASELINE_ORDER = (
+    "lora_biomedclip",
+    "lora_pubmedclip",
+    "fft_biomedclip",
+    "fft_pubmedclip",
+    "fft_clip",
+    "fft_medclip",
+    "fft_resnet50",
+    "fft_densenet",
+)
+
+
+def _seed_list(value: Any) -> list[int]:
+    """Parse the space-separated seed field used by run_all_table.csv."""
+    return [int(item) for item in re.findall(r"\d+", str(value))]
+
+
+def build_full_shot_paired_effects(
+    input_file: str | Path,
+    *,
+    results_root: str | Path = DEFAULT_RESULTS_ROOT,
+    datasets: Sequence[str] = ("BTXRD", "CTCH"),
+    metric: str = "f1_macro",
+    confidence_level: float = 0.95,
+) -> pd.DataFrame:
+    """Estimate paired seed-level XBone-Net minus baseline effects."""
+    supported_metrics = {
+        "accuracy",
+        "balanced_accuracy",
+        "f1_macro",
+        "auroc_macro",
+        "auprc_macro",
+    }
+    if metric not in supported_metrics:
+        raise ValueError(f"Unsupported full-shot paired metric: {metric}")
+    if not 0.0 < confidence_level < 1.0:
+        raise ValueError("confidence_level must be between zero and one.")
+
+    frame = load_frame(input_file)
+    _require_columns(
+        frame,
+        ("dataset", "category", "config", "experiment", "seeds"),
+    )
+    root = resolve_path(results_root)
+    rows: list[dict[str, Any]] = []
+    from scipy.stats import t as student_t
+
+    for dataset in datasets:
+        dataset_rows = frame[
+            frame["dataset"].astype(str).str.casefold()
+            == str(dataset).casefold()
+        ].copy()
+        proposed_rows = dataset_rows[
+            (dataset_rows["config"].astype(str) == "ours_xbone_net")
+            & (dataset_rows["category"].astype(str) == "Proposed")
+        ]
+        if len(proposed_rows) != 1:
+            raise ValueError(
+                f"Expected one XBone-Net row for {dataset}; "
+                f"found {len(proposed_rows)}."
+            )
+        proposed_row = proposed_rows.iloc[0]
+        proposed_seeds = _seed_list(proposed_row["seeds"])
+        proposed_metrics = _load_seed_metrics(
+            root / str(proposed_row["experiment"]),
+            seeds=proposed_seeds,
+        )
+
+        baseline_rows = dataset_rows[
+            dataset_rows["category"].astype(str).isin(
+                ("Baselines / PEFT", "Baselines / Full fine-tuning")
+            )
+        ].copy()
+        order_map = {
+            config: index
+            for index, config in enumerate(FULL_SHOT_BASELINE_ORDER)
+        }
+        baseline_rows["_order"] = (
+            baseline_rows["config"]
+            .astype(str)
+            .map(order_map)
+            .fillna(len(order_map))
+        )
+        baseline_rows = baseline_rows.sort_values(
+            ["_order", "config"],
+            kind="stable",
+        )
+
+        for _, baseline_row in baseline_rows.iterrows():
+            baseline_config = str(baseline_row["config"])
+            baseline_seeds = _seed_list(baseline_row["seeds"])
+            paired_seeds = [
+                seed for seed in proposed_seeds if seed in baseline_seeds
+            ]
+            if len(paired_seeds) < 2:
+                continue
+            baseline_metrics = _load_seed_metrics(
+                root / str(baseline_row["experiment"]),
+                seeds=paired_seeds,
+            )
+            differences = np.asarray(
+                [
+                    proposed_metrics[seed][metric]
+                    - baseline_metrics[seed][metric]
+                    for seed in paired_seeds
+                ],
+                dtype=np.float64,
+            )
+            n_pairs = len(differences)
+            delta_mean = float(differences.mean())
+            delta_std = float(differences.std(ddof=1))
+            standard_error = delta_std / math.sqrt(n_pairs)
+            alpha = 1.0 - confidence_level
+            critical_value = float(
+                student_t.ppf(1.0 - alpha / 2.0, df=n_pairs - 1)
+            )
+            margin = critical_value * standard_error
+            rows.append(
+                {
+                    "dataset": str(dataset),
+                    "baseline_config": baseline_config,
+                    "baseline": CONFIG_DISPLAY_NAMES.get(
+                        baseline_config,
+                        baseline_config,
+                    ),
+                    "metric": metric,
+                    "n_pairs": n_pairs,
+                    "seeds": " ".join(str(seed) for seed in paired_seeds),
+                    "delta_mean": delta_mean,
+                    "delta_std": delta_std,
+                    "ci_low": delta_mean - margin,
+                    "ci_high": delta_mean + margin,
+                    "confidence_level": confidence_level,
+                    "ci_method": "paired Student t interval across seeds",
+                }
+            )
+    result = pd.DataFrame(rows)
+    if result.empty:
+        raise ValueError("No paired full-shot comparisons could be constructed.")
+    return result
+
+
+def plot_full_shot_paired_forest(
+    input_file: str | Path,
+    output: str | Path,
+    *,
+    results_root: str | Path = DEFAULT_RESULTS_ROOT,
+    datasets: Sequence[str] = ("BTXRD", "CTCH"),
+    metric: str = "f1_macro",
+    confidence_level: float = 0.95,
+    csv_output: str | Path | None = None,
+    dpi: int = 300,
+) -> tuple[Path, Path]:
+    """Plot paired seed-level confidence intervals against every baseline."""
+    effects = build_full_shot_paired_effects(
+        input_file,
+        results_root=results_root,
+        datasets=datasets,
+        metric=metric,
+        confidence_level=confidence_level,
+    )
+    metric_labels = {
+        "accuracy": "Accuracy",
+        "balanced_accuracy": "Balanced Accuracy",
+        "f1_macro": "Macro-F1",
+        "auroc_macro": "Macro-AUROC",
+        "auprc_macro": "Macro-AUPRC",
+    }
+    metric_label = metric_labels[metric]
+
+    plt = _load_pyplot()
+    from matplotlib.lines import Line2D
+
+    figure, axes = plt.subplots(
+        1,
+        len(datasets),
+        figsize=(12.4, 6.2),
+        sharex=True,
+        sharey=True,
+        squeeze=False,
+    )
+    baseline_labels = [
+        CONFIG_DISPLAY_NAMES.get(config, config)
+        for config in FULL_SHOT_BASELINE_ORDER
+        if config in set(effects["baseline_config"].astype(str))
+    ]
+    positions = np.arange(len(baseline_labels), dtype=float)
+    label_to_position = {
+        label: position
+        for position, label in zip(positions, baseline_labels)
+    }
+
+    for dataset_index, dataset in enumerate(datasets):
+        axis = axes[0, dataset_index]
+        dataset_effects = effects[
+            effects["dataset"].astype(str).str.casefold()
+            == str(dataset).casefold()
+        ]
+        for _, row in dataset_effects.iterrows():
+            mean = float(row["delta_mean"])
+            lower = float(row["ci_low"])
+            upper = float(row["ci_high"])
+            position = label_to_position[str(row["baseline"])]
+            if lower > 0.0:
+                color = REPORT_PALETTE["blue"]
+            elif upper < 0.0:
+                color = REPORT_PALETTE["orange"]
+            else:
+                color = REPORT_PALETTE["gray"]
+            axis.errorbar(
+                mean,
+                position,
+                xerr=np.asarray([[mean - lower], [upper - mean]]),
+                fmt="o",
+                color=color,
+                ecolor=color,
+                markersize=6,
+                elinewidth=1.8,
+                capsize=4,
+                zorder=3,
+            )
+        axis.axvline(
+            0.0,
+            color="#222222",
+            linestyle="--",
+            linewidth=1.1,
+        )
+        axis.set_title(str(dataset))
+        axis.set_yticks(positions, labels=baseline_labels)
+        axis.invert_yaxis()
+        axis.grid(
+            axis="x",
+            color="#D9D9D9",
+            linestyle="--",
+            linewidth=0.8,
+            alpha=0.8,
+        )
+        axis.set_axisbelow(True)
+        axis.spines["top"].set_visible(False)
+        axis.spines["right"].set_visible(False)
+
+    all_limits = np.concatenate(
+        (
+            numeric_series(effects["ci_low"]).to_numpy(),
+            numeric_series(effects["ci_high"]).to_numpy(),
+            np.asarray([0.0]),
+        )
+    )
+    span = float(np.nanmax(all_limits) - np.nanmin(all_limits))
+    padding = max(0.01, 0.12 * span)
+    axes[0, 0].set_xlim(
+        float(np.nanmin(all_limits) - padding),
+        float(np.nanmax(all_limits) + padding),
+    )
+    figure.suptitle(
+        f"Khoảng tin cậy ghép cặp {confidence_level:.0%} của {metric_label}",
+        y=0.99,
+    )
+    figure.supxlabel(
+        rf"Chênh lệch {metric_label}: XBone-Net $-$ baseline ($\Delta$)",
+        y=0.08,
+    )
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["blue"],
+            label="Khoảng tin cậy nằm phía XBone-Net",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["orange"],
+            label="Khoảng tin cậy nằm phía baseline",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["gray"],
+            label="Khoảng tin cậy cắt mốc 0",
+        ),
+    ]
+    figure.legend(
+        handles=handles,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.005),
+        ncol=3,
+        frameon=False,
+        fontsize=8.5,
+    )
+    figure.tight_layout(rect=(0.0, 0.12, 1.0, 0.95))
+
+    destination = _prepare_plot_output(output)
+    figure.savefig(destination, dpi=dpi, bbox_inches="tight")
+    plt.close(figure)
+    csv_destination = resolve_path(
+        csv_output
+        if csv_output is not None
+        else destination.with_suffix(".csv")
+    )
+    csv_destination.parent.mkdir(parents=True, exist_ok=True)
+    effects.to_csv(csv_destination, index=False, encoding="utf-8-sig")
+    return destination, csv_destination
 
 
 def _add_shared_input(parser: argparse.ArgumentParser) -> None:
@@ -2127,7 +2581,7 @@ def _add_prediction_curve_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-per-class",
         action="store_true",
-        help="Draw only macro and micro curves.",
+        help="Deprecated compatibility option; ROC/PR plots are macro-average only.",
     )
     parser.add_argument("--title", default=None)
     parser.add_argument("--dpi", type=int, default=300)
@@ -2292,13 +2746,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     roc = subparsers.add_parser(
         "roc",
-        help="Generate one-vs-rest ROC curves with macro/micro AUROC.",
+        help="Generate a macro-average one-vs-rest ROC curve.",
     )
     _add_prediction_curve_args(roc)
 
     precision_recall = subparsers.add_parser(
         "pr",
-        help="Generate one-vs-rest precision--recall curves with macro/micro AP.",
+        help="Generate a macro-average one-vs-rest precision--recall curve.",
     )
     _add_prediction_curve_args(precision_recall)
 
@@ -2323,6 +2777,76 @@ def _build_parser() -> argparse.ArgumentParser:
     aggregate_curves.add_argument("--n-bins", type=int, default=15)
     aggregate_curves.add_argument("--title-prefix", default="Model")
     aggregate_curves.add_argument("--dpi", type=int, default=300)
+
+    full_shot_comparison = subparsers.add_parser(
+        "full-shot-comparison",
+        help=(
+            "Compare XBone-Net with LoRA-BiomedCLIP and LoRA-PubMedCLIP "
+            "using the latest three-seed full-shot summary."
+        ),
+    )
+    full_shot_comparison.add_argument(
+        "--input",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "run_all_table.csv",
+    )
+    full_shot_comparison.add_argument(
+        "--datasets",
+        nargs="+",
+        default=["BTXRD", "CTCH"],
+    )
+    full_shot_comparison.add_argument("--dpi", type=int, default=300)
+    full_shot_comparison.add_argument("--output", type=Path, required=True)
+
+    full_shot_paired_forest = subparsers.add_parser(
+        "full-shot-paired-forest",
+        help=(
+            "Plot paired seed-level confidence intervals for XBone-Net "
+            "minus every trained full-shot baseline."
+        ),
+    )
+    full_shot_paired_forest.add_argument(
+        "--input",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "run_all_table.csv",
+    )
+    full_shot_paired_forest.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+    )
+    full_shot_paired_forest.add_argument(
+        "--datasets",
+        nargs="+",
+        default=["BTXRD", "CTCH"],
+    )
+    full_shot_paired_forest.add_argument(
+        "--metric",
+        choices=(
+            "accuracy",
+            "balanced_accuracy",
+            "f1_macro",
+            "auroc_macro",
+            "auprc_macro",
+        ),
+        default="f1_macro",
+    )
+    full_shot_paired_forest.add_argument(
+        "--confidence-level",
+        type=float,
+        default=0.95,
+    )
+    full_shot_paired_forest.add_argument("--dpi", type=int, default=300)
+    full_shot_paired_forest.add_argument(
+        "--csv-output",
+        type=Path,
+        default=None,
+    )
+    full_shot_paired_forest.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+    )
 
     aggregate_confusion = subparsers.add_parser(
         "aggregate-confusion",
@@ -2410,6 +2934,42 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=DEFAULT_RESULTS_ROOT / "summary" / "ood" / "table_ood_3scenarios.tex",
+    )
+
+    ood_metrics = subparsers.add_parser(
+        "ood-metrics",
+        help=(
+            "Plot AUROC-OOD, AUPR-Out, and FPR@95%TPR for one OOD scoring "
+            "method across selected scenarios."
+        ),
+    )
+    ood_metrics.add_argument(
+        "--input",
+        type=Path,
+        default=(
+            DEFAULT_RESULTS_ROOT
+            / "ctch/proposed/ours_xbone_net/analysis/aggregated_results.json"
+        ),
+    )
+    ood_metrics.add_argument(
+        "--scenarios",
+        nargs="+",
+        default=["semantic_ood", "domain_ood_btxrd"],
+    )
+    ood_metrics.add_argument(
+        "--method",
+        default="mahalanobis_centroid",
+        choices=["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"],
+    )
+    ood_metrics.add_argument("--title", default=None)
+    ood_metrics.add_argument("--dpi", type=int, default=300)
+    ood_metrics.add_argument(
+        "--output",
+        type=Path,
+        default=(
+            DEFAULT_RESULTS_ROOT
+            / "summary/ood/mahalanobis_semantic_btxrd_metrics.png"
+        ),
     )
 
     ood_heatmaps = subparsers.add_parser(
@@ -2533,6 +3093,89 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     leave_one_out.add_argument("--precision", type=int, default=4)
+
+    ablation_statistics = subparsers.add_parser(
+        "ablation-statistics",
+        help=(
+            "Run paired crossed bootstrap and patient-level permutation tests "
+            "for XBone-Net versus the leave-one-out variants."
+        ),
+    )
+    ablation_statistics.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+    )
+    ablation_statistics.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[42, 123, 456],
+    )
+    ablation_statistics.add_argument(
+        "--metrics",
+        nargs="+",
+        choices=(
+            "accuracy",
+            "balanced_accuracy",
+            "f1_macro",
+            "auroc_macro",
+            "auprc_macro",
+            "ece_15",
+        ),
+        default=["f1_macro", "balanced_accuracy", "accuracy"],
+        help=(
+            "Metrics included in the confirmatory analysis. Macro-F1 is the "
+            "recommended primary endpoint."
+        ),
+    )
+    ablation_statistics.add_argument("--n-bootstrap", type=int, default=10_000)
+    ablation_statistics.add_argument("--n-permutations", type=int, default=10_000)
+    ablation_statistics.add_argument(
+        "--test-method",
+        choices=("permutation", "bootstrap"),
+        default="permutation",
+        help=(
+            "Use the crossed patient/seed permutation test, or a centered "
+            "paired bootstrap test. The bootstrap test is much faster for "
+            "Macro-AUROC and Macro-AUPRC."
+        ),
+    )
+    ablation_statistics.add_argument("--alpha", type=float, default=0.05)
+    ablation_statistics.add_argument("--random-seed", type=int, default=2026)
+    ablation_statistics.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "ablation" / "statistics",
+    )
+    ablation_statistics.add_argument("--dpi", type=int, default=300)
+
+    ablation_forest = subparsers.add_parser(
+        "ablation-forest",
+        help="Draw a forest plot from paired leave-one-out statistics.",
+    )
+    ablation_forest.add_argument(
+        "--input",
+        type=Path,
+        default=(
+            DEFAULT_RESULTS_ROOT
+            / "summary/ablation/statistics/paired_bootstrap_results.csv"
+        ),
+    )
+    ablation_forest.add_argument(
+        "--metric",
+        choices=(
+            "accuracy",
+            "balanced_accuracy",
+            "f1_macro",
+            "auroc_macro",
+            "auprc_macro",
+            "ece_15",
+        ),
+        default="f1_macro",
+    )
+    ablation_forest.add_argument("--output", type=Path, required=True)
+    ablation_forest.add_argument("--dpi", type=int, default=300)
     return parser
 
 
@@ -2565,8 +3208,16 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         pct = data["parameters"].get("trainable_pct", (params_trainable / params_total) * 100)
         flops = data.get("supported_gflops_per_sample")
         gflops = f"{flops['mean']:.3f}" if flops and "mean" in flops else "--"
-        lat = f"{data['latency_ms_per_sample']['mean']:.2f}"
-        tp = f"{data['throughput_samples_per_second']['mean']:.1f}"
+        latency = data.get("latency_ms_per_sample", {})
+        lat_mean = f"{latency['mean']:.2f}" if "mean" in latency else "--"
+        throughput = data.get("throughput_samples_per_second", {})
+        tp = f"{throughput['mean']:.1f}" if "mean" in throughput else "--"
+        memory = data.get("cuda_memory", {})
+        peak_memory = (
+            f"{memory['peak_allocated_mb']:.1f}"
+            if "peak_allocated_mb" in memory
+            else "--"
+        )
 
         is_proposed = "XBone-Net" in name or "ours" in exp
         raw_rows.append({
@@ -2576,8 +3227,9 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
             "trainable_params": f"{params_trainable:,}",
             "trainable_pct": f"{pct:.2f}\\%",
             "gflops": gflops,
-            "latency": lat,
+            "latency_mean": lat_mean,
             "throughput": tp,
+            "peak_memory": peak_memory,
             "is_proposed": is_proposed,
         })
 
@@ -2589,10 +3241,12 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
     lines_params = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\small",
-        r"\begin{tabular}{|l|l|c|c|c|}",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|}",
         r"\hline",
-        r"\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{Tổng tham số} & \textbf{Tham số huấn luyện} & \textbf{Tỷ lệ (\%)} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -2602,7 +3256,11 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
     for ds, items in ds_groups.items():
         span = len(items)
         for i, item in enumerate(items):
-            ds_prefix = f"\\multirow{{{span}}}{{*}}{{{ds}}}" if i == 0 else ""
+            ds_prefix = (
+                f"\\multirow[c]{{{span}}}{{=}}{{\\centering {ds}}}"
+                if i == 0
+                else ""
+            )
             cell_bg = r"\cellcolor{gray!12}" if item["is_proposed"] else ""
             row_end = r" \\ \hline" if i == span - 1 else r" \\ \cline{2-5}"
             lines_params.append(
@@ -2610,7 +3268,8 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
             )
 
     lines_params.extend([
-        r"\end{tabular}",
+        r"\end{tabular}%",
+        r"}",
         r"\caption{Đánh giá số lượng tham số của các mô hình khi sử dụng toàn bộ dữ liệu}",
         r"\label{tab:efficiency_full_shot_params}",
         r"\end{table}",
@@ -2620,24 +3279,32 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
     lines_compute = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\small",
-        r"\begin{tabular}{|l|l|c|c|c|}",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{3.5cm}|c|c|c|c|}",
         r"\hline",
-        r"\textbf{Dữ liệu} & \textbf{Mô hình} & \textbf{GFLOPs} & \textbf{Độ trễ (ms)} & \textbf{Thông lượng (mẫu/s)} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
+        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
         span = len(items)
         for i, item in enumerate(items):
-            ds_prefix = f"\\multirow{{{span}}}{{*}}{{{ds}}}" if i == 0 else ""
+            ds_prefix = (
+                f"\\multirow[c]{{{span}}}{{=}}{{\\centering {ds}}}"
+                if i == 0
+                else ""
+            )
             cell_bg = r"\cellcolor{gray!12}" if item["is_proposed"] else ""
-            row_end = r" \\ \hline" if i == span - 1 else r" \\ \cline{2-5}"
+            row_end = r" \\ \hline" if i == span - 1 else r" \\ \cline{2-6}"
             lines_compute.append(
-                f"{ds_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['latency']} & {cell_bg}{item['throughput']}{row_end}"
+                f"{ds_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['throughput']} & {cell_bg}{item['latency_mean']} & {cell_bg}{item['peak_memory']}{row_end}"
             )
 
     lines_compute.extend([
-        r"\end{tabular}",
+        r"\end{tabular}%",
+        r"}",
         r"\caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình khi sử dụng toàn bộ dữ liệu}",
         r"\label{tab:efficiency_full_shot_compute}",
         r"\end{table}",
@@ -2674,8 +3341,28 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                 pct = data["parameters"].get("trainable_pct", (params_trainable / params_total) * 100)
                 flops = data.get("supported_gflops_per_sample")
                 gflops = f"{flops['mean']:.3f}" if flops and "mean" in flops else "--"
-                lat = f"{data['latency_ms_per_sample']['mean']:.2f}"
-                tp = f"{data['throughput_samples_per_second']['mean']:.1f}"
+                latency = data.get("latency_ms_per_sample", {})
+                lat_mean = (
+                    f"{latency['mean']:.2f}" if "mean" in latency else "--"
+                )
+                lat_p50 = (
+                    f"{latency['p50']:.2f}" if "p50" in latency else "--"
+                )
+                lat_p95 = (
+                    f"{latency['p95']:.2f}" if "p95" in latency else "--"
+                )
+                throughput = data.get("throughput_samples_per_second", {})
+                tp = (
+                    f"{throughput['mean']:.1f}"
+                    if "mean" in throughput
+                    else "--"
+                )
+                memory = data.get("cuda_memory", {})
+                peak_memory = (
+                    f"{memory['peak_allocated_mb']:.1f}"
+                    if "peak_allocated_mb" in memory
+                    else "--"
+                )
 
                 is_proposed = "XBone-Net" in m_display or "ours" in m_code
 
@@ -2687,8 +3374,11 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                     "trainable_params": f"{params_trainable:,}",
                     "trainable_pct": f"{pct:.2f}\\%",
                     "gflops": gflops,
-                    "latency": lat,
+                    "latency_mean": lat_mean,
+                    "latency_p50": lat_p50,
+                    "latency_p95": lat_p95,
                     "throughput": tp,
+                    "peak_memory": peak_memory,
                     "is_proposed": is_proposed,
                 })
 
@@ -2700,10 +3390,12 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_params = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\small",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{3pt}",
+        r"\resizebox{\textwidth}{!}{%",
         r"\begin{tabular}{|l|c|l|c|c|c|}",
         r"\hline",
-        r"\textbf{Dữ liệu} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \textbf{Tổng tham số} & \textbf{Tham số huấn luyện} & \textbf{Tỷ lệ (\%)} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -2740,7 +3432,8 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                 item_counter += 1
 
     lines_params.extend([
-        r"\end{tabular}",
+        r"\end{tabular}%",
+        r"}",
         r"\caption{Đánh giá số lượng tham số của các mô hình trong kịch bản mẫu hạn chế (Few-shot)}",
         r"\label{tab:efficiency_few_shot_params}",
         r"\end{table}",
@@ -2750,10 +3443,13 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_compute = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\small",
-        r"\begin{tabular}{|l|c|l|c|c|c|}",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{3pt}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{|l|c|l|c|c|c|c|c|c|}",
         r"\hline",
-        r"\textbf{Dữ liệu} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \textbf{GFLOPs} & \textbf{Độ trễ (ms)} & \textbf{Thông lượng (mẫu/s)} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Trễ TB}} & \multicolumn{1}{c|}{\textbf{P50}} & \multicolumn{1}{c|}{\textbf{P95}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
+        r"\multicolumn{1}{|c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{3}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -2776,18 +3472,19 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                 if is_last_item_of_dataset:
                     row_end = r" \\ \hline"
                 elif is_last_item_of_cat:
-                    row_end = r" \\ \cline{2-6}"
+                    row_end = r" \\ \cline{2-9}"
                 else:
-                    row_end = r" \\ \cline{3-6}"
+                    row_end = r" \\ \cline{3-9}"
 
                 lines_compute.append(
-                    f"{ds_prefix} & {cat_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['latency']} & {cell_bg}{item['throughput']}{row_end}"
+                    f"{ds_prefix} & {cat_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['throughput']} & {cell_bg}{item['latency_mean']} & {cell_bg}{item['latency_p50']} & {cell_bg}{item['latency_p95']} & {cell_bg}{item['peak_memory']}{row_end}"
                 )
                 item_counter += 1
 
 
     lines_compute.extend([
-        r"\end{tabular}",
+        r"\end{tabular}%",
+        r"}",
         r"\caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình trong kịch bản mẫu hạn chế (Few-shot)}",
         r"\label{tab:efficiency_few_shot_compute}",
         r"\end{table}",
@@ -2806,7 +3503,7 @@ def _generate_ood_table_legacy(output_file: Path) -> None:
         r"\small",
         r"\begin{tabular}{|l|l|c|c|c|}",
         r"\hline",
-        r"\textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{AUROC-OOD $\uparrow$} & \textbf{AUPR-Out $\uparrow$} & \textbf{FPR@95\%TPR $\downarrow$} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Phương pháp}} & \multicolumn{1}{c|}{\textbf{AUROC-OOD $\uparrow$}} & \multicolumn{1}{c|}{\textbf{AUPR-Out $\uparrow$}} & \multicolumn{1}{c|}{\textbf{FPR@95\%TPR $\downarrow$}} \\ \hline",
         r"\multirow{6}{*}{Semantic OOD}",
         r"& \textbf{Mahalanobis} & $\mathbf{0{.}6070\pm0{.}0123}$ & $\mathbf{0{.}5892\pm0{.}0145}$ & $\mathbf{0{.}8939\pm0{.}0572}$ \\ \cline{2-5}",
         r"& kNN         & $0{.}6046\pm0{.}0199$ & $0{.}5810\pm0{.}0182$ & $0{.}9015\pm0{.}0262$ \\ \cline{2-5}",
@@ -3145,11 +3842,16 @@ def generate_ablation_leave_one_out_table(
         r"\resizebox{\textwidth}{!}{%",
         rf"\begin{{tabular}}{{{column_definition}}}",
         r"\toprule",
-        r"\textbf{Thành phần hoặc độ đo} &",
+        r"\multicolumn{1}{c}{\textbf{Thành phần hoặc độ đo}} &",
     ]
     header_cells = [
-        rf"\textbf{{{_latex_escape(specification['label'])}}}"
-        for specification in LEAVE_ONE_OUT_CONFIGS
+        (
+            rf"\multicolumn{{1}}{{>{{\columncolor{{gray!12}}}}c}}"
+            rf"{{\textbf{{{_latex_escape(specification['label'])}}}}}"
+            if index == 0
+            else rf"\multicolumn{{1}}{{c}}{{\textbf{{{_latex_escape(specification['label'])}}}}}"
+        )
+        for index, specification in enumerate(LEAVE_ONE_OUT_CONFIGS)
     ]
     lines.append(" &\n".join(header_cells) + r" \\")
     lines.append(r"\midrule")
@@ -3213,6 +3915,1251 @@ def generate_ablation_leave_one_out_table(
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(lines), encoding="utf-8")
     return destination
+
+
+PAIRED_STATISTIC_METRICS = {
+    "accuracy": {
+        "label": "Accuracy",
+        "latex": r"Accuracy $\uparrow$",
+        "higher_is_better": True,
+    },
+    "balanced_accuracy": {
+        "label": "Balanced Accuracy",
+        "latex": r"Balanced Accuracy $\uparrow$",
+        "higher_is_better": True,
+    },
+    "f1_macro": {
+        "label": "Macro-F1",
+        "latex": r"Macro-F1 $\uparrow$",
+        "higher_is_better": True,
+    },
+    "auroc_macro": {
+        "label": "Macro-AUROC",
+        "latex": r"Macro-AUROC $\uparrow$",
+        "higher_is_better": True,
+    },
+    "auprc_macro": {
+        "label": "Macro-AUPRC",
+        "latex": r"Macro-AUPRC $\uparrow$",
+        "higher_is_better": True,
+    },
+    "ece_15": {
+        "label": "ECE",
+        "latex": r"ECE $\downarrow$",
+        "higher_is_better": False,
+    },
+}
+
+
+def _classification_metric_values(
+    probabilities: np.ndarray,
+    labels: np.ndarray,
+    metrics: Sequence[str],
+) -> dict[str, float]:
+    """Compute report metrics without printing intermediate output."""
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+    if probabilities.ndim != 2 or len(probabilities) != len(labels):
+        raise ValueError("Expected probabilities [N,C] and labels [N].")
+    row_sums = probabilities.sum(axis=1, keepdims=True)
+    if np.any(row_sums <= 0):
+        raise ValueError("Probability rows must have positive sums.")
+    probabilities = probabilities / row_sums
+    predictions = probabilities.argmax(axis=1)
+    class_order = np.arange(probabilities.shape[1])
+    requested = set(metrics)
+    values: dict[str, float] = {}
+
+    if requested.intersection(("accuracy", "balanced_accuracy", "f1_macro")):
+        num_classes = probabilities.shape[1]
+        matrix = np.bincount(
+            labels * num_classes + predictions,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        true_positive = np.diag(matrix).astype(np.float64)
+        support = matrix.sum(axis=1).astype(np.float64)
+        predicted = matrix.sum(axis=0).astype(np.float64)
+        if "accuracy" in requested:
+            values["accuracy"] = float(true_positive.sum() / matrix.sum())
+        if "balanced_accuracy" in requested:
+            recalls = np.divide(
+                true_positive,
+                support,
+                out=np.zeros_like(true_positive),
+                where=support > 0,
+            )
+            values["balanced_accuracy"] = float(recalls.mean())
+        if "f1_macro" in requested:
+            denominator = support + predicted
+            per_class_f1 = np.divide(
+                2.0 * true_positive,
+                denominator,
+                out=np.zeros_like(true_positive),
+                where=denominator > 0,
+            )
+            values["f1_macro"] = float(per_class_f1.mean())
+
+    if "auroc_macro" in requested or "auprc_macro" in requested:
+        aurocs: list[float] = []
+        auprcs: list[float] = []
+        for class_id in class_order:
+            binary_labels = (labels == class_id).astype(np.int64)
+            if np.unique(binary_labels).size < 2:
+                continue
+            if "auroc_macro" in requested:
+                aurocs.append(
+                    float(
+                        roc_auc_score(
+                            binary_labels,
+                            probabilities[:, class_id],
+                        )
+                    )
+                )
+            if "auprc_macro" in requested:
+                auprcs.append(
+                    float(
+                        average_precision_score(
+                            binary_labels,
+                            probabilities[:, class_id],
+                        )
+                    )
+                )
+        if "auroc_macro" in requested:
+            values["auroc_macro"] = (
+                float(np.mean(aurocs)) if aurocs else float("nan")
+            )
+        if "auprc_macro" in requested:
+            values["auprc_macro"] = (
+                float(np.mean(auprcs)) if auprcs else float("nan")
+            )
+
+    if "ece_15" in requested:
+        confidence = probabilities.max(axis=1)
+        correct = (predictions == labels).astype(np.float64)
+        edges = np.linspace(0.0, 1.0, 16)
+        ece = 0.0
+        for index in range(15):
+            lower, upper = edges[index], edges[index + 1]
+            mask = (confidence > lower) & (confidence <= upper)
+            if index == 0:
+                mask |= confidence == 0.0
+            if np.any(mask):
+                ece += float(mask.mean()) * abs(
+                    float(correct[mask].mean())
+                    - float(confidence[mask].mean())
+                )
+        values["ece_15"] = float(ece)
+    return values
+
+
+def _prepare_rank_metric_cache(
+    probabilities: np.ndarray,
+    labels: np.ndarray,
+) -> list[dict[str, np.ndarray]]:
+    """Pre-sort fixed class scores for exact weighted AUROC/AUPRC bootstrap."""
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+    row_sums = probabilities.sum(axis=1, keepdims=True)
+    probabilities = probabilities / np.clip(row_sums, 1e-12, None)
+    cache: list[dict[str, np.ndarray]] = []
+    for class_id in range(probabilities.shape[1]):
+        scores = probabilities[:, class_id]
+        order = np.argsort(-scores, kind="mergesort")
+        sorted_scores = scores[order]
+        group_end = np.empty(len(order), dtype=bool)
+        group_end[:-1] = sorted_scores[:-1] != sorted_scores[1:]
+        group_end[-1] = True
+        cache.append(
+            {
+                "order": order,
+                "group_end": np.flatnonzero(group_end),
+                "positive": (labels[order] == class_id).astype(np.float64),
+            }
+        )
+    return cache
+
+
+def _weighted_rank_metrics(
+    cache: Sequence[Mapping[str, np.ndarray]],
+    sample_weight: np.ndarray,
+    *,
+    need_auroc: bool,
+    need_auprc: bool,
+) -> tuple[float, float]:
+    """Compute exact macro rank metrics from fixed scores and case weights."""
+    aurocs: list[float] = []
+    auprcs: list[float] = []
+    weights = np.asarray(sample_weight, dtype=np.float64)
+    for class_cache in cache:
+        order = np.asarray(class_cache["order"], dtype=np.int64)
+        ends = np.asarray(class_cache["group_end"], dtype=np.int64)
+        positive = np.asarray(class_cache["positive"], dtype=np.float64)
+        ordered_weight = weights[order]
+        positive_weight = ordered_weight * positive
+        negative_weight = ordered_weight * (1.0 - positive)
+        total_positive = float(positive_weight.sum())
+        total_negative = float(negative_weight.sum())
+        if total_positive <= 0.0 or total_negative <= 0.0:
+            continue
+        cumulative_positive = np.cumsum(positive_weight)[ends]
+        cumulative_negative = np.cumsum(negative_weight)[ends]
+        if need_auroc:
+            true_positive_rate = np.concatenate(
+                ([0.0], cumulative_positive / total_positive)
+            )
+            false_positive_rate = np.concatenate(
+                ([0.0], cumulative_negative / total_negative)
+            )
+            aurocs.append(float(np.trapezoid(true_positive_rate, false_positive_rate)))
+        if need_auprc:
+            previous_positive = np.concatenate(
+                ([0.0], cumulative_positive[:-1])
+            )
+            recall_increment = (
+                cumulative_positive - previous_positive
+            ) / total_positive
+            precision = cumulative_positive / np.clip(
+                cumulative_positive + cumulative_negative,
+                1e-12,
+                None,
+            )
+            auprcs.append(float(np.sum(recall_increment * precision)))
+    return (
+        float(np.mean(aurocs)) if aurocs else float("nan"),
+        float(np.mean(auprcs)) if auprcs else float("nan"),
+    )
+
+
+def _classification_metric_values_weighted(
+    probabilities: np.ndarray,
+    labels: np.ndarray,
+    metrics: Sequence[str],
+    sample_weight: np.ndarray,
+    *,
+    rank_cache: Sequence[Mapping[str, np.ndarray]] | None = None,
+) -> dict[str, float]:
+    """Compute the report metrics for one bootstrap vector of case weights."""
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+    weights = np.asarray(sample_weight, dtype=np.float64).reshape(-1)
+    if len(weights) != len(labels):
+        raise ValueError("Sample weights must match the number of labels.")
+    row_sums = probabilities.sum(axis=1, keepdims=True)
+    probabilities = probabilities / np.clip(row_sums, 1e-12, None)
+    predictions = probabilities.argmax(axis=1)
+    requested = set(metrics)
+    values: dict[str, float] = {}
+    num_classes = probabilities.shape[1]
+
+    if requested.intersection(("accuracy", "balanced_accuracy", "f1_macro")):
+        matrix = np.bincount(
+            labels * num_classes + predictions,
+            weights=weights,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        true_positive = np.diag(matrix)
+        support = matrix.sum(axis=1)
+        predicted = matrix.sum(axis=0)
+        if "accuracy" in requested:
+            values["accuracy"] = float(true_positive.sum() / matrix.sum())
+        if "balanced_accuracy" in requested:
+            values["balanced_accuracy"] = float(
+                np.divide(
+                    true_positive,
+                    support,
+                    out=np.zeros_like(true_positive),
+                    where=support > 0,
+                ).mean()
+            )
+        if "f1_macro" in requested:
+            denominator = support + predicted
+            values["f1_macro"] = float(
+                np.divide(
+                    2.0 * true_positive,
+                    denominator,
+                    out=np.zeros_like(true_positive),
+                    where=denominator > 0,
+                ).mean()
+            )
+
+    need_auroc = "auroc_macro" in requested
+    need_auprc = "auprc_macro" in requested
+    if need_auroc or need_auprc:
+        if rank_cache is None:
+            rank_cache = _prepare_rank_metric_cache(probabilities, labels)
+        auroc, auprc = _weighted_rank_metrics(
+            rank_cache,
+            weights,
+            need_auroc=need_auroc,
+            need_auprc=need_auprc,
+        )
+        if need_auroc:
+            values["auroc_macro"] = auroc
+        if need_auprc:
+            values["auprc_macro"] = auprc
+
+    if "ece_15" in requested:
+        confidence = probabilities.max(axis=1)
+        correct = (predictions == labels).astype(np.float64)
+        total_weight = float(weights.sum())
+        edges = np.linspace(0.0, 1.0, 16)
+        ece = 0.0
+        for index in range(15):
+            lower, upper = edges[index], edges[index + 1]
+            mask = (confidence > lower) & (confidence <= upper)
+            if index == 0:
+                mask |= confidence == 0.0
+            bin_weight = float(weights[mask].sum())
+            if bin_weight > 0.0:
+                bin_accuracy = float(np.average(correct[mask], weights=weights[mask]))
+                bin_confidence = float(
+                    np.average(confidence[mask], weights=weights[mask])
+                )
+                ece += (bin_weight / total_weight) * abs(
+                    bin_accuracy - bin_confidence
+                )
+        values["ece_15"] = float(ece)
+    return values
+
+
+def _load_aligned_prediction_archive(
+    source: Path,
+    *,
+    expected_image_ids: np.ndarray | None = None,
+    expected_labels: np.ndarray | None = None,
+) -> dict[str, np.ndarray]:
+    """Load and, when necessary, reorder one prediction archive by image ID."""
+    if not source.is_file():
+        raise FileNotFoundError(f"Missing prediction archive: {source}")
+    required = ("probabilities", "labels", "image_id", "patient_id")
+    with np.load(source, allow_pickle=False) as archive:
+        missing = [key for key in required if key not in archive]
+        if missing:
+            raise KeyError(f"Missing keys in {source}: {missing}")
+        data = {
+            key: np.asarray(archive[key]).copy()
+            for key in required
+        }
+
+    image_ids = data["image_id"].astype(str)
+    if len(np.unique(image_ids)) != len(image_ids):
+        raise ValueError(f"Image IDs are not unique in {source}.")
+
+    if expected_image_ids is not None:
+        expected = np.asarray(expected_image_ids).astype(str)
+        lookup = {image_id: index for index, image_id in enumerate(image_ids)}
+        missing_ids = [image_id for image_id in expected if image_id not in lookup]
+        if missing_ids:
+            raise ValueError(
+                f"{source} is missing {len(missing_ids)} paired test cases."
+            )
+        order = np.asarray([lookup[image_id] for image_id in expected], dtype=int)
+        data = {key: value[order] for key, value in data.items()}
+        image_ids = data["image_id"].astype(str)
+        if not np.array_equal(image_ids, expected):
+            raise RuntimeError(f"Failed to align prediction archive: {source}")
+
+    data["labels"] = np.asarray(data["labels"], dtype=np.int64).reshape(-1)
+    data["probabilities"] = np.asarray(data["probabilities"], dtype=np.float64)
+    data["image_id"] = image_ids
+    data["patient_id"] = data["patient_id"].astype(str)
+    if expected_labels is not None and not np.array_equal(
+        data["labels"],
+        np.asarray(expected_labels, dtype=np.int64).reshape(-1),
+    ):
+        raise ValueError(f"Ground-truth labels differ in paired archive: {source}")
+    return data
+
+
+def _leave_one_out_prediction_roots(
+    results_root: str | Path,
+) -> list[tuple[str, str, Path]]:
+    base = resolve_path(results_root)
+    roots: list[tuple[str, str, Path]] = []
+    for specification in LEAVE_ONE_OUT_CONFIGS:
+        experiment = str(specification["experiment"])
+        roots.append(
+            (
+                experiment,
+                str(specification["label"]),
+                base / experiment,
+            )
+        )
+    return roots
+
+
+def _load_leave_one_out_predictions(
+    results_root: str | Path,
+    *,
+    seeds: Sequence[int],
+) -> tuple[
+    list[tuple[str, str, Path]],
+    dict[str, dict[int, np.ndarray]],
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
+    """Load six leave-one-out configurations on one strictly paired test set."""
+    roots = _leave_one_out_prediction_roots(results_root)
+    if not roots:
+        raise ValueError("No leave-one-out configurations were defined.")
+    seed_order = [int(seed) for seed in seeds]
+    probabilities: dict[str, dict[int, np.ndarray]] = {}
+    common_image_ids: np.ndarray | None = None
+    common_labels: np.ndarray | None = None
+    common_patient_ids: np.ndarray | None = None
+
+    for experiment, _, root in roots:
+        probabilities[experiment] = {}
+        for seed in seed_order:
+            source = root / f"seed_{seed}" / "analysis/features/ctch_test.npz"
+            archive = _load_aligned_prediction_archive(
+                source,
+                expected_image_ids=common_image_ids,
+                expected_labels=common_labels,
+            )
+            if common_image_ids is None:
+                common_image_ids = archive["image_id"]
+                common_labels = archive["labels"]
+                common_patient_ids = archive["patient_id"]
+            elif not np.array_equal(
+                archive["patient_id"].astype(str),
+                np.asarray(common_patient_ids).astype(str),
+            ):
+                raise ValueError(f"Patient IDs differ in paired archive: {source}")
+            probabilities[experiment][seed] = archive["probabilities"]
+
+    assert common_image_ids is not None
+    assert common_labels is not None
+    assert common_patient_ids is not None
+    return (
+        roots,
+        probabilities,
+        common_labels,
+        common_image_ids,
+        common_patient_ids,
+    )
+
+
+def _stratified_patient_groups(
+    labels: np.ndarray,
+    patient_ids: np.ndarray,
+) -> tuple[list[np.ndarray], dict[int, np.ndarray]]:
+    """Build patient clusters and class-stratified cluster lookup tables."""
+    labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+    patient_ids = np.asarray(patient_ids).astype(str)
+    unique_patients, inverse = np.unique(patient_ids, return_inverse=True)
+    clusters = [np.flatnonzero(inverse == index) for index in range(len(unique_patients))]
+    class_groups: dict[int, list[int]] = {}
+    for group_index, indices in enumerate(clusters):
+        group_labels = np.unique(labels[indices])
+        if len(group_labels) != 1:
+            raise ValueError(
+                "Stratified patient bootstrap requires one ground-truth class "
+                "per patient."
+            )
+        class_groups.setdefault(int(group_labels[0]), []).append(group_index)
+    return clusters, {
+        class_id: np.asarray(indices, dtype=np.int64)
+        for class_id, indices in sorted(class_groups.items())
+    }
+
+
+def _sample_stratified_patient_indices(
+    rng: np.random.Generator,
+    clusters: Sequence[np.ndarray],
+    class_groups: Mapping[int, np.ndarray],
+) -> np.ndarray:
+    selected: list[np.ndarray] = []
+    for group_indices in class_groups.values():
+        sampled_groups = rng.choice(
+            group_indices,
+            size=len(group_indices),
+            replace=True,
+        )
+        selected.extend(clusters[int(group)] for group in sampled_groups)
+    return np.concatenate(selected)
+
+
+def _holm_adjust(p_values: Sequence[float]) -> np.ndarray:
+    """Holm step-down family-wise error correction."""
+    values = np.asarray(p_values, dtype=np.float64)
+    order = np.argsort(values)
+    adjusted = np.empty_like(values)
+    running = 0.0
+    total = len(values)
+    for rank, index in enumerate(order):
+        candidate = min(1.0, (total - rank) * float(values[index]))
+        running = max(running, candidate)
+        adjusted[index] = running
+    return adjusted
+
+
+def _percentile_interval(
+    values: np.ndarray,
+    *,
+    alpha: float,
+) -> tuple[float, float]:
+    lower = 100.0 * alpha / 2.0
+    upper = 100.0 * (1.0 - alpha / 2.0)
+    return (
+        float(np.percentile(values, lower)),
+        float(np.percentile(values, upper)),
+    )
+
+
+def _paired_variant_statistics(
+    reference: Mapping[int, np.ndarray],
+    variant: Mapping[int, np.ndarray],
+    *,
+    labels: np.ndarray,
+    patient_ids: np.ndarray,
+    seeds: Sequence[int],
+    metrics: Sequence[str],
+    n_bootstrap: int,
+    n_permutations: int,
+    alpha: float,
+    random_seed: int,
+    test_method: str,
+) -> list[dict[str, float]]:
+    """Estimate paired effects with crossed bootstrap and cluster permutation."""
+    seed_order = [int(seed) for seed in seeds]
+    clusters, class_groups = _stratified_patient_groups(labels, patient_ids)
+    _, patient_inverse = np.unique(
+        np.asarray(patient_ids).astype(str),
+        return_inverse=True,
+    )
+    point_reference = {
+        seed: _classification_metric_values(
+            reference[seed],
+            labels,
+            metrics,
+        )
+        for seed in seed_order
+    }
+    point_variant = {
+        seed: _classification_metric_values(
+            variant[seed],
+            labels,
+            metrics,
+        )
+        for seed in seed_order
+    }
+    point_ref_mean = {
+        metric: float(np.mean([point_reference[seed][metric] for seed in seed_order]))
+        for metric in metrics
+    }
+    point_var_mean = {
+        metric: float(np.mean([point_variant[seed][metric] for seed in seed_order]))
+        for metric in metrics
+    }
+    needs_rank_cache = bool(
+        set(metrics).intersection(("auroc_macro", "auprc_macro"))
+    )
+    reference_rank_cache = {
+        seed: (
+            _prepare_rank_metric_cache(reference[seed], labels)
+            if needs_rank_cache
+            else None
+        )
+        for seed in seed_order
+    }
+    variant_rank_cache = {
+        seed: (
+            _prepare_rank_metric_cache(variant[seed], labels)
+            if needs_rank_cache
+            else None
+        )
+        for seed in seed_order
+    }
+
+    bootstrap_reference = {
+        metric: np.empty(n_bootstrap, dtype=np.float64)
+        for metric in metrics
+    }
+    bootstrap_variant = {
+        metric: np.empty(n_bootstrap, dtype=np.float64)
+        for metric in metrics
+    }
+    bootstrap_delta = {
+        metric: np.empty(n_bootstrap, dtype=np.float64)
+        for metric in metrics
+    }
+    rng = np.random.default_rng(random_seed)
+    for iteration in range(n_bootstrap):
+        indices = _sample_stratified_patient_indices(
+            rng,
+            clusters,
+            class_groups,
+        )
+        sample_weight = np.bincount(
+            indices,
+            minlength=len(labels),
+        ).astype(np.float64)
+        sampled_seed_indices = rng.integers(
+            0,
+            len(seed_order),
+            size=len(seed_order),
+        )
+        selected_seeds, counts = np.unique(
+            sampled_seed_indices,
+            return_counts=True,
+        )
+        ref_sum = {metric: 0.0 for metric in metrics}
+        var_sum = {metric: 0.0 for metric in metrics}
+        for seed_index, count in zip(selected_seeds, counts):
+            seed = seed_order[int(seed_index)]
+            ref_values = _classification_metric_values_weighted(
+                reference[seed],
+                labels,
+                metrics,
+                sample_weight,
+                rank_cache=reference_rank_cache[seed],
+            )
+            var_values = _classification_metric_values_weighted(
+                variant[seed],
+                labels,
+                metrics,
+                sample_weight,
+                rank_cache=variant_rank_cache[seed],
+            )
+            for metric in metrics:
+                ref_sum[metric] += int(count) * ref_values[metric]
+                var_sum[metric] += int(count) * var_values[metric]
+        for metric in metrics:
+            ref_value = ref_sum[metric] / len(seed_order)
+            var_value = var_sum[metric] / len(seed_order)
+            bootstrap_reference[metric][iteration] = ref_value
+            bootstrap_variant[metric][iteration] = var_value
+            bootstrap_delta[metric][iteration] = var_value - ref_value
+
+    # Under the paired null, exchange the complete prediction trajectories of
+    # the two models within each patient. The same swap is used across seeds so
+    # repeated predictions for one patient are not treated as independent.
+    permutation_delta: dict[str, np.ndarray] = {}
+    if test_method == "permutation":
+        permutation_delta = {
+            metric: np.empty(n_permutations, dtype=np.float64)
+            for metric in metrics
+        }
+        rng = np.random.default_rng(random_seed + 1)
+        for iteration in range(n_permutations):
+            group_swap = rng.integers(0, 2, size=len(clusters)).astype(bool)
+            swap = group_swap[patient_inverse]
+            sampled_seed_indices = rng.integers(
+                0,
+                len(seed_order),
+                size=len(seed_order),
+            )
+            selected_seeds, counts = np.unique(
+                sampled_seed_indices,
+                return_counts=True,
+            )
+            delta_sum = {metric: 0.0 for metric in metrics}
+            for seed_index, count in zip(selected_seeds, counts):
+                seed = seed_order[int(seed_index)]
+                ref_probabilities = np.where(
+                    swap[:, None],
+                    variant[seed],
+                    reference[seed],
+                )
+                var_probabilities = np.where(
+                    swap[:, None],
+                    reference[seed],
+                    variant[seed],
+                )
+                ref_values = _classification_metric_values(
+                    ref_probabilities,
+                    labels,
+                    metrics,
+                )
+                var_values = _classification_metric_values(
+                    var_probabilities,
+                    labels,
+                    metrics,
+                )
+                for metric in metrics:
+                    delta_sum[metric] += int(count) * (
+                        var_values[metric] - ref_values[metric]
+                    )
+            for metric in metrics:
+                permutation_delta[metric][iteration] = (
+                    delta_sum[metric] / len(seed_order)
+                )
+
+    rows: list[dict[str, float]] = []
+    for metric in metrics:
+        reference_ci = _percentile_interval(
+            bootstrap_reference[metric],
+            alpha=alpha,
+        )
+        variant_ci = _percentile_interval(
+            bootstrap_variant[metric],
+            alpha=alpha,
+        )
+        delta_ci = _percentile_interval(
+            bootstrap_delta[metric],
+            alpha=alpha,
+        )
+        observed_delta = point_var_mean[metric] - point_ref_mean[metric]
+        if test_method == "permutation":
+            null_distribution = permutation_delta[metric]
+            denominator = n_permutations + 1.0
+        elif test_method == "bootstrap":
+            null_distribution = bootstrap_delta[metric] - observed_delta
+            denominator = n_bootstrap + 1.0
+        else:
+            raise ValueError(f"Unsupported test method: {test_method}")
+        p_raw = (
+            1.0
+            + float(
+                np.count_nonzero(
+                    np.abs(null_distribution)
+                    >= abs(observed_delta)
+                )
+            )
+        ) / denominator
+        higher_is_better = bool(
+            PAIRED_STATISTIC_METRICS[metric]["higher_is_better"]
+        )
+        probability_better = float(
+            np.mean(
+                bootstrap_delta[metric] > 0
+                if higher_is_better
+                else bootstrap_delta[metric] < 0
+            )
+        )
+        rows.append(
+            {
+                "metric": metric,
+                "reference_mean": point_ref_mean[metric],
+                "reference_ci_low": reference_ci[0],
+                "reference_ci_high": reference_ci[1],
+                "variant_mean": point_var_mean[metric],
+                "variant_ci_low": variant_ci[0],
+                "variant_ci_high": variant_ci[1],
+                "delta_mean": observed_delta,
+                "delta_ci_low": delta_ci[0],
+                "delta_ci_high": delta_ci[1],
+                "p_raw": p_raw,
+                "test_method": test_method,
+                "probability_variant_better": probability_better,
+            }
+        )
+    return rows
+
+
+def _format_p_value(value: float) -> str:
+    if value < 0.001:
+        return r"$<0{.}001$"
+    return f"${value:.3f}$".replace(".", "{.}")
+
+
+def generate_paired_statistics_latex(
+    frame: pd.DataFrame,
+    output: str | Path,
+    *,
+    precision: int = 4,
+) -> Path:
+    """Write an appendix-ready table of paired effects and corrected tests."""
+    required = (
+        "variant",
+        "metric",
+        "reference_mean",
+        "reference_ci_low",
+        "reference_ci_high",
+        "variant_mean",
+        "variant_ci_low",
+        "variant_ci_high",
+        "delta_mean",
+        "delta_ci_low",
+        "delta_ci_high",
+        "p_holm",
+    )
+    _require_columns(frame, required)
+
+    def estimate(mean: float, lower: float, upper: float) -> str:
+        return (
+            f"${mean:.{precision}f}$ "
+            f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
+        ).replace(".", "{.}")
+
+    lines = [
+        r"\begin{table}[H]",
+        r"\centering",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\renewcommand{\arraystretch}{1.12}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{llcccc}",
+        r"\toprule",
+        (
+            r"\multicolumn{1}{c}{\textbf{Biến thể}} & "
+            r"\multicolumn{1}{c}{\textbf{Độ đo}} & "
+            r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
+        ),
+        r"\midrule",
+    ]
+    variants = frame["variant"].drop_duplicates().tolist()
+    for variant_index, variant in enumerate(variants):
+        subset = frame[frame["variant"] == variant]
+        for row_index, (_, row) in enumerate(subset.iterrows()):
+            variant_cell = (
+                rf"\multirow{{{len(subset)}}}{{*}}{{{_latex_escape(variant)}}}"
+                if row_index == 0
+                else ""
+            )
+            metric_label = str(
+                PAIRED_STATISTIC_METRICS[str(row["metric"])]["latex"]
+            )
+            delta_text = estimate(
+                float(row["delta_mean"]),
+                float(row["delta_ci_low"]),
+                float(row["delta_ci_high"]),
+            )
+            if bool(row.get("significant_holm", False)):
+                delta_text = rf"\textbf{{{delta_text}}}"
+            lines.append(
+                " & ".join(
+                    (
+                        variant_cell,
+                        metric_label,
+                        estimate(
+                            float(row["reference_mean"]),
+                            float(row["reference_ci_low"]),
+                            float(row["reference_ci_high"]),
+                        ),
+                        estimate(
+                            float(row["variant_mean"]),
+                            float(row["variant_ci_low"]),
+                            float(row["variant_ci_high"]),
+                        ),
+                        delta_text,
+                        _format_p_value(float(row["p_holm"])),
+                    )
+                )
+                + r" \\"
+            )
+        if variant_index < len(variants) - 1:
+            lines.append(r"\midrule")
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\end{tabular}%",
+            r"}",
+            (
+                r"\caption{So sánh thống kê ghép cặp giữa XBone-Net và các "
+                r"biến thể leave-one-out. Giá trị trong ngoặc vuông là khoảng "
+                r"tin cậy bootstrap 95\%; $\Delta$ được tính bằng biến thể trừ "
+                r"XBone-Net. Giá trị $p$ thu được từ phép kiểm định hoán vị ghép "
+                r"cặp theo bệnh nhân và được hiệu chỉnh Holm trong từng họ độ đo.}"
+            ),
+            r"\label{tab:ablation_paired_statistics}",
+            r"\end{table}",
+            "",
+        ]
+    )
+    destination = resolve_path(output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text("\n".join(lines), encoding="utf-8")
+    return destination
+
+
+def generate_paired_metric_latex(
+    frame: pd.DataFrame,
+    output: str | Path,
+    *,
+    metric: str,
+    precision: int = 4,
+) -> Path:
+    """Write one compact paired-statistics table for a selected metric."""
+    if metric not in PAIRED_STATISTIC_METRICS:
+        raise ValueError(f"Unsupported table metric: {metric}")
+    subset = frame[frame["metric"].astype(str) == metric].copy()
+    if subset.empty:
+        raise ValueError(f"No paired statistics are available for '{metric}'.")
+
+    def estimate(mean: float, lower: float, upper: float) -> str:
+        return (
+            f"${mean:.{precision}f}$ "
+            f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
+        ).replace(".", "{.}")
+
+    label = str(PAIRED_STATISTIC_METRICS[metric]["latex"])
+    lines = [
+        r"\begin{table}[H]",
+        r"\centering",
+        r"\small",
+        r"\setlength{\tabcolsep}{4pt}",
+        r"\renewcommand{\arraystretch}{1.12}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{lcccc}",
+        r"\toprule",
+        (
+            r"\multicolumn{1}{c}{\textbf{Biến thể}} & "
+            r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
+            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
+        ),
+        r"\midrule",
+    ]
+    for _, row in subset.iterrows():
+        delta = estimate(
+            float(row["delta_mean"]),
+            float(row["delta_ci_low"]),
+            float(row["delta_ci_high"]),
+        )
+        if bool(row["significant_holm"]):
+            delta = rf"\textbf{{{delta}}}"
+        lines.append(
+            " & ".join(
+                (
+                    _latex_escape(row["variant"]),
+                    estimate(
+                        float(row["reference_mean"]),
+                        float(row["reference_ci_low"]),
+                        float(row["reference_ci_high"]),
+                    ),
+                    estimate(
+                        float(row["variant_mean"]),
+                        float(row["variant_ci_low"]),
+                        float(row["variant_ci_high"]),
+                    ),
+                    delta,
+                    _format_p_value(float(row["p_holm"])),
+                )
+            )
+            + r" \\"
+        )
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\end{tabular}%",
+            r"}",
+            (
+                rf"\caption{{So sánh ghép cặp {label} giữa XBone-Net và các "
+                r"biến thể leave-one-out trên CTCH. Khoảng tin cậy 95\% được "
+                r"ước lượng theo từng phép so sánh (pointwise) bằng bootstrap "
+                r"phân tầng theo bệnh nhân và seed; "
+                r"$\Delta$ được tính bằng biến thể trừ XBone-Net. Giá trị $p$ "
+                r"được hiệu chỉnh Holm cho năm phép so sánh.}"
+            ),
+            rf"\label{{tab:ablation_paired_{metric}}}",
+            r"\end{table}",
+            "",
+        ]
+    )
+    destination = resolve_path(output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text("\n".join(lines), encoding="utf-8")
+    return destination
+
+
+def plot_ablation_forest(
+    frame: pd.DataFrame,
+    *,
+    metric: str,
+    output: str | Path,
+    dpi: int = 300,
+) -> Path:
+    """Plot paired leave-one-out effects with bootstrap confidence intervals."""
+    if metric not in PAIRED_STATISTIC_METRICS:
+        raise ValueError(f"Unsupported forest metric: {metric}")
+    required = (
+        "variant",
+        "metric",
+        "delta_mean",
+        "delta_ci_low",
+        "delta_ci_high",
+        "p_holm",
+        "significant_holm",
+    )
+    _require_columns(frame, required)
+    plot_data = frame[frame["metric"].astype(str) == metric].copy()
+    if plot_data.empty:
+        raise ValueError(f"No rows are available for metric '{metric}'.")
+
+    plt = _load_pyplot()
+    from matplotlib.lines import Line2D
+
+    plot_data = plot_data.reset_index(drop=True)
+    means = numeric_series(plot_data["delta_mean"]).to_numpy()
+    lowers = numeric_series(plot_data["delta_ci_low"]).to_numpy()
+    uppers = numeric_series(plot_data["delta_ci_high"]).to_numpy()
+    significant = plot_data["significant_holm"].astype(bool).to_numpy()
+    higher_is_better = bool(
+        PAIRED_STATISTIC_METRICS[metric]["higher_is_better"]
+    )
+    variant_better = means > 0 if higher_is_better else means < 0
+    colors = [
+        (
+            REPORT_PALETTE["orange"]
+            if better
+            else REPORT_PALETTE["blue"]
+        )
+        if is_significant
+        else REPORT_PALETTE["gray"]
+        for better, is_significant in zip(variant_better, significant)
+    ]
+    positions = np.arange(len(plot_data))
+    figure, axis = plt.subplots(figsize=(9.2, max(4.2, 0.65 * len(plot_data) + 1.7)))
+    for position, mean, lower, upper, color in zip(
+        positions,
+        means,
+        lowers,
+        uppers,
+        colors,
+    ):
+        axis.errorbar(
+            mean,
+            position,
+            xerr=np.asarray([[mean - lower], [upper - mean]]),
+            fmt="o",
+            color=color,
+            ecolor=color,
+            markersize=6,
+            elinewidth=1.8,
+            capsize=4,
+            zorder=3,
+        )
+    axis.axvline(0.0, color="#222222", linestyle="--", linewidth=1.1)
+    axis.set_yticks(positions, labels=plot_data["variant"].astype(str))
+    axis.invert_yaxis()
+    axis.grid(axis="x", color="#D9D9D9", linewidth=0.8, alpha=0.8)
+    axis.set_axisbelow(True)
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+    metric_label = str(PAIRED_STATISTIC_METRICS[metric]["label"])
+    axis.set_xlabel(
+        rf"Chênh lệch {metric_label}: biến thể $-$ XBone-Net ($\Delta$)"
+    )
+    axis.set_title(
+        f"Ảnh hưởng leave-one-out đối với {metric_label} trên CTCH"
+    )
+    for position, upper, p_value in zip(
+        positions,
+        uppers,
+        numeric_series(plot_data["p_holm"]).to_numpy(),
+    ):
+        axis.annotate(
+            f"p={p_value:.3f}" if p_value >= 0.001 else "p<0.001",
+            xy=(upper, position),
+            xytext=(6, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=8,
+            color="#333333",
+        )
+
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["blue"],
+            label="XBone-Net tốt hơn, có ý nghĩa",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["orange"],
+            label="Biến thể tốt hơn, có ý nghĩa",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            color=REPORT_PALETTE["gray"],
+            label="Chưa có ý nghĩa sau hiệu chỉnh Holm",
+        ),
+    ]
+    axis.legend(
+        handles=handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=1,
+        frameon=False,
+        fontsize=8.5,
+    )
+    extent = np.concatenate((lowers, uppers, [0.0]))
+    span = float(np.nanmax(extent) - np.nanmin(extent))
+    padding = max(0.005, 0.18 * span)
+    axis.set_xlim(float(np.nanmin(extent) - padding), float(np.nanmax(extent) + padding))
+
+    destination = _prepare_plot_output(output)
+    figure.tight_layout()
+    figure.savefig(destination, dpi=dpi, bbox_inches="tight")
+    plt.close(figure)
+    return destination
+
+
+def run_leave_one_out_statistical_analysis(
+    results_root: str | Path,
+    output_dir: str | Path,
+    *,
+    seeds: Sequence[int],
+    metrics: Sequence[str],
+    n_bootstrap: int = 10_000,
+    n_permutations: int = 10_000,
+    alpha: float = 0.05,
+    random_seed: int = 2026,
+    test_method: str = "permutation",
+    dpi: int = 300,
+) -> dict[str, Path]:
+    """Run confirmatory paired analysis and create CSV, LaTeX, and forests."""
+    if not seeds:
+        raise ValueError("At least one training seed is required.")
+    if n_bootstrap < 1:
+        raise ValueError("Bootstrap count must be positive.")
+    if test_method == "permutation" and n_permutations < 1:
+        raise ValueError("Permutation count must be positive.")
+    if test_method not in {"permutation", "bootstrap"}:
+        raise ValueError(f"Unsupported test method: {test_method}")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("Alpha must lie strictly between zero and one.")
+    unknown = [metric for metric in metrics if metric not in PAIRED_STATISTIC_METRICS]
+    if unknown:
+        raise ValueError(f"Unsupported metrics: {unknown}")
+
+    (
+        roots,
+        probabilities,
+        labels,
+        image_ids,
+        patient_ids,
+    ) = _load_leave_one_out_predictions(results_root, seeds=seeds)
+    reference_experiment, reference_label, _ = roots[0]
+    rows: list[dict[str, Any]] = []
+    for variant_index, (experiment, label, _) in enumerate(roots[1:]):
+        print(
+            f"[{variant_index + 1}/{len(roots) - 1}] "
+            f"Paired analysis: {label}"
+        )
+        variant_rows = _paired_variant_statistics(
+            probabilities[reference_experiment],
+            probabilities[experiment],
+            labels=labels,
+            patient_ids=patient_ids,
+            seeds=seeds,
+            metrics=metrics,
+            n_bootstrap=n_bootstrap,
+            n_permutations=n_permutations,
+            alpha=alpha,
+            random_seed=random_seed,
+            test_method=test_method,
+        )
+        for row in variant_rows:
+            row.update(
+                {
+                    "reference_experiment": reference_experiment,
+                    "reference": reference_label,
+                    "variant_experiment": experiment,
+                    "variant": label,
+                    "n_cases": len(labels),
+                    "n_patients": len(np.unique(patient_ids)),
+                    "n_seeds": len(seeds),
+                    "seeds": "|".join(map(str, seeds)),
+                    "n_bootstrap": n_bootstrap,
+                    "n_permutations": n_permutations,
+                    "test_method": test_method,
+                    "alpha": alpha,
+                }
+            )
+            rows.append(row)
+
+    frame = pd.DataFrame(rows)
+    frame["p_holm"] = np.nan
+    for metric in metrics:
+        mask = frame["metric"] == metric
+        frame.loc[mask, "p_holm"] = _holm_adjust(
+            numeric_series(frame.loc[mask, "p_raw"]).to_numpy()
+        )
+    frame["significant_holm"] = frame["p_holm"] < alpha
+    frame["ci_excludes_zero"] = (
+        (frame["delta_ci_low"] > 0.0)
+        | (frame["delta_ci_high"] < 0.0)
+    )
+
+    destination_dir = resolve_path(output_dir)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    csv_output = destination_dir / "paired_bootstrap_results.csv"
+    frame.to_csv(csv_output, index=False, encoding="utf-8-sig")
+    latex_output = generate_paired_statistics_latex(
+        frame,
+        destination_dir / "table_paired_statistics.tex",
+    )
+    protocol_output = destination_dir / "statistical_protocol.json"
+    protocol = {
+        "analysis": "paired_leave_one_out_classification",
+        "reference": reference_experiment,
+        "variants": [experiment for experiment, _, _ in roots[1:]],
+        "metrics": list(metrics),
+        "primary_metric": "f1_macro" if "f1_macro" in metrics else metrics[0],
+        "seeds": list(map(int, seeds)),
+        "n_cases": int(len(image_ids)),
+        "n_patients": int(len(np.unique(patient_ids))),
+        "bootstrap": {
+            "type": "paired crossed percentile bootstrap",
+            "patient_sampling": "class-stratified cluster resampling",
+            "seed_sampling": "training seeds resampled with replacement",
+            "same_resample_for_models": True,
+            "n_resamples": int(n_bootstrap),
+            "confidence_level": float(1.0 - alpha),
+        },
+        "test": {
+            "type": (
+                "two-sided crossed seed/patient permutation"
+                if test_method == "permutation"
+                else "two-sided centered paired bootstrap"
+            ),
+            "same_patient_swap_across_seeds": (
+                True if test_method == "permutation" else None
+            ),
+            "seed_sampling": "training seeds resampled with replacement",
+            "n_permutations": (
+                int(n_permutations) if test_method == "permutation" else 0
+            ),
+            "multiplicity_correction": "Holm within each metric",
+            "family_size": len(roots) - 1,
+            "alpha": float(alpha),
+        },
+        "random_seed": int(random_seed),
+    }
+    protocol_output.write_text(
+        json.dumps(protocol, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    outputs = {
+        "csv": csv_output,
+        "latex": latex_output,
+        "protocol": protocol_output,
+    }
+    for metric in metrics:
+        metric_table = generate_paired_metric_latex(
+            frame,
+            destination_dir / f"table_{metric}_statistics.tex",
+            metric=metric,
+        )
+        outputs[f"table_{metric}"] = metric_table
+        forest_output = plot_ablation_forest(
+            frame,
+            metric=metric,
+            output=destination_dir / f"forest_{metric}.png",
+            dpi=dpi,
+        )
+        outputs[f"forest_{metric}"] = forest_output
+    return outputs
 
 
 def _load_seed_metrics(
@@ -4486,11 +6433,15 @@ def generate_ood_table(
         minimize_columns=["fpr_at_95tpr_mean"],
         precision=4,
         caption=(
-            "Kết quả phát hiện OOD hậu xử lý của XBone-Net trên ba kịch bản; "
-            "các giá trị được trình bày dưới dạng trung bình $\\pm$ độ lệch chuẩn "
-            "trên ba seed."
+            "Kết quả phát hiện OOD hậu xử lý của XBone-Net trên các kịch bản "
+            "được xét; các giá trị được trình bày dưới dạng trung bình "
+            "$\\pm$ độ lệch chuẩn trên ba seed."
         ),
-        label="tab:ood_three_scenarios",
+        label=(
+            "tab:ood_semantic_btxrd"
+            if list(scenarios) == ["semantic_ood", "domain_ood_btxrd"]
+            else "tab:ood_selected_scenarios"
+        ),
         position="htbp",
         multirow_columns=["scenario"],
         resize_to_textwidth=True,
@@ -4500,6 +6451,78 @@ def generate_ood_table(
     if csv_output is not None:
         csv_destination = _prepare_plot_output(csv_output)
         frame.to_csv(csv_destination, index=False, encoding="utf-8-sig")
+    return destination
+
+
+def plot_ood_metric_summary(
+    input_file: str | Path,
+    output: str | Path,
+    *,
+    scenarios: Sequence[str],
+    method: str = "mahalanobis_centroid",
+    title: str | None = None,
+    dpi: int = 300,
+) -> Path:
+    """Plot the three core OOD metrics for one scoring method."""
+    plt = _load_pyplot()
+
+    frame = load_aggregated_ood_frame(
+        input_file,
+        scenarios=scenarios,
+        methods=[method],
+    )
+    metric_specs = (
+        ("auroc_ood_mean", "auroc_ood_std", "AUROC-OOD", True),
+        ("aupr_out_mean", "aupr_out_std", "AUPR-Out", True),
+        ("fpr_at_95tpr_mean", "fpr_at_95tpr_std", "FPR@95%TPR", False),
+    )
+    scenario_colors = [
+        REPORT_PALETTE["blue"],
+        REPORT_PALETTE["orange"],
+        REPORT_PALETTE["green"],
+        REPORT_PALETTE["purple"],
+    ]
+    x = np.arange(len(frame), dtype=float)
+    fig, axes = plt.subplots(1, 3, figsize=(12.2, 4.1), sharey=True)
+    for axis, (mean_col, std_col, metric_label, higher_is_better) in zip(
+        axes,
+        metric_specs,
+    ):
+        values = frame[mean_col].to_numpy(dtype=float)
+        errors = frame[std_col].to_numpy(dtype=float)
+        bars = axis.bar(
+            x,
+            values,
+            yerr=errors,
+            capsize=4,
+            color=scenario_colors[: len(frame)],
+            edgecolor="white",
+            linewidth=0.8,
+        )
+        axis.set_xticks(x)
+        axis.set_xticklabels(frame["scenario"].astype(str), rotation=0)
+        axis.set_ylim(0.0, 1.05)
+        axis.set_title(
+            f"{metric_label} ({'cao hơn tốt hơn' if higher_is_better else 'thấp hơn tốt hơn'})"
+        )
+        axis.grid(axis="y", alpha=0.25)
+        axis.set_axisbelow(True)
+        for bar, value, error in zip(bars, values, errors):
+            axis.text(
+                bar.get_x() + bar.get_width() / 2,
+                min(1.02, value + error + 0.025),
+                f"{value:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
+    axes[0].set_ylabel("Giá trị trung bình trên ba seed")
+    method_name = OOD_METHOD_NAMES.get(method, method)
+    fig.suptitle(title or f"Hiệu năng OOD của {method_name}", y=1.01)
+    fig.tight_layout()
+    destination = _prepare_plot_output(output)
+    fig.savefig(destination, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
     return destination
 
 
@@ -4546,6 +6569,13 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--dpi must be at least 72.")
     if getattr(args, "n_bins", 1) < 1:
         parser.error("--n-bins must be positive.")
+    if getattr(args, "n_bootstrap", 1) < 1:
+        parser.error("--n-bootstrap must be positive.")
+    if getattr(args, "n_permutations", 1) < 1:
+        parser.error("--n-permutations must be positive.")
+    alpha = getattr(args, "alpha", 0.05)
+    if not 0.0 < alpha < 1.0:
+        parser.error("--alpha must lie strictly between zero and one.")
 
 
 def main() -> None:
@@ -4568,6 +6598,18 @@ def main() -> None:
         )
         print(f"OOD LaTeX table saved to: {output}")
         print(f"OOD summary CSV saved to: {resolve_path(args.csv_output)}")
+        return
+
+    if args.command == "ood-metrics":
+        output = plot_ood_metric_summary(
+            args.input,
+            args.output,
+            scenarios=args.scenarios,
+            method=args.method,
+            title=args.title,
+            dpi=args.dpi,
+        )
+        print(f"OOD metric summary saved to: {output}")
         return
 
     if args.command == "ood-heatmaps":
@@ -4603,6 +6645,34 @@ def main() -> None:
             precision=args.precision,
         )
         print(f"Leave-one-out LaTeX table saved to: {output}")
+        return
+
+    if args.command == "ablation-statistics":
+        outputs = run_leave_one_out_statistical_analysis(
+            args.results_root,
+            args.output_dir,
+            seeds=args.seeds,
+            metrics=args.metrics,
+            n_bootstrap=args.n_bootstrap,
+            n_permutations=args.n_permutations,
+            alpha=args.alpha,
+            random_seed=args.random_seed,
+            test_method=args.test_method,
+            dpi=args.dpi,
+        )
+        for name, output in outputs.items():
+            print(f"{name} saved to: {output}")
+        return
+
+    if args.command == "ablation-forest":
+        frame = load_frame(args.input)
+        output = plot_ablation_forest(
+            frame,
+            metric=args.metric,
+            output=args.output,
+            dpi=args.dpi,
+        )
+        print(f"Ablation forest plot saved to: {output}")
         return
 
     if args.command == "explainability-report":
@@ -4741,6 +6811,31 @@ def main() -> None:
             f"{summary['ece']['mean']:.6f}"
             f"±{summary['ece']['std']:.6f}"
         )
+        return
+
+    if args.command == "full-shot-comparison":
+        output = plot_full_shot_comparison(
+            args.input,
+            args.output,
+            datasets=args.datasets,
+            dpi=args.dpi,
+        )
+        print(f"Full-shot comparison saved to: {output}")
+        return
+
+    if args.command == "full-shot-paired-forest":
+        output, csv_output = plot_full_shot_paired_forest(
+            args.input,
+            args.output,
+            results_root=args.results_root,
+            datasets=args.datasets,
+            metric=args.metric,
+            confidence_level=args.confidence_level,
+            csv_output=args.csv_output,
+            dpi=args.dpi,
+        )
+        print(f"Full-shot paired forest plot saved to: {output}")
+        print(f"Paired effect estimates saved to: {csv_output}")
         return
 
     if args.command == "aggregate-confusion":

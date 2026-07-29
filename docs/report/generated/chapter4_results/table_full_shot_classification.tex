@@ -1,0 +1,30 @@
+\begin{table}[H]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Accuracy $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Balanced Accuracy $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-F1 $\uparrow$}} \\ \hline
+\multirow{9}{*}{BTXRD} & BioMedCLIP & $0.8311\pm0.0028$ & $0.6062\pm0.0254$ & $0.5994\pm0.0124$ \\ \cline{2-5}
+ & CLIP & $0.8036\pm0.0273$ & $0.5957\pm0.0160$ & $0.5787\pm0.0252$ \\ \cline{2-5}
+ & DenseNet-121 & $0.6320\pm0.0013$ & $0.3694\pm0.0150$ & $0.3718\pm0.0173$ \\ \cline{2-5}
+ & MedCLIP & $0.8204\pm0.0144$ & $0.6125\pm0.0235$ & $0.6054\pm0.0147$ \\ \cline{2-5}
+ & PubMedCLIP & $0.7884\pm0.0285$ & $0.6089\pm0.0342$ & $0.5723\pm0.0577$ \\ \cline{2-5}
+ & ResNet-50 & $0.6071\pm0.0140$ & $0.3188\pm0.0136$ & $0.3291\pm0.0102$ \\ \cline{2-5}
+ & LoRA-BiomedCLIP & $0.8133\pm0.0035$ & $\mathbf{0.6552\pm0.0244}$ & $0.6225\pm0.0088$ \\ \cline{2-5}
+ & LoRA-PubMedCLIP & $\mathbf{0.8347\pm0.0058}$ & $0.6369\pm0.0197$ & $\mathbf{0.6327\pm0.0211}$ \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.8258\pm0.0034$ & \cellcolor{gray!12}$0.5916\pm0.0116$ & \cellcolor{gray!12}$0.6010\pm0.0034$ \\ \hline
+\multirow{9}{*}{CTCH} & BioMedCLIP & $0.5969\pm0.0253$ & $0.6023\pm0.0234$ & $0.5540\pm0.0080$ \\ \cline{2-5}
+ & CLIP & $0.5874\pm0.0209$ & $\mathbf{0.6217\pm0.0359}$ & $\mathbf{0.5633\pm0.0090}$ \\ \cline{2-5}
+ & DenseNet-121 & $0.4818\pm0.0052$ & $0.4927\pm0.0461$ & $0.4367\pm0.0238$ \\ \cline{2-5}
+ & MedCLIP & $0.5590\pm0.0389$ & $0.5717\pm0.0186$ & $0.5151\pm0.0216$ \\ \cline{2-5}
+ & PubMedCLIP & $0.5521\pm0.0234$ & $0.5589\pm0.0614$ & $0.5203\pm0.0264$ \\ \cline{2-5}
+ & ResNet-50 & $0.4928\pm0.0017$ & $0.4126\pm0.0106$ & $0.4078\pm0.0051$ \\ \cline{2-5}
+ & LoRA-BiomedCLIP & $0.5959\pm0.0212$ & $0.6092\pm0.0243$ & $0.5599\pm0.0220$ \\ \cline{2-5}
+ & LoRA-PubMedCLIP & $\mathbf{0.6009\pm0.0305}$ & $0.5699\pm0.0081$ & $0.5538\pm0.0196$ \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.5725\pm0.0286$ & \cellcolor{gray!12}$0.5844\pm0.0454$ & \cellcolor{gray!12}$0.5558\pm0.0072$ \\ \hline
+\end{tabular}
+}
+\caption{Kết quả phân loại khi sử dụng toàn bộ tập huấn luyện}
+\label{tab:classification_full_data}
+\end{table}
