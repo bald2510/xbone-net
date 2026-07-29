@@ -27,7 +27,7 @@ if not exist "%RUN_ALL%" (
 )
 
 echo.
-echo [1/5] Tao cac bang phan loai zero-shot, full-shot va few-shot...
+echo [1/5] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
 
 "%PYTHON%" "%VIS%" latex ^
   --input "%RUN_ALL%" ^
@@ -117,7 +117,7 @@ copy /Y "%CLASS%\table_zero_shot.tex" docs\report\generated\chapter4_draft\table
   --resize-to-textwidth ^
   --precision 4 ^
   --position H ^
-  --caption "Kết quả phân loại trong các thiết lập mẫu hạn chế" ^
+  --caption "Kết quả phân loại trong các thiết lập mẫu học hạn chế" ^
   --label tab:classification_few_shot ^
   --output "%CLASS%\table_few_shot_classification.tex"
 
@@ -138,7 +138,7 @@ copy /Y "%CLASS%\table_zero_shot.tex" docs\report\generated\chapter4_draft\table
   --multirow dataset category ^
   --precision 4 ^
   --position H ^
-  --caption "Các độ đo xếp hạng xác suất trong các thiết lập mẫu hạn chế" ^
+  --caption "Các độ đo xếp hạng xác suất trong các thiết lập mẫu học hạn chế" ^
   --label tab:classification_few_shot_ranking ^
   --output "%CLASS%\table_few_shot_ranking.tex"
 
@@ -166,6 +166,16 @@ echo [2/5] Tao bang tham so, hieu qua suy luan va cac bieu do phan loai...
 "%PYTHON%" "%VIS%" efficiency ^
   --full-shot-output "%CLASS%\table_efficiency_full_shot.tex" ^
   --few-shot-output "%CLASS%\table_efficiency_few_shot.tex"
+if errorlevel 1 goto :error
+if not exist "%CLASS%\table_efficiency_full_shot.tex" goto :error
+if not exist "%CLASS%\table_efficiency_few_shot.tex" goto :error
+
+"%PYTHON%" "%VIS%" full-shot-comparison ^
+  --input "%RUN_ALL%" ^
+  --datasets BTXRD CTCH ^
+  --title-template "Phân loại với toàn bộ dữ liệu trên {dataset}" ^
+  --dpi 300 ^
+  --output "%CLASS%\full_shot_comparison.png"
 
 "%PYTHON%" "%VIS%" aggregate-curves ^
   --inputs ^
@@ -198,7 +208,7 @@ echo [2/5] Tao bang tham so, hieu qua suy luan va cac bieu do phan loai...
   --hue config ^
   --error f1_macro_std ^
   --highlight ours_xbone_net ^
-  --title "Phân loại few-shot trên BTXRD" ^
+  --title "Phân loại mẫu học hạn chế trên BTXRD" ^
   --x-label "Số mẫu huấn luyện cho mỗi lớp" ^
   --y-label "Macro-F1" ^
   --annotate ^
@@ -216,7 +226,7 @@ echo [2/5] Tao bang tham so, hieu qua suy luan va cac bieu do phan loai...
   --hue config ^
   --error f1_macro_std ^
   --highlight ours_xbone_net ^
-  --title "Phân loại few-shot trên CTCH" ^
+  --title "Phân loại mẫu học hạn chế trên CTCH" ^
   --x-label "Số mẫu huấn luyện cho mỗi lớp" ^
   --y-label "Macro-F1" ^
   --annotate ^
@@ -349,6 +359,7 @@ copy /Y "%OOD%\table_ood_semantic_btxrd.tex" "%REPORT%\table_ood_semantic_btxrd.
 copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_confusion_matrix_3seed.png" "%REPORT%\ctch_xbone_net_confusion_matrix_3seed.png" >nul
 copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_pr_3seed.png" "%REPORT%\ctch_xbone_net_pr_3seed.png" >nul
 copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_roc_3seed.png" "%REPORT%\ctch_xbone_net_roc_3seed.png" >nul
+copy /Y "%CLASS%\full_shot_comparison.png" "%REPORT%\full_shot_comparison.png" >nul
 copy /Y "%CLASS%\few_shot_btxrd_f1_bar.png" "%REPORT%\few_shot_btxrd_f1_bar.png" >nul
 copy /Y "%CLASS%\few_shot_ctch_f1_bar.png" "%REPORT%\few_shot_ctch_f1_bar.png" >nul
 copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_calibration_3seed.png" "%REPORT%\ctch_xbone_net_calibration_3seed.png" >nul
@@ -375,6 +386,7 @@ for %%F in (
   "%CLASS%\curves_3seed\ctch_xbone_net_roc_3seed.png"
   "%CLASS%\curves_3seed\ctch_xbone_net_pr_3seed.png"
   "%CLASS%\curves_3seed\ctch_xbone_net_confusion_matrix_3seed.png"
+  "%CLASS%\full_shot_comparison.png"
   "%CLASS%\few_shot_btxrd_f1_bar.png"
   "%CLASS%\few_shot_ctch_f1_bar.png"
   "%OOD%\table_ood_semantic_btxrd.tex"
