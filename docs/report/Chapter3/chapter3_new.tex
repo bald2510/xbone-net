@@ -1,6 +1,45 @@
 \chapter{Phương pháp đề xuất}
 \label{Chapter3}
 
+\section{Phân loại zero-shot với BioMedCLIP và định hướng cải tiến}
+\label{sec:ch3_biomedclip_baseline}
+
+Với việc được tiền huấn luyện trên PMC-15M, một tập dữ liệu y sinh quy mô lớn có bao gồm ảnh X-quang, BioMedCLIP \cite{BiomedCLIP} được lựa chọn làm mô hình nền tảng để phát triển hệ thống phân loại. Trước khi xây dựng phương pháp đề xuất, nhóm khảo sát khả năng chuyển trực tiếp tri thức của mô hình sang bài toán phân loại ảnh X-quang xương trong thiết lập \textit{zero-shot}. Khảo sát này giúp làm rõ cơ chế phân loại ban đầu của BioMedCLIP và xác định những khía cạnh cần thích nghi với dữ liệu đích.
+
+Phần này tập trung mô tả quy trình phân loại và các định hướng cải tiến. Thiết kế thực nghiệm được trình bày tại Mục \ref{sec:experiment_content}, còn kết quả định lượng và phần bàn luận tương ứng được trình bày tại Mục \ref{subsec:foundation_model_evaluation} của Chương 4 để tránh lặp lại nội dung thực nghiệm trong chương phương pháp.
+
+\subsection{Quá trình phân loại của BioMedCLIP}
+\label{subsec:ch3_biomedclip_classification}
+
+BioMedCLIP trong thiết lập \textit{zero-shot} thực hiện phân loại dựa trên cơ chế đối sánh ảnh-văn bản thay vì sử dụng một đầu phân loại được huấn luyện trên dữ liệu đích. Quy trình gồm năm bước chính:
+
+\begin{enumerate}
+    \item \textbf{Xây dựng câu nhắc văn bản:} Với mỗi lớp, tên bệnh lý được đưa vào một câu nhắc mô tả ảnh X-quang, chẳng hạn \texttt{A radiograph showing osteosarcoma.} đối với lớp sarcoma xương. Cùng một mẫu câu được áp dụng nhất quán cho toàn bộ tập lớp.
+    \item \textbf{Trích xuất đặc trưng văn bản:} Câu nhắc của từng lớp được đưa qua nhánh mã hóa văn bản sử dụng kiến trúc PubMedBERT để tạo các vectơ đặc trưng lớp trong không gian biểu diễn chung.
+    \item \textbf{Trích xuất đặc trưng hình ảnh:} Ảnh X-quang đầu vào được xử lý qua nhánh mã hóa thị giác sử dụng kiến trúc Vision Transformer để tạo vectơ đặc trưng đại diện cho thông tin thị giác.
+    \item \textbf{Tính độ tương đồng:} Độ tương đồng côsin được tính giữa vectơ ảnh và vectơ văn bản của từng lớp. Cặp ảnh - văn bản có sự tương hợp cao nhất về mặt ngữ nghĩa y khoa sẽ đạt điểm số lớn nhất.
+    \item \textbf{Đưa ra dự đoán:} Các điểm số tương đồng được chuẩn hóa thông qua hàm Softmax để chuyển thành phân phối xác suất. Lớp tương ứng với câu mô tả có xác suất cao nhất sẽ được lựa chọn làm kết quả dự đoán của mô hình.
+\end{enumerate}
+
+\subsection{Định hướng cải tiến}
+\label{subsec:ch3_improvement_directions}
+
+Các kết quả và phân tích ở Chương 4 cho thấy mô hình nền tảng có khả năng phân biệt ban đầu nhưng chưa thể áp dụng trực tiếp cho bài toán đích. Từ những hạn chế đó, nghiên cứu đề xuất các cải tiến sau:
+
+\textbf{Tinh chỉnh với dữ liệu hạn chế:} LoRA được lựa chọn vì đây là phương pháp tinh chỉnh hiệu quả về tham số, cho phép thích nghi BioMedCLIP với miền ảnh X-quang xương mà vẫn bảo toàn phần lớn tri thức tiền huấn luyện. So với tinh chỉnh toàn bộ tham số, LoRA giúp giảm số tham số cần cập nhật và hạn chế nguy cơ quá khớp trong bối cảnh dữ liệu y khoa có quy mô hạn chế, phân bố lớp không đồng đều. Mặc dù nghiên cứu sử dụng toàn bộ dữ liệu hiện có trong thiết lập chính, nhiều lớp vẫn chỉ chứa số lượng mẫu nhỏ; vì vậy, phương pháp cũng được đánh giá trong các kịch bản học ít mẫu.
+
+\textbf{Bảo toàn thông tin ảnh cục bộ:} Việc co toàn bộ ảnh X-quang độ phân giải cao về kích thước đầu vào cố định có thể làm mất các chi tiết tổn thương nhỏ. Nhánh ảnh vì vậy kết hợp ảnh toàn cục với các vùng cục bộ giàu thông tin (global-local), đồng thời bổ sung biểu diễn vị trí để duy trì cả bối cảnh giải phẫu và bằng chứng hình thái tại chỗ.
+
+\textbf{Lựa chọn mục tiêu huấn luyện biểu diễn:} Hàm mất mát tương phản gốc InfoNCE xem các cặp khác mẫu trong cùng lô là âm, kể cả khi chúng thuộc cùng một lớp và có nội dung lâm sàng liên quan. Nghiên cứu sử dụng hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss) với phân phối đích mềm theo nhãn lớp, nhờ đó vẫn ưu tiên cặp ảnh - văn bản đúng của từng mẫu nhưng giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu cùng lớp.
+
+\textbf{Khai thác thông tin lâm sàng:} Thiết lập zero-shot chỉ đối sánh ảnh với câu nhắc lớp và không sử dụng bệnh sử riêng của người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa thông tin lâm sàng, sau đó sử dụng chú ý chéo hai chiều nhằm học quan hệ giữa dấu hiệu trên ảnh với ngữ cảnh bệnh sử. Chẩn đoán xác định và nhãn phân loại không được nối trực tiếp vào văn bản đầu vào; những giới hạn còn lại của nguồn văn bản thực tế được trình bày cùng quá trình chuẩn bị dữ liệu ở Chương 4.
+
+\textbf{Xử lý phân loại đa lớp và mất cân bằng dữ liệu:} Hai bộ dữ liệu được thiết lập dưới dạng phân loại đơn nhãn đa lớp với phân bố lớp mất cân bằng. XBone-Net sử dụng mạng nguyên mẫu với tâm lớp thực nghiệm để đưa ra quyết định theo khoảng cách trong không gian biểu diễn, kết hợp entropy chéo có trọng số dựa trên số lượng mẫu hiệu dụng để hạn chế mất cân bằng lớp. Không gian biểu diễn xây dựng bởi mạng nguyên mẫu tạo cơ sở cho cơ cơ chế phát hiện dữ liệu ngoài phân phối dựa trên khoảng cách.
+
+\textbf{Phát hiện dữ liệu ngoài phân phối:} Ngoài dự đoán lớp, nghiên cứu bổ sung mô-đun hậu xử lý OOD dựa trên hình học của không gian biểu diễn đã học. Mô-đun này không thay đổi quá trình huấn luyện bộ phân loại và không yêu cầu mẫu OOD để cập nhật tham số. Các điểm bất thường được phát hiện dựa trên khoảng cách đến tâm lớp, trong đó khoảng cách Mahalanobis được sử dụng trong mô tả suy luận chính, cùng các phương án hậu xử lý đối chứng được đánh giá riêng ở Chương 4.
+
+Các định hướng trên được hiện thực hóa trong XBone-Net và được trình bày chi tiết ở các phần tiếp theo.
+
 \section{Tổng quan phương pháp đề xuất}
 \label{sec:final-pipeline}
 
