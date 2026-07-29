@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from scipy.stats import spearmanr
 from sklearn.cluster import KMeans
 from sklearn.metrics import (
@@ -100,11 +101,17 @@ def forward_from_local(
     local_tokens: Optional[torch.Tensor] = None,
     text_tokens: Optional[torch.Tensor] = None,
     component_mask: Optional[torch.Tensor] = None,
+    global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     local = cached["local_tokens"] if local_tokens is None else local_tokens
     text = cached["text_tokens"] if text_tokens is None else text_tokens
+    global_image = (
+        cached["global_feature"]
+        if global_feature is None
+        else global_feature
+    )
     image_tokens = model.backbone.visual_resampler(
-        cached["global_feature"],
+        global_image,
         local,
         cached["local_mask"],
         cached["local_boxes"],
@@ -117,6 +124,67 @@ def forward_from_local(
         component_mask=component_mask,
     )
     return logits, components, image_tokens
+
+
+def encode_global_image(model, pixel_values: torch.Tensor) -> torch.Tensor:
+    """Encode the global input view with the trained visual backbone."""
+
+    feature = model.backbone.model.encode_image(pixel_values)
+    return F.normalize(feature, dim=-1)
+
+
+def integrated_gradients_global_image(
+    model,
+    cached: dict[str, torch.Tensor],
+    pixel_values: torch.Tensor,
+    target_class: int,
+    steps: int = 24,
+    baseline: Optional[torch.Tensor] = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Pixel-level IG for the global view while local and text inputs stay fixed.
+
+    The default zero tensor is the per-channel preprocessing mean in normalized
+    model space. Gradients pass through the visual encoder, visual resampler,
+    fusion module, and classifier.
+    """
+
+    if steps < 2:
+        raise ValueError("Integrated gradients requires at least two steps.")
+    pixels = pixel_values.detach()
+    baseline = (
+        torch.zeros_like(pixels)
+        if baseline is None
+        else baseline.detach()
+    )
+    if baseline.shape != pixels.shape:
+        raise ValueError("Global-image IG baseline shape differs from input.")
+    gradient_sum = torch.zeros_like(pixels)
+    for index, alpha in enumerate(
+        torch.linspace(0.0, 1.0, steps, device=pixels.device)
+    ):
+        interpolated = (
+            baseline + alpha * (pixels - baseline)
+        ).detach().requires_grad_(True)
+        global_feature = encode_global_image(model, interpolated)
+        logits, _, _ = forward_from_local(
+            model,
+            cached,
+            global_feature=global_feature,
+        )
+        gradient = torch.autograd.grad(
+            logits[0, target_class],
+            interpolated,
+            retain_graph=False,
+        )[0]
+        gradient_sum += gradient * (
+            0.5 if index in (0, steps - 1) else 1.0
+        )
+    attribution = (pixels - baseline) * gradient_sum / (steps - 1)
+    signed = attribution.sum(dim=1)
+    relevance = torch.relu(signed)
+    if float(relevance.detach().sum()) <= 1e-10:
+        relevance = attribution.abs().sum(dim=1)
+    return relevance[0].detach(), attribution[0].detach()
 
 
 def branch_ablation(
@@ -188,6 +256,138 @@ def integrated_gradients(
     return relevance[0].detach(), attribution[0].detach()
 
 
+def integrated_gradients_text(
+    model,
+    cached: dict[str, torch.Tensor],
+    target_class: int,
+    steps: int = 24,
+    baseline: Optional[torch.Tensor] = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Integrated Gradients from word embeddings through the full text branch.
+
+    Content tokens are interpolated from the tokenizer's padding embedding.
+    Special tokens remain fixed, while position and token-type embeddings are
+    added normally by the underlying BERT encoder. The visual representation
+    remains fixed, but gradients pass through the text encoder, cross-attention,
+    fusion MLP and classifier.
+    """
+
+    if steps < 2:
+        raise ValueError("Integrated gradients requires at least two steps.")
+    text, baseline, transformer, projection = _text_embedding_path(
+        model,
+        cached,
+        baseline=baseline,
+    )
+    gradient_sum = torch.zeros_like(text)
+    for index, alpha in enumerate(
+        torch.linspace(0.0, 1.0, steps, device=text.device)
+    ):
+        interpolated = (
+            baseline + alpha * (text - baseline)
+        ).detach().requires_grad_(True)
+        text_tokens = _encode_text_embeddings(
+            transformer,
+            projection,
+            interpolated,
+            cached["text_attention_mask"],
+        )
+        logits, _, _ = forward_from_local(
+            model,
+            cached,
+            text_tokens=text_tokens,
+        )
+        gradient = torch.autograd.grad(
+            logits[0, target_class],
+            interpolated,
+            retain_graph=False,
+        )[0]
+        gradient_sum += gradient * (
+            0.5 if index in (0, steps - 1) else 1.0
+        )
+
+    attribution = (text - baseline) * gradient_sum / (steps - 1)
+    signed = attribution.sum(dim=-1)
+    relevance = torch.relu(signed)
+    if float(relevance.detach().sum()) <= 1e-10:
+        relevance = attribution.abs().sum(dim=-1)
+    mask = cached["text_attention_mask"].to(relevance.dtype)
+    special_mask = cached.get("text_special_token_mask")
+    if special_mask is not None:
+        mask = mask * (~special_mask.to(dtype=torch.bool)).to(mask.dtype)
+    relevance = relevance * mask
+    return relevance[0].detach(), attribution[0].detach()
+
+
+def _text_embedding_path(
+    model,
+    cached: dict[str, torch.Tensor],
+    baseline: Optional[torch.Tensor] = None,
+) -> tuple[
+    torch.Tensor,
+    torch.Tensor,
+    torch.nn.Module,
+    torch.nn.Module,
+]:
+    """Resolve BiomedCLIP's word-embedding baseline and encoder modules."""
+
+    input_ids = cached.get("text_input_ids")
+    if input_ids is None:
+        raise ValueError(
+            "Text Integrated Gradients requires cached text_input_ids."
+        )
+    backbone = model.backbone
+    text_module = getattr(
+        backbone.model,
+        "text",
+        getattr(backbone.model, "text_model", None),
+    )
+    if text_module is None:
+        raise RuntimeError("BiomedCLIP text module was not found.")
+    transformer = getattr(text_module, "transformer", text_module)
+    embedding_layer = transformer.get_input_embeddings()
+    text = embedding_layer(input_ids).detach()
+    if baseline is None:
+        pad_token_id = int(cached.get("text_pad_token_id", 0))
+        baseline_ids = torch.full_like(input_ids, pad_token_id)
+        baseline = embedding_layer(baseline_ids).detach()
+        special_mask = cached.get("text_special_token_mask")
+        if special_mask is not None:
+            baseline = torch.where(
+                special_mask.to(device=text.device, dtype=torch.bool).unsqueeze(-1),
+                text,
+                baseline,
+            )
+    else:
+        baseline = baseline.detach()
+    if baseline.shape != text.shape:
+        raise ValueError("Text integrated-gradients baseline shape differs from tokens.")
+
+    projection = getattr(text_module, "proj", None)
+    if projection is None:
+        raise RuntimeError("BiomedCLIP text projection was not found.")
+    return text, baseline, transformer, projection
+
+
+def _encode_text_embeddings(
+    transformer,
+    projection,
+    word_embeddings: torch.Tensor,
+    attention_mask: torch.Tensor,
+) -> torch.Tensor:
+    output = transformer(
+        inputs_embeds=word_embeddings,
+        attention_mask=attention_mask,
+        return_dict=True,
+    )
+    hidden = (
+        output[0]
+        if isinstance(output, (tuple, list))
+        else output.last_hidden_state
+    )
+    return projection(hidden)
+
+
 def gradient_visual_relevance(
     model,
     cached: dict[str, torch.Tensor],
@@ -231,6 +431,7 @@ def _target_outputs(
     local_tokens: Optional[torch.Tensor],
     target_class: int,
     text_tokens: Optional[torch.Tensor] = None,
+    global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[float, float, float]:
     with torch.no_grad():
         logits, _, _ = forward_from_local(
@@ -238,6 +439,7 @@ def _target_outputs(
             cached,
             local_tokens=local_tokens,
             text_tokens=text_tokens,
+            global_feature=global_feature,
         )
         probabilities = torch.softmax(logits, dim=-1)[0]
         target_logit = logits[0, target_class]
@@ -249,6 +451,104 @@ def _target_outputs(
             float(target_logit),
             float(margin),
         )
+
+
+def global_image_perturbation_curves(
+    model,
+    cached: dict[str, torch.Tensor],
+    pixel_values: torch.Tensor,
+    relevance: torch.Tensor,
+    target_class: int,
+    fractions: Optional[np.ndarray] = None,
+    baseline: Optional[torch.Tensor] = None,
+) -> dict[str, np.ndarray]:
+    """Patch deletion/insertion for the global view using pixel-level IG ranks."""
+
+    pixels = pixel_values.detach()
+    baseline = (
+        torch.zeros_like(pixels)
+        if baseline is None
+        else baseline.detach()
+    )
+    if baseline.shape != pixels.shape:
+        raise ValueError("Global-image perturbation baseline shape differs from input.")
+    if relevance.ndim != 2 or relevance.shape != pixels.shape[-2:]:
+        raise ValueError("Global-image relevance must match the input spatial size.")
+    fractions = (
+        np.linspace(0.0, 1.0, 11, dtype=np.float64)
+        if fractions is None
+        else np.asarray(fractions, dtype=np.float64)
+    )
+
+    patch_embed = getattr(
+        getattr(model.backbone.model, "visual", None),
+        "trunk",
+        None,
+    )
+    patch_embed = getattr(patch_embed, "patch_embed", None)
+    grid_size = getattr(patch_embed, "grid_size", (14, 14))
+    if isinstance(grid_size, int):
+        grid_h = grid_w = int(grid_size)
+    else:
+        grid_h, grid_w = (int(grid_size[0]), int(grid_size[1]))
+    height, width = pixels.shape[-2:]
+    y_edges = np.linspace(0, height, grid_h + 1).round().astype(int)
+    x_edges = np.linspace(0, width, grid_w + 1).round().astype(int)
+    patch_scores: list[torch.Tensor] = []
+    patch_slices: list[tuple[slice, slice]] = []
+    for row in range(grid_h):
+        for column in range(grid_w):
+            y_slice = slice(y_edges[row], y_edges[row + 1])
+            x_slice = slice(x_edges[column], x_edges[column + 1])
+            patch_slices.append((y_slice, x_slice))
+            patch_scores.append(relevance[y_slice, x_slice].mean())
+    ranking = torch.argsort(torch.stack(patch_scores), descending=True)
+    patch_count = len(patch_slices)
+    deletion, insertion = [], []
+    deletion_logits, insertion_logits = [], []
+    deletion_margins, insertion_margins = [], []
+
+    def evaluate(current_pixels: torch.Tensor) -> tuple[float, float, float]:
+        with torch.no_grad():
+            global_feature = encode_global_image(model, current_pixels)
+        return _target_outputs(
+            model,
+            cached,
+            None,
+            target_class,
+            global_feature=global_feature,
+        )
+
+    for fraction in fractions:
+        count = min(patch_count, int(round(float(fraction) * patch_count)))
+        deleted = pixels.clone()
+        inserted = baseline.clone()
+        for ranked_index in ranking[:count].tolist():
+            y_slice, x_slice = patch_slices[int(ranked_index)]
+            deleted[:, :, y_slice, x_slice] = baseline[
+                :, :, y_slice, x_slice
+            ]
+            inserted[:, :, y_slice, x_slice] = pixels[
+                :, :, y_slice, x_slice
+            ]
+        deletion_output = evaluate(deleted)
+        insertion_output = evaluate(inserted)
+        deletion.append(deletion_output[0])
+        deletion_logits.append(deletion_output[1])
+        deletion_margins.append(deletion_output[2])
+        insertion.append(insertion_output[0])
+        insertion_logits.append(insertion_output[1])
+        insertion_margins.append(insertion_output[2])
+
+    return {
+        "fractions": fractions,
+        "delete_most_relevant": np.asarray(deletion),
+        "insert_most_relevant": np.asarray(insertion),
+        "delete_most_relevant_logit": np.asarray(deletion_logits),
+        "insert_most_relevant_logit": np.asarray(insertion_logits),
+        "delete_most_relevant_margin": np.asarray(deletion_margins),
+        "insert_most_relevant_margin": np.asarray(insertion_margins),
+    }
 
 
 def perturbation_curves(
@@ -286,8 +586,8 @@ def perturbation_curves(
         low_tokens = local.clone()
         inserted = baseline.clone()
         if count:
-            top_tokens[:, descending[:count]] = 0
-            low_tokens[:, ascending[:count]] = 0
+            top_tokens[:, descending[:count]] = baseline[:, descending[:count]]
+            low_tokens[:, ascending[:count]] = baseline[:, ascending[:count]]
             inserted[:, descending[:count]] = local[:, descending[:count]]
         top_output = _target_outputs(model, cached, top_tokens, target_class)
         low_output = _target_outputs(model, cached, low_tokens, target_class)
@@ -309,7 +609,7 @@ def perturbation_curves(
                 indices = torch.randperm(
                     token_count, generator=generator, device=local.device
                 )[:count]
-                random_tokens[:, indices] = 0
+                random_tokens[:, indices] = baseline[:, indices]
             trials.append(
                 _target_outputs(model, cached, random_tokens, target_class)
             )
@@ -421,6 +721,93 @@ def text_perturbation_curves(
     return {
         "fractions": fractions,
         **{key: np.asarray(values) for key, values in output.items()},
+    }
+
+
+def text_input_perturbation_curves(
+    model,
+    cached: dict[str, torch.Tensor],
+    relevance: torch.Tensor,
+    target_class: int,
+    fractions: Optional[np.ndarray] = None,
+) -> dict[str, np.ndarray]:
+    """Deletion/insertion over input word embeddings using the IG baseline.
+
+    The image branch is held fixed. Content-token embeddings are replaced by
+    the padding embedding while special tokens, positions and the original
+    attention mask remain unchanged. Ranking is based on positive attribution
+    to the target class, matching the evidence used by deletion/insertion.
+    """
+
+    text, baseline, transformer, projection = _text_embedding_path(
+        model,
+        cached,
+    )
+    valid = cached["text_attention_mask"][0].to(dtype=torch.bool)
+    special = cached.get("text_special_token_mask")
+    if special is not None:
+        valid = valid & (~special[0].to(dtype=torch.bool))
+    candidate_indices = torch.nonzero(valid, as_tuple=False).flatten()
+    if candidate_indices.numel() < 1:
+        raise ValueError("Clinical report contains no content tokens.")
+    if relevance.shape != cached["text_attention_mask"][0].shape:
+        raise ValueError(
+            "Text relevance and token sequence have incompatible shapes."
+        )
+    fractions = (
+        np.linspace(0.0, 1.0, 11, dtype=np.float64)
+        if fractions is None
+        else np.asarray(fractions, dtype=np.float64)
+    )
+    ranked = candidate_indices[
+        torch.argsort(relevance[candidate_indices], descending=True)
+    ]
+    token_count = int(candidate_indices.numel())
+    deletion, insertion = [], []
+    deletion_logits, insertion_logits = [], []
+    deletion_margins, insertion_margins = [], []
+
+    def evaluate(word_embeddings: torch.Tensor) -> tuple[float, float, float]:
+        with torch.no_grad():
+            text_tokens = _encode_text_embeddings(
+                transformer,
+                projection,
+                word_embeddings,
+                cached["text_attention_mask"],
+            )
+        return _target_outputs(
+            model,
+            cached,
+            None,
+            target_class,
+            text_tokens=text_tokens,
+        )
+
+    for fraction in fractions:
+        count = min(token_count, int(round(float(fraction) * token_count)))
+        deleted = text.clone()
+        inserted = baseline.clone()
+        if count:
+            selected = ranked[:count]
+            deleted[:, selected] = baseline[:, selected]
+            inserted[:, selected] = text[:, selected]
+        deletion_output = evaluate(deleted)
+        insertion_output = evaluate(inserted)
+        deletion.append(deletion_output[0])
+        deletion_logits.append(deletion_output[1])
+        deletion_margins.append(deletion_output[2])
+        insertion.append(insertion_output[0])
+        insertion_logits.append(insertion_output[1])
+        insertion_margins.append(insertion_output[2])
+
+    return {
+        "fractions": fractions,
+        "delete_most_relevant": np.asarray(deletion),
+        "insert_most_relevant": np.asarray(insertion),
+        "delete_most_relevant_logit": np.asarray(deletion_logits),
+        "insert_most_relevant_logit": np.asarray(insertion_logits),
+        "delete_most_relevant_margin": np.asarray(deletion_margins),
+        "insert_most_relevant_margin": np.asarray(insertion_margins),
     }
 
 

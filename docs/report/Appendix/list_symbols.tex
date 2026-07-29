@@ -1,0 +1,143 @@
+\chapter*{Danh mục ký hiệu}
+\addcontentsline{toc}{chapter}{Danh mục ký hiệu}
+
+\begingroup
+\footnotesize
+\setlength{\LTpre}{0pt}
+\setlength{\LTpost}{0pt}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
+
+\begin{longtable}{@{}>{\centering\arraybackslash}p{0.19\textwidth}p{0.52\textwidth}p{0.20\textwidth}@{}}
+\toprule
+\textbf{Ký hiệu} & \textbf{Ý nghĩa/mô tả} & \textbf{Nơi định nghĩa} \\
+\midrule
+\endfirsthead
+
+\multicolumn{3}{l}{\textit{Danh mục ký hiệu (tiếp theo)}}\\
+\toprule
+\textbf{Ký hiệu} & \textbf{Ý nghĩa/mô tả} & \textbf{Nơi định nghĩa} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{3}{r}{\textit{Còn tiếp ở trang sau}}\\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+\multicolumn{3}{@{}l}{\textbf{Phát biểu bài toán}}\\
+$x^{img}$ & Ảnh X-quang đầu vào của hệ thống. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+$H,W,C$ & Chiều cao, chiều rộng và số kênh của ảnh đầu vào; trong Chương 4, $C$ được dùng riêng cho số lớp. & Chương~\ref{Chapter1}; Công thức~\ref{eq:ch4_accuracy} \\
+$x^{txt}$ & Chuỗi văn bản lâm sàng đầu vào. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+$w_t,T$ & Token tại vị trí $t$ và số token của chuỗi; trong Chương 2, $T$ còn biểu thị nhiệt độ của energy score. & Chương~\ref{Chapter1}; Chương~\ref{Chapter2}, mục OOD \\
+$\mathcal{Y},y_k,K$ & Tập lớp nội phân phối, lớp thứ $k$ và tổng số lớp. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+$\widehat{y}$ & Nhãn dự đoán cuối cùng hoặc cảnh báo OOD. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+$s_{\mathrm{OOD}}(\cdot)$ & Điểm ngoài phân phối của cặp ảnh--văn bản đầu vào. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+$p(y_k\mid x^{img},x^{txt})$ & Xác suất dự đoán lớp $y_k$ với điều kiện ảnh và văn bản. & Chương~\ref{Chapter1}, mục Giới thiệu bài toán \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Ký hiệu trong cơ sở OOD và học theo hệ đo}}\\
+$E(x)$ & Energy score của mẫu $x$. & Chương~\ref{Chapter2}, mục OOD \\
+$f_i(x),T$ & Logit của lớp $i$ và nhiệt độ dùng trong energy score. & Chương~\ref{Chapter2}, mục OOD \\
+$d_E(z,c_k)$ & Khoảng cách Euclid giữa embedding $z$ và tâm lớp $c_k$. & Chương~\ref{Chapter2}, mục OOD \\
+$d_M(z,\mu_k)$ & Khoảng cách Mahalanobis giữa embedding $z$ và trung bình lớp $\mu_k$. & Chương~\ref{Chapter2}, mục OOD \\
+$\Sigma,\lambda,I$ & Ma trận hiệp phương sai, hệ số điều chuẩn và ma trận đơn vị trong khoảng cách Mahalanobis. & Chương~\ref{Chapter2}, mục OOD \\
+$S_k,f_\theta,c_k$ & Tập hỗ trợ của lớp $k$, hàm embedding và prototype của lớp trong Prototypical Networks. & Chương~\ref{Chapter2}, mục OOD \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Đầu vào và tiền xử lý của XBone-Net}}\\
+$\mathcal{D}_{\mathrm{train}},N$ & Tập huấn luyện và số mẫu huấn luyện. & Công thức~\ref{eq:ch3_training_set} \\
+$X_i,R_i,y_i$ & Ảnh X-quang, bệnh sử và nhãn của mẫu thứ $i$. & Công thức~\ref{eq:ch3_training_set} \\
+$X_i^g,\mathcal{T}_g$ & Ảnh toàn cục và phép tiền xử lý ảnh toàn cục. & Công thức~\ref{eq:ch3_global_view} \\
+$\mathcal{X}_i^\ell,X_{i,m}^\ell$ & Tập local view và local view thứ $m$ của mẫu $i$. & Công thức~\ref{eq:ch3_local_views} \\
+$b_{i,m},\mathcal{T}_\ell,M$ & Hộp vùng thứ $m$, phép tiền xử lý cục bộ và số local view; cấu hình chính dùng $M=4$. & Công thức~\ref{eq:ch3_local_views} \\
+$\boldsymbol{u}_i,\boldsymbol{m}_i$ & Chuỗi chỉ số token và attention mask của mẫu $i$. & Công thức~\ref{eq:ch3_text_preprocess} \\
+$\mathcal{T}_t,L$ & Phép tiền xử lý văn bản và chiều dài chuỗi sau khi cắt hoặc đệm. & Công thức~\ref{eq:ch3_text_preprocess} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Bộ mã hóa và thích nghi miền}}\\
+$\mathcal{E}_I,\mathcal{P}_I$ & Bộ mã hóa thị giác và phép chiếu thị giác sang không gian chung. & Công thức~\ref{eq:ch3_global_visual_embedding} \\
+$\boldsymbol{g}_i^I,D$ & Embedding ảnh toàn cục và số chiều biểu diễn; cấu hình chính dùng $D=512$. & Công thức~\ref{eq:ch3_global_visual_embedding} \\
+$\boldsymbol{L}_{i,m}^I$ & Năm token thị giác được tạo từ local view thứ $m$. & Công thức~\ref{eq:ch3_tile_tokens} \\
+$\boldsymbol{L}_i^I,P$ & Chuỗi token cục bộ và tổng số token cục bộ; cấu hình chính dùng $P=20$. & Công thức~\ref{eq:ch3_all_local_tokens} \\
+$\boldsymbol{B}_i,\mathcal{P}_s$ & Tọa độ chuẩn hóa của các hộp cục bộ và phép chiếu tọa độ. & Công thức~\ref{eq:ch3_spatial_tokens} \\
+$\gamma,\widetilde{\boldsymbol{L}}_i^I$ & Hệ số vị trí có thể học và chuỗi token cục bộ đã bổ sung vị trí. & Công thức~\ref{eq:ch3_spatial_tokens} \\
+$e_{i,p},a_{i,p}$ & Điểm chú ý chưa chuẩn hóa và trọng số attention pooling của token cục bộ thứ $p$. & Công thức~\ref{eq:ch3_local_attention_score}, \ref{eq:ch3_local_attention_weight} \\
+$\boldsymbol{W}_g,\boldsymbol{W}_\ell,\boldsymbol{w}_a$ & Các tham số có thể học của attention pooling cục bộ. & Công thức~\ref{eq:ch3_local_attention_score} \\
+$\boldsymbol{z}_i^I,\lambda_\ell$ & Embedding thị giác dùng ở pha 1 và hệ số đóng góp của nhánh cục bộ. & Công thức~\ref{eq:ch3_phase1_visual_embedding} \\
+$\mathcal{E}_T,\mathcal{P}_T$ & Bộ mã hóa văn bản và phép chiếu token văn bản. & Công thức~\ref{eq:ch3_text_token_embeddings} \\
+$\boldsymbol{H}_i^T,\boldsymbol{z}_i^T$ & Chuỗi embedding token văn bản và embedding văn bản toàn cục. & Công thức~\ref{eq:ch3_text_token_embeddings}, \ref{eq:ch3_global_text_embedding} \\
+$\boldsymbol{W},\boldsymbol{W}'$ & Trọng số tiền huấn luyện và trọng số hiệu dụng sau khi bổ sung cập nhật LoRA. & Công thức~\ref{eq:ch3_lora} \\
+$\boldsymbol{A},\boldsymbol{B}$ & Hai ma trận hạng thấp có thể huấn luyện của LoRA. & Công thức~\ref{eq:ch3_lora} \\
+$r,\alpha_L,d,k$ & Hạng LoRA, hệ số tỷ lệ và kích thước của ma trận trọng số. & Công thức~\ref{eq:ch3_lora} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Huấn luyện khớp ngữ nghĩa ở pha 1}}\\
+$s_{ij}$ & Độ tương đồng cosine giữa embedding ảnh $i$ và embedding văn bản $j$. & Công thức~\ref{eq:ch3_cross_modal_similarity} \\
+$q_{ij},\rho$ & Xác suất mục tiêu mềm của cặp $(i,j)$ và hệ số ưu tiên cặp tương ứng. & Công thức~\ref{eq:ch3_semantic_target} \\
+$\mathbb{1}[\cdot]$ & Hàm chỉ thị, nhận giá trị một khi điều kiện đúng và không khi điều kiện sai. & Công thức~\ref{eq:ch3_semantic_target} \\
+$B$ & Kích thước mini-batch trong Chương 3; trong Chương 4, ký hiệu này được tái sử dụng cho số lần bootstrap. & Công thức~\ref{eq:ch3_semantic_target}; Mục~\ref{sec:evaluation_metrics} \\
+$p_{ij}^{I\rightarrow T}$ & Xác suất ghép văn bản $j$ với ảnh $i$. & Công thức~\ref{eq:ch3_image_to_text_probability} \\
+$p_{ji}^{T\rightarrow I}$ & Xác suất ghép ảnh $i$ với văn bản $j$. & Công thức~\ref{eq:ch3_text_to_image_probability} \\
+$\tau$ & Nhiệt độ của phân phối tương đồng ở pha 1; trong Chương 1 và Chương 4, $\tau$ còn được dùng cho ngưỡng OOD. & Công thức~\ref{eq:ch3_image_to_text_probability}; Chương~\ref{Chapter1} \\
+$\mathcal{L}_{\mathrm{SM}}$ & Hàm mất mát khớp ngữ nghĩa hai chiều ở pha 1. & Công thức~\ref{eq:ch3_semantic_matching_loss} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Dung hợp chú ý chéo}}\\
+$\boldsymbol{V}_i$ & Chuỗi token thị giác gồm một token toàn cục và $P$ token cục bộ. & Công thức~\ref{eq:ch3_visual_sequence} \\
+$\boldsymbol{A}_i^{I\leftarrow T}$ & Phân bố chú ý khi ảnh truy vấn các token văn bản. & Công thức~\ref{eq:ch3_image_queries_text_attention} \\
+$\boldsymbol{A}_i^{T\leftarrow I}$ & Phân bố chú ý khi văn bản truy vấn chuỗi token thị giác. & Công thức~\ref{eq:ch3_text_queries_image_attention} \\
+$\boldsymbol{W}_Q^I,\boldsymbol{W}_K^I,\boldsymbol{W}_V^I$ & Các ma trận chiếu query, key và value gắn với nhánh ảnh. & Công thức~\ref{eq:ch3_image_queries_text_attention}--\ref{eq:ch3_image_enhanced_text} \\
+$\boldsymbol{W}_Q^T,\boldsymbol{W}_K^T,\boldsymbol{W}_V^T$ & Các ma trận chiếu query, key và value gắn với nhánh văn bản. & Công thức~\ref{eq:ch3_image_queries_text_attention}--\ref{eq:ch3_image_enhanced_text} \\
+$d_h,\boldsymbol{M}_i^T$ & Số chiều của một attention head và mặt nạ cộng của chuỗi văn bản. & Công thức~\ref{eq:ch3_image_queries_text_attention} \\
+$\boldsymbol{h}_i^I,\boldsymbol{h}_i^T$ & Biểu diễn ảnh và văn bản sau khi được tăng cường bởi phương thức còn lại. & Công thức~\ref{eq:ch3_text_enhanced_image}, \ref{eq:ch3_image_enhanced_text} \\
+$\boldsymbol{z}_i^F$ & Embedding dung hợp dùng cho bộ phân loại. & Công thức~\ref{eq:ch3_fused_embedding} \\
+$\boldsymbol{W}_1,\boldsymbol{W}_2,\boldsymbol{b}_1,\boldsymbol{b}_2,\phi$ & Trọng số, độ lệch và hàm kích hoạt của fusion MLP. & Công thức~\ref{eq:ch3_fused_embedding} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Bộ phân loại và huấn luyện pha 2}}\\
+$\boldsymbol{c}_k,N_k$ & Tâm thực nghiệm và số mẫu huấn luyện của lớp $k$. & Công thức~\ref{eq:ch3_empirical_centroid} \\
+$r_{ik}$ & Độ tương đồng cosine giữa embedding mẫu $i$ và tâm lớp $k$. & Công thức~\ref{eq:ch3_centroid_similarity} \\
+$\ell_{ik},\alpha_c,b_k$ & Logit, hệ số tỷ lệ cố định và độ lệch riêng của lớp $k$. & Công thức~\ref{eq:ch3_classifier_logit} \\
+$p_{ik}$ & Xác suất dự đoán lớp $k$ cho mẫu $i$. & Công thức~\ref{eq:ch3_class_probability} \\
+$E_k,\beta$ & Số mẫu hiệu dụng của lớp $k$ và hệ số kiểm soát mức bão hòa. & Công thức~\ref{eq:ch3_effective_number} \\
+$w_k$ & Trọng số của lớp $k$ sau chuẩn hóa số mẫu hiệu dụng. & Công thức~\ref{eq:ch3_class_weight} \\
+$\widetilde{y}_{ik},\varepsilon$ & Mục tiêu sau label smoothing và hệ số làm trơn nhãn. & Công thức~\ref{eq:ch3_label_smoothing} \\
+$\mathcal{L}_{\mathrm{P2}}$ & Hàm mất mát Cross-Entropy có trọng số ở pha 2. & Công thức~\ref{eq:ch3_phase2_loss} \\
+$\widehat{y}_i$ & Nhãn dự đoán của mẫu $i$ trong quá trình suy luận. & Công thức~\ref{eq:ch3_prediction} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Độ đo phân loại và hiệu chuẩn}}\\
+$N,C,c$ & Số mẫu đánh giá, tổng số lớp và chỉ số lớp đang xét; $C$ ở đây khác với số kênh ảnh trong Chương 1. & Công thức~\ref{eq:ch4_accuracy} \\
+$TP_c,FP_c,TN_c,FN_c$ & Số dương tính thật, dương tính giả, âm tính thật và âm tính giả của lớp $c$. & Công thức~\ref{eq:ch4_accuracy}--\ref{eq:ch4_macro_f1} \\
+$\operatorname{TPR}_c,\operatorname{FPR}_c$ & Tỷ lệ dương tính thật và tỷ lệ dương tính giả của lớp $c$. & Mục~\ref{sec:evaluation_metrics}, Macro-AUROC \\
+$\operatorname{AUROC}_c,\mathcal{C}_v$ & AUROC của lớp $c$ và tập lớp hợp lệ có đủ mẫu dương lẫn mẫu âm. & Công thức~\ref{eq:ch4_macro_auroc} \\
+$\operatorname{Precision}_c,\operatorname{Recall}_c$ & Precision và recall của lớp $c$ trong thiết lập một-đối-với-tất-cả. & Công thức~\ref{eq:ch4_precision_def}, \ref{eq:ch4_recall_def} \\
+$P_{c,k},R_{c,k},K_c$ & Precision, recall tại ngưỡng thứ $k$ và số điểm ngưỡng của lớp $c$. & Công thức~\ref{eq:ch4_ap_class} \\
+$\operatorname{AP}_c$ & Average precision của lớp $c$. & Công thức~\ref{eq:ch4_ap_class} \\
+$M,B_m$ & Số khoảng hiệu chuẩn và tập mẫu thuộc khoảng thứ $m$; báo cáo sử dụng $M=15$. & Công thức~\ref{eq:ch4_ece} \\
+$\operatorname{Acc}(B_m),\operatorname{Conf}(B_m)$ & Độ chính xác thực nghiệm và độ tin cậy trung bình trong khoảng $B_m$. & Công thức~\ref{eq:ch4_ece} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Độ đo phát hiện ngoài phân phối}}\\
+$\mathcal{D}_{\mathrm{ID}},\mathcal{D}_{\mathrm{OOD}}$ & Tập dữ liệu trong phân phối và ngoài phân phối. & Mục~\ref{sec:evaluation_metrics}, phần OOD \\
+$N_{\mathrm{ID}},N_{\mathrm{OOD}}$ & Số mẫu trong tập ID và OOD. & Mục~\ref{sec:evaluation_metrics}, phần OOD \\
+$x_{\mathrm{ID}},x_{\mathrm{OOD}}$ & Mẫu ngẫu nhiên được rút từ tập ID và OOD. & Công thức~\ref{eq:ch4_auroc_ood} \\
+$s(x)$ & Điểm bất thường; giá trị lớn hơn biểu thị bằng chứng OOD mạnh hơn. & Mục~\ref{sec:evaluation_metrics}, phần OOD \\
+$\Pr(\cdot)$ & Xác suất của một biến cố. & Công thức~\ref{eq:ch4_auroc_ood} \\
+$\tau,\tau_{95}$ & Ngưỡng quyết định OOD và ngưỡng giữ lại ít nhất $95\%$ mẫu ID. & Công thức~\ref{eq:ch4_fpr95} \\
+\shortstack{$\operatorname{Precision}_{\mathrm{OOD}}$\\$\operatorname{Recall}_{\mathrm{OOD}}$} & Precision và recall khi xem OOD là lớp dương. & Công thức~\ref{eq:ch4_aupr_out} \\
+
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Tiền xử lý sparse-focal trong phụ lục}}\\
+$s_j$ & Điểm thông tin của cửa sổ cục bộ thứ $j$. & Công thức~\ref{eq:appendix-btxrd-window-score} \\
+$\widetilde{E}^{lap}_j$ & Năng lượng biên Laplacian đã chuẩn hóa của cửa sổ $j$. & Công thức~\ref{eq:appendix-btxrd-window-score} \\
+$\widetilde{H}_j$ & Entropy mức xám đã chuẩn hóa của cửa sổ $j$. & Công thức~\ref{eq:appendix-btxrd-window-score} \\
+$R^{fg}_j$ & Tỷ lệ pixel tiền cảnh trong cửa sổ $j$. & Công thức~\ref{eq:appendix-btxrd-window-score} \\
+$X,G,T,B$ & Ảnh nguồn, ảnh toàn cục, tập vùng cục bộ và tọa độ chuẩn hóa trong thuật toán sparse-focal. & Thuật toán~\ref{alg:appendix-btxrd-image} \\
+$K,p,d$ & Số vùng cục bộ, kích thước vùng và stride trong thuật toán sparse-focal. & Thuật toán~\ref{alg:appendix-btxrd-image} \\
+
+\end{longtable}
+\endgroup

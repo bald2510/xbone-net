@@ -598,11 +598,18 @@ Insight của thí nghiệm là fused embedding chứa tín hiệu hữu ích ch
 \label{fig:representation_geometry_summary}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{generated/explainability/attention_cases.png}
-\caption{Hai trường hợp định tính tại seed 42: một dự đoán đúng và một dự đoán sai có độ tin cậy cao}
-\label{fig:ch4draft_attention_cases}
+\includegraphics[width=\textwidth]{generated/explainability/attention_case_2842_img-33484-00001.png}
+\caption{Phân tích Integrated Gradients ba nguồn đối với mẫu 2842\_img-33484-00001 tại seed 42, gồm ảnh toàn cục, token ảnh cục bộ và token bệnh sử}
+\label{fig:ch4draft_attention_case_2842}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{generated/explainability/attention_case_3021_img-84263-00001.png}
+\caption{Phân tích Integrated Gradients ba nguồn đối với mẫu 3021\_img-84263-00001 tại seed 42, gồm ảnh toàn cục, token ảnh cục bộ và token bệnh sử}
+\label{fig:ch4draft_attention_case_3021}
 \end{figure}
 
 So với các nhánh riêng, fused embedding có hình học tốt nhất trên cả bốn độ đo: Silhouette ít âm hơn, Davies--Bouldin thấp hơn, NMI đạt $0{.}5470$ và centroid BAcc đạt $0{.}5899$. Nhánh image-from-text đóng góp khoảng $0{.}7031$ và gây prediction drop $0{.}3461$ khi bị loại, cao hơn nhánh text-from-image tương ứng $0{.}2969$ và $0{.}1072$. Tuy nhiên, attention entropy đều cao ($0{.}9417$ và $0{.}9653$), context cosine gần 0, Silhouette của fused embedding vẫn âm và targeted deletion chỉ tạo chênh lệch xác suất nhỏ so với random deletion. XBone-Net vì vậy có bằng chứng về việc dùng cả hai phương thức, nhưng chưa có bằng chứng mạnh rằng attention tập trung ổn định vào một tập token hẹp hoặc tạo cụm lớp tách biệt hoàn toàn.

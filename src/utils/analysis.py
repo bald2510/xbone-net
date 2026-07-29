@@ -360,14 +360,41 @@ def load_proposed_experiment_model(
     metrics_path = (
         PROJECT_ROOT / "results" / experiment_name / f"seed_{seed}" / "metrics.json"
     )
-    if not metrics_path.is_file():
-        raise FileNotFoundError(
-            f"Missing evaluated configuration for {experiment_name}: {metrics_path}"
-        )
-    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
-    resolved = metrics_payload.get("config")
+    config_reference_path = metrics_path
+    if metrics_path.is_file():
+        config_reference = json.loads(metrics_path.read_text(encoding="utf-8"))
+        resolved = config_reference.get("config")
+    else:
+        # Older cross-version exports retained the complete immutable config in
+        # each feature-archive sidecar even when the original metrics.json was
+        # later moved. Accept only a sidecar tied to this exact experiment and
+        # seed; the checkpoint hash is verified below before the model is used.
+        config_reference = None
+        for candidate in sorted(PROJECT_ROOT.glob("results/**/ctch_train.json")):
+            try:
+                payload = json.loads(candidate.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if (
+                str(payload.get("source_experiment", "")).strip("/")
+                == experiment_name
+                and int(payload.get("seed", -1)) == seed
+                and isinstance(payload.get("resolved_config"), dict)
+            ):
+                config_reference = payload
+                config_reference_path = candidate
+                break
+        if config_reference is None:
+            raise FileNotFoundError(
+                f"Missing evaluated configuration for {experiment_name}: "
+                f"{metrics_path}"
+            )
+        resolved = config_reference.get("resolved_config")
     if not isinstance(resolved, dict):
-        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+        raise ValueError(
+            "Evaluation artifact has no resolved config: "
+            f"{config_reference_path}"
+        )
     cfg = OmegaConf.create(resolved)
     OmegaConf.set_struct(cfg, False)
     recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
@@ -393,6 +420,16 @@ def load_proposed_experiment_model(
     ).resolve()
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Missing proposed checkpoint: {checkpoint}")
+    recorded_checkpoint_hash = str(
+        config_reference.get("checkpoint_sha256", "")
+    ).strip()
+    if recorded_checkpoint_hash:
+        current_checkpoint_hash = sha256_file(checkpoint)
+        if current_checkpoint_hash != recorded_checkpoint_hash:
+            raise RuntimeError(
+                "Checkpoint hash differs from the evaluated configuration "
+                f"reference: {checkpoint}"
+            )
     cfg.params.model_dir = str(checkpoint.parent)
     cfg.params.phase2.checkpoint_path = str(checkpoint)
     if phase3_enabled:
@@ -450,9 +487,15 @@ def load_proposed_experiment_model(
         parameter.numel() for parameter in model.parameters()
         if parameter.requires_grad
     )
-    recorded_metrics = metrics_payload.get("metrics", {})
-    expected_total = recorded_metrics.get("param_total")
-    expected_trainable = recorded_metrics.get("param_trainable")
+    recorded_metrics = config_reference.get("metrics", {})
+    expected_total = recorded_metrics.get(
+        "param_total",
+        config_reference.get("total_parameters"),
+    )
+    expected_trainable = recorded_metrics.get(
+        "param_trainable",
+        config_reference.get("trainable_parameters"),
+    )
     if expected_total is not None and total_parameters != int(expected_total):
         raise RuntimeError(
             f"Parameter fingerprint mismatch for {experiment_name}: "
@@ -472,8 +515,11 @@ def load_proposed_experiment_model(
         "seed": seed,
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": checkpoint_sha256,
-        "metrics_path": str(metrics_path.resolve()),
-        "metrics_sha256": sha256_file(metrics_path),
+        "config_reference_path": str(config_reference_path.resolve()),
+        "config_reference_sha256": sha256_file(config_reference_path),
+        "metrics_path": (
+            str(metrics_path.resolve()) if metrics_path.is_file() else None
+        ),
         "git_revision": _git_revision(),
         "total_parameters": total_parameters,
         "trainable_parameters": trainable_parameters,
