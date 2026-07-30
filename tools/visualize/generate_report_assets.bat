@@ -20,6 +20,8 @@ set "ATTN=%SUMMARY%\attention"
 set "ABL=%SUMMARY%\ablation"
 set "RUN_ALL=%SUMMARY%\run_all_table.csv"
 set "REPORT=docs\report\generated\chapter4_results"
+set "APPENDIX_SUMMARY=%SUMMARY%\appendix_seed_results"
+set "APPENDIX_REPORT=docs\report\generated\appendix_seed_results"
 
 if not exist "%RUN_ALL%" (
     echo [ERROR] Khong tim thay "%RUN_ALL%".
@@ -27,7 +29,7 @@ if not exist "%RUN_ALL%" (
 )
 
 echo.
-echo [1/5] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
+echo [1/6] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
 
 "%PYTHON%" "%VIS%" latex ^
   --input "%RUN_ALL%" ^
@@ -47,7 +49,7 @@ echo [1/5] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
   --resize-to-textwidth ^
   --precision 4 ^
   --position H ^
-  --caption "Kết quả phân loại zero-shot trên BTXRD và CTCH." ^
+  --caption "Kết quả phân loại zero-shot với một câu nhắc cho mỗi lớp trên BTXRD và CTCH; mỗi mô hình được đánh giá một lần tại hạt giống 42." ^
   --label tab:ch4draft_zeroshot ^
   --output "%CLASS%\table_zero_shot.tex"
 
@@ -161,7 +163,7 @@ copy /Y "%CLASS%\table_zero_shot.tex" docs\report\generated\chapter4_draft\table
   --output "%CLASS%\table_calibration_results.tex"
 
 echo.
-echo [2/5] Tao bang tham so, hieu qua suy luan va cac bieu do phan loai...
+echo [2/6] Tao bang tham so, hieu qua suy luan va cac bieu do phan loai...
 
 "%PYTHON%" "%VIS%" efficiency ^
   --full-shot-output "%CLASS%\table_efficiency_full_shot.tex" ^
@@ -235,7 +237,7 @@ if not exist "%CLASS%\table_efficiency_few_shot.tex" goto :error
   --output "%CLASS%\few_shot_ctch_f1_bar.png"
 
 echo.
-echo [3/5] Tao bang va bieu do OOD cho Semantic OOD va BTXRD...
+echo [3/6] Tao bang va bieu do OOD cho Semantic OOD va BTXRD...
 
 "%PYTHON%" "%VIS%" ood ^
   --input results\ctch\proposed\ours_xbone_net\analysis\aggregated_results.json ^
@@ -253,7 +255,7 @@ echo [3/5] Tao bang va bieu do OOD cho Semantic OOD va BTXRD...
   --output "%OOD%\mahalanobis_semantic_btxrd_metrics.png"
 
 echo.
-echo [4/5] Tao hinh Integrated Gradients...
+echo [4/6] Tao hinh Integrated Gradients...
 
 "%PYTHON%" "%VIS%" explainability-report ^
   --aggregate-input results\ctch\proposed\ours_xbone_net\analysis\aggregated_results.json ^
@@ -281,7 +283,7 @@ copy /Y "%ATTN%\attention_case_2842_img-33484-00001.png" docs\report\generated\e
 copy /Y "%ATTN%\attention_case_3021_img-84263-00001.png" docs\report\generated\explainability\attention_case_3021_img-84263-00001.png >nul
 
 echo.
-echo [5/5] Tao bang leave-one-out va forest plot khoang tin cay...
+echo [5/6] Tao bang leave-one-out va forest plot khoang tin cay...
 
 "%PYTHON%" "%VIS%" ablation-leave-one-out ^
   --input "%RUN_ALL%" ^
@@ -372,6 +374,24 @@ copy /Y "%ABL%\statistics_auc\forest_auprc_macro.png" "%REPORT%\forest_auprc_mac
 copy /Y "%ATTN%\attention_case_2842_img-33484-00001.png" "%REPORT%\attention_case_2842_img-33484-00001.png" >nul
 copy /Y "%ATTN%\attention_case_3021_img-84263-00001.png" "%REPORT%\attention_case_3021_img-84263-00001.png" >nul
 
+echo.
+echo [6/6] Tao bang va bieu do ket qua chi tiet theo tung hat giong...
+
+"%PYTHON%" tools\visualize\appendix_seed_results.py ^
+  --results-root results ^
+  --output-dir "%APPENDIX_SUMMARY%" ^
+  --dpi 300
+if errorlevel 1 goto :error
+
+if not exist "%APPENDIX_REPORT%" mkdir "%APPENDIX_REPORT%"
+copy /Y "%APPENDIX_SUMMARY%\table_full_shot_per_seed.tex" "%APPENDIX_REPORT%\table_full_shot_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_few_shot_per_seed.tex" "%APPENDIX_REPORT%\table_few_shot_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex" "%APPENDIX_REPORT%\table_ablation_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_ood_per_seed.tex" "%APPENDIX_REPORT%\table_ood_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png" "%APPENDIX_REPORT%\full_shot_macro_f1_by_seed.png" >nul
+copy /Y "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png" "%APPENDIX_REPORT%\ood_mahalanobis_by_seed.png" >nul
+copy /Y "%APPENDIX_SUMMARY%\manifest.json" "%APPENDIX_REPORT%\manifest.json" >nul
+
 set "MISSING=0"
 for %%F in (
   "%CLASS%\table_full_shot_classification.tex"
@@ -399,6 +419,12 @@ for %%F in (
   "%ABL%\statistics\forest_f1_macro.png"
   "%ABL%\statistics_auc\forest_auroc_macro.png"
   "%ABL%\statistics_auc\forest_auprc_macro.png"
+  "%APPENDIX_SUMMARY%\table_full_shot_per_seed.tex"
+  "%APPENDIX_SUMMARY%\table_few_shot_per_seed.tex"
+  "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex"
+  "%APPENDIX_SUMMARY%\table_ood_per_seed.tex"
+  "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png"
+  "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png"
 ) do (
   if not exist "%%~F" (
     echo [MISSING] %%~F

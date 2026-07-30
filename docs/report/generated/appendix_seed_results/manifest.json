@@ -1,0 +1,55 @@
+{
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "full_shot_rows": 54,
+  "few_shot_rows": 54,
+  "ablation_rows": 18,
+  "ood_rows": 24,
+  "ood_counts": {
+    "semantic_ood": {
+      "42": {
+        "id_test": 669,
+        "ood_test": 29,
+        "analysis_status": "exploratory_incomplete_ood"
+      },
+      "123": {
+        "id_test": 669,
+        "ood_test": 29,
+        "analysis_status": "exploratory_incomplete_ood"
+      },
+      "456": {
+        "id_test": 669,
+        "ood_test": 29,
+        "analysis_status": "exploratory_incomplete_ood"
+      }
+    },
+    "domain_ood_btxrd": {
+      "42": {
+        "id_test": 669,
+        "ood_test": 750,
+        "analysis_status": "complete"
+      },
+      "123": {
+        "id_test": 669,
+        "ood_test": 750,
+        "analysis_status": "complete"
+      },
+      "456": {
+        "id_test": 669,
+        "ood_test": 750,
+        "analysis_status": "complete"
+      }
+    }
+  },
+  "outputs": [
+    "table_full_shot_per_seed.tex",
+    "table_few_shot_per_seed.tex",
+    "table_ablation_per_seed.tex",
+    "table_ood_per_seed.tex",
+    "full_shot_macro_f1_by_seed.png",
+    "ood_mahalanobis_by_seed.png"
+  ]
+}

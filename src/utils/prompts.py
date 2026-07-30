@@ -1,18 +1,42 @@
-"""
-Zero-Shot Prompt Engineering for OOD Text-Anchor Scoring.
-===============================================================================
-Generates natural-language prompt pairs encoded by the VLM text encoder:
-  - Text anchor embeddings for each known pathology
-  - Positive prompts asserting presence of pathology
-  - Negative prompts asserting absence of pathology
+"""Prompt templates used by zero-shot classification and OOD scoring.
 
-These anchors are used by OODDetector.score_text_anchor for zero-shot OOD detection.
+Zero-shot classification follows the single-template protocol described in the
+original CLIP paper.  The positive/negative prompt pairs are kept as a separate
+utility for the optional text-anchor OOD detector.
 """
+
+
+ORIGINAL_CLIP_PROMPT_TEMPLATE = "A photo of a {label}."
 
 
 # ============================================================
 # Prompt Generation Functions
 # ============================================================
+
+def generate_clip_class_prompts(
+    class_names: list[str],
+    template: str = ORIGINAL_CLIP_PROMPT_TEMPLATE,
+) -> dict[str, str]:
+    """Generate one canonical CLIP prompt for every class.
+
+    The default is the single prompt reported by Radford et al.:
+    ``A photo of a {label}.``.  Each class competes with all other classes
+    through one class-wise softmax during zero-shot classification.
+
+    Args:
+        class_names: Ordered class names substituted into ``{label}``.
+        template: Prompt template containing exactly the ``{label}`` field.
+
+    Returns:
+        An insertion-ordered mapping from class name to prompt.
+    """
+    if "{label}" not in template:
+        raise ValueError("The CLIP prompt template must contain the '{label}' field.")
+    return {
+        class_name: template.format(label=class_name)
+        for class_name in class_names
+    }
+
 
 def generate_custom_prompts(
     pathologies: list[str],
@@ -46,5 +70,4 @@ def generate_custom_prompts(
         }
         for path in pathologies
     }
-
 

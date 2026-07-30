@@ -1,4 +1,5 @@
 \chapter{Thực nghiệm}
+\label{Chapter4}
 Chương này trình bày các thực nghiệm được thực hiện để kiểm tra hiệu năng của mô hình đề xuất. Các nội dung được trình bày bao gồm các bộ dữ liệu được sử dụng, các độ đo được sử dụng, các thiết lập siêu tham số và môi trường thí nghiệm, các nội dung thí nghiệm và cuối cùng là trình bày kết quả và bàn luận về kết quả.
 
 \section{Chuẩn bị dữ liệu}
@@ -70,9 +71,9 @@ Bộ dữ liệu được chia ngẫu nhiên ở mức ảnh được thực hi�
 
 \subsubsection{Nguồn văn bản đa phương thức}
 
-bộ dữ liệu BTXRD không cung cấp báo cáo bệnh sử tương ứng với từng ảnh. Vì vậy, văn bản được sinh ngoại tuyến từ các siêu dữ liệu được cung cấp và mức liên quan khớp và các nhãn với bộ sinh giả ngẫu nhiên cố định với hạt giống 42. Mỗi báo cáo gồm thông tin người bệnh, lý do vào viện, quá trình bệnh lý, tiền sử và thông tin tư thế chụp. Thiết lập chính của BTXRD dùng nguồn này cho cả hai giai đoạn huấn luyện thông.
+Bộ dữ liệu BTXRD không cung cấp bệnh sử lâm sàng tương ứng với từng ảnh. Vì vậy, nghiên cứu sinh ngoại tuyến văn bản dạng lâm sàng từ siêu dữ liệu bằng bộ sinh giả ngẫu nhiên với hạt giống cố định. Mỗi văn bản gồm thông tin người bệnh, lý do vào viện, diễn tiến giả lập, tiền sử và thông tin tư thế chụp. Các văn bản đã sinh được lưu trước và được dùng nhất quán trong hai giai đoạn huấn luyện, đánh giá và suy luận. Tại thời điểm suy luận, mô hình chỉ nhận ảnh cùng văn bản đã lưu; nhãn đúng không được truyền trực tiếp cho mô hình và văn bản không được sinh lại từ nhãn dự đoán.
 
-Tuy nhiên, nguồn văn bản này vẫn phụ thuộc vào cờ có u và cờ ác tính, vì vậy nguồn văn bản này chỉ giảm rò rỉ tên lớp trực tiếp chứ không độc lập hoàn toàn với nhãn đích. Kết quả đa phương thức trên BTXRD do đó không được xem là bằng chứng tương đương với việc sử dụng bệnh sử lâm sàng tự nhiên.
+Tuy nhiên, quá trình chọn mẫu câu vẫn phụ thuộc vào cờ có u và cờ ác tính trong siêu dữ liệu. Nguồn văn bản này tránh đưa trực tiếp tên của 10 lớp đích vào đầu vào chính nhưng không độc lập hoàn toàn với nhãn. Vì vậy, kết quả BTXRD phản ánh hiệu năng của pipeline với văn bản tổng hợp có điều kiện từ siêu dữ liệu, không được xem là bằng chứng tương đương với việc sử dụng bệnh sử lâm sàng tự nhiên.
 
 Các mô tả X-quang tổng hợp trực tiếp từ nhãn và có thể nêu tên chẩn đoán; nguồn này không được sử dụng trong thiết lập huấn luyện và phân loại chính. Cấu trúc tệp, thuật toán chuẩn hóa nhãn, quy trình sinh văn bản, thống kê định dạng ảnh, kiểm tra tính toàn vẹn, ví dụ trước và sau xử lý được trình bày chi tiết trong Phụ lục \ref{Appendix1}.
 
@@ -153,9 +154,9 @@ Gãy xương vùng chậu & 16 & 2 & 6 & 24 & 0,74 \\
 
 \subsubsection{Xây dựng dữ liệu văn bản}
 
-Hai nguồn văn bản được xây dựng từ bệnh án gốc. Bệnh sử lâm sàng kết hợp lý do vào viện, diễn tiến bệnh và tiền sử bản thân; mô tả X-quang kết hợp phần tóm tắt khám, cận lâm sàng và kết quả khảo sát. Tên trường được thống nhất, nội dung được chuẩn hóa Unicode, loại khoảng trắng thừa và giữ nguyên thứ tự ngữ nghĩa trước khi dịch từ tiếng Việt sang tiếng Anh.
+Hai nguồn văn bản được xây dựng từ bệnh án gốc. Bệnh sử lâm sàng kết hợp lý do vào viện, diễn tiến bệnh và tiền sử bản thân; mô tả X-quang kết hợp phần tóm tắt khám, cận lâm sàng và kết quả khảo sát. Tên trường được thống nhất, nội dung được chuẩn hóa Unicode, loại khoảng trắng thừa và giữ nguyên thứ tự ngữ nghĩa trước khi dịch từ tiếng Việt sang tiếng Anh. Thiết lập phân loại chính chỉ sử dụng nguồn bệnh sử lâm sàng trong cả huấn luyện và suy luận; mô tả X-quang được lưu để kiểm tra và cho các phân tích riêng, không được dùng làm văn bản đầu vào của kết quả chính.
 
-Chẩn đoán xác định và nhãn phân loại không được nối trực tiếp vào văn bản đầu vào. Tuy nhiên, phần tóm tắt khám hoặc kết quả khảo sát do bác sĩ viết vẫn có thể chứa tên tổn thương, vị trí gãy hoặc nhận định chẩn đoán; vì vậy, việc không sử dụng cột nhãn không đồng nghĩa với loại bỏ toàn bộ tín hiệu liên quan đến nhãn. Kết quả đa phương thức cần được diễn giải như khả năng kết hợp ảnh với thông tin bệnh án thực tế, trong đó văn bản có thể chứa bằng chứng lâm sàng hỗ trợ quyết định.
+Chẩn đoán xác định và nhãn phân loại không được nối trực tiếp vào bệnh sử đầu vào. Tuy nhiên, bệnh sử thực vẫn có thể chứa vị trí đau, cơ chế chấn thương hoặc biểu hiện lâm sàng liên quan đến lớp bệnh; đây là thông tin sẵn có trong bệnh án chứ không phải tên nhãn được chèn bởi pipeline. Kết quả CTCH do đó được diễn giải như khả năng kết hợp ảnh với bệnh sử thực trong phạm vi dữ liệu nghiên cứu.
 
 Bản dịch tiếng Anh được sử dụng để tương thích với bộ mã hóa văn bản tiền huấn luyện. Quy trình dịch theo từng trường và tái sử dụng những đoạn đã dịch trước đó nhằm bảo đảm tính nhất quán; nếu dịch không thành công trong quá trình chuẩn bị thông thường, nội dung tiếng Việt được giữ lại thay vì tạo một câu không có căn cứ. Sai khác thuật ngữ, viết tắt và cấu trúc câu giữa bản gốc với bản dịch vẫn là một nguồn nhiễu tiềm tàng.
 
@@ -536,19 +537,17 @@ Phần này trình bày các nhóm thí nghiệm được thực hiện trên ha
 
 \textbf{Thiết kế mô hình:} Nhóm thí nghiệm này sử dụng bốn mô hình ngôn ngữ
 trực quan gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP ở chế độ không mẫu. Toàn
-bộ tham số của mô hình nền tảng được giữ cố định. Với mỗi lớp $c$, tên lớp tiếng Anh được đưa vào một cặp câu nhắc cố định gồm câu nhắc khẳng định và câu nhắc phủ định:
+bộ tham số của mô hình nền tảng được giữ cố định. Với mỗi lớp $c$, tên lớp tiếng Anh được thay vào một câu nhắc cố định theo mẫu mặc định được mô tả trong CLIP \cite{CLIP}:
 \begin{quote}
 \small\raggedright\ttfamily
-this is an image of a bone x-ray; [class] presented in image,\par
-this is an image of a bone x-ray; no [class] presented in image.
+A photo of a [class].
 \end{quote}
-Chẳng hạn, đối với lớp osteosarcoma, hai câu nhắc lần lượt là
+Chẳng hạn, đối với lớp osteosarcoma, câu nhắc được xây dựng là
 \begin{quote}
 \small\raggedright\ttfamily
-this is an image of a bone x-ray; osteosarcoma presented in image,\par
-this is an image of a bone x-ray; no osteosarcoma presented in image.
+A photo of a osteosarcoma.
 \end{quote}
-Hai câu nhắc được mã hóa thành biểu diễn văn bản và so sánh với biểu diễn ảnh. Độ tương đồng của cặp khẳng định phủ định được chuyển thành xác suất bằng softmax với nhiệt độ $\tau$, xác suất của câu nhắc khẳng định được dùng làm điểm cho lớp $c$. Nhãn dự đoán là lớp có điểm khẳng định lớn nhất trong toàn bộ tập lớp.
+Mỗi câu nhắc được mã hóa thành một biểu diễn văn bản đã chuẩn hóa và được so sánh với biểu diễn ảnh đã chuẩn hóa bằng độ tương đồng cosine. Các độ tương đồng giữa một ảnh và toàn bộ câu nhắc của các lớp được chia cho nhiệt độ $\tau$, sau đó được chuẩn hóa đồng thời bằng softmax trên chiều lớp. Nhãn có xác suất lớn nhất được chọn làm kết quả dự đoán. Thiết lập này sử dụng một câu nhắc cho mỗi lớp và không thực hiện chuẩn hóa riêng giữa cặp khẳng định--phủ định, qua đó bám sát giao thức phân loại không mẫu cơ bản của CLIP.
 
 \textbf{Mục đích thực nghiệm:} Thí nghiệm khảo sát khả năng chuyển trực tiếp
 tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xương. Thiết lập này cung cấp một mốc tham chiếu không sử dụng mẫu huấn luyện của bộ dữ liệu đích, qua đó cho phép xem xét mức độ phù hợp ban đầu của các mô hình ngôn ngữ trực quan
@@ -558,7 +557,7 @@ tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xươ
 
 \textbf{Thiết kế mô hình:} Nhóm so sánh có ba thiết lập bổ sung cho nhau:
 \begin{enumerate}
-    \item \textbf{Mẫu hạn chế:} LoRA-BiomedCLIP và LoRA-PubMedCLIP được huấn luyện với 1, 10 hoặc 20 mẫu cho mỗi lớp ở tập huấn luyện, tập đánh giá và kiểm thử được giữ nguyên. Các mô hình được huấn luyện hai pha, phép nối đặc trưng và đầu phân loại tuyến tính.
+    \item \textbf{Mẫu hạn chế:} Với mỗi mức 1, 10 hoặc 20, tập huấn luyện được lấy mẫu ngẫu nhiên không hoàn lại và giữ tối đa số mẫu tương ứng trong từng lớp; phép lấy mẫu sử dụng cùng hạt giống với lần huấn luyện. Nếu một lớp có ít mẫu hơn mức yêu cầu, toàn bộ mẫu hiện có của lớp đó được giữ lại và không nhân bản. Vì vậy, thiết lập CTCH thường gọi là ``20-shot'' thực chất là thiết lập tối đa 20 mẫu mỗi lớp: lớp gãy xương thuyền sử dụng 19 mẫu và lớp gãy xương vùng chậu sử dụng 16 mẫu, trong khi các lớp còn lại sử dụng 20 mẫu. Tập xác thực và tập kiểm thử được giữ nguyên. Các mô hình cơ sở LoRA được huấn luyện hai pha, sử dụng phép nối đặc trưng và đầu phân loại tuyến tính.
     \item \textbf{Toàn bộ dữ liệu:} ResNet-50 và DenseNet-121 được tinh chỉnh toàn bộ với đầu tuyến tính và chỉ nhận ảnh. Các mô hình ngôn ngữ trực quan gồm CLIP, MedCLIP, PubMedCLIP và BiomedCLIP được tinh chỉnh toàn bộ, sử dụng ảnh cùng báo cáo lâm sàng, phép nối đặc trưng và đầu tuyến tính.
     \item \textbf{Tinh chỉnh hiệu quả tham số:} Hai mô hình BiomedCLIP và PubMedCLIP được áp dụng kỹ thuật LoRA với phép nối đặc trưng và đầu tuyến tính.
 \end{enumerate}
@@ -588,17 +587,17 @@ tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xươ
 
 \section{Kết quả thực nghiệm}
 
-Phần này trình bày kết quả thực nghiệm đồng thời bàn luận và phân tích các kết quả của từng nội dung thực nghiệm như đã nêu ở \ref{sec:experiment_content}. Đối với các thiết lập có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, mô hình đề xuất được tô màu xám nhạt nhằm dễ nhận diện.
+Phần này trình bày kết quả thực nghiệm đồng thời bàn luận và phân tích các kết quả của từng nội dung thực nghiệm như đã nêu ở \ref{sec:experiment_content}. Đối với các thiết lập có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, mô hình đề xuất được tô màu xám nhạt nhằm dễ nhận diện. Các giá trị riêng của từng hạt giống được công bố tại Phụ lục \ref{AppendixSeedResults} để hỗ trợ đối chiếu với kết quả tổng hợp và đánh giá độ nhạy đối với khởi tạo ngẫu nhiên.
 
 \subsection{Đánh giá mô hình nền tảng}
 \label{subsec:foundation_model_evaluation}
-Kết quả trong Bảng \ref{tab:ch4draft_zeroshot} cho thấy BioMedCLIP đạt giá trị cao nhất trên cả năm độ đo của BTXRD, gồm Accuracy $0{.}3427$, Balanced Accuracy $0{.}1493$, Macro-F1 $0{.}1289$, Macro-AUROC $0{.}5786$ và Macro-AUPRC $0{.}1416$. Trên CTCH, mô hình tiếp tục dẫn đầu về Accuracy ($0{.}2556$), Macro-F1 ($0{.}1659$), Macro-AUROC ($0{.}8191$) và Macro-AUPRC ($0{.}2334$). Riêng Balanced Accuracy, CLIP đạt kết quả cao hơn BioMedCLIP, tương ứng $0{.}2367$ và $0{.}2109$.
+Kết quả trong Bảng \ref{tab:ch4draft_zeroshot} cho thấy BioMedCLIP đạt Accuracy $0{.}1453$, Balanced Accuracy $0{.}1261$, Macro-F1 $0{.}0837$ và Macro-AUPRC $0{.}1656$ trên BTXRD, cao nhất trong bốn mô hình ở các độ đo này; CLIP đạt Macro-AUROC cao nhất với $0{.}6051$. Trên CTCH, BioMedCLIP đạt giá trị cao nhất ở cả năm độ đo, gồm Accuracy $0{.}2720$, Balanced Accuracy $0{.}3898$, Macro-F1 $0{.}2698$, Macro-AUROC $0{.}8976$ và Macro-AUPRC $0{.}3244$.
 
 \input{generated/chapter4_results/table_zero_shot}
 
-Mặc dù đạt Accuracy cao nhất trên BTXRD, BioMedCLIP vẫn có Balanced Accuracy và Macro-F1 tương đối thấp, cho thấy dự đoán zero-shot còn thiên về các lớp phổ biến và chưa nhận diện đồng đều các lớp thiểu số. Trên CTCH, BioMedCLIP có Macro-AUROC và Macro-AUPRC cao hơn, trong khi CLIP đạt Balanced Accuracy tốt hơn. Sự khác biệt này cho thấy khả năng xếp hạng xác suất và kết quả phân lớp chưa hoàn toàn nhất quán. Nhìn chung, Macro-F1 dưới $0{.}17$ trên cả hai bộ dữ liệu cho thấy các mô hình tiền huấn luyện chưa thể được áp dụng trực tiếp mà cần thích ứng với dữ liệu đích.
+Trên BTXRD, Balanced Accuracy của các mô hình dao động từ $0{.}0991$ đến $0{.}1261$ và Macro-F1 không vượt quá $0{.}0837$, cho thấy câu nhắc chung chưa phân tách tốt các nhóm u xương có biểu hiện hình ảnh và tên gọi chuyên biệt. Việc CLIP đạt Macro-AUROC cao hơn nhưng có Macro-F1 thấp hơn BioMedCLIP cũng cho thấy khả năng xếp hạng điểm của từng lớp chưa chuyển thành quyết định đa lớp ổn định. Trên CTCH, kết quả của BioMedCLIP cao hơn rõ rệt, có thể liên quan đến mức độ tương thích tốt hơn giữa biểu diễn y sinh đã tiền huấn luyện với các khái niệm gãy xương và vị trí giải phẫu. Tuy vậy, chênh lệch giữa Macro-AUROC $0{.}8976$ và Macro-F1 $0{.}2698$ cho thấy khả năng xếp hạng vẫn tốt hơn đáng kể so với khả năng chọn đúng một lớp tại ngưỡng quyết định.
 
-Xét tổng thể, BioMedCLIP dẫn đầu toàn bộ năm độ đo trên BTXRD và bốn trong năm độ đo trên CTCH, qua đó thể hiện khả năng phân biệt ban đầu tốt hơn các mô hình còn lại. Vì vậy, nhóm lựa chọn BioMedCLIP làm mô hình nền tảng cho XBone-Net dựa trên mức độ phù hợp với miền y khoa và tiềm năng thích ứng với bài toán phân loại X-quang xương. Kết quả zero-shot đồng thời cho thấy sự cần thiết của việc tinh chỉnh trên dữ liệu đích, xử lý mất cân bằng lớp và khai thác thêm thông tin lâm sàng trong phương pháp đề xuất.
+Xét tổng thể, BioMedCLIP cung cấp mốc zero-shot phù hợp hơn trên CTCH và dẫn đầu phần lớn độ đo trên BTXRD, trong khi không có mô hình nào duy trì ưu thế tuyệt đối trên mọi dữ liệu và độ đo. Kết quả này hỗ trợ việc chọn BioMedCLIP làm mô hình nền tảng cho XBone-Net, nhưng chưa được xem là bằng chứng rằng mô hình có thể được áp dụng trực tiếp cho phân loại X-quang xương. Thay vào đó, hiệu năng còn hạn chế, đặc biệt trên BTXRD, tạo cơ sở cho quá trình thích ứng với dữ liệu đích, xử lý mất cân bằng lớp và bổ sung thông tin lâm sàng trong pipeline đề xuất.
 
 \subsection{So sánh với các mô hình cơ sở}
 
@@ -634,9 +633,9 @@ Nhìn chung, XBone-Net chưa thể hiện ưu thế nhất quán ở các độ 
 
 \subsubsection{Kết quả trong trường hợp mẫu học hạn chế}
 
-Kết quả trong Bảng \ref{tab:classification_few_shot}, Bảng \ref{tab:classification_few_shot_ranking}, Hình \ref{fig:few_shot_btxrd} và Hình \ref{fig:few_shot_ctch} cho thấy hiệu năng của các mô hình nhìn chung tăng theo số mẫu mỗi lớp, nhưng thứ hạng thay đổi theo từng thiết lập. Trên BTXRD, XBone-Net không dẫn đầu ở mức $1$ mẫu, nhưng đạt Macro-F1 cao nhất tại mức $10$ mẫu ($0{.}4302\pm0{.}0263$) và $20$ mẫu ($0{.}5202\pm0{.}0300$), đồng thời đứng đầu các độ đo dựa trên quyết định lớp. Tuy nhiên, mức cải thiện so với mô hình cơ sở gần nhất khá nhỏ, lần lượt là $0{.}0091$ và $0{.}0070$. Với các độ đo xếp hạng, XBone-Net chỉ đạt Macro-AUPRC cao nhất tại mức $20$ mẫu, trong khi Macro-AUROC vẫn thấp hơn LoRA-BioMedCLIP.
+Kết quả trong Bảng \ref{tab:classification_few_shot}, Bảng \ref{tab:classification_few_shot_ranking}, Hình \ref{fig:few_shot_btxrd} và Hình \ref{fig:few_shot_ctch} cho thấy hiệu năng của các mô hình nhìn chung tăng theo ngân sách mẫu tối đa của mỗi lớp, nhưng thứ hạng thay đổi theo từng thiết lập. Trên BTXRD, mọi lớp đều có đủ mẫu cho ba mức khảo sát; XBone-Net không dẫn đầu ở mức $1$ mẫu, nhưng đạt Macro-F1 cao nhất tại mức $10$ mẫu ($0{.}4302\pm0{.}0263$) và $20$ mẫu ($0{.}5202\pm0{.}0300$), đồng thời đứng đầu các độ đo dựa trên quyết định lớp. Tuy nhiên, mức cải thiện so với mô hình cơ sở gần nhất khá nhỏ, lần lượt là $0{.}0091$ và $0{.}0070$. Với các độ đo xếp hạng, XBone-Net chỉ đạt Macro-AUPRC cao nhất tại mức $20$ mẫu, trong khi Macro-AUROC vẫn thấp hơn LoRA-BioMedCLIP.
 
-Trên CTCH, XBone-Net thể hiện ưu thế rõ nhất ở mức $1$ mẫu khi đạt kết quả trung bình cao nhất trên cả năm độ đo, cho thấy khả năng học tốt trong điều kiện dữ liệu cực kỳ hạn chế. Tại mức $10$ mẫu, mô hình vẫn dẫn đầu về Macro-F1 nhưng không còn vượt trội ở các độ đo khác. Khi tăng lên $20$ mẫu, Macro-F1 của XBone-Net thấp hơn LoRA-BioMedCLIP, còn Macro-AUROC và Macro-AUPRC thấp hơn LoRA-PubMedCLIP. Nhìn chung, XBone-Net có lợi thế trong thiết lập rất ít mẫu, nhưng không duy trì ưu thế khi lượng dữ liệu huấn luyện tăng.
+Trên CTCH, XBone-Net thể hiện ưu thế rõ nhất ở mức $1$ mẫu khi đạt kết quả trung bình cao nhất trên cả năm độ đo, cho thấy khả năng học tốt trong điều kiện dữ liệu cực kỳ hạn chế. Tại mức $10$ mẫu, mô hình vẫn dẫn đầu về Macro-F1 nhưng không còn vượt trội ở các độ đo khác. Khi ngân sách tăng lên tối đa $20$ mẫu mỗi lớp, Macro-F1 của XBone-Net thấp hơn LoRA-BioMedCLIP, còn Macro-AUROC và Macro-AUPRC thấp hơn LoRA-PubMedCLIP. Kết quả ở mức này bao gồm 19 mẫu của lớp gãy xương thuyền và 16 mẫu của lớp gãy xương vùng chậu, do đó không được diễn giải như một tập huấn luyện cân bằng đúng 20 mẫu cho tất cả các lớp. Nhìn chung, XBone-Net có lợi thế trong thiết lập rất ít mẫu, nhưng không duy trì ưu thế khi lượng dữ liệu huấn luyện tăng.
 
 Sự khác biệt giữa BTXRD và CTCH cho thấy hiệu quả của mô hình đề xuất phụ thuộc vào cấu trúc nhãn, mức mất cân bằng, đặc điểm hình ảnh và giá trị thông tin của bệnh sử. Cơ chế dung hợp hai chiều và đầu phân loại theo tâm cụm có thể hữu ích khi dữ liệu đặc biệt khan hiếm, tiêu biểu ở CTCH $1$ mẫu. Tuy nhiên, XBone-Net dẫn đầu các độ đo quyết định lớp nhưng không đồng thời dẫn đầu Macro-AUROC hoặc Macro-AUPRC ở một số thiết lập cũng cho thấy khả năng phân lớp và xếp hạng xác suất không thay đổi đồng nhất theo số mẫu.
 
@@ -647,14 +646,14 @@ Sự khác biệt giữa BTXRD và CTCH cho thấy hiệu quả của mô hình 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.65\textwidth]{generated/chapter4_results/few_shot_btxrd_f1_bar.png}
-\caption{So sánh Macro-F1 giữa các thiết lập mẫu học hạn chế (1 mẫu, 10 mẫu và 20 mẫu) trên BTXRD}
+\caption{So sánh Macro-F1 giữa các mức ngân sách tối đa 1, 10 và 20 mẫu mỗi lớp trên BTXRD}
 \label{fig:few_shot_btxrd}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.65\textwidth]{generated/chapter4_results/few_shot_ctch_f1_bar.png}
-\caption{So sánh Macro-F1 giữa các thiết lập mẫu học hạn chế (1 mẫu, 10 mẫu và 20 mẫu) trên CTCH}
+\caption{So sánh Macro-F1 giữa các mức ngân sách tối đa 1, 10 và 20 mẫu mỗi lớp trên CTCH; lớp có ít mẫu hơn ngân sách sử dụng toàn bộ mẫu hiện có}
 \label{fig:few_shot_ctch}
 \end{figure}
 
@@ -715,6 +714,8 @@ Nhìn chung, thí nghiệm leave-one-out chưa chứng minh cấu hình đầy �
 
 Kết quả trong Bảng \ref{tab:ood_semantic_btxrd} và Hình \ref{fig:ood_mahalanobis_semantic_btxrd} cho thấy hiệu quả phát hiện OOD của XBone-Net thay đổi đáng kể theo loại dịch chuyển dữ liệu. Trên BTXRD, Mahalanobis-centroid đạt kết quả tốt nhất trong bốn phương pháp với AUROC-OOD $0{.}8042\pm0{.}0938$, AUPR-Out $0{.}8009\pm0{.}0609$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$. Trong kịch bản Semantic OOD, các kết quả thấp hơn: Mahalanobis-centroid đạt AUROC-OOD cao nhất ($0{.}5840\pm0{.}0203$), Entropy đạt AUPR-Out cao nhất ($0{.}0634\pm0{.}0204$), còn Cosine-centroid có FPR@95\%TPR thấp nhất ($0{.}8966\pm0{.}0345$).
 
+Các phép đánh giá tại từng hạt giống sử dụng 669 mẫu CTCH trong phân phối và 750 mẫu BTXRD ngoài phân phối. Đối với Semantic OOD, các tệp kết quả hiện có chỉ chứa 29 trong tổng số 44 mẫu dự kiến do 15 mẫu gặp lỗi quyền truy cập tại thời điểm chạy; vì vậy các giá trị tổng hợp của kịch bản này cần được hiểu trong phạm vi 29 mẫu đã xử lý. Số liệu chi tiết và cỡ mẫu của từng hạt giống được trình bày tại Bảng \ref{tab:appendix-ood-seeds}.
+
 \input{generated/chapter4_results/table_ood_semantic_btxrd}
 
 \begin{figure}[H]
@@ -726,20 +727,22 @@ Kết quả trong Bảng \ref{tab:ood_semantic_btxrd} và Hình \ref{fig:ood_mah
 
 Khoảng cách giữa hai kịch bản có thể liên quan đến mức độ dịch chuyển trong không gian biểu diễn. BTXRD khác CTCH đồng thời về nguồn dữ liệu, phân bố ảnh, không gian nhãn và nội dung văn bản, do đó biểu diễn dung hợp của các mẫu này có khả năng nằm xa hơn các cụm lớp CTCH, Mahalanobis-centroid có thể tận dụng thêm phương sai và tương quan giữa các chiều để biểu diễn dạng sai khác này. Ngược lại, các mẫu Semantic OOD vẫn có thể chia sẻ vị trí giải phẫu, biểu hiện tổn thương hoặc từ khóa bệnh sử với các lớp đã biết, khiến chúng nằm gần miền biểu diễn ID dù không thuộc không gian nhãn đích. Kết quả Entropy thấp trên cả hai kịch bản cũng gợi ý rằng độ bất định của đầu phân loại chưa phản ánh đầy đủ khoảng cách hình học giữa mẫu kiểm thử và dữ liệu huấn luyện. Tuy nhiên, do hai kịch bản khác nhau trên nhiều yếu tố đồng thời, các kết quả hiện có chưa cho phép quy toàn bộ chênh lệch cho riêng miền ảnh, văn bản hoặc cấu trúc nhãn.
 
-Nhìn chung, biểu diễn dung hợp cung cấp tín hiệu hậu xử lý hữu ích hơn đối với dịch chuyển liên bộ dữ liệu BTXRD so với Semantic OOD gần phân phối, nhưng điểm vận hành vẫn còn hạn chế. Ngay cả với Mahalanobis-centroid trên BTXRD, FPR@95\%TPR bằng $0{.}7071$ cho thấy một tỷ lệ lớn mẫu ID vẫn có thể bị cảnh báo nhầm khi yêu cầu phát hiện $95\%$ mẫu OOD; độ lệch chuẩn tương đối lớn cũng phản ánh sự nhạy cảm theo hạt giống. Vì vậy, kết quả phù hợp để xem mô-đun OOD như một tín hiệu cảnh báo bổ trợ cho dự đoán phân loại, thay vì một cơ chế từ chối tự động hoặc bằng chứng về độ an toàn khi triển khai.
+Nhìn chung, biểu diễn dung hợp cung cấp tín hiệu hậu xử lý hữu ích hơn đối với dịch chuyển liên bộ dữ liệu BTXRD so với Semantic OOD gần phân phối, nhưng điểm vận hành vẫn còn hạn chế. Theo quy ước của nghiên cứu, ngưỡng FPR@95\%TPR được chọn để chấp nhận ít nhất $95\%$ mẫu ID; giá trị $0{.}7071$ của Mahalanobis-centroid trên BTXRD có nghĩa là khoảng $70{.}71\%$ mẫu OOD vẫn bị chấp nhận nhầm như ID và lọt qua cơ chế từ chối tại ngưỡng này. Độ lệch chuẩn tương đối lớn cũng phản ánh sự nhạy cảm theo hạt giống. Vì vậy, kết quả phù hợp để xem mô-đun OOD như một tín hiệu cảnh báo bổ trợ cho dự đoán phân loại, thay vì một cơ chế từ chối tự động hoặc bằng chứng về độ an toàn khi triển khai.
 
 \subsection{Giải thích bằng Integrated Gradients}
 
 Kết quả trong Hình \ref{fig:attention_case_2842} và Hình \ref{fig:attention_case_3021} minh họa hai hành vi khác nhau của XBone-Net khi giải thích đồng thời ảnh toàn cục, token ảnh cục bộ và token bệnh sử. Với mẫu 2842\_img-33484-00001, mô hình dự đoán đúng lớp gãy xương chày với xác suất $50{.}8\%$; khi lần lượt thay từng nguồn bằng baseline, xác suất lớp dự đoán giảm $0{.}249$ ở ảnh toàn cục, $0{.}071$ ở ảnh cục bộ và $0{.}053$ ở bệnh sử. Với mẫu 3021\_img-84263-00001, mô hình dự đoán sai lớp gãy xương ngón tay thay cho cắt cụt ngón tay với xác suất $71{.}7\%$; mức giảm tương ứng của bệnh sử và ảnh toàn cục là $0{.}622$ và $0{.}573$, trong khi ảnh cục bộ chỉ đạt $0{.}009$. Các giá trị này cho thấy mức độ phụ thuộc vào từng nguồn có thể thay đổi đáng kể giữa một dự đoán đúng và một dự đoán sai.
 
-\begin{figure}[p]
+\clearpage
+
+\begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{generated/chapter4_results/attention_case_2842_img-33484-00001.png}
 \caption{Giải thích Integrated Gradients trên ba nguồn thông tin đối với trường hợp dự đoán đúng 2842\_img-33484-00001 tại hạt giống 42}
 \label{fig:attention_case_2842}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{generated/chapter4_results/attention_case_3021_img-84263-00001.png}
 \caption{Giải thích Integrated Gradients trên ba nguồn thông tin đối với trường hợp dự đoán sai 3021\_img-84263-00001 tại hạt giống 42}

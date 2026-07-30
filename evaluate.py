@@ -42,7 +42,10 @@ from src.models.builder import (
     setup_phase3_modules,
 )
 from src.datasets.builder import build_dataloader
-from src.utils.prompts import generate_custom_prompts
+from src.utils.prompts import (
+    ORIGINAL_CLIP_PROMPT_TEMPLATE,
+    generate_clip_class_prompts,
+)
 from src.utils.metrics import (
     compute_metrics,
     compute_metrics_multiclass,
@@ -232,7 +235,6 @@ def run_evaluation(
     is_classifier: bool,
     device: torch.device,
     temperature: float = 0.07,
-    image_context: str = "a bone x-ray",
     p2_report_type: str = "clinical",
     use_text_in_p2: bool = True,
     is_multilabel: bool = False,
@@ -252,25 +254,33 @@ def run_evaluation(
     if not is_classifier:
         if tokenizer is None:
             raise ValueError("Zero-shot evaluation requires a text tokenizer.")
-        print("\nZero-shot mode: pre-extracting text prompt features...")
-        prompt_dict = generate_custom_prompts(pathologies, image_context)
+        print("\nZero-shot mode: pre-extracting one text prompt per class...")
+        print(f'Prompt template: "{ORIGINAL_CLIP_PROMPT_TEMPLATE}"')
+        prompt_dict = generate_clip_class_prompts(pathologies)
         with torch.no_grad():
-            for pathology, pair in prompt_dict.items():
-                pos_tokens = tokenizer([pair["positive"]])
-                neg_tokens = tokenizer([pair["negative"]])
-                if isinstance(pos_tokens, torch.Tensor):
-                    pos_tokens = pos_tokens.to(device)
-                if isinstance(neg_tokens, torch.Tensor):
-                    neg_tokens = neg_tokens.to(device)
+            prompt_tokens = tokenizer(list(prompt_dict.values()))
+            attention_mask = None
+            if isinstance(prompt_tokens, dict):
+                attention_mask = prompt_tokens.get("attention_mask")
+                prompt_tokens = prompt_tokens["input_ids"]
+            prompt_tokens = prompt_tokens.to(device)
+            if attention_mask is not None:
+                attention_mask = attention_mask.to(device)
 
-                encoder = getattr(model.backbone, "encode_text", None)
-                if encoder is None:
-                    encoder = getattr(getattr(model.backbone, "model", None), "encode_text", None)
-                if encoder is None:
-                    raise AttributeError("The backbone does not expose encode_text().")
-                pos_feat = torch.nn.functional.normalize(encoder(pos_tokens), dim=-1)
-                neg_feat = torch.nn.functional.normalize(encoder(neg_tokens), dim=-1)
-                text_features_dict[pathology] = torch.cat([pos_feat, neg_feat], dim=0)
+            encoder = getattr(model.backbone, "encode_text", None)
+            if encoder is None:
+                encoder = getattr(getattr(model.backbone, "model", None), "encode_text", None)
+            if encoder is None:
+                raise AttributeError("The backbone does not expose encode_text().")
+            try:
+                text_matrix = encoder(prompt_tokens, attention_mask=attention_mask)
+            except TypeError:
+                text_matrix = encoder(prompt_tokens)
+            text_matrix = torch.nn.functional.normalize(text_matrix, dim=-1)
+            text_features_dict = {
+                pathology: text_matrix[index : index + 1]
+                for index, pathology in enumerate(pathologies)
+            }
 
         if save_embeddings_flag:
             text_embeddings_np = {
@@ -371,13 +381,12 @@ def run_evaluation(
                 if save_embeddings_flag:
                     all_fused_embeddings.append(img_feat.cpu().numpy())
 
-                class_probs = []
-                for pathology in pathologies:
-                    pair_features = text_features_dict[pathology]
-                    pair_logits = img_feat @ pair_features.T
-                    positive_prob = torch.softmax(pair_logits / temperature, dim=-1)[:, 0:1]
-                    class_probs.append(positive_prob)
-                batch_probs = torch.cat(class_probs, dim=1)
+                class_text_features = torch.cat(
+                    [text_features_dict[pathology] for pathology in pathologies],
+                    dim=0,
+                )
+                class_logits = img_feat @ class_text_features.T
+                batch_probs = torch.softmax(class_logits / temperature, dim=-1)
 
             all_probs.append(batch_probs.cpu())
             all_ground_truths.append(labels.cpu())
@@ -626,7 +635,6 @@ def main(cfg: DictConfig) -> None:
         is_classifier=is_classifier,
         device=device,
         temperature=params_cfg.get("temperature", 0.07),
-        image_context=params_cfg.get("image_context", "a bone x-ray"),
         p2_report_type=p2_phase_cfg.get("p2_report_type", "clinical"),
         use_text_in_p2=p2_phase_cfg.get("use_text", True),
         is_multilabel=is_multilabel,

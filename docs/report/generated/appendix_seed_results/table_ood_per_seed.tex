@@ -1,0 +1,45 @@
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{longtable}{L{1.8cm}L{2.65cm}C{0.9cm}C{0.9cm}C{0.9cm}*{3}{C{1.45cm}}}
+\caption{Kết quả OOD hậu xử lý của từng hạt giống; các hàng Mahalanobis-centroid được tô xám.}\label{tab:appendix-ood-seeds}\\
+\toprule
+\textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
+\midrule
+\endfirsthead
+\multicolumn{8}{c}{\tablename\ \thetable\ (tiếp theo)}\\
+\toprule
+\textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
+\midrule
+\endhead
+\midrule \multicolumn{8}{r}{Còn tiếp ở trang sau}\\
+\endfoot
+\bottomrule
+\endlastfoot
+Semantic OOD & Cosine-centroid & 42 & 669 & 29 & 0{,}5596 & 0{,}0615 & 0{,}8966 \\
+\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 42 & 669 & 29 & 0{,}5651 & 0{,}0521 & 0{,}8621 \\
+Semantic OOD & kNN & 42 & 669 & 29 & 0{,}5467 & 0{,}0643 & 0{,}8966 \\
+Semantic OOD & Entropy & 42 & 669 & 29 & 0{,}5572 & 0{,}0864 & 0{,}8966 \\
+Semantic OOD & Cosine-centroid & 123 & 669 & 29 & 0{,}5948 & 0{,}0569 & 0{,}9310 \\
+\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 123 & 669 & 29 & 0{,}6055 & 0{,}0570 & 0{,}9655 \\
+Semantic OOD & kNN & 123 & 669 & 29 & 0{,}6034 & 0{,}0604 & 0{,}9655 \\
+Semantic OOD & Entropy & 123 & 669 & 29 & 0{,}5458 & 0{,}0478 & 0{,}9655 \\
+Semantic OOD & Cosine-centroid & 456 & 669 & 29 & 0{,}5674 & 0{,}0600 & 0{,}8621 \\
+\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 456 & 669 & 29 & 0{,}5814 & 0{,}0568 & 0{,}9310 \\
+Semantic OOD & kNN & 456 & 669 & 29 & 0{,}5843 & 0{,}0576 & 0{,}9310 \\
+Semantic OOD & Entropy & 456 & 669 & 29 & 0{,}4964 & 0{,}0560 & 0{,}8966 \\
+BTXRD & Cosine-centroid & 42 & 669 & 750 & 0{,}8052 & 0{,}7974 & 0{,}7307 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 42 & 669 & 750 & 0{,}8762 & 0{,}8591 & 0{,}6307 \\
+BTXRD & kNN & 42 & 669 & 750 & 0{,}8544 & 0{,}8379 & 0{,}6573 \\
+BTXRD & Entropy & 42 & 669 & 750 & 0{,}7325 & 0{,}7583 & 0{,}7453 \\
+BTXRD & Cosine-centroid & 123 & 669 & 750 & 0{,}6379 & 0{,}6751 & 0{,}8160 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 123 & 669 & 750 & 0{,}6982 & 0{,}7377 & 0{,}7600 \\
+BTXRD & kNN & 123 & 669 & 750 & 0{,}6654 & 0{,}6979 & 0{,}8067 \\
+BTXRD & Entropy & 123 & 669 & 750 & 0{,}5931 & 0{,}6203 & 0{,}8680 \\
+BTXRD & Cosine-centroid & 456 & 669 & 750 & 0{,}7471 & 0{,}7079 & 0{,}8400 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 456 & 669 & 750 & 0{,}8381 & 0{,}8058 & 0{,}7307 \\
+BTXRD & kNN & 456 & 669 & 750 & 0{,}7977 & 0{,}7564 & 0{,}8373 \\
+BTXRD & Entropy & 456 & 669 & 750 & 0{,}7498 & 0{,}7313 & 0{,}8640 \\
+\end{longtable}
+\endgroup
