@@ -3,20 +3,20 @@
 Chương này trình bày các thực nghiệm được thực hiện để kiểm tra hiệu năng của mô hình đề xuất. Các nội dung được trình bày bao gồm các bộ dữ liệu được sử dụng, các độ đo được sử dụng, các thiết lập siêu tham số và môi trường thí nghiệm, các nội dung thí nghiệm và cuối cùng là trình bày kết quả và bàn luận về kết quả.
 
 \section{Chuẩn bị dữ liệu}
-Nghiên cứu sử dụng bộ dữ liệu BTXRD được công bố \cite{Yao2025} và bộ dữ liệu CTCH được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh do giảng viên cung cấp. Các phần dưới đây mô tả nguồn gốc, cách thức thu thập, các bước tiền xử lý và những số liệu thống kê liên quan đến từng bộ dữ liệu.
+Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} được công bố và bộ dữ liệu CTCH được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh do giảng viên cung cấp. Các phần dưới đây mô tả nguồn gốc, cách thức thu thập và những số liệu thống kê liên quan đến từng bộ dữ liệu. Ngoài ra, cấu trúc thư mục và các bước tiền xử lý sẽ được miêu tả ở Phụ lục \ref{Appendix1}
 
 \subsection{Bộ dữ liệu BTXRD}
 \label{subsec:btxrd-dataset}
 
-BTXRD \cite{Yao2025} là bộ dữ liệu ảnh X-quang được xây dựng cho các bài toán phân loại, định vị và phân vùng u xương nguyên phát. Phiên bản lưu trữ được sử dụng trong nghiên cứu gồm 3.746 ảnh, siêu dữ liệu về tuổi, giới tính, vị trí giải phẫu và tư thế chụp, cùng các chỉ báo về sự hiện diện, tính lành tính hoặc ác tính và phân nhóm tổn thương. Đối với 1.867 ảnh có u, bộ dữ liệu còn cung cấp tệp chú thích chứa thông tin vùng tổn thương.
+BTXRD là bộ dữ liệu ảnh X-quang được xây dựng cho các bài toán phân loại, định vị và phân vùng u xương nguyên phát. Phiên bản được sử dụng trong nghiên cứu gồm 3.746 ảnh, siêu dữ liệu về tuổi, giới tính, vị trí giải phẫu và tư thế chụp, cùng các chỉ báo về sự hiện diện, tính lành tính hoặc ác tính và phân nhóm tổn thương. Đối với 1.867 ảnh có u, bộ dữ liệu còn cung cấp tệp chú thích chứa thông tin vùng tổn thương.
 
-Theo mô tả của bộ dữ liệu công bố, dữ liệu được tổng hợp từ ba bệnh viện tại Trung Quốc, Radiopaedia và MedPix. Dữ liệu bệnh viện được thu thập trong giai đoạn từ tháng 7 năm 2013 đến tháng 7 năm 2023; chẩn đoán được xác nhận bằng mô bệnh học hoặc được hai bác sĩ X-quang thống nhất. Đối với hai nguồn trực tuyến, các ảnh liên quan đến u xương được hai chuyên gia tuyển chọn, đồng thời yêu cầu có thông tin tuổi và giới tính. Những vùng giải phẫu có ít mẫu hoặc nhiều nhiễu như đầu, cổ, ngực và bụng được loại bỏ, do đó phạm vi còn lại tập trung vào chi trên, chi dưới và xương chậu.
+Theo mô tả của bộ dữ liệu công bố, dữ liệu được tổng hợp từ ba bệnh viện tại Trung Quốc, Radiopaedia và MedPix. Dữ liệu bệnh viện được thu thập trong giai đoạn từ tháng 7 năm 2013 đến tháng 7 năm 2023 các chẩn đoán được xác nhận bằng mô bệnh học hoặc được hai bác sĩ X-quang thống nhất. Đối với hai nguồn trực tuyến, các ảnh liên quan đến u xương được hai chuyên gia tuyển chọn, đồng thời yêu cầu có thông tin tuổi và giới tính. Những vùng giải phẫu có ít mẫu hoặc nhiều nhiễu như đầu, cổ, ngực và bụng được loại bỏ, do đó phạm vi còn lại tập trung vào chi trên, chi dưới và xương chậu.
 
 Quy trình chú thích được thực hiện bằng Labelme \cite{russell2008labelme}: một bác sĩ chuyên khoa u xương có 10 năm kinh nghiệm xác định vùng tổn thương, sau đó kết quả được một chuyên gia có 20 năm kinh nghiệm kiểm tra.
 
 \subsubsection{Đặc điểm dữ liệu và bài toán phân loại}
 
-Trong 3.746 mẫu, có 1.879 ảnh bình thường, 1.525 ảnh thuộc nhóm u lành tính và 342 ảnh thuộc nhóm u ác tính. Tuổi dao động từ 1 đến 88, trung bình $35{,}29\pm20{,}90$ tuổi; dữ liệu gồm 2.098 mẫu nam và 1.648 mẫu nữ như được thể hiện trong Hình \ref{fig:BTXRDinfo}.
+Trong 3.746 mẫu, có 1.879 ảnh bình thường, 1.525 ảnh thuộc nhóm u lành tính và 342 ảnh thuộc nhóm u ác tính. Tuổi dao động từ 1 đến 88, gồm 2.098 mẫu nam và 1.648 mẫu nữ như được thể hiện trong Hình \ref{fig:BTXRDinfo}.
 
 \begin{figure}[H]
 \centering
@@ -25,28 +25,28 @@ Trong 3.746 mẫu, có 1.879 ảnh bình thường, 1.525 ảnh thuộc nhóm u 
     \label{fig:BTXRDinfo}
 \end{figure}
 
-Bài toán thực nghiệm được thiết lập dưới dạng phân loại đơn nhãn với 10 lớp. Nhãn bình thường được suy ra khi cờ chỉ báo u bằng 0, chín lớp còn lại được lấy từ các chỉ báo bệnh lý trong metadata.
+Nhãn được thiết lập dưới dạng phân loại đơn nhãn với 10 lớp. Nhãn bình thường được suy ra khi cờ chỉ báo u bằng 0, chín lớp còn lại được lấy từ các chỉ báo bệnh lý trong siêu dữ liệu. Bảng \ref{tab:btxrd_splits} trình bày số lượng mẫu theo tập chia, trong khi Bảng \ref{tab:btxrd_pathologies} trình bày phân bố lớp ở các tập chia.
 
-Bảng \ref{tab:btxrd_splits} trình bày số lượng mẫu theo tập chia, trong khi Bảng \ref{tab:btxrd_pathologies} trình bày phân bố lớp sau khi chuẩn hóa và tạm dịch các tên bệnh.
+Bộ dữ liệu được chia ngẫu nhiên ở mức ảnh được thực hiện với hạt giống 42 với tỷ lệ 70/10/20 cho huấn luyện, đánh giá, kiểm tra. Các tập được tạo với phân bố lớp được hình thành ngẫu nhiên.
 
 \begin{table}[htbp]
 \centering
+\small
 \begin{tabular}{|l|c|c|}
 \hline
-\textbf{Tập dữ liệu} & \textbf{Số lượng hình ảnh} & \textbf{Tỷ lệ (\%)} \\ \hline
+\textbf{Tập chia} & \textbf{Số lượng hình ảnh} & \textbf{Tỷ lệ (\%)} \\ \hline
 Huấn luyện & 2.621 & 70 \\ \hline
 Xác thực & 375 & 10 \\ \hline
 Kiểm thử & 750 & 20 \\ \hline
 \textbf{Tổng cộng} & \textbf{3.746} & \textbf{100,00} \\ \hline
 \end{tabular}
-\caption{Phân bổ hình ảnh theo các tập dữ liệu trong BTXRD}
+\caption{Phân bổ mẫu theo các tập chia trong BTXRD}
 \label{tab:btxrd_splits}
 \end{table}
 
 \begin{table}[htbp]
 \centering
 \small
-\resizebox{\textwidth}{!}{
 \begin{tabular}{|l|r|r|r|r|r|}
 \hline
 \textbf{Nhãn bệnh lý} & \textbf{Train} & \textbf{Validation} & \textbf{Test} & \textbf{Tổng} & \textbf{Tỷ lệ} \\ \hline
@@ -62,134 +62,154 @@ U ác tính khác & 27 & 5 & 13 & 45 & 1,20\% \\ \hline
 U xơ xương & 24 & 8 & 12 & 44 & 1,17\% \\ \hline
 \textbf{Tổng} & \textbf{2.621} & \textbf{375} & \textbf{750} & \textbf{3.746} & \textbf{100,00\%} \\ \hline
 \end{tabular}
-}
 \caption{Phân bổ các lớp đơn nhãn sau chuẩn hóa trong bộ dữ liệu BTXRD}
 \label{tab:btxrd_pathologies}
 \end{table}
 
-Bộ dữ liệu được chia ngẫu nhiên ở mức ảnh được thực hiện với hạt giống 42 với tỷ lệ 70/10/20 cho huấn luyện, đánh giá, kiểm tra. Các tập được tạo với phân bố lớp được hình thành ngẫu nhiên.
+Bộ dữ liệu BTXRD không cung cấp bệnh sử lâm sàng tương ứng với từng bệnh nhân. Do đó, để bổ sung thông tin còn thiếu này nhóm sử dụng quy trình sinh bệnh sử bằng siêu dữ liệu có sẵn được mô tả ở Phụ lục \ref{AppendixBTXRD} và kết quả được minh họa như Bảng \ref{tab:btxrd_example}
 
-\subsubsection{Nguồn văn bản đa phương thức}
-
-Bộ dữ liệu BTXRD không cung cấp bệnh sử lâm sàng tương ứng với từng ảnh. Vì vậy, nghiên cứu sinh ngoại tuyến văn bản dạng lâm sàng từ siêu dữ liệu bằng bộ sinh giả ngẫu nhiên với hạt giống cố định. Mỗi văn bản gồm thông tin người bệnh, lý do vào viện, diễn tiến giả lập, tiền sử và thông tin tư thế chụp. Các văn bản đã sinh được lưu trước và được dùng nhất quán trong hai giai đoạn huấn luyện, đánh giá và suy luận. Tại thời điểm suy luận, mô hình chỉ nhận ảnh cùng văn bản đã lưu; nhãn đúng không được truyền trực tiếp cho mô hình và văn bản không được sinh lại từ nhãn dự đoán.
-
-Tuy nhiên, quá trình chọn mẫu câu vẫn phụ thuộc vào cờ có u và cờ ác tính trong siêu dữ liệu. Nguồn văn bản này tránh đưa trực tiếp tên của 10 lớp đích vào đầu vào chính nhưng không độc lập hoàn toàn với nhãn. Vì vậy, kết quả BTXRD phản ánh hiệu năng của pipeline với văn bản tổng hợp có điều kiện từ siêu dữ liệu, không được xem là bằng chứng tương đương với việc sử dụng bệnh sử lâm sàng tự nhiên.
-
-Các mô tả X-quang tổng hợp trực tiếp từ nhãn và có thể nêu tên chẩn đoán; nguồn này không được sử dụng trong thiết lập huấn luyện và phân loại chính. Cấu trúc tệp, thuật toán chuẩn hóa nhãn, quy trình sinh văn bản, thống kê định dạng ảnh, kiểm tra tính toàn vẹn, ví dụ trước và sau xử lý được trình bày chi tiết trong Phụ lục \ref{Appendix1}.
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand\tabularxcolumn[1]{m{#1}}
+\begin{tabularx}{\textwidth}{|C{1.8cm}|C{1.8cm}|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Ảnh} & \textbf{Nhãn} & \textbf{Bệnh sử lâm sàng được sinh} \\ \hline
+\adjustbox{valign=c}{\includegraphics[width=1.7cm,height=4.5cm,keepaspectratio]{../../data/BTXRD/images/IMG000001.jpeg}}
+&
+\textit{other mt}
+&
+Patient: 48-year-old female. Reason for admission: Pain and swelling of the hip bone. Disease history: Pain in the hip bone for 1 month; associated with decreased appetite. Physical examination: Palpable mass; tenderness on palpation; mild swelling. Personal medical history: No prior bone disease or fracture. No relevant surgical or medical history. Radiographic evaluation: AP view of the hip bone was obtained.
+\\ \hline
+\end{tabularx}
+\caption{Ví dụ ảnh, nhãn và bệnh sử được sinh của bộ dữ liệu BTXRD}
+\label{tab:btxrd_example}
+\end{table}
 
 \subsection{Bộ dữ liệu CTCH}
 \label{subsec:ctch-dataset}
 
-CTCH là bộ dữ liệu X-quang xương được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh và được giảng viên cung cấp cho nghiên cứu, khóa luận trân trọng cảm ơn thầy Võ Thế Hào cùng Đỗ Phúc Thịnh đã hỗ trợ cung cấp dữ liệu. Dữ liệu nguồn gồm ảnh được lựa chọn từ từng ca khám cùng các trường bệnh án tiếng Việt liên quan đến lý do vào viện, diễn tiến bệnh, tiền sử, tóm tắt khám và cận lâm sàng, kết quả khảo sát hình ảnh và chẩn đoán chuyên môn. Phạm vi thực nghiệm chỉ sử dụng ảnh X-quang đã được lựa chọn; những phương thức tạo ảnh khác và những ảnh không đại diện cho vị trí bệnh lý không được đưa vào tập phân loại.
+CTCH là bộ dữ liệu X-quang xương được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh và được giảng viên Võ Thế Hào và giảng viên Đỗ Phúc Thịnh cung cấp cho nghiên cứu. Dữ liệu nguồn gồm ảnh được lựa chọn từ từng ca khám cùng các trường bệnh án tiếng Việt liên quan đến lý do vào viện, diễn tiến bệnh, tiền sử, kết quả khảo sát hình ảnh và chẩn đoán chuyên môn. Phạm vi thực nghiệm chỉ sử dụng ảnh X-quang đã được lựa chọn và những phương thức tạo ảnh khác và những ảnh không đại diện cho vị trí bệnh lý không được đưa vào tập phân loại.
 
-\subsection{Đạo đức nghiên cứu, quyền riêng tư và tính sẵn có của dữ liệu}
+\subsubsection{Đạo đức nghiên cứu, quyền riêng tư và tính sẵn có của dữ liệu}
 
-Bộ dữ liệu được cung cấp được sử dụng theo thỏa thuận bảo mật đã ký kết và chỉ phục vụ mục đích nghiên cứu. Trước khi xử lý, các thông tin có khả năng định danh trực tiếp người bệnh đã được loại bỏ; mã hồ sơ chỉ được dùng để liên kết dữ liệu và kiểm soát việc phân chia tập, không được công bố trong kết quả nghiên cứu. Do chứa thông tin y tế nhạy cảm, bộ dữ liệu gốc không được phát hành công khai; khóa luận chỉ trình bày các số liệu thống kê và kết quả đã được tổng hợp. Hệ thống được xây dựng nhằm mục đích nghiên cứu và hỗ trợ tham khảo, không thay thế kết luận chuyên môn của bác sĩ. Mọi hoạt động kiểm định hoặc triển khai trong môi trường lâm sàng về sau cần tuân thủ quy định bảo vệ dữ liệu và được cơ quan có thẩm quyền phê duyệt.
+Bộ dữ liệu được cung cấp được sử dụng theo thỏa thuận bảo mật đã ký kết và chỉ phục vụ mục đích nghiên cứu. Trước khi xử lý, các thông tin có khả năng định danh trực tiếp người bệnh đã được loại bỏ, mã hồ sơ chỉ được dùng để liên kết dữ liệu và kiểm soát việc phân chia tập và không được công bố trong kết quả nghiên cứu. Do chứa thông tin y tế nhạy cảm, bộ dữ liệu gốc không được công khai và khóa luận chỉ trình bày các số liệu thống kê và kết quả đã được tổng hợp. Mọi hoạt động kiểm định hoặc triển khai trong môi trường lâm sàng về sau cần tuân thủ quy định bảo vệ dữ liệu và được cơ quan có thẩm quyền phê duyệt.
 
 \subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
 
-Quần thể đích của bộ dữ liệu là các bệnh nhân được chụp X-quang xương khớp để hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương, với quần thể tiếp cận là các bệnh nhân có hồ sơ và ảnh X-quang tại Bệnh viện Chấn thương Chỉnh hình TP.HCM. Qua quá trình nhận định, luận văn xác định các đặc điểm chính của dữ liệu như sau:
+Quần thể đích của bộ dữ liệu là các bệnh nhân được chụp X-quang xương khớp để hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương, với quần thể tiếp cận là các bệnh nhân có hồ sơ và ảnh X-quang tại Bệnh viện Chấn thương Chỉnh hình TP.HCM. Qua quá trình khám phá dữ liệu, nhóm nghiên cứu xác định các đặc điểm chính của dữ liệu như sau:
 \begin{itemize}
     \item Có nhiều loại ảnh khác nhau, bao gồm ảnh chụp X-quang, ảnh CT, ảnh MRI và các loại ảnh khác. 
     \item Một ca khám có thể có nhiều ảnh chụp từ các vị trí giải phẫu khác nhau, từ 2 đến vài trăm ảnh, nhưng chỉ một trong số đó là đúng vị trí và có sự thể hiện về bệnh lý ở mặt thị giác. 
     \item Một bệnh nhân có thể tái khám nhiều lần, dẫn đến việc có nhiều mẫu dữ liệu tương tự.
-    \item Nhiều ca khám thiếu hụt các trường thông tin quan trọng đến huấn luyện như không có chẩn đoán xác định, không có phân tích ảnh X-quang,...
+    \item Nhiều ca khám thiếu hụt các trường thông tin quan trọng đến huấn luyện như không có chẩn đoán xác định,...
     \item Đôi khi chẩn đoán xác định của bác sĩ là những căn bệnh về phần mềm (sụn, dây chằng, gân, cơ) không thể hiện được trên ảnh X-quang xương, dẫn đến nhãn chẩn đoán nếu sử dụng trực tiếp chẩn đoán xác định sẽ không chính xác.
 \end{itemize}
 
-Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu để chuẩn hóa và làm sạch dữ liệu trước khi đưa vào huấn luyện mô hình. Các bước tiền xử lý bao gồm:
-\begin{itemize}
-    \item Loại bỏ các ảnh không liên quan đến vị trí chấn thương được đề cập trong báo cáo hoặc không có giá trị chẩn đoán, có các dụng cụ y tế (nẹp, đinh) che lấp vùng tổn thương.
-    \item Loại bỏ các ca khám trùng lặp, tái khám nhiều lần, thiếu trường dữ liệu cần thiết (phân tích ảnh, bệnh sử bệnh,...).
-    \item Chuẩn hóa và biên dịch các báo cáo y khoa từ tiếng Việt sang tiếng Anh.
-    \item Lọc các ca hiếm gặp, không đủ số lượng mẫu và tận dụng làm dữ liệu ngoài phân phối.
-    \item Loại bỏ các ca có đa chấn thương để phù hợp với mục tiêu nghiên cứu phân loại đơn nhãn đa lớp.
-    \item Gán nhãn cho các mẫu dữ liệu dựa trên báo cáo X-quang, chia thành các chấn thương kèm tên xương. Trong đó các chấn thương về phần mềm hoặc không liên quan đến xương được gán nhãn là "bình thường" nếu ảnh không ghi nhận tổn thương về xương.
-    \item Dịch các báo cáo lâm sàng sang tiếng Anh để tạo dữ liệu văn bản đa phương thức.
-    \item Loại bỏ tên hồ sơ và chuyển thành số thứ tự trong bộ dữ liệu để bảo đảm tính ẩn danh.
-\end{itemize}
+Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu để chuẩn hóa và làm sạch dữ liệu trước khi đưa vào huấn luyện mô hình, chi tiết các bước tiền xử lý được mô tả ở Phụ lục \ref{AppendixCTCH}. Sau sàng lọc còn 3.293 hồ sơ, gồm 3.249 mẫu thuộc không gian 22 lớp phân loại và 44 mẫu được tách riêng làm dữ liệu ngoài phân phối.
 
-Sau sàng lọc, bộ dữ liệu bao gồm 3.641 hồ sơ, trong đó, 348 hồ sơ mang dụng cụ y tế như nẹp hoặc phương tiện kết hợp xương được loại bỏ nhằm hạn chế hiện tượng mô hình dựa vào dấu hiệu can thiệp thay vì đặc điểm tổn thương. Sau sàng lọc còn 3.293 hồ sơ, gồm 3.249 mẫu thuộc không gian 22 lớp phân loại và 44 mẫu được tách riêng làm dữ liệu ngoài phân phối về ngữ nghĩa.
+Mỗi hồ sơ được liên kết với một ảnh X-quang duy nhất. Trong quần thể phân loại hiện tại, 3.249 ảnh tương ứng với 3.249 mã bệnh nhân và quần thể ngoài phân phối gồm 44 ảnh từ 44 mã khác và không giao với quần thể phân loại. Bảng \ref{tab:ctch_example} minh họa kết quả sau khi tiền xử lý.
 
-Mỗi hồ sơ được liên kết với một ảnh X-quang duy nhất. Trong quần thể phân loại hiện tại, 3.249 ảnh tương ứng với 3.249 mã bệnh nhân; quần thể ngoài phân phối gồm 44 ảnh từ 44 mã khác và không giao với quần thể phân loại. Mã nhóm chỉ được sử dụng để kiểm soát rò rỉ giữa các tập và không được trình bày trong báo cáo.
+Các mẫu ngoài phân phối không được đưa vào huấn luyện, đánh giá hoặc kiểm thử bộ phân loại 22 lớp. Trong 44 mẫu này, 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm nhưng biểu hiện bệnh lý nằm ngoài không gian nhãn đích do đó, chúng chỉ được sử dụng trong kịch bản đánh giá dữ liệu ngoài phân phối được trình bày ở phần thực nghiệm.
 
-Các mẫu ngoài phân phối không tham gia huấn luyện, xác thực hoặc kiểm thử bộ phân loại 22 lớp. Trong 44 mẫu này, 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm nhưng biểu hiện bệnh lý nằm ngoài không gian nhãn đích; chúng chỉ được sử dụng trong kịch bản đánh giá Semantic OOD được trình bày ở phần thực nghiệm hậu xử lý.
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand\tabularxcolumn[1]{m{#1}}
+\begin{tabularx}{\textwidth}{|C{1.8cm}|C{1.8cm}|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Ảnh} & \textbf{Nhãn} & \textbf{Bệnh sử lâm sàng} \\ \hline
+\adjustbox{valign=c}{\includegraphics[width=1.7cm,height=4.5cm,keepaspectratio]{../../data/CTCH/images/57_img-06186-00001.jpg}}
+&
+\textit{Shoulder girdle fracture}
+&
+Reason for admission: Left shoulder pain. Disease history: 16:00, April 4, 2023, patient riding a motorbike fell by himself in Long An, after the accident, right shoulder pain, first aid at Tan Tru Hospital, examined at Orthopedics Hospital. Personal medical history: No abnormalities were detected.
+\\ \hline
+\end{tabularx}
+\caption{Các ví dụ ảnh, nhãn và bệnh sử lâm sàng của bộ dữ liệu CTCH}
+\label{tab:ctch_example}
+\end{table}
 
-\subsubsection{Nhãn và phân chia dữ liệu}
+% Sau sàng lọc, bộ dữ liệu bao gồm 3.641 hồ sơ với 348 hồ sơ mang dụng cụ y tế như nẹp hoặc phương tiện kết hợp xương được loại bỏ nhằm hạn chế hiện tượng mô hình dựa vào dấu hiệu can thiệp thay vì đặc điểm tổn thương. 
 
-Sau khi chuẩn hóa Unicode, loại khoảng trắng thừa và đối chiếu tên lớp theo một thứ tự cố định, mỗi mẫu trong phân phối được ánh xạ vào đúng một trong 22 lớp. Kiểm tra toàn vẹn cho thấy toàn bộ 3.249 mẫu đều có đúng một nhãn hoạt động và không có nhãn nằm ngoài miền hợp lệ. Phân bố lớp thể hiện mức mất cân bằng đáng kể: lớp bình thường chiếm 1.086 mẫu, tương đương 33,43\%, trong khi gãy xương vùng chậu chỉ có 24 mẫu, tương đương 0,74\%.
+% Các bước tiền xử lý bao gồm:
+% \begin{itemize}
+%     \item Loại bỏ các ảnh không liên quan đến vị trí chấn thương được đề cập trong báo cáo hoặc không có giá trị chẩn đoán, có các dụng cụ y tế (nẹp, đinh) che lấp vùng tổn thương.
+%     \item Loại bỏ các ca khám trùng lặp, tái khám nhiều lần, thiếu trường dữ liệu cần thiết (phân tích ảnh, bệnh sử bệnh,...).
+%     \item Chuẩn hóa và biên dịch các báo cáo y khoa từ tiếng Việt sang tiếng Anh.
+%     \item Lọc các ca hiếm gặp, không đủ số lượng mẫu và tận dụng làm dữ liệu ngoài phân phối.
+%     \item Loại bỏ các ca có đa chấn thương để phù hợp với mục tiêu nghiên cứu phân loại đơn nhãn đa lớp.
+%     \item Gán nhãn cho các mẫu dữ liệu dựa trên báo cáo X-quang, chia thành các chấn thương kèm tên xương. Trong đó các chấn thương về phần mềm hoặc không liên quan đến xương được gán nhãn là "bình thường" nếu ảnh không ghi nhận tổn thương về xương.
+%     \item Dịch các báo cáo lâm sàng sang tiếng Anh để tạo dữ liệu văn bản đa phương thức.
+%     \item Loại bỏ tên hồ sơ và chuyển thành số thứ tự trong bộ dữ liệu để bảo đảm tính ẩn danh.
+\clearpage
+
+\subsubsection{Đặc điểm dữ liệu và bài toán phân loại}
 
 Việc chia dữ liệu được thực hiện theo người bệnh với hạt giống ngẫu nhiên 42 và tỷ lệ mục tiêu 70/10/20. Người bệnh được nhóm theo lớp chính trước khi phân bổ để duy trì sự hiện diện của các lớp ít mẫu ở cả ba tập khi số lượng cho phép. Kết quả gồm 2.265 mẫu huấn luyện, 315 mẫu xác thực và 669 mẫu kiểm thử; kiểm tra sau phân chia không phát hiện người bệnh xuất hiện đồng thời ở hai tập.
 
 \begin{table}[htbp]
 \centering
+\small
+\begin{tabular}{|l|r|r|}
+\hline
+\textbf{Tập dữ liệu} & \textbf{Số lượng ảnh} & \textbf{Tỷ lệ} \\ \hline
+Huấn luyện & 2.265 & 69,71\% \\ \hline
+Xác thực & 315 & 9,70\% \\ \hline
+Kiểm thử & 669 & 20,59\% \\ \hline
+\textbf{Tổng cộng} & \textbf{3.249} & \textbf{100,00\%} \\ \hline
+\end{tabular}
 \caption{Phân bổ mẫu trong phân phối của CTCH theo tập dữ liệu}
 \label{tab:ctch_splits}
-\begin{tabular}{lrr}
-\toprule
-\textbf{Tập dữ liệu} & \textbf{Số lượng ảnh} & \textbf{Tỷ lệ (\%)} \\
-\midrule
-Huấn luyện & 2.265 & 69,71 \\
-Xác thực & 315 & 9,70 \\
-Kiểm thử & 669 & 20,59 \\
-\midrule
-\textbf{Tổng cộng} & \textbf{3.249} & \textbf{100,00} \\
-\bottomrule
-\end{tabular}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\scriptsize
+\small
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
+\textbf{Lớp} & \textbf{Huấn luyện} & \textbf{Xác thực} & \textbf{Kiểm thử} & \textbf{Tổng} & \textbf{Tỷ lệ} \\ \hline
+Bình thường & 760 & 108 & 218 & 1.086 & 33,43\% \\ \hline
+Gãy xương quay & 209 & 29 & 61 & 299 & 9,20\% \\ \hline
+Gãy xương cánh tay & 147 & 21 & 42 & 210 & 6,46\% \\ \hline
+Gãy xương đùi & 106 & 15 & 31 & 152 & 4,68\% \\ \hline
+Gãy xương ngón tay & 102 & 14 & 31 & 147 & 4,52\% \\ \hline
+Gãy xương chày & 99 & 14 & 29 & 142 & 4,37\% \\ \hline
+Gãy xương cẳng tay & 99 & 14 & 29 & 142 & 4,37\% \\ \hline
+Gãy xương cổ chân & 87 & 12 & 26 & 125 & 3,85\% \\ \hline
+Gãy xương cẳng chân & 85 & 12 & 25 & 122 & 3,76\% \\ \hline
+Gãy xương vùng vai & 70 & 10 & 21 & 101 & 3,11\% \\ \hline
+Gãy xương bàn chân & 68 & 9 & 21 & 98 & 3,02\% \\ \hline
+Gãy cột sống thắt lưng & 53 & 7 & 16 & 76 & 2,34\% \\ \hline
+Gãy xương bàn tay & 53 & 7 & 16 & 76 & 2,34\% \\ \hline
+Gãy xương ngón chân & 52 & 7 & 16 & 75 & 2,31\% \\ \hline
+Viêm khớp & 47 & 6 & 15 & 68 & 2,09\% \\ \hline
+Gãy xương trụ & 46 & 6 & 14 & 66 & 2,03\% \\ \hline
+Cắt cụt ngón tay & 42 & 6 & 13 & 61 & 1,88\% \\ \hline
+Gãy xương bánh chè & 41 & 5 & 13 & 59 & 1,82\% \\ \hline
+Gãy xương gót & 36 & 5 & 11 & 52 & 1,60\% \\ \hline
+Gãy cột sống ngực & 28 & 4 & 8 & 40 & 1,23\% \\ \hline
+Gãy xương thuyền & 19 & 2 & 7 & 28 & 0,86\% \\ \hline
+Gãy xương vùng chậu & 16 & 2 & 6 & 24 & 0,74\% \\ \hline
+\textbf{Tổng cộng} & \textbf{2.265} & \textbf{315} & \textbf{669} & \textbf{3.249} & \textbf{100,00\%} \\ \hline
+\end{tabular}
 \caption{Phân bố 22 lớp của CTCH trong ba tập dữ liệu}
 \label{tab:ctch_pathologies}
-\resizebox{\textwidth}{!}{
-\begin{tabular}{lrrrrr}
-\toprule
-\textbf{Lớp} & \textbf{Huấn luyện} & \textbf{Xác thực} & \textbf{Kiểm thử} & \textbf{Tổng} & \textbf{Tỷ lệ (\%)} \\
-\midrule
-Bình thường & 760 & 108 & 218 & 1.086 & 33,43 \\
-Gãy xương quay & 209 & 29 & 61 & 299 & 9,20 \\
-Gãy xương cánh tay & 147 & 21 & 42 & 210 & 6,46 \\
-Gãy xương đùi & 106 & 15 & 31 & 152 & 4,68 \\
-Gãy xương ngón tay & 102 & 14 & 31 & 147 & 4,52 \\
-Gãy xương chày & 99 & 14 & 29 & 142 & 4,37 \\
-Gãy xương cẳng tay & 99 & 14 & 29 & 142 & 4,37 \\
-Gãy xương cổ chân & 87 & 12 & 26 & 125 & 3,85 \\
-Gãy xương cẳng chân & 85 & 12 & 25 & 122 & 3,76 \\
-Gãy xương vùng vai & 70 & 10 & 21 & 101 & 3,11 \\
-Gãy xương bàn chân & 68 & 9 & 21 & 98 & 3,02 \\
-Gãy cột sống thắt lưng & 53 & 7 & 16 & 76 & 2,34 \\
-Gãy xương bàn tay & 53 & 7 & 16 & 76 & 2,34 \\
-Gãy xương ngón chân & 52 & 7 & 16 & 75 & 2,31 \\
-Viêm khớp & 47 & 6 & 15 & 68 & 2,09 \\
-Gãy xương trụ & 46 & 6 & 14 & 66 & 2,03 \\
-Cắt cụt ngón tay & 42 & 6 & 13 & 61 & 1,88 \\
-Gãy xương bánh chè & 41 & 5 & 13 & 59 & 1,82 \\
-Gãy xương gót & 36 & 5 & 11 & 52 & 1,60 \\
-Gãy cột sống ngực & 28 & 4 & 8 & 40 & 1,23 \\
-Gãy xương thuyền & 19 & 2 & 7 & 28 & 0,86 \\
-Gãy xương vùng chậu & 16 & 2 & 6 & 24 & 0,74 \\
-\midrule
-\textbf{Tổng cộng} & \textbf{2.265} & \textbf{315} & \textbf{669} & \textbf{3.249} & \textbf{100,00} \\
-\bottomrule
-\end{tabular}
-}
 \end{table}
 
-\subsubsection{Xây dựng dữ liệu văn bản}
+% \subsubsection{Xây dựng dữ liệu văn bản}
 
-Hai nguồn văn bản được xây dựng từ bệnh án gốc. Bệnh sử lâm sàng kết hợp lý do vào viện, diễn tiến bệnh và tiền sử bản thân; mô tả X-quang kết hợp phần tóm tắt khám, cận lâm sàng và kết quả khảo sát. Tên trường được thống nhất, nội dung được chuẩn hóa Unicode, loại khoảng trắng thừa và giữ nguyên thứ tự ngữ nghĩa trước khi dịch từ tiếng Việt sang tiếng Anh. Thiết lập phân loại chính chỉ sử dụng nguồn bệnh sử lâm sàng trong cả huấn luyện và suy luận; mô tả X-quang được lưu để kiểm tra và cho các phân tích riêng, không được dùng làm văn bản đầu vào của kết quả chính.
+% Hai nguồn văn bản được xây dựng từ bệnh án gốc. Bệnh sử lâm sàng kết hợp lý do vào viện, diễn tiến bệnh và tiền sử bản thân; mô tả X-quang kết hợp phần tóm tắt khám, cận lâm sàng và kết quả khảo sát. Tên trường được thống nhất, nội dung được chuẩn hóa Unicode, loại khoảng trắng thừa và giữ nguyên thứ tự ngữ nghĩa trước khi dịch từ tiếng Việt sang tiếng Anh. Thiết lập phân loại chính chỉ sử dụng nguồn bệnh sử lâm sàng trong cả huấn luyện và suy luận; mô tả X-quang được lưu để kiểm tra và cho các phân tích riêng, không được dùng làm văn bản đầu vào của kết quả chính.
 
-Chẩn đoán xác định và nhãn phân loại không được nối trực tiếp vào bệnh sử đầu vào. Tuy nhiên, bệnh sử thực vẫn có thể chứa vị trí đau, cơ chế chấn thương hoặc biểu hiện lâm sàng liên quan đến lớp bệnh; đây là thông tin sẵn có trong bệnh án chứ không phải tên nhãn được chèn bởi pipeline. Kết quả CTCH do đó được diễn giải như khả năng kết hợp ảnh với bệnh sử thực trong phạm vi dữ liệu nghiên cứu.
+% Chẩn đoán xác định và nhãn phân loại không được nối trực tiếp vào bệnh sử đầu vào. Tuy nhiên, bệnh sử thực vẫn có thể chứa vị trí đau, cơ chế chấn thương hoặc biểu hiện lâm sàng liên quan đến lớp bệnh; đây là thông tin sẵn có trong bệnh án chứ không phải tên nhãn được chèn bởi pipeline. Kết quả CTCH do đó được diễn giải như khả năng kết hợp ảnh với bệnh sử thực trong phạm vi dữ liệu nghiên cứu.
 
-Bản dịch tiếng Anh được sử dụng để tương thích với bộ mã hóa văn bản tiền huấn luyện. Quy trình dịch theo từng trường và tái sử dụng những đoạn đã dịch trước đó nhằm bảo đảm tính nhất quán; nếu dịch không thành công trong quá trình chuẩn bị thông thường, nội dung tiếng Việt được giữ lại thay vì tạo một câu không có căn cứ. Sai khác thuật ngữ, viết tắt và cấu trúc câu giữa bản gốc với bản dịch vẫn là một nguồn nhiễu tiềm tàng.
+% Bản dịch tiếng Anh được sử dụng để tương thích với bộ mã hóa văn bản tiền huấn luyện. Quy trình dịch theo từng trường và tái sử dụng những đoạn đã dịch trước đó nhằm bảo đảm tính nhất quán; nếu dịch không thành công trong quá trình chuẩn bị thông thường, nội dung tiếng Việt được giữ lại thay vì tạo một câu không có căn cứ. Sai khác thuật ngữ, viết tắt và cấu trúc câu giữa bản gốc với bản dịch vẫn là một nguồn nhiễu tiềm tàng.
 
-Kiểm tra cuối cùng xác nhận toàn bộ 3.249 mẫu phân loại và 44 mẫu ngoài phân phối đều có ảnh cùng hai nguồn văn bản ở cả tiếng Việt và tiếng Anh, không có báo cáo rỗng trong quần thể được sử dụng. Kiểm tra nội dung ảnh bằng SHA-256 không phát hiện tệp trùng tuyệt đối và không ghi nhận giao nhau giữa quần thể trong phân phối với ngoài phân phối. Quy trình sàng lọc, chuẩn hóa, tạo văn bản và kiểm tra dữ liệu được trình bày chi tiết hơn trong Phụ lục \ref{AppendixCTCH}.
+% Kiểm tra cuối cùng xác nhận toàn bộ 3.249 mẫu phân loại và 44 mẫu ngoài phân phối đều có ảnh cùng hai nguồn văn bản ở cả tiếng Việt và tiếng Anh, không có báo cáo rỗng trong quần thể được sử dụng. Kiểm tra nội dung ảnh bằng SHA-256 không phát hiện tệp trùng tuyệt đối và không ghi nhận giao nhau giữa quần thể trong phân phối với ngoài phân phối. Quy trình sàng lọc, chuẩn hóa, tạo văn bản và kiểm tra dữ liệu được trình bày chi tiết hơn trong Phụ lục \ref{AppendixCTCH}.
 
 \section{Độ đo đánh giá}
 \label{sec:evaluation_metrics}
-Hai bộ dữ liệu BTXRD \cite{Yao2025} và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp, với BTXRD có 10 lớp và 22 lớp đối với CTCH. Các độ đo được chia thành ba nhóm nhằm tách biệt hiệu năng phân loại, khả năng nhận diện dữ liệu ngoài phân phối và hiệu quả suy luận.
+Hai bộ dữ liệu BTXRD và CTCH được thiết lập dưới dạng bài toán phân loại đa lớp, với BTXRD có 10 lớp và 22 lớp đối với CTCH. Các độ đo được chia thành ba nhóm nhằm tách biệt hiệu năng phân loại, khả năng nhận diện dữ liệu ngoài phân phối và hiệu quả suy luận.
 
 \subsection{Độ đo phân loại}
 
