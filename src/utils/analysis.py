@@ -26,6 +26,9 @@ from torch.utils.data import DataLoader, Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_EXPERIMENT = "ctch/proposed/ours_xbone_net"
+ZEROSHOT_BIOMEDCLIP_EXPERIMENT = (
+    "ctch/baselines/zeroshot/biomedclip_zeroshot"
+)
 SOURCE_SEEDS = (42, 123, 456)
 EXPECTED_NUM_CLASSES = 22
 EXPECTED_TOTAL_PARAMETERS = 204_535_320
@@ -543,12 +546,114 @@ def load_proposed_experiment_model(
     )
 
 
+def load_evaluated_ctch_zeroshot_model(
+    experiment_name: str,
+    seed: int,
+    device: Optional[torch.device] = None,
+) -> LoadedAnalysisModel:
+    """Rebuild the evaluated deterministic BioMedCLIP foundation baseline."""
+    experiment_name = str(experiment_name).strip("/")
+    seed = int(seed)
+    if experiment_name != ZEROSHOT_BIOMEDCLIP_EXPERIMENT:
+        raise ValueError(f"Unsupported zero-shot experiment: {experiment_name}")
+
+    metrics_path = (
+        PROJECT_ROOT / "results" / experiment_name / f"seed_{seed}" / "metrics.json"
+    )
+    if not metrics_path.is_file():
+        raise FileNotFoundError(
+            f"Missing evaluated zero-shot configuration: {metrics_path}"
+        )
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    resolved = metrics_payload.get("config")
+    if not isinstance(resolved, dict):
+        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+    cfg = OmegaConf.create(resolved)
+    OmegaConf.set_struct(cfg, False)
+    if str(cfg.get("experiment_name", "")).strip("/") != experiment_name:
+        raise ValueError("Zero-shot metrics record a different experiment.")
+    if str(cfg.dataset.name) != "ctch":
+        raise ValueError("Zero-shot OOD baseline must use the CTCH dataset config.")
+    _absolute_dataset_paths(cfg)
+    # The original foundation baseline consumes one global 224x224 image only.
+    # Supplying this field also lets shared CTCH/OOD dataset builders avoid
+    # creating high-resolution tiles.
+    cfg.dataset.params.high_res = {"enabled": False}
+
+    from src.models.builder import build_model, setup_phase2_modules
+
+    seed_everything(seed)
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = build_model(cfg.model).to(device)
+    model, classifier_type, fusion_type, num_classes = setup_phase2_modules(
+        model,
+        cfg,
+        device,
+    )
+    if classifier_type != "none" or fusion_type != "none":
+        raise RuntimeError(
+            "BioMedCLIP zero-shot baseline must not build a trained fusion/head."
+        )
+    if int(num_classes) != EXPECTED_NUM_CLASSES:
+        raise RuntimeError(
+            f"Expected {EXPECTED_NUM_CLASSES} CTCH classes, got {num_classes}."
+        )
+    model.eval()
+
+    resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
+    config_sha256 = hashlib.sha256(
+        resolved_config_yaml.encode("utf-8")
+    ).hexdigest()
+    foundation_fingerprint = hashlib.sha256(
+        (
+            f"official_pretrained_foundation:{experiment_name}:"
+            f"{config_sha256}"
+        ).encode("utf-8")
+    ).hexdigest()
+    total_parameters = sum(parameter.numel() for parameter in model.parameters())
+    trainable_parameters = sum(
+        parameter.numel()
+        for parameter in model.parameters()
+        if parameter.requires_grad
+    )
+    provenance = {
+        "source_experiment": experiment_name,
+        "analysis_scope": "ctch_zeroshot_ood",
+        "seed": seed,
+        "checkpoint": None,
+        # Shared OOD validation historically calls this field a checkpoint hash.
+        # For a checkpoint-free baseline it is a deterministic fingerprint of
+        # the official foundation source and the evaluated resolved config.
+        "checkpoint_sha256": foundation_fingerprint,
+        "weight_source": "official_pretrained_foundation",
+        "metrics_path": str(metrics_path.resolve()),
+        "metrics_sha256": sha256_file(metrics_path),
+        "git_revision": _git_revision(),
+        "total_parameters": total_parameters,
+        "trainable_parameters": trainable_parameters,
+        "num_classes": int(num_classes),
+        "fusion_type": fusion_type,
+        "classifier_type": classifier_type,
+        "config_sha256": config_sha256,
+        "resolved_config": OmegaConf.to_container(cfg, resolve=True),
+        "created_at": _datetime.datetime.now(_datetime.timezone.utc).isoformat(),
+    }
+    return LoadedAnalysisModel(
+        model=model,
+        cfg=cfg,
+        checkpoint=metrics_path.resolve(),
+        checkpoint_sha256=foundation_fingerprint,
+        device=device,
+        provenance=provenance,
+    )
+
+
 def load_evaluated_ctch_model(
     experiment_name: str,
     seed: int,
     device: Optional[torch.device] = None,
 ) -> LoadedAnalysisModel:
-    """Load a canonical or ablation CTCH model from its evaluated config.
+    """Load a canonical, zero-shot, or ablation CTCH evaluated model.
 
     This entry point is intentionally narrower than the training CLI.  It only
     accepts the canonical proposed model and experiments below
@@ -564,10 +669,17 @@ def load_evaluated_ctch_model(
             device=device,
             strict_fingerprint=True,
         )
+    if experiment_name == ZEROSHOT_BIOMEDCLIP_EXPERIMENT:
+        return load_evaluated_ctch_zeroshot_model(
+            experiment_name,
+            seed,
+            device=device,
+        )
     if not experiment_name.startswith("ctch/ablation_study/"):
         raise ValueError(
-            "Ablation analysis accepts only the canonical CTCH proposed model "
-            "or experiments below 'ctch/ablation_study/'."
+            "Representation analysis accepts only the canonical CTCH model, "
+            "the BioMedCLIP zero-shot baseline, or experiments below "
+            "'ctch/ablation_study/'."
         )
 
     metrics_path = (

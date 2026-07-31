@@ -52,11 +52,11 @@ LOCKED_REPRESENTATION_SPACES = [
 
 OOD_ARCHIVES = {
     "semantic_ood": "ctch_ood",
-    "domain_ood": "fracatlas_test",
     "domain_ood_btxrd": "btxrd_test",
     "report_mismatch_cross_class": "report_mismatch_cross_class",
     "report_mismatch_same_class": "report_mismatch_same_class",
 }
+CORE_OOD_SCENARIOS = ("semantic_ood", "domain_ood_btxrd")
 
 # The locked CTCH OOD protocol evaluates the representation learned by the
 # bidirectional fusion module.  This vector contains global image evidence,
@@ -65,7 +65,6 @@ OOD_ARCHIVES = {
 # value) so a resumed analysis cannot silently fall back to a visual-only key.
 OOD_FEATURE_KEYS = {
     "semantic_ood": "fused_embeddings",
-    "domain_ood": "fused_embeddings",
     "domain_ood_btxrd": "fused_embeddings",
     "report_mismatch_cross_class": "fused_embeddings",
     "report_mismatch_same_class": "fused_embeddings",
@@ -140,12 +139,12 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
 
     expected_explain = {
         "target": "predicted_class",
-        "sampling": "stratified_by_ground_truth_class",
+        "sampling": "all_test_samples",
         "integrated_gradients_baseline": (
             "global_image_embedding_repeated_as_local_tokens"
         ),
         "clinical_token_intervention_baseline": (
-            "clinical_cls_embedding_repeated_over_removed_tokens"
+            "padding_embedding_with_special_tokens_preserved"
         ),
     }
     for key, expected in expected_explain.items():
@@ -361,6 +360,16 @@ def aggregate_existing(seeds: list[int], scenarios: list[str]) -> dict[str, Any]
             )
             if explain_results
             else {},
+            "explanation_subgroups": _aggregate_payloads(
+                explain_results, "explanation_subgroups"
+            )
+            if explain_results
+            else {},
+            "source_role_summary": _aggregate_payloads(
+                explain_results, "source_role_summary"
+            )
+            if explain_results
+            else {},
         },
     }
     destination = analysis_root() / "aggregated_results.json"
@@ -397,7 +406,7 @@ def main() -> None:
         "--ood-scenarios",
         nargs="+",
         choices=tuple(ood_cfg.scenarios.keys()),
-        default=list(ood_cfg.scenarios.keys()),
+        default=list(CORE_OOD_SCENARIOS),
     )
     parser.add_argument("--allow-incomplete-ood", action="store_true")
     parser.add_argument("--feature-only", action="store_true")
@@ -561,10 +570,6 @@ def main() -> None:
                     str(_feature_path(seed, str(explain_cfg.train_features))),
                     "--test-features",
                     str(_feature_path(seed, str(explain_cfg.test_features))),
-                    "--per-class",
-                    str(int(explain_cfg.per_class)),
-                    "--max-samples",
-                    str(int(explain_cfg.max_samples)),
                     "--selection-seed",
                     str(int(explain_cfg.selection_seed)),
                     "--ig-steps",
@@ -586,6 +591,15 @@ def main() -> None:
                     "--output-dir",
                     str(output_dir),
                 ]
+                if str(explain_cfg.sampling) == "all_test_samples":
+                    command.append("--all-test-samples")
+                else:
+                    command.extend([
+                        "--per-class",
+                        str(int(explain_cfg.per_class)),
+                        "--max-samples",
+                        str(int(explain_cfg.max_samples)),
+                    ])
                 if args.overwrite:
                     command.append("--overwrite")
                 if args.no_strict_fingerprint:

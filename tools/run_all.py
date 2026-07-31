@@ -68,6 +68,77 @@ def _build_experiment_groups(experiments: list[str]) -> OrderedDict:
 _ALL_REGISTERED_EXPERIMENTS = discover_experiment_configs()
 EXPERIMENTS = _build_experiment_groups(_ALL_REGISTERED_EXPERIMENTS)
 
+
+def _registered_group(*experiments: str) -> list[str]:
+    """Build a named research group and fail early if a config is missing."""
+    known = set(_ALL_REGISTERED_EXPERIMENTS)
+    missing = sorted(set(experiments) - known)
+    if missing:
+        raise RuntimeError(
+            "Research-question group references missing configs: "
+            + ", ".join(missing)
+        )
+    return list(dict.fromkeys(experiments))
+
+
+# Research-question groups organize controlled comparisons without moving or
+# renaming existing configs. In particular, the original CTCH leave-one-out
+# experiments and their result paths remain unchanged.
+RESEARCH_GROUPS = OrderedDict({
+    "rq1_btxrd_modality": _registered_group(
+        "btxrd/proposed/ours_xbone_net",
+        "btxrd/ablation_study/modality/image_only",
+        "btxrd/ablation_study/modality/text_only",
+        "btxrd/ablation_study/modality/shuffled_report",
+    ),
+    "rq2_visual_encoding": _registered_group(
+        "ctch/proposed/ours_xbone_net",
+        "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+        "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
+        "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
+        "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+    ),
+    "rq2_training_strategy": _registered_group(
+        "ctch/proposed/ours_xbone_net",
+        "ctch/ablation_study/architecture/phase/phase2_only",
+        "ctch/ablation_study/architecture/phase/phase1_merged",
+    ),
+    "rq2_fusion": _registered_group(
+        "ctch/proposed/ours_xbone_net",
+        "ctch/ablation_study/architecture/fusion/concat",
+        "ctch/ablation_study/architecture/fusion/image_to_text",
+        "ctch/ablation_study/architecture/fusion/text_to_image",
+    ),
+    "rq2_classifier": _registered_group(
+        "ctch/proposed/ours_xbone_net",
+        "ctch/ablation_study/architecture/classifier/linear",
+        "ctch/ablation_study/architecture/classifier/no_class_weight",
+        "ctch/ablation_study/architecture/classifier/no_class_bias",
+    ),
+    "rq3_lora_vs_full_ft": _registered_group(
+        "ctch/ablation_study/finetune/xbone_highres_no_ft",
+        "ctch/proposed/ours_xbone_net",
+        "ctch/ablation_study/finetune/xbone_highres_full_ft",
+    ),
+    "rq4_ood_representation_baselines": _registered_group(
+        "ctch/proposed/ours_xbone_net",
+        "ctch/baselines/zeroshot/biomedclip_zeroshot",
+        "ctch/ablation_study/architecture/phase/phase2_only",
+        "ctch/ablation_study/architecture/fusion/concat",
+        "ctch/ablation_study/architecture/classifier/linear",
+    ),
+})
+RESEARCH_GROUPS["rq2_all_components"] = list(dict.fromkeys(
+    experiment
+    for group_name in (
+        "rq2_visual_encoding",
+        "rq2_training_strategy",
+        "rq2_fusion",
+        "rq2_classifier",
+    )
+    for experiment in RESEARCH_GROUPS[group_name]
+))
+
 # Priority is derived instead of being maintained through commented code.
 PRIORITY_GROUPS = OrderedDict({
     "important": [
@@ -86,11 +157,42 @@ PRIORITY_GROUPS = OrderedDict({
 DEFAULT_SEEDS = [42, 123, 456]
 DEFAULT_EXPERIMENT_FILE = Path(__file__).with_name("experiments.txt")
 
+# Test-time interventions must reuse the exact canonical checkpoint; otherwise
+# differences could be caused by independent retraining rather than the input
+# perturbation itself.
+CHECKPOINT_SOURCE_EXPERIMENTS = {
+    "btxrd/ablation_study/modality/shuffled_report":
+        "btxrd/proposed/ours_xbone_net",
+    "ctch/ablation_study/modality/shuffled_report":
+        "ctch/proposed/ours_xbone_net",
+}
+
+# RQ3 already has complete three-seed classification results. With
+# --skip-completed, reuse those files directly instead of re-running expensive
+# training/evaluation. Runtime fields are included only for seeds whose
+# training_summary.json is still available, and the result table reports n.
+RQ3_EXISTING_RESULT_EXPERIMENTS = {
+    "ctch/ablation_study/finetune/xbone_highres_no_ft",
+    "ctch/proposed/ours_xbone_net",
+    "ctch/ablation_study/finetune/xbone_highres_full_ft",
+}
+
+RQ4_EXISTING_RESULT_EXPERIMENTS = {
+    "ctch/proposed/ours_xbone_net",
+    "ctch/baselines/zeroshot/biomedclip_zeroshot",
+    "ctch/ablation_study/architecture/phase/phase2_only",
+    "ctch/ablation_study/architecture/fusion/concat",
+    "ctch/ablation_study/architecture/classifier/linear",
+}
+
 METRIC_KEYS = [
     "f1_macro", "accuracy", "sensitivity", "specificity",
     "precision", "auroc_macro", "auprc_macro", "balanced_accuracy",
     "ece_15", "adaptive_ece_15", "nll", "brier_score",
     "param_total", "param_trainable", "param_trainable_pct",
+    "training_phase_runtime_seconds", "training_wall_clock_seconds",
+    "training_gpu_hours", "training_peak_allocated_mb",
+    "training_peak_reserved_mb",
 ]
 
 
@@ -111,7 +213,9 @@ def get_experiments(groups: list[str] | None) -> list[str]:
         g = raw_group.strip().replace("\\", "/")
         g = g.removeprefix("configs/experiment/").removesuffix(".yaml")
         g = g.removeprefix("group:")
-        if g in EXPERIMENTS:
+        if g in RESEARCH_GROUPS:
+            result.extend(RESEARCH_GROUPS[g])
+        elif g in EXPERIMENTS:
             result.extend(EXPERIMENTS[g])
         elif g in ("less_important", "less-important"):
             result.extend(PRIORITY_GROUPS["less_important"])
@@ -240,7 +344,16 @@ def seed_dir(experiment: str, seed: int) -> str:
     Returns:
         str: Absolute checkpoint path rooted at PROJECT_ROOT.
     """
-    return os.path.join(PROJECT_ROOT, "checkpoints", experiment, f"seed_{seed}")
+    checkpoint_experiment = CHECKPOINT_SOURCE_EXPERIMENTS.get(
+        experiment,
+        experiment,
+    )
+    return os.path.join(
+        PROJECT_ROOT,
+        "checkpoints",
+        checkpoint_experiment,
+        f"seed_{seed}",
+    )
 
 
 # ============================================================
@@ -323,6 +436,45 @@ def load_metrics(experiment: str, seed: int) -> dict | None:
                         metrics_dict[macro_key] = metrics_dict[key]
                     if macro_key in metrics_dict and key not in metrics_dict:
                         metrics_dict[key] = metrics_dict[macro_key]
+
+                training_path = Path(sd) / "training_summary.json"
+                if training_path.is_file():
+                    training = json.loads(training_path.read_text(encoding="utf-8"))
+                    phases = [
+                        phase
+                        for phase in training.get("phases", {}).values()
+                        if isinstance(phase, dict)
+                    ]
+                    peak_allocated = [
+                        float(phase["peak_allocated_mb"])
+                        for phase in phases
+                        if phase.get("peak_allocated_mb") is not None
+                    ]
+                    peak_reserved = [
+                        float(phase["peak_reserved_mb"])
+                        for phase in phases
+                        if phase.get("peak_reserved_mb") is not None
+                    ]
+                    timing_metrics = {
+                        "training_phase_runtime_seconds": training.get(
+                            "phase_runtime_seconds"
+                        ),
+                        "training_wall_clock_seconds": training.get(
+                            "orchestration_wall_clock_seconds"
+                        ),
+                        "training_gpu_hours": training.get("gpu_hours"),
+                        "training_peak_allocated_mb": (
+                            max(peak_allocated) if peak_allocated else None
+                        ),
+                        "training_peak_reserved_mb": (
+                            max(peak_reserved) if peak_reserved else None
+                        ),
+                    }
+                    metrics_dict.update({
+                        key: float(value)
+                        for key, value in timing_metrics.items()
+                        if value is not None
+                    })
 
                 return metrics_dict
             except Exception as e:
@@ -483,6 +635,38 @@ def _format_parameter(aggregated: dict, key: str) -> str:
     return f"{value / 1_000_000.0:.2f}M"
 
 
+def _format_duration(aggregated: dict, key: str) -> str:
+    metric = aggregated.get(key)
+    if not metric or metric.get("n", 0) < 1:
+        return "—"
+    mean_hours = float(metric["mean"]) / 3600.0
+    std_hours = float(metric["std"]) / 3600.0
+    return f"{mean_hours:.2f}±{std_hours:.2f}h(n={metric['n']})"
+
+
+def _format_memory(aggregated: dict, key: str) -> str:
+    metric = aggregated.get(key)
+    if not metric or metric.get("n", 0) < 1:
+        return "—"
+    mean_gib = float(metric["mean"]) / 1024.0
+    std_gib = float(metric["std"]) / 1024.0
+    return f"{mean_gib:.2f}±{std_gib:.2f}GiB(n={metric['n']})"
+
+
+def _format_metric_with_n(
+    aggregated: dict,
+    key: str,
+    digits: int = 2,
+) -> str:
+    metric = aggregated.get(key)
+    if not metric or metric.get("n", 0) < 1:
+        return "—"
+    return (
+        f"{metric['mean']:.{digits}f}±{metric['std']:.{digits}f}"
+        f"(n={metric['n']})"
+    )
+
+
 def _result_seed_count(aggregated: dict) -> int:
     return max(
         (
@@ -600,6 +784,22 @@ def print_results_table(
                     f"{_format_parameter(aggregated, 'param_trainable'):>13} "
                     f"{_format_parameter(aggregated, 'param_trainable_pct'):>13}"
                 )
+
+            print()
+            print(
+                f"{'Config':<32} {'Phase runtime':>24} {'Wall clock':>24} "
+                f"{'GPU hours':>19} {'Peak alloc.':>24} {'Peak reserved':>24}"
+            )
+            print("-" * 151)
+            for config, _, aggregated in rows:
+                print(
+                    f"{config:<32} "
+                    f"{_format_duration(aggregated, 'training_phase_runtime_seconds'):>24} "
+                    f"{_format_duration(aggregated, 'training_wall_clock_seconds'):>24} "
+                    f"{_format_metric_with_n(aggregated, 'training_gpu_hours'):>19} "
+                    f"{_format_memory(aggregated, 'training_peak_allocated_mb'):>24} "
+                    f"{_format_memory(aggregated, 'training_peak_reserved_mb'):>24}"
+                )
     print("\n" + "=" * 142)
 
 
@@ -713,6 +913,12 @@ def main():
         parser.error("--table-selected-only requires --table")
 
     if args.list_configs:
+        print("\nRESEARCH-QUESTION GROUPS")
+        print("========================")
+        for group, values in RESEARCH_GROUPS.items():
+            print(f"\n[{group}]")
+            for experiment in values:
+                print(f"  {experiment}")
         for dataset in ("BTXRD", "CTCH"):
             print(f"\n{dataset}")
             print("=" * len(dataset))
@@ -818,6 +1024,7 @@ def main():
 
         seeds_metrics = {}
         is_zeroshot = "zeroshot" in experiment
+        checkpoint_source = CHECKPOINT_SOURCE_EXPERIMENTS.get(experiment)
         experiment_seeds = seeds[:1] if is_zeroshot else seeds
         if is_zeroshot and len(seeds) > 1:
             print(
@@ -833,12 +1040,42 @@ def main():
                     seeds_metrics[seed] = metrics
                 continue
 
+            if (
+                args.skip_completed
+                and experiment
+                in (
+                    RQ3_EXISTING_RESULT_EXPERIMENTS
+                    | RQ4_EXISTING_RESULT_EXPERIMENTS
+                )
+            ):
+                existing_metrics = load_metrics(experiment, seed)
+                if existing_metrics:
+                    print(
+                        "\n  [REUSE EXISTING RESULT] Existing metrics"
+                        f"/runtime: {experiment} seed={seed}"
+                    )
+                    seeds_metrics[seed] = existing_metrics
+                    continue
+
             sd = seed_dir(experiment, seed)
             ckpt_p2 = os.path.join(sd, "best_phase2.pth")
             ckpt_p1 = os.path.join(sd, "best_phase1.pth")
 
             # --- STEP 1: Train model ---
-            if not args.eval_only and not is_zeroshot:
+            if checkpoint_source is not None and not args.eval_only:
+                print(
+                    "\n  [CHECKPOINT REUSE] Test-time intervention uses "
+                    f"{checkpoint_source} seed={seed}; training is skipped."
+                )
+                if not os.path.exists(ckpt_p2) and not os.path.exists(ckpt_p1):
+                    print(
+                        "    [ERROR] Source checkpoint is missing. Run the "
+                        f"source experiment first: {checkpoint_source}"
+                    )
+                    continue
+                if args.train_only:
+                    continue
+            elif not args.eval_only and not is_zeroshot:
                 if args.skip_completed and os.path.exists(ckpt_p2):
                     print(
                         f"\n  [SKIP] Existing Phase-2 checkpoint: {ckpt_p2}"
@@ -948,4 +1185,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

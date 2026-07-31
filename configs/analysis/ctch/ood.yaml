@@ -36,12 +36,6 @@ scenarios:
     feature_key: "fused_embeddings"
     primary_methods: [cosine_centroids, mahalanobis_centroid, knn, entropy]
     primary: true
-  domain_ood:
-    archive: "fracatlas_test"
-    feature_key: "fused_embeddings"
-    primary_methods: [cosine_centroids, mahalanobis_centroid, knn, entropy]
-    primary: true
-    rationale: "All scores are evaluated from the trained bidirectional fused representation, which combines global image, high-resolution local image, and clinical-text evidence."
   domain_ood_btxrd:
     archive: "btxrd_test"
     feature_key: "fused_embeddings"

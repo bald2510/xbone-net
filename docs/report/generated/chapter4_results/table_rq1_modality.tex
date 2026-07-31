@@ -1,0 +1,42 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|}
+\hline
+\textbf{Bộ dữ liệu} & \textbf{Phương thức đầu vào} &
+\textbf{BAcc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} &
+\textbf{Macro-AUROC $\uparrow$} & \textbf{Macro-AUPRC $\uparrow$} \\ \hline
+\multirow{4}{*}{BTXRD}
+& Ảnh và hai nguồn văn bản &
+$\mathbf{0{.}5916\pm0{.}0116}$ & $\mathbf{0{.}6010\pm0{.}0034}$ &
+$0{.}9243\pm0{.}0298$ & $\mathbf{0{.}6301\pm0{.}0211}$ \\ \cline{2-6}
+& Chỉ ảnh &
+$0{.}3167\pm0{.}0191$ & $0{.}3165\pm0{.}0081$ &
+$0{.}7756\pm0{.}0179$ & $0{.}3358\pm0{.}0074$ \\ \cline{2-6}
+& Chỉ văn bản &
+$0{.}5393\pm0{.}0160$ & $0{.}5315\pm0{.}0121$ &
+$\mathbf{0{.}9279\pm0{.}0172}$ & $0{.}5721\pm0{.}0096$ \\ \cline{2-6}
+& Ảnh và văn bản xáo trộn khác lớp &
+$0{.}0078\pm0{.}0016$ & $0{.}0068\pm0{.}0014$ &
+$0{.}4124\pm0{.}0644$ & $0{.}0800\pm0{.}0059$ \\ \hline
+\multirow{4}{*}{CTCH}
+& Ảnh và hai nguồn văn bản &
+$\mathbf{0{.}5844\pm0{.}0454}$ & $\mathbf{0{.}5558\pm0{.}0072}$ &
+$\mathbf{0{.}9473\pm0{.}0246}$ & $\mathbf{0{.}6189\pm0{.}0145}$ \\ \cline{2-6}
+& Chỉ ảnh &
+$0{.}4405\pm0{.}0082$ & $0{.}3984\pm0{.}0176$ &
+$0{.}9275\pm0{.}0041$ & $0{.}4177\pm0{.}0075$ \\ \cline{2-6}
+& Chỉ văn bản &
+$0{.}5401\pm0{.}0149$ & $0{.}4770\pm0{.}0133$ &
+$0{.}9393\pm0{.}0020$ & $0{.}5165\pm0{.}0036$ \\ \cline{2-6}
+& Ảnh và văn bản xáo trộn khác lớp &
+$0{.}3120\pm0{.}0172$ & $0{.}3039\pm0{.}0048$ &
+$0{.}8494\pm0{.}0537$ & $0{.}3098\pm0{.}0264$ \\ \hline
+\end{tabular}%
+}
+\caption{Đối chứng phương thức phục vụ RQ1; các giá trị là trung bình $\pm$ độ lệch chuẩn trên ba hạt giống}
+\label{tab:rq1_modality}
+\end{table}

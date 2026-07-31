@@ -1,9 +1,10 @@
-"""Export fused CTCH/OOD features for one evaluated ablation experiment.
+"""Export CTCH/OOD features for an evaluated representation baseline.
 
 Unlike ``export_analysis_features.py``, this script is not locked to the
-canonical proposed architecture.  It accepts only the canonical CTCH model or
-an experiment below ``ctch/ablation_study`` and reconstructs the network from
-the resolved configuration saved in that experiment's ``metrics.json``.
+canonical proposed architecture. It accepts the canonical CTCH model, the
+deterministic BioMedCLIP zero-shot baseline, or an experiment below
+``ctch/ablation_study`` and reconstructs the network from the resolved
+configuration saved in that experiment's ``metrics.json``.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from src.utils.analysis import (
     load_feature_archive,
     save_feature_archive,
 )
+from src.utils.prompts import generate_clip_class_prompts
 from tools.export_analysis_features import build_scenario_dataset
 
 
@@ -42,7 +44,6 @@ SCENARIOS = (
     "ctch_val",
     "ctch_test",
     "ctch_ood",
-    "fracatlas_test",
     "btxrd_test",
 )
 
@@ -156,6 +157,88 @@ def _collect_fused_feature_batches(
     return arrays
 
 
+def _collect_zeroshot_feature_batches(
+    model: torch.nn.Module,
+    loader,
+    *,
+    device: torch.device,
+    prompt_classes: list[str],
+    temperature: float,
+) -> dict[str, np.ndarray]:
+    """Export original BioMedCLIP global-image features and prompt logits."""
+    if temperature <= 0:
+        raise ValueError("Zero-shot temperature must be positive.")
+    tokenizer = model.backbone.tokenizer_obj
+    prompt_dict = generate_clip_class_prompts(prompt_classes)
+    prompt_batch = tokenizer(list(prompt_dict.values()))
+    prompt_attention = None
+    if isinstance(prompt_batch, dict):
+        prompt_attention = prompt_batch.get("attention_mask")
+        prompt_ids = prompt_batch["input_ids"]
+    else:
+        prompt_ids = prompt_batch
+    prompt_ids = prompt_ids.to(device)
+    if prompt_attention is not None:
+        prompt_attention = prompt_attention.to(device)
+
+    text_encoder = getattr(model.backbone, "encode_text", None)
+    if text_encoder is None:
+        text_encoder = getattr(model.backbone.model, "encode_text", None)
+    image_encoder = getattr(model.backbone.model, "encode_image", None)
+    if text_encoder is None or image_encoder is None:
+        raise RuntimeError("BioMedCLIP must expose encode_image and encode_text.")
+    with torch.no_grad():
+        try:
+            prompt_features = text_encoder(
+                prompt_ids,
+                attention_mask=prompt_attention,
+            )
+        except TypeError:
+            prompt_features = text_encoder(prompt_ids)
+        prompt_features = F.normalize(prompt_features, dim=-1)
+
+    tensor_parts: dict[str, list[np.ndarray]] = {}
+    metadata_parts: dict[str, list[str]] = {
+        key: [] for key in ANALYSIS_METADATA_KEYS
+    }
+    labels: list[np.ndarray] = []
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            images = _to_device(batch["pixel_values"], device)
+            raw_image_features = image_encoder(images)
+            image_features = F.normalize(raw_image_features, dim=-1)
+            logits = image_features @ prompt_features.T / float(temperature)
+            outputs = {
+                "fused_embeddings_raw": raw_image_features,
+                "fused_embeddings": image_features,
+                "visual_global_embeddings": image_features,
+                "logits": logits,
+                "probabilities": torch.softmax(logits, dim=-1),
+            }
+            for key, value in outputs.items():
+                tensor_parts.setdefault(key, []).append(
+                    value.detach().cpu().numpy()
+                )
+            label_values = batch["labels"]
+            labels.append(label_values.detach().cpu().numpy())
+            for key in ANALYSIS_METADATA_KEYS:
+                values = batch.get(key, [""] * len(label_values))
+                metadata_parts[key].extend(str(value) for value in values)
+
+    if not labels:
+        raise RuntimeError("Zero-shot feature export received an empty dataset.")
+    arrays = {
+        key: np.concatenate(parts, axis=0)
+        for key, parts in tensor_parts.items()
+    }
+    arrays["labels"] = np.concatenate(labels, axis=0)
+    arrays["predictions"] = arrays["logits"].argmax(axis=1).astype(np.int64)
+    for key, values in metadata_parts.items():
+        arrays[key] = np.asarray(values, dtype=str)
+    return arrays
+
+
 def _can_resume(
     path: Path,
     *,
@@ -264,12 +347,26 @@ def main() -> None:
             batch_size=args.batch_size,
             num_workers=args.num_workers,
         )
-        arrays = _collect_fused_feature_batches(
-            loaded.model,
-            loader,
-            device=loaded.device,
-            report_type=str(loaded.cfg.params.phase2.p2_report_type),
-        )
+        if loaded.provenance.get("classifier_type") == "none":
+            arrays = _collect_zeroshot_feature_batches(
+                loaded.model,
+                loader,
+                device=loaded.device,
+                prompt_classes=list(
+                    loaded.cfg.dataset.params.get(
+                        "prompt_classes",
+                        loaded.cfg.dataset.params.classes,
+                    )
+                ),
+                temperature=float(loaded.cfg.params.get("temperature", 0.07)),
+            )
+        else:
+            arrays = _collect_fused_feature_batches(
+                loaded.model,
+                loader,
+                device=loaded.device,
+                report_type=str(loaded.cfg.params.phase2.p2_report_type),
+            )
         provenance = {
             **loaded.provenance,
             "scenario": scenario,

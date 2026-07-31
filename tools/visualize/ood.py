@@ -21,7 +21,6 @@ import numpy as np
 
 SCENARIO_DISPLAY_NAMES = {
     "semantic_ood": "Semantic OOD",
-    "domain_ood": "FracAtlas",
     "domain_ood_btxrd": "BTXRD",
 }
 

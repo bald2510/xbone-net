@@ -12,18 +12,18 @@
     "semantic_ood": {
       "42": {
         "id_test": 669,
-        "ood_test": 29,
-        "analysis_status": "exploratory_incomplete_ood"
+        "ood_test": 44,
+        "analysis_status": "complete"
       },
       "123": {
         "id_test": 669,
-        "ood_test": 29,
-        "analysis_status": "exploratory_incomplete_ood"
+        "ood_test": 44,
+        "analysis_status": "complete"
       },
       "456": {
         "id_test": 669,
-        "ood_test": 29,
-        "analysis_status": "exploratory_incomplete_ood"
+        "ood_test": 44,
+        "analysis_status": "complete"
       }
     },
     "domain_ood_btxrd": {

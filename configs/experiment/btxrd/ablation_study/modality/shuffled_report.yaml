@@ -1,0 +1,15 @@
+# @package _global_
+# RQ1 pairing control: reuse the canonical trained checkpoint, then mismatch
+# clinical text across different classes on the BTXRD test split only.
+
+defaults:
+  - /experiment/btxrd/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: btxrd/ablation_study/modality/shuffled_report
+
+dataset:
+  params:
+    shuffle_report_mode: cross_class
+    shuffle_report_splits:
+      - test

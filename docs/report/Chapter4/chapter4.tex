@@ -449,7 +449,7 @@ Trong đó, $2^{20}$ là số byte tương ứng với một MiB. Độ đo bao 
 \label{sec:experimental_setup}
 Phần này trình bày các thiết lập thực nghiệm, bao gồm môi trường phần cứng và phần mềm, cũng như các siêu tham số được sử dụng trong quá trình huấn luyện mô hình. Các thiết lập này nhằm đảm bảo tính nhất quán và khả năng tái tạo của các thí nghiệm.
 \subsection{Môi trường thực nghiệm}
-Mô hình đề xuất và các mô hình cơ sở được chạy ba lần với hạt giống lần lượt là 42, 123, 456 trong các điều kiện và siêu tham số giống nhau. Môi trường phần cứng và phần mềm được trình bày trong Bảng \ref{tab:hardware_environment} và Bảng \ref{tab:software_environment}.
+Mô hình đề xuất và các mô hình cơ sở được chạy ba lần với hạt giống lần lượt là 42, 123, 456 trên cùng phân chia dữ liệu, phần cứng, độ chính xác số học và quy trình đánh giá. Siêu tham số được giữ cố định giữa ba hạt giống của cùng một cấu hình, nhưng được thiết lập theo nhóm phương pháp: mô hình tinh chỉnh toàn bộ dùng tốc độ học nhỏ hơn, trong khi XBone-Net và các mô hình LoRA sử dụng quy trình hai pha. Cách tổ chức này tránh đồng nhất siêu tham số giữa các chiến lược tối ưu hóa khác nhau và vẫn duy trì điều kiện đánh giá chung. Môi trường phần cứng và phần mềm được trình bày trong Bảng \ref{tab:hardware_environment} và Bảng \ref{tab:software_environment}.
 
 \begin{table}[htbp]
 \centering
@@ -479,14 +479,15 @@ CUDA runtime & 12.8 \\ \hline
 \end{table}
 
 \subsection{Tham số thực nghiệm}
-Các Bảng \ref{tab:hyperparameters_phase1} và \ref{tab:hyperparameters_phase2} dưới đây mô tả cấu hình siêu tham số của mô hình đề xuất. Các siêu tham số được lựa chọn dựa trên các nghiên cứu trước và thử nghiệm sơ bộ để tối ưu hóa hiệu suất mô hình trên cả hai bộ dữ liệu BTXRD và CTCH.
+Các Bảng \ref{tab:hyperparameters_phase1} và \ref{tab:hyperparameters_phase2} mô tả cấu hình của XBone-Net. Hai bộ dữ liệu cùng sử dụng kích thước lô 16, AdamW, lịch cosine, tỷ lệ khởi động 0,1 và suy giảm trọng số $10^{-4}$. Những khác biệt theo bộ dữ liệu ở pha phân loại được nêu trực tiếp trong bảng. Bảng \ref{tab:hyperparameters_baselines} trình bày riêng cấu hình của các nhóm mô hình cơ sở; do đó, các kết quả không được mô tả như thể mọi kiến trúc dùng một tốc độ học hoặc một quy trình huấn luyện duy nhất.
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{|l|c|}
+\small
+\begin{tabularx}{\textwidth}{|p{5.2cm}|X|}
 \hline
 \textbf{Siêu tham số}        & \textbf{Pha 1}      \\ \hline
-Độ phân giải ảnh đầu vào & \begin{tabular}[c]{@{}c@{}}1 ảnh global \(224\times224\) \\ và 4 tile cùng kích thước\end{tabular} \\ \hline
+Độ phân giải ảnh đầu vào & \begin{tabular}[c]{@{}c@{}}1 ảnh toàn cục \(224\times224\) \\ và 4 tile cùng kích thước\end{tabular} \\ \hline
 Bộ tối ưu hóa                & AdamW               \\ \hline
 Tốc độ học                   & $5 \times 10^{-5}$  \\ \hline
 Suy giảm trọng số            & $1 \times 10^{-4}$  \\ \hline
@@ -495,19 +496,23 @@ Tỷ lệ khởi động              & 0.1                 \\ \hline
 Kích thước lô                & 16                  \\ \hline
 Số epoch tối đa              & 30                  \\ \hline
 Số epoch dừng sớm            & 3 epochs            \\ \hline
-Nhiệt độ tương phản ($\tau$) & 0.07                \\ \hline
+Hàm mất mát                  & Khớp ngữ nghĩa với soft target hai chiều \\ \hline
+Độ tương đồng đích cùng lớp  & 0.50                \\ \hline
+Thang logit                  & Kế thừa từ BioMedCLIP; không đặt cố định \(\tau=0.07\) \\ \hline
+Lấy mẫu nhận biết lớp        & 2 mẫu mỗi lớp trong lô khi khả thi \\ \hline
 Trạng thái tham số mô hình nền tảng  & Tinh chỉnh qua LoRA \\ \hline
 Hạng LoRA ($r$)             & 16                  \\ \hline
 Hệ số LoRA ($\alpha$)       & 32                  \\ \hline
 Tỷ lệ bỏ học LoRA           & 0.1                 \\ \hline
-\end{tabular}
+\end{tabularx}
 \caption{Bảng tổng hợp siêu tham số ở pha 1 và thiết lập của chúng}
 \label{tab:hyperparameters_phase1}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{|l|c|}
+\small
+\begin{tabularx}{\textwidth}{|p{5.2cm}|X|}
 \hline
 \textbf{Siêu tham số}        & \textbf{Pha 2} \\ \hline
 Độ phân giải ảnh đầu vào     & Giống pha 1                  \\ \hline
@@ -524,10 +529,44 @@ Trạng thái tham số mô hình nền tảng  & Tinh chỉnh qua LoRA         
 Hạng LoRA ($r$)             & 16                           \\ \hline
 Hệ số LoRA ($\alpha$)       & 32                           \\ \hline
 Tỷ lệ bỏ học LoRA           & 0.1                          \\ \hline
-\end{tabular}
+Hàm mất mát                 & Cross-entropy trên điểm tâm lớp \\ \hline
+Label smoothing             & 0.05                         \\ \hline
+Trọng số lớp                & Effective number; giới hạn tối đa 5.0 \\ \hline
+Hệ số effective number      & 0.99 (BTXRD); 0.999 (CTCH)  \\ \hline
+Cập nhật tâm lớp            & Sau mỗi epoch trước khi xác thực \\ \hline
+\end{tabularx}
 \caption{Bảng tổng hợp siêu tham số ở pha 2 và thiết lập của chúng}
 \label{tab:hyperparameters_phase2}
 \end{table}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{|p{3.2cm}|c|c|X|}
+\hline
+\textbf{Nhóm mô hình} & \textbf{Pha 1} & \textbf{Pha 2} & \textbf{Thiết lập phân loại} \\ \hline
+XBone-Net &
+\(\mathrm{lr}=5\times10^{-5}\), 30 epoch &
+\(\mathrm{lr}=10^{-4}\), 50 epoch &
+LoRA \(r=16,\alpha=32\), dropout 0.1; cross-attention hai chiều; empirical centroid; label smoothing 0.05. \\ \hline
+LoRA-BioMedCLIP và LoRA-PubMedCLIP &
+\(\mathrm{lr}=5\times10^{-5}\), 30 epoch &
+\(\mathrm{lr}=10^{-4}\), 50 epoch &
+LoRA \(r=16,\alpha=32\), dropout 0.1; nối đặc trưng; đầu tuyến tính. Label smoothing là 0.10 trên BTXRD và 0.05 trên CTCH. \\ \hline
+Tinh chỉnh toàn bộ VLM &
+Không áp dụng &
+\(\mathrm{lr}=2\times10^{-5}\), 50 epoch &
+Cập nhật toàn bộ backbone; nối đặc trưng ảnh--văn bản; đầu tuyến tính; label smoothing 0.10. \\ \hline
+ResNet-50 và DenseNet-121 &
+Không áp dụng &
+\(\mathrm{lr}=2\times10^{-5}\), 50 epoch &
+Cập nhật toàn bộ backbone; chỉ sử dụng ảnh; đầu tuyến tính; label smoothing 0.10. \\ \hline
+\end{tabularx}
+\caption{Khác biệt chính về siêu tham số và chiến lược tối ưu hóa giữa các nhóm mô hình}
+\label{tab:hyperparameters_baselines}
+\end{table}
+
+Tất cả các nhóm trong Bảng \ref{tab:hyperparameters_baselines} dùng AdamW, suy giảm trọng số $10^{-4}$, lịch cosine, tỷ lệ khởi động 0,1 và kích thước lô 16. Các baseline tinh chỉnh toàn bộ dừng sớm sau 5 epoch không cải thiện. Với baseline LoRA, patience pha 2 là 5 trên BTXRD và 3 trên CTCH; soft target cùng lớp ở pha 1 là 0,50, ngoại trừ LoRA-PubMedCLIP trên BTXRD dùng 0,95. Các baseline có cân bằng lớp dùng trọng số effective number với hệ số 0,999. Giới hạn trọng số tương đối tối đa 5,0 được áp dụng cho XBone-Net trên cả hai bộ dữ liệu và cho baseline LoRA trên CTCH; baseline LoRA trên BTXRD và nhóm tinh chỉnh toàn bộ không đặt giới hạn này.
 
 \section{Nội dung thực nghiệm}
 \label{sec:experiment_content}
@@ -567,12 +606,22 @@ tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xươ
 \subsection{OOD hậu xử lý}
 \label{subsec:ood_postprocessing}
 
-\textbf{Thiết kế phương pháp.} Đánh giá khả năng phát hiện dữ liệu ngoài phân phối sử dụng bốn bộ phát hiện hậu xử lý gồm khoảng cách cosine tới tâm lớp gần nhất, khoảng cách Mahalanobis tới tâm lớp với hiệp phương sai, khoảng cách cosine kNN với $k=5$ và entropy dự đoán. Trong đó ba độ đo hình học sử dụng không gian sau khi đi qua mô-đun dung hợp và entropy được tính từ phân phối xác suất của tập huấn luyện.
+\textbf{Thiết kế phương pháp.} Đánh giá khả năng phát hiện dữ liệu ngoài phân phối sử dụng bốn bộ phát hiện hậu xử lý gồm khoảng cách cosine tới tâm lớp gần nhất, khoảng cách Mahalanobis tới tâm lớp với hiệp phương sai, khoảng cách cosine kNN với $k=5$ và entropy dự đoán. Ba độ đo hình học sử dụng biểu diễn của từng mẫu sau mô-đun dung hợp. Với entropy, phân phối softmax của chính mẫu đang đánh giá được ký hiệu là \(p_c(x)\); điểm bất thường được tính theo
+\begin{equation}
+    s_{\mathrm{entropy}}(x)
+    =
+    -\frac{1}{\log C}
+    \sum_{c=1}^{C}p_c(x)\log\!\left(\max\!\left(p_c(x),10^{-12}\right)\right).
+    \label{eq:ch4_predictive_entropy}
+\end{equation}
+Hệ số \(1/\log C\) chuẩn hóa điểm về đoạn \([0,1]\). Entropy càng lớn biểu thị phân phối dự đoán càng phân tán và được xem là bằng chứng OOD mạnh hơn; tập huấn luyện không được dùng để tạo phân phối xác suất thay cho mẫu kiểm thử.
 
-\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm đánh giá liệu các bộ phát hiện hậu xử lý có thể phát hiện được các mẫu ngoài phân phối mà không thay đổi bộ phân loại hay không. Hai dạng ngoài phân phối được xem xét gồm khác biệt ngữ nghĩa bệnh trong cùng nguồn CTCH và dịch chuyển khác bộ dữ liệu trên BTXRD. Việc tách hai kịch bản giúp phân biệt bất thường ngữ nghĩa với sự thay đổi đồng thời về miền thu nhận, không gian nhãn.
+\textbf{Mục đích thực nghiệm.} Nhóm thí nghiệm đánh giá liệu các bộ phát hiện hậu xử lý có thể phát hiện được các mẫu ngoài phân phối mà không thay đổi bộ phân loại hay không. Hai dạng ngoài phân phối được xem xét gồm khác biệt ngữ nghĩa bệnh trong cùng nguồn CTCH và dịch chuyển khác bộ dữ liệu trên BTXRD. Việc tách hai kịch bản giúp phân biệt bất thường ngữ nghĩa với sự thay đổi đồng thời về miền thu nhận và không gian nhãn. Để trả lời RQ4, cùng giao thức còn được áp dụng cho năm biểu diễn gồm XBone-Net, BioMedCLIP zero-shot, chỉ huấn luyện pha 2, nối đặc trưng và đầu tuyến tính. So sánh giữa các biểu diễn sử dụng cố định Mahalanobis-centroid, tránh chọn bộ phát hiện tốt nhất riêng cho từng mô hình.
 
 \subsection{Đánh giá thành phần}
 \label{subsec:component_evaluation}
+
+\subsubsection{Đối chứng leave-one-out}
 
 \textbf{Thiết kế biến thể.} Nghiên cứu thành phần được thiết kế theo hướng leave-one-out, trong đó XBone-Net đầy đủ được sử dụng làm cấu hình tham chiếu và mỗi biến thể chỉ loại bỏ hoặc thay thế một thành phần tại một thời điểm. Các thành phần còn lại, dữ liệu đầu vào, hạt giống ngẫu nhiên, quy trình huấn luyện và tiêu chí lựa chọn checkpoint được giữ nguyên. Năm phép đối chứng gồm:
 \begin{enumerate}
@@ -583,11 +632,24 @@ tri thức đã tiền huấn luyện sang bài toán phân loại X-quang xươ
     \item \textbf{Bộ phân loại:} thay bộ phân loại empirical centroid bằng đầu tuyến tính có thể huấn luyện, trong khi biểu diễn dung hợp và các thành phần phía trước được giữ nguyên.
 \end{enumerate}
 
-\textbf{Mục đích thực nghiệm.} Thiết kế leave-one-out được sử dụng để ước lượng ảnh hưởng củ các thành phần đối với hiệu năng phân loại. Mỗi biến thể được so sánh trực tiếp với mô hình đề xuất. Cách thiết kế này giúp xác định thành phần nào tạo ra thay đổi nhất quán, thành phần nào chủ yếu tạo ra đánh đổi giữa các độ đo và liệu độ phức tạp bổ sung có được phản ánh trong kết quả thực nghiệm hay không. kết quả phản ánh đóng góp tương đối của lựa chọn thiết kế đề xuất.
+\textbf{Mục đích thực nghiệm.} Thiết kế leave-one-out được sử dụng để ước lượng ảnh hưởng của từng lựa chọn kiến trúc đối với hiệu năng phân loại. Mỗi biến thể được so sánh trực tiếp với mô hình đề xuất. Cách thiết kế này giúp xác định thành phần nào tạo ra thay đổi nhất quán, thành phần nào chủ yếu tạo ra đánh đổi giữa các độ đo và liệu độ phức tạp bổ sung có được phản ánh trong kết quả thực nghiệm hay không.
+
+\subsubsection{Đối chứng bổ sung theo phương thức và cơ chế}
+
+Các đối chứng bổ sung mở rộng phạm vi ngoài thiết kế leave-one-out. Các cấu hình có huấn luyện được đánh giá với ba hạt giống 42, 123 và 456:
+\begin{enumerate}
+    \item \textbf{Phương thức đầu vào:} trên cả BTXRD và CTCH, biến thể chỉ ảnh loại bỏ nhánh văn bản, còn biến thể chỉ văn bản loại bỏ nhánh ảnh. Vì pha 1 yêu cầu cặp ảnh--văn bản, hai biến thể đơn phương thức được huấn luyện trực tiếp ở pha 2 và được đọc cùng biến thể chỉ huấn luyện pha 2 có đủ hai phương thức. Các đối chứng xáo trộn giữ nguyên mô hình đã huấn luyện và ảnh kiểm thử, sau đó dùng một hoán vị một--một để lấy văn bản từ mẫu thuộc lớp khác. Trên cả hai bộ dữ liệu, văn bản lâm sàng và mô tả X-quang được lấy từ cùng một mẫu cho. Đối chứng này khảo sát độ nhạy của mô hình với tính nhất quán tổng thể của cặp ảnh--văn bản, không tách riêng ảnh hưởng của từng nguồn văn bản.
+    \item \textbf{Mã hóa ảnh và pha huấn luyện:} ngoài hai đối chứng leave-one-out, số token cục bộ được giảm, phép co giãn được thay bằng letterbox và checkpoint pha 1 được hợp nhất trực tiếp để khảo sát thêm các lựa chọn trong cùng nhóm thành phần.
+    \item \textbf{Hướng chú ý chéo:} từ cùng checkpoint pha 1, cross-attention hai chiều được thay bằng ảnh truy vấn văn bản hoặc văn bản truy vấn ảnh ở pha 2. Hai đối chứng này kiểm tra liệu trao đổi thông tin theo cả hai hướng có tạo lợi ích so với một hướng hay không.
+    \item \textbf{Đầu ra và cân bằng lớp:} đầu empirical centroid lần lượt được đánh giá khi bỏ trọng số lớp hoặc bỏ bias riêng theo lớp. Nhóm này tách vai trò của hình học tâm lớp khỏi các cơ chế hiệu chỉnh quyết định cho dữ liệu mất cân bằng.
+    \item \textbf{Mức cập nhật backbone:} biến thể đóng băng backbone loại bỏ LoRA ở bộ mã hóa ảnh và văn bản nhưng vẫn huấn luyện các mô-đun phía sau; biến thể tinh chỉnh toàn bộ cập nhật toàn bộ backbone. Hai mức này được so với XBone-Net dùng LoRA về hiệu năng, số tham số cập nhật và thời gian huấn luyện.
+\end{enumerate}
+
+Các biến thể đơn phương thức thay đổi đồng thời khả năng thực hiện pha 1 nên không được xem là leave-one-out nghiêm ngặt. Ngược lại, đối chứng văn bản xáo trộn chỉ can thiệp quan hệ ghép cặp ở tập kiểm thử; hai nhóm được trình bày riêng để tránh quy mọi chênh lệch cho cùng một cơ chế.
 
 \section{Kết quả thực nghiệm}
 
-Phần này trình bày kết quả thực nghiệm đồng thời bàn luận và phân tích các kết quả của từng nội dung thực nghiệm như đã nêu ở \ref{sec:experiment_content}. Đối với các thiết lập có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, mô hình đề xuất được tô màu xám nhạt nhằm dễ nhận diện. Các giá trị riêng của từng hạt giống được công bố tại Phụ lục \ref{AppendixSeedResults} để hỗ trợ đối chiếu với kết quả tổng hợp và đánh giá độ nhạy đối với khởi tạo ngẫu nhiên.
+Phần này trình bày kết quả thực nghiệm đồng thời bàn luận và phân tích các kết quả của từng nội dung thực nghiệm như đã nêu ở \ref{sec:experiment_content}. Đối với các thiết lập có huấn luyện, giá trị trong bảng là trung bình $\pm$ độ lệch chuẩn mẫu trên ba hạt giống ngẫu nhiên 42, 123 và 456, trừ khi số lần đo được ghi riêng. Giá trị tốt nhất theo từng cột và trong cùng một thiết lập được in đậm, mô hình đề xuất được tô màu xám nhạt nhằm dễ nhận diện. Các giá trị riêng của từng hạt giống ở các thí nghiệm chính và nhóm leave-one-out được công bố tại Phụ lục \ref{AppendixSeedResults}; các đối chứng mới được tổ chức theo RQ1--RQ4 trong các bảng tương ứng của chương.
 
 \subsection{Đánh giá mô hình nền tảng}
 \label{subsec:foundation_model_evaluation}
@@ -663,7 +725,32 @@ Bảng \ref{tab:efficiency_few_shot_params} và Bảng \ref{tab:efficiency_few_s
 
 Nhìn chung, XBone-Net đạt hiệu năng cạnh tranh và thể hiện lợi thế trong một số điều kiện khan hiếm nhãn, nổi bật ở CTCH với $1$ mẫu và các độ đo quyết định lớp trên BTXRD với $10$--$20$ mẫu. Tuy nhiên, lợi thế này chưa nhất quán trên toàn bộ thiết lập và đi kèm chi phí suy luận cao hơn. Vì vậy, kết quả phù hợp hơn để khẳng định tiềm năng của pipeline đa phương thức trong một số thiết lập mẫu học hạn chế, thay vì kết luận mô hình luôn tổng quát hóa tốt hơn các mô hình cơ sở hoặc đã sẵn sàng cho triển khai lâm sàng.
 
-\subsection{Đánh giá thành phần}
+\subsection{Vai trò của phương thức đầu vào}
+\label{subsec:rq1_modality_results}
+
+Bảng \ref{tab:rq1_modality} đối chiếu mô hình đa phương thức với các cấu hình chỉ ảnh, chỉ văn bản và văn bản xáo trộn khác lớp để trả lời RQ1. Trên BTXRD, XBone-Net đạt Macro-F1 $0{.}6010\pm0{.}0034$, cao hơn cấu hình chỉ ảnh $0{.}2845$ điểm tuyệt đối và cao hơn cấu hình chỉ văn bản $0{.}0695$ điểm. Cấu hình chỉ văn bản vẫn đạt Macro-F1 $0{.}5315\pm0{.}0121$ và Macro-AUROC $0{.}9279\pm0{.}0172$, thậm chí Macro-AUROC cao hơn nhẹ so với mô hình đầy đủ. Khi giữ nguyên checkpoint và ảnh nhưng thay cả hai nguồn văn bản bằng văn bản của một mẫu khác lớp, Macro-F1 giảm còn $0{.}0068\pm0{.}0014$, Balanced Accuracy còn $0{.}0078\pm0{.}0016$, Macro-AUROC còn $0{.}4124\pm0{.}0644$ và Macro-AUPRC còn $0{.}0800\pm0{.}0059$. Mức giảm này xác nhận mô hình rất nhạy với tính nhất quán ảnh--văn bản trên BTXRD.
+
+Đối chứng BTXRD là phép ghép sai có kiểm soát chứ không phải hoán vị ngẫu nhiên không ràng buộc: mỗi mẫu luôn nhận văn bản từ một lớp khác, không có điểm cố định và mỗi văn bản chỉ được dùng một lần. Vì vậy, khi mô hình đi theo lớp được biểu đạt trong văn bản cho, tỷ lệ dự đoán đúng lớp của ảnh có thể tiến gần về không; các giá trị thấp không được diễn giải như hiệu năng dưới một nhiễu văn bản ngẫu nhiên thông thường. Đồng thời, do văn bản BTXRD được xây dựng từ siêu dữ liệu và các cờ nhóm bệnh, sự sụt giảm rất mạnh còn cho thấy tín hiệu liên hệ với nhãn trong văn bản tổng hợp, chứ không phải bằng chứng rằng bệnh sử tự nhiên luôn có ảnh hưởng tương đương.
+
+Trên CTCH, mô hình đầy đủ đạt Macro-F1 $0{.}5558\pm0{.}0072$, cao hơn cấu hình chỉ ảnh $0{.}1574$ điểm và cao hơn cấu hình chỉ văn bản $0{.}0788$ điểm. Khi cả bệnh sử và mô tả X-quang được hoán đổi có kiểm soát giữa các lớp, Macro-F1 giảm xuống $0{.}3039\pm0{.}0048$, Macro-AUROC giảm xuống $0{.}8494\pm0{.}0537$ và Macro-AUPRC giảm xuống $0{.}3098\pm0{.}0264$. Vì checkpoint và ảnh kiểm thử được giữ nguyên, mức giảm này củng cố bằng chứng rằng mô hình sử dụng quan hệ ghép cặp ảnh--văn bản chứ không chỉ khai thác phân bố từ vựng chung; tuy nhiên, thí nghiệm chưa quy được mức giảm riêng cho bệnh sử hoặc mô tả X-quang.
+
+\input{generated/chapter4_results/table_rq1_modality}
+
+Hai đối chứng xáo trộn đều cho thấy tính đúng của quan hệ ghép cặp có ảnh hưởng đáng kể, nhưng do cả hai nguồn văn bản được thay đồng thời, chúng chỉ kiểm định tính nhất quán tổng thể và chưa cô lập đóng góp của từng nguồn. Ngoài ra, hai cấu hình đơn phương thức không thực hiện pha 1, nên chênh lệch với mô hình đầy đủ kết hợp cả việc bỏ một phương thức và thay đổi quy trình huấn luyện; độ lớn chênh lệch không phải ước lượng thuần túy của đóng góp biên phương thức. Với các giới hạn này, RQ1 được trả lời theo hướng kết hợp ảnh và văn bản cải thiện Macro-F1 trên cả hai bộ dữ liệu, đồng thời tính nhất quán của cặp ảnh--văn bản là điều kiện quan trọng. CTCH cung cấp bệnh sử lâm sàng có sẵn, còn độ nhạy rất lớn trên BTXRD phải được đọc trong bối cảnh văn bản tổng hợp phụ thuộc siêu dữ liệu và cờ nhóm bệnh.
+
+\subsection{Đánh đổi giữa mức thích nghi backbone}
+\label{subsec:rq3_adaptation_results}
+
+Bảng \ref{tab:rq3_adaptation} bổ sung đối chứng trực tiếp cho RQ3 trên CTCH. XBone-Net dùng LoRA chỉ cập nhật $8{.}63$ triệu tham số, tương đương $4{.}22\%$, trong khi tinh chỉnh toàn bộ cập nhật $199{.}43$ triệu tham số. LoRA đạt Macro-F1 $0{.}5558\pm0{.}0072$ và Macro-AUPRC $0{.}6189\pm0{.}0145$, cao hơn tinh chỉnh toàn bộ lần lượt $0{.}0146$ và $0{.}0357$ điểm; ngược lại, Macro-AUROC của hai thiết lập gần nhau và tinh chỉnh toàn bộ cao hơn $0{.}0034$ điểm. So với đóng băng backbone, LoRA cải thiện Macro-F1 $0{.}0153$ và Macro-AUPRC $0{.}0547$ điểm, cho thấy thích nghi backbone có ích chủ yếu đối với quyết định lớp và xếp hạng precision--recall.
+
+\input{generated/chapter4_results/table_rq3_adaptation}
+
+Lợi ích về số tham số không chuyển trực tiếp thành giảm thời gian huấn luyện. Log của XBone-Net cho thời gian wall-clock $2{.}61\pm0{.}44$ giờ trên ba seed, còn tinh chỉnh toàn bộ có một phép đo $1{.}94$ giờ ở seed 42. Nguyên nhân hợp lý là pipeline LoRA vẫn thực hiện hai pha và xử lý ảnh độ phân giải cao, trong khi số tham số cập nhật chỉ là một thành phần của chi phí. Do thời gian tinh chỉnh toàn bộ chỉ có $n=1$, chênh lệch thời gian không được diễn giải như so sánh thống kê. Kết hợp với kết quả few-shot, RQ3 cho thấy XBone-Net tiết kiệm mạnh số tham số cập nhật và có lợi thế ở một số ngân sách nhãn, nhưng không chứng minh lợi thế nhất quán về thời gian huấn luyện hoặc hiệu năng tại mọi mức dữ liệu.
+
+\subsection{Đánh giá thành phần theo RQ2}
+\label{subsec:rq2_component_results}
+
+\subsubsection{Kết quả leave-one-out}
 
 Bảng \ref{tab:ablation_leave_one_out_classification} cho thấy không có biến thể loại bỏ nào làm giảm đồng thời cả sáu độ đo so với XBone-Net đầy đủ. Linear head đạt Accuracy và Macro-F1 cao nhất nhưng có Macro-AUROC thấp hơn cấu hình đầy đủ. Mean pooling dẫn đầu về Balanced Accuracy, Macro-AUROC và Macro-AUPRC, song có ECE cao hơn. Concat đạt ECE thấp nhất và Macro-AUROC cao, nhưng giảm Balanced Accuracy, Macro-F1 và Macro-AUPRC. Hai biến thể không sử dụng ảnh độ phân giải cao và chỉ huấn luyện pha 2 đều cải thiện Accuracy, nhưng làm giảm Balanced Accuracy và Macro-AUROC.
 
@@ -708,15 +795,38 @@ Các kết quả cho thấy từng thành phần ảnh hưởng khác nhau đế
 
 Nhìn chung, thí nghiệm leave-one-out chưa chứng minh cấu hình đầy đủ là tối ưu riêng cho tác vụ phân loại, vì một số biến thể rút gọn đạt kết quả tốt hơn trên từng tiêu chí. Cấu hình đầy đủ chủ yếu duy trì tốt hơn một số khía cạnh về cân bằng lớp, khả năng xếp hạng và hình học biểu diễn, trong khi attention pooling là thành phần cần được xem xét lại. Vì vậy, đóng góp của từng mô-đun nên được trình bày theo từng mục tiêu cụ thể; việc giữ cấu hình đầy đủ cần được biện minh thêm bằng các tác vụ như phát hiện OOD, thay vì chỉ dựa trên kết quả phân loại.
 
+\subsubsection{Kết quả theo nhóm thành phần}
+
+Bảng \ref{tab:rq2_grouped_components} tổ chức các đối chứng bổ sung theo bốn nhóm để trả lời RQ2 mà không thay đổi thiết kế leave-one-out trong Bảng \ref{tab:ablation_leave_one_out_classification}.
+
+\input{generated/chapter4_results/table_rq2_grouped_components}
+
+\textbf{Mã hóa ảnh.} Bỏ nhánh high-resolution gần như giữ nguyên Macro-F1 ($0{.}5553$ so với $0{.}5558$) nhưng làm Macro-AUROC giảm từ $0{.}9473$ xuống $0{.}9148$, Macro-AUPRC giảm từ $0{.}6189$ xuống $0{.}5990$ và ECE tăng từ $0{.}1032$ lên $0{.}1743$. Điều này cho thấy nhánh độ phân giải cao có ích rõ hơn đối với xếp hạng và hiệu chuẩn hơn là quyết định argmax. Tuy nhiên, mean pooling đạt Macro-F1 $0{.}5736$, Macro-AUROC $0{.}9577$ và Macro-AUPRC $0{.}6312$, đều cao hơn attention pooling của cấu hình đầy đủ; do đó đóng góp của việc giữ token cục bộ được hỗ trợ, còn lợi ích riêng của attention pooling chưa được xác nhận. Giảm số token cục bộ và letterbox cũng không làm hiệu năng suy giảm đồng thời trên mọi độ đo, cho thấy ngân sách token hiện tại chưa chắc tối ưu.
+
+\textbf{Pha huấn luyện.} Chỉ pha 2 đạt Macro-F1 $0{.}5753$ và Macro-AUPRC $0{.}6268$, cao hơn cấu hình đầy đủ, nhưng Macro-AUROC giảm xuống $0{.}9144$ và ECE tăng lên $0{.}1868$. Hợp nhất trực tiếp pha 1 đạt Balanced Accuracy cao nhất trong nhóm mở rộng ($0{.}6217$) nhưng Macro-F1 chỉ $0{.}5401$. Pha căn chỉnh vì vậy tác động đến hình học và cân bằng lớp, song quy trình hai pha đầy đủ chưa tạo ưu thế đồng thời trên các độ đo quyết định, xếp hạng và hiệu chuẩn.
+
+\textbf{Dung hợp.} Nối đặc trưng đạt Macro-AUROC $0{.}9566$ và ECE $0{.}0789$, tốt hơn XBone-Net, nhưng Macro-F1 và Macro-AUPRC giảm còn $0{.}5425$ và $0{.}6019$. Hai hướng chú ý một chiều đạt Macro-F1 $0{.}5559$ và $0{.}5632$, gần hoặc cao hơn cấu hình hai chiều; văn bản truy vấn ảnh còn đạt Macro-AUPRC $0{.}6211$. Vì vậy, kết quả xác nhận ích lợi của dung hợp đa phương thức nhưng chưa chứng minh cross-attention hai chiều vượt nối đặc trưng hoặc chú ý một chiều trên tác vụ phân loại.
+
+\textbf{Đầu phân loại và cân bằng lớp.} Đầu tuyến tính đạt Macro-F1 cao nhất ($0{.}5889$) nhưng Macro-AUROC thấp nhất nhóm ($0{.}9080$). Bỏ trọng số lớp tăng Macro-AUROC lên $0{.}9528$ và Macro-F1 lên $0{.}5641$, trong khi Balanced Accuracy giảm từ $0{.}5844$ xuống $0{.}5582$ và ECE tăng. Bỏ bias theo lớp cũng tăng Macro-F1 nhưng làm Macro-AUROC và hiệu chuẩn suy giảm. Đầu tâm lớp cùng các cơ chế cân bằng do đó duy trì một dạng đánh đổi, không phải lựa chọn tối ưu tuyệt đối cho mọi tiêu chí.
+
+Tổng hợp RQ2, các thành phần của XBone-Net tạo ra những lợi ích khác nhau theo mục tiêu: token ảnh cục bộ hỗ trợ xếp hạng và hiệu chuẩn; pha huấn luyện ảnh hưởng đến cân bằng lớp và hình học; dung hợp và đầu phân loại điều chỉnh đánh đổi giữa Macro-F1, Macro-AUROC, Macro-AUPRC và ECE. Không có bằng chứng cho thấy mọi thành phần của cấu hình đầy đủ đều cần thiết hoặc tối ưu riêng cho phân loại. Đóng góp kiến trúc vì vậy được xác lập ở việc xây dựng và kiểm chứng một pipeline có thể phân tích theo mô-đun, đồng thời chỉ ra rõ những thành phần cần đơn giản hóa trong nghiên cứu tiếp theo.
+
 \clearpage
 
-\subsection{OOD hậu xử lý}
+\subsection{OOD hậu xử lý và đối sánh biểu diễn theo RQ4}
+\label{subsec:rq4_ood_results}
 
-Kết quả trong Bảng \ref{tab:ood_semantic_btxrd} và Hình \ref{fig:ood_mahalanobis_semantic_btxrd} cho thấy hiệu quả phát hiện OOD của XBone-Net thay đổi đáng kể theo loại dịch chuyển dữ liệu. Trên BTXRD, Mahalanobis-centroid đạt kết quả tốt nhất trong bốn phương pháp với AUROC-OOD $0{.}8042\pm0{.}0938$, AUPR-Out $0{.}8009\pm0{.}0609$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$. Trong kịch bản Semantic OOD, các kết quả thấp hơn: Mahalanobis-centroid đạt AUROC-OOD cao nhất ($0{.}5840\pm0{.}0203$), Entropy đạt AUPR-Out cao nhất ($0{.}0634\pm0{.}0204$), còn Cosine-centroid có FPR@95\%TPR thấp nhất ($0{.}8966\pm0{.}0345$).
+Kết quả trong Bảng \ref{tab:ood_semantic_btxrd} và Hình \ref{fig:ood_mahalanobis_semantic_btxrd} cho thấy hiệu quả phát hiện OOD của XBone-Net thay đổi đáng kể theo loại dịch chuyển dữ liệu. Trên BTXRD, Mahalanobis-centroid đạt kết quả tốt nhất trong bốn phương pháp với AUROC-OOD $0{.}8042\pm0{.}0938$, AUPR-Out $0{.}8009\pm0{.}0609$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$. Trong kịch bản Semantic OOD, Mahalanobis-centroid đạt AUROC-OOD cao nhất ($0{.}6286\pm0{.}0177$), còn kNN đạt AUPR-Out cao nhất ($0{.}1083\pm0{.}0112$) và đồng hạng FPR@95\%TPR thấp nhất với entropy ($0{.}8788$). Các giá trị Semantic OOD vẫn thấp hơn đáng kể so với BTXRD, nhưng cao hơn kết quả sơ bộ trên tập con chưa đầy đủ.
 
-Các phép đánh giá tại từng hạt giống sử dụng 669 mẫu CTCH trong phân phối và 750 mẫu BTXRD ngoài phân phối. Đối với Semantic OOD, các tệp kết quả hiện có chỉ chứa 29 trong tổng số 44 mẫu dự kiến do 15 mẫu gặp lỗi quyền truy cập tại thời điểm chạy; vì vậy các giá trị tổng hợp của kịch bản này cần được hiểu trong phạm vi 29 mẫu đã xử lý. Số liệu chi tiết và cỡ mẫu của từng hạt giống được trình bày tại Bảng \ref{tab:appendix-ood-seeds}.
+Các phép đánh giá tại từng hạt giống sử dụng 669 mẫu CTCH trong phân phối, đủ 44 mẫu Semantic OOD và 750 mẫu BTXRD ngoài phân phối. Các artifact Semantic OOD đều có trạng thái hoàn tất, không cho phép bỏ qua mẫu thiếu và ghi nhận độ phủ $44/44$. Số liệu chi tiết và cỡ mẫu của từng hạt giống được trình bày tại Bảng \ref{tab:appendix-ood-seeds}.
 
 \input{generated/chapter4_results/table_ood_semantic_btxrd}
+
+Bảng \ref{tab:rq4_ood_baselines} giữ cố định Mahalanobis-centroid để so sánh chất lượng biểu diễn giữa các cấu hình RQ4. Trên Semantic OOD, BioMedCLIP zero-shot đạt AUROC-OOD cao nhất ($0{.}6362$) nhưng chỉ có một lần đánh giá tất định ở seed 42. XBone-Net đạt AUROC-OOD $0{.}6286\pm0{.}0177$, thấp hơn $0{.}0076$ điểm, đồng thời đạt AUPR-Out cao nhất ($0{.}1034\pm0{.}0092$) và FPR@95\%TPR thấp nhất ($0{.}8864\pm0{.}0394$) trong phép so sánh cố định này. Vì vậy, XBone-Net cạnh tranh trên Semantic OOD nhưng không dẫn đầu đồng thời mọi tiêu chí; đặc biệt, FPR vẫn cho thấy phần lớn mẫu OOD chưa bị từ chối.
+
+Trên BTXRD, nối đặc trưng dẫn đầu cả ba độ đo với AUROC-OOD $0{.}8966\pm0{.}0478$, AUPR-Out $0{.}8713\pm0{.}0555$ và FPR@95\%TPR $0{.}5978\pm0{.}1744$. XBone-Net đứng sau với các giá trị tương ứng $0{.}8042\pm0{.}0938$, $0{.}8009\pm0{.}0609$ và $0{.}7071\pm0{.}0678$, nhưng cao hơn chỉ-pha-2 và đầu tuyến tính về AUROC-OOD. Kết quả cho thấy mô-đun dung hợp phức tạp và đầu tâm lớp không mặc nhiên tạo không gian OOD tốt hơn; phép nối đơn giản có thể duy trì cấu trúc khoảng cách thuận lợi hơn cho Mahalanobis trong dịch chuyển liên bộ dữ liệu.
+
+\input{generated/chapter4_results/table_rq4_ood_baselines}
 
 \begin{figure}[H]
 \centering
@@ -727,7 +837,7 @@ Các phép đánh giá tại từng hạt giống sử dụng 669 mẫu CTCH tro
 
 Khoảng cách giữa hai kịch bản có thể liên quan đến mức độ dịch chuyển trong không gian biểu diễn. BTXRD khác CTCH đồng thời về nguồn dữ liệu, phân bố ảnh, không gian nhãn và nội dung văn bản, do đó biểu diễn dung hợp của các mẫu này có khả năng nằm xa hơn các cụm lớp CTCH, Mahalanobis-centroid có thể tận dụng thêm phương sai và tương quan giữa các chiều để biểu diễn dạng sai khác này. Ngược lại, các mẫu Semantic OOD vẫn có thể chia sẻ vị trí giải phẫu, biểu hiện tổn thương hoặc từ khóa bệnh sử với các lớp đã biết, khiến chúng nằm gần miền biểu diễn ID dù không thuộc không gian nhãn đích. Kết quả Entropy thấp trên cả hai kịch bản cũng gợi ý rằng độ bất định của đầu phân loại chưa phản ánh đầy đủ khoảng cách hình học giữa mẫu kiểm thử và dữ liệu huấn luyện. Tuy nhiên, do hai kịch bản khác nhau trên nhiều yếu tố đồng thời, các kết quả hiện có chưa cho phép quy toàn bộ chênh lệch cho riêng miền ảnh, văn bản hoặc cấu trúc nhãn.
 
-Nhìn chung, biểu diễn dung hợp cung cấp tín hiệu hậu xử lý hữu ích hơn đối với dịch chuyển liên bộ dữ liệu BTXRD so với Semantic OOD gần phân phối, nhưng điểm vận hành vẫn còn hạn chế. Theo quy ước của nghiên cứu, ngưỡng FPR@95\%TPR được chọn để chấp nhận ít nhất $95\%$ mẫu ID; giá trị $0{.}7071$ của Mahalanobis-centroid trên BTXRD có nghĩa là khoảng $70{.}71\%$ mẫu OOD vẫn bị chấp nhận nhầm như ID và lọt qua cơ chế từ chối tại ngưỡng này. Độ lệch chuẩn tương đối lớn cũng phản ánh sự nhạy cảm theo hạt giống. Vì vậy, kết quả phù hợp để xem mô-đun OOD như một tín hiệu cảnh báo bổ trợ cho dự đoán phân loại, thay vì một cơ chế từ chối tự động hoặc bằng chứng về độ an toàn khi triển khai.
+Nhìn chung, RQ4 được trả lời theo hướng không gian biểu diễn của các mô hình cung cấp tín hiệu phân biệt OOD, rõ hơn đối với dịch chuyển liên bộ dữ liệu BTXRD so với Semantic OOD gần phân phối. XBone-Net cạnh tranh tốt hơn trên Semantic OOD sau khi đánh giá đủ 44 mẫu, nhưng nối đặc trưng vẫn tốt hơn rõ rệt trên BTXRD. Theo quy ước của nghiên cứu, ngưỡng FPR@95\%TPR được chọn để chấp nhận ít nhất $95\%$ mẫu ID; giá trị $0{.}7071$ của XBone-Net trên BTXRD có nghĩa là khoảng $70{.}71\%$ mẫu OOD vẫn bị chấp nhận nhầm như ID và lọt qua cơ chế từ chối tại ngưỡng này. Trên Semantic OOD, FPR@95\%TPR tốt nhất của XBone-Net vẫn là $0{.}8788$, còn nối đặc trưng trên BTXRD đạt $0{.}5978$. Cỡ mẫu Semantic OOD chỉ là 44 và độ lệch chuẩn BTXRD còn lớn, nên sức mạnh kết luận vẫn hạn chế dù không còn thiếu mẫu. Vì vậy, OOD hậu xử lý chỉ nên được xem là tín hiệu cảnh báo bổ trợ, không phải cơ chế từ chối tự động hoặc bằng chứng về độ an toàn khi triển khai.
 
 \subsection{Giải thích bằng Integrated Gradients}
 

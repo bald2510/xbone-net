@@ -1,0 +1,17 @@
+# @package _global_
+# RQ1 modality control: remove the synthetic clinical text on BTXRD.
+
+defaults:
+  - /experiment/btxrd/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: btxrd/ablation_study/modality/image_only
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    use_text: false
+    init_from_phase1_merged: false
+    init_from_phase1_checkpoint: false

@@ -1,22 +1,86 @@
 \chapter{Kết luận và hướng phát triển}
-\section{Kết luận}
 
-Khóa luận đã nghiên cứu và đề xuất một hệ thống phân loại ảnh X-quang xương đa phương thức kết hợp khả năng phát hiện dữ liệu ngoài phân phối nhằm hỗ trợ chẩn đoán các bệnh lý cơ xương khớp. Hệ thống khai thác đồng thời hai nguồn thông tin gồm ảnh X-quang và thông tin lâm sàng, từ đó tận dụng được tính bổ sung giữa hai phương thức dữ liệu để nâng cao hiệu quả phân loại.
+\section{Tổng kết}
 
-Trên cơ sở mô hình nền BioMedCLIP, nghiên cứu áp dụng kỹ thuật tinh chỉnh tham số hiệu quả LoRA để thích nghi với miền dữ liệu X-quang xương mà không làm thay đổi toàn bộ trọng số của mô hình. Đặc trưng hình ảnh và văn bản được kết hợp thông qua cơ chế chú ý hai chiều, sau đó được huấn luyện bằng sự kết hợp giữa hàm mất mát Cross-Entropy và Prototypical Loss. Trong đó, Cross-Entropy đảm nhiệm nhiệm vụ tối ưu phân loại, còn Prototypical Loss giúp xây dựng không gian đặc trưng có tính phân biệt cao, tạo tiền đề cho giai đoạn phát hiện dữ liệu ngoài phân phối.
+Khóa luận xây dựng và đánh giá XBone-Net, một pipeline phân loại ảnh X-quang xương đa phương thức dựa trên BioMedCLIP. Pipeline kết hợp ảnh toàn cục, các vùng ảnh cục bộ độ phân giải cao và văn bản đi kèm; biểu diễn được dung hợp bằng chú ý chéo và phân loại theo độ tương đồng với tâm lớp thực nghiệm. Backbone được thích nghi bằng LoRA trong quy trình hai pha. Trên biểu diễn sau dung hợp, khóa luận còn đánh giá bốn điểm OOD hậu xử lý gồm cosine-centroid, Mahalanobis-centroid, kNN và entropy.
 
-Đối với bài toán phát hiện dữ liệu ngoài phân phối, luận văn lựa chọn phương pháp Mahalanobis Distance theo cơ chế hậu xử lý (post-hoc), với không gian đặc trưng đã được học dựa vào mạng nguyên mẫu. Cách tiếp cận này tận dụng trực tiếp không gian đặc trưng đã được học trong quá trình huấn luyện để đánh giá mức độ bất thường của mẫu kiểm thử mà không cần thay đổi kiến trúc hoặc huấn luyện lại mô hình. Điều này giúp nâng cao độ tin cậy của hệ thống khi triển khai trong các tình huống lâm sàng thực tế, nơi có thể xuất hiện các bệnh lý hoặc trường hợp chưa từng xuất hiện trong dữ liệu huấn luyện.
+Các thí nghiệm sử dụng ba hạt giống trên BTXRD và CTCH, bao gồm đối chứng phương thức, leave-one-out, các nhóm thành phần, các mức thích nghi backbone, thiết lập ít mẫu và hai kịch bản OOD. Kết quả không cho thấy một cấu hình duy nhất dẫn đầu trên mọi độ đo. XBone-Net có ưu thế ở một số độ đo xếp hạng, một số ngân sách ít mẫu và mức sử dụng tham số huấn luyện; ngược lại, mean pooling, đầu tuyến tính hoặc nối đặc trưng có thể tốt hơn ở những mục tiêu cụ thể. Vì vậy, kết luận của khóa luận tập trung vào các đánh đổi đã được kiểm chứng thay vì khẳng định ưu thế tuyệt đối.
 
-Các thực nghiệm được thực hiện trên bộ dữ liệu BTXRD kết hợp với bộ dữ liệu nội bộ CTCH đã cho thấy phương pháp đề xuất đạt hiệu quả tốt trong nhiệm vụ phân loại, đồng thời xây dựng được không gian đặc trưng phù hợp để hỗ trợ phát hiện dữ liệu ngoài phân phối. Kết quả cũng cho thấy việc kết hợp thông tin lâm sàng với ảnh X-quang giúp cải thiện khả năng nhận diện bệnh lý so với việc chỉ sử dụng một nguồn dữ liệu.
+Theo phạm vi cập nhật kết quả của khóa luận, chương này trả lời RQ1--RQ4. RQ5 về Integrated Gradients không được dùng để hình thành các kết luận dưới đây vì đánh giá định lượng trên toàn bộ tập kiểm thử CTCH chưa hoàn tất.
 
-Nhìn chung, luận văn đã hoàn thành các mục tiêu nghiên cứu đã đề ra, bao gồm xây dựng mô hình phân loại đa phương thức dựa trên BioMedCLIP, tối ưu biểu diễn đặc trưng bằng Prototypical Loss và tích hợp cơ chế phát hiện dữ liệu ngoài phân phối dựa trên khoảng cách Mahalanobis. Các kết quả đạt được là cơ sở cho việc phát triển các hệ thống hỗ trợ chẩn đoán có độ tin cậy cao hơn trong lĩnh vực chẩn đoán hình ảnh y khoa.
+\section{Trả lời các câu hỏi nghiên cứu}
+
+\subsection{RQ1: Vai trò của ảnh và văn bản}
+
+Kết hợp ảnh với văn bản cải thiện Macro-F1 so với chỉ ảnh trên cả hai bộ dữ liệu. Trên BTXRD, Macro-F1 tăng từ $0{.}3165\pm0{.}0081$ lên $0{.}6010\pm0{.}0034$; trên CTCH, chỉ số này tăng từ $0{.}3984\pm0{.}0176$ lên $0{.}5558\pm0{.}0072$. So với chỉ văn bản, mô hình đầy đủ cũng tăng Macro-F1 $0{.}0695$ điểm trên BTXRD và $0{.}0788$ điểm trên CTCH.
+
+Hai bộ dữ liệu không có ý nghĩa bằng chứng giống nhau. CTCH có bệnh sử lâm sàng sẵn có; khi cả bệnh sử và mô tả X-quang được xáo trộn khác lớp, Macro-F1 giảm từ $0{.}5558\pm0{.}0072$ xuống $0{.}3039\pm0{.}0048$, cho thấy mô hình phụ thuộc vào quan hệ ghép cặp ảnh--văn bản. Trên BTXRD, khi cả văn bản lâm sàng tổng hợp và mô tả X-quang được thay bằng văn bản của một mẫu khác lớp, Macro-F1 giảm từ $0{.}6010\pm0{.}0034$ xuống $0{.}0068\pm0{.}0014$ và Macro-AUROC giảm từ $0{.}9243\pm0{.}0298$ xuống $0{.}4124\pm0{.}0644$. Mức giảm cực lớn phù hợp với việc phép can thiệp bắt buộc chọn mẫu cho khác lớp và văn bản tổng hợp BTXRD mang tín hiệu mạnh liên hệ với nhãn. Do đó, kết quả này xác nhận độ nhạy với ghép cặp trên BTXRD, nhưng không chứng minh giá trị tương đương của bệnh sử tự nhiên.
+
+\textbf{Trả lời RQ1:} kết hợp ảnh và văn bản cải thiện Macro-F1 so với chỉ ảnh hoặc chỉ văn bản trên cả hai tập dữ liệu, và phép ghép sai khác lớp làm hiệu năng giảm rõ rệt, xác nhận mô hình sử dụng quan hệ liên phương thức thay vì chỉ sự hiện diện độc lập của từng đầu vào. Tuy nhiên, ý nghĩa lâm sàng phụ thuộc nguồn văn bản: CTCH có bệnh sử sẵn có, trong khi độ nhạy rất lớn trên BTXRD chịu ảnh hưởng của văn bản tổng hợp liên hệ mạnh với nhãn. Vì các cấu hình đơn phương thức đồng thời bỏ pha 1 và đối chứng xáo trộn thay cả hai nguồn văn bản, các chênh lệch chưa phải ước lượng đóng góp biên thuần túy của từng phương thức văn bản.
+
+\subsection{RQ2: Đóng góp của các thành phần XBone-Net}
+
+Các thành phần ảnh hưởng đến những mục tiêu khác nhau. Bỏ nhánh high-resolution gần như không đổi Macro-F1 nhưng làm Macro-AUROC giảm từ $0{.}9473$ xuống $0{.}9148$, Macro-AUPRC giảm từ $0{.}6189$ xuống $0{.}5990$ và ECE tăng từ $0{.}1032$ lên $0{.}1743$. Tuy nhiên, mean pooling vượt attention pooling ở Macro-F1, Macro-AUROC và Macro-AUPRC, nên lợi ích thuộc về việc duy trì thông tin cục bộ nhiều hơn là cơ chế pooling hiện tại.
+
+Chỉ huấn luyện pha 2 làm Macro-F1 tăng lên $0{.}5753$ nhưng Macro-AUROC giảm xuống $0{.}9144$ và ECE tăng lên $0{.}1868$. Nối đặc trưng đạt Macro-AUROC $0{.}9566$ và ECE $0{.}0789$, trong khi Macro-F1 giảm còn $0{.}5425$. Hai hướng chú ý một chiều đạt kết quả gần cấu hình hai chiều, vì vậy chưa có bằng chứng cross-attention hai chiều vượt trội riêng trên tác vụ phân loại. Đầu tuyến tính đạt Macro-F1 $0{.}5889$, cao hơn đầu tâm lớp, nhưng Macro-AUROC chỉ $0{.}9080$. Bỏ trọng số lớp hoặc bias theo lớp cũng cải thiện một số độ đo và làm giảm những độ đo khác.
+
+\textbf{Trả lời RQ2:} nhánh ảnh cục bộ, chiến lược hai pha, dung hợp và đầu tâm lớp đều thay đổi hình học biểu diễn, quyết định lớp hoặc hiệu chuẩn, nhưng không thành phần nào tạo cải thiện nhất quán trên mọi tiêu chí. Cấu hình đầy đủ là một điểm đánh đổi giữa Macro-F1, khả năng xếp hạng và hiệu chuẩn; attention pooling và cross-attention hai chiều là hai lựa chọn cần được đơn giản hóa hoặc kiểm chứng thêm.
+
+\subsection{RQ3: Đánh đổi dữ liệu, tham số và chi phí tính toán}
+
+Trong thiết lập toàn bộ dữ liệu CTCH, LoRA cập nhật $8{.}63$ triệu tham số ($4{.}22\%$), thấp hơn nhiều so với $199{.}43$ triệu tham số của tinh chỉnh toàn bộ. LoRA đạt Macro-F1 $0{.}5558\pm0{.}0072$ và Macro-AUPRC $0{.}6189\pm0{.}0145$, cao hơn tinh chỉnh toàn bộ lần lượt $0{.}0146$ và $0{.}0357$ điểm; Macro-AUROC của hai thiết lập gần nhau. So với đóng băng backbone, LoRA cũng cải thiện Macro-F1 và Macro-AUPRC.
+
+Trong thiết lập ít mẫu, XBone-Net nổi bật nhất ở CTCH với một mẫu mỗi lớp và đạt Macro-F1 cao nhất trên BTXRD ở mức 10 và 20 mẫu. Lợi thế giảm khi ngân sách dữ liệu tăng và không nhất quán trên Macro-AUROC hoặc Macro-AUPRC. Về chi phí, XBone-Net cần $229{.}020$ GFLOP/mẫu và có thông lượng thấp hơn các baseline LoRA. Thời gian huấn luyện wall-clock là $2{.}61\pm0{.}44$ giờ trên ba seed, trong khi tinh chỉnh toàn bộ có một phép đo $1{.}94$ giờ; quy trình hai pha và nhánh high-resolution làm cho tiết kiệm tham số không đồng nghĩa với tiết kiệm thời gian.
+
+\textbf{Trả lời RQ3:} LoRA đạt hiệu quả tham số rõ ràng và duy trì hiệu năng cạnh tranh, đồng thời XBone-Net có lợi thế trong một số thiết lập cực ít nhãn. Tuy nhiên, kết quả không chứng minh lợi thế về thời gian huấn luyện hoặc suy luận. So sánh thời gian với tinh chỉnh toàn bộ còn hạn chế vì mới có một phép đo full fine-tuning.
+
+\subsection{RQ4: Khả năng phân biệt dữ liệu ngoài phân phối}
+
+Với XBone-Net, Mahalanobis-centroid đạt AUROC-OOD $0{.}8042\pm0{.}0938$ trên BTXRD và $0{.}6286\pm0{.}0177$ trên đủ 44 mẫu Semantic OOD. Điều này cho thấy biểu diễn dễ phân biệt dịch chuyển liên bộ dữ liệu hơn các trường hợp ngoài không gian nhãn nhưng còn gần phân phối CTCH. Tuy nhiên, tại ngưỡng giữ ít nhất $95\%$ ID, FPR@95\%TPR vẫn là $0{.}7071$ trên BTXRD và $0{.}8864$ trên Semantic OOD với Mahalanobis-centroid, tức phần lớn mẫu OOD chưa bị từ chối.
+
+Đối sánh cùng Mahalanobis-centroid cho thấy nối đặc trưng đạt kết quả BTXRD tốt hơn XBone-Net, với AUROC-OOD $0{.}8966\pm0{.}0478$ và FPR@95\%TPR $0{.}5978\pm0{.}1744$. Trên Semantic OOD, BioMedCLIP zero-shot có AUROC-OOD $0{.}6362$ ở một lần đánh giá tất định, cao hơn nhẹ XBone-Net; ngược lại, XBone-Net đạt AUPR-Out cao nhất ($0{.}1034\pm0{.}0092$) và FPR@95\%TPR thấp nhất ($0{.}8864\pm0{.}0394$) trong phép so sánh Mahalanobis. Vì vậy, cross-attention và đầu tâm lớp tạo biểu diễn cạnh tranh trên Semantic OOD nhưng không bảo đảm không gian tốt nhất cho mọi dạng dịch chuyển.
+
+\textbf{Trả lời RQ4:} các biểu diễn được đánh giá có chứa tín hiệu OOD, rõ hơn với dịch chuyển BTXRD; XBone-Net cạnh tranh trên Semantic OOD nhưng không vượt trội đồng thời các baseline và kịch bản. FPR@95\%TPR còn cao ở cả hai dạng dịch chuyển, nên mô-đun OOD chỉ phù hợp làm cảnh báo bổ trợ và chưa đủ cho cơ chế từ chối tự động.
+
+\section{Đối chiếu với các đóng góp chính}
+
+\begin{enumerate}
+    \item \textbf{Quy trình dữ liệu đa phương thức} được hỗ trợ bởi kết quả chỉ ảnh, chỉ văn bản và đa phương thức trên hai bộ dữ liệu. Đóng góp này đi kèm phân biệt rõ bệnh sử CTCH với văn bản tổng hợp BTXRD.
+    \item \textbf{Nhánh ảnh độ phân giải cao và dung hợp đa phương thức} đã được xây dựng và kiểm chứng theo nhóm thành phần. Thí nghiệm xác nhận ích lợi của thông tin cục bộ đối với một số độ đo, nhưng không xác nhận attention pooling hoặc cross-attention hai chiều là tối ưu.
+    \item \textbf{Quy trình hai pha với LoRA} giảm mạnh số tham số cập nhật và đạt hiệu năng cạnh tranh với tinh chỉnh toàn bộ. Đóng góp này là hiệu quả tham số, không phải giảm bảo đảm về thời gian tính toán.
+    \item \textbf{Đầu phân loại dựa trên tâm lớp} cung cấp một cấu hình có chất lượng xếp hạng cạnh tranh và tương thích với các score hình học, nhưng đầu tuyến tính tốt hơn về Macro-F1 trong thí nghiệm CTCH.
+    \item \textbf{Khung OOD hậu xử lý} cho phép so sánh nhất quán nhiều score và nhiều biểu diễn trên Semantic OOD và BTXRD. Kết quả xác lập khả năng cảnh báo ở mức nghiên cứu, đồng thời định lượng rõ giới hạn tại điểm vận hành.
+\end{enumerate}
+
+\section{Điểm mạnh}
+
+\begin{itemize}
+    \item Thiết kế thực nghiệm sử dụng ba seed cho các cấu hình có huấn luyện, báo cáo đồng thời độ đo quyết định lớp, xếp hạng, hiệu chuẩn, tham số và chi phí.
+    \item Vai trò của phương thức được kiểm tra bằng đối chứng chỉ ảnh, chỉ văn bản và xáo trộn có kiểm soát, giúp tránh quy mọi cải thiện cho kiến trúc.
+    \item RQ2 được phân tích theo từng nhóm thành phần và giữ riêng leave-one-out, làm rõ các đánh đổi thay vì chỉ báo cáo một cấu hình tốt nhất.
+    \item RQ3 đối chiếu đóng băng, LoRA và tinh chỉnh toàn bộ, đồng thời kết hợp kết quả ít mẫu với số tham số và log thời gian.
+    \item RQ4 sử dụng cùng tập ID, cùng hai kịch bản OOD và cùng score Mahalanobis khi so sánh biểu diễn, hạn chế lợi thế do lựa chọn detector riêng.
+\end{itemize}
+
+\section{Hạn chế}
+
+\begin{itemize}
+    \item Văn bản BTXRD được tổng hợp từ siêu dữ liệu và cờ nhóm bệnh, do đó mang tín hiệu liên hệ mạnh với nhãn và không tương đương bệnh sử tự nhiên. Trên cả hai bộ dữ liệu, đối chứng hiện tại bắt buộc ghép khác lớp và thay đồng thời hai nguồn văn bản; nó chưa tách đóng góp của bệnh sử với mô tả X-quang hoặc mô phỏng các sai lệch nhẹ hơn như ghép sai cùng lớp. Các cấu hình đơn phương thức cũng thay đổi quy trình huấn luyện do bỏ pha 1, nên chưa cô lập hoàn toàn một yếu tố.
+    \item Dữ liệu CTCH đến từ một cơ sở và BTXRD là một bộ dữ liệu công bố; chưa có đánh giá tiền cứu hoặc kiểm định đa trung tâm.
+    \item Semantic OOD đã sử dụng đủ 44 mẫu nhưng cỡ mẫu vẫn nhỏ, chỉ gồm 34 trường hợp chấn thương và 10 trường hợp viêm nhiễm ngoài không gian nhãn. Độ bất định của các ước lượng và phạm vi bao phủ các dạng OOD vì vậy còn hạn chế.
+    \item Nhiều ablation đơn giản vượt cấu hình đầy đủ trên từng độ đo: mean pooling tốt hơn attention pooling ở một số chỉ số, đầu tuyến tính tốt hơn Macro-F1 và nối đặc trưng tốt hơn trên BTXRD OOD. Điều này giới hạn khẳng định về tính cần thiết của kiến trúc đầy đủ.
+    \item LoRA giảm số tham số cập nhật nhưng chi phí suy luận của nhánh high-resolution còn cao. Thời gian full fine-tuning chỉ có $n=1$ và cấu hình đóng băng không còn log thời gian, nên so sánh runtime chưa cân bằng.
+    \item RQ5 chưa có kết quả định lượng trên toàn bộ tập kiểm thử và không được sử dụng trong kết luận của chương này.
+\end{itemize}
 
 \section{Hướng phát triển}
 
-Mặc dù đạt được những kết quả khả quan, phương pháp đề xuất vẫn còn một số hạn chế và có thể được mở rộng trong các nghiên cứu tiếp theo.
+Trước hết, cần hoàn tất các bằng chứng còn thiếu: thu thập runtime full fine-tuning trên đủ ba seed và hoàn thành đánh giá RQ5 trên toàn bộ tập kiểm thử CTCH. Đối với RQ1, cần bổ sung xáo trộn riêng từng nguồn văn bản BTXRD, ghép sai cùng lớp và nhiễu văn bản từng phần để định lượng độ nhạy theo mức độ thay vì chỉ dùng trường hợp khác lớp cực đoan. Đối với RQ4, cần mở rộng Semantic OOD vượt quá 44 mẫu hiện tại và bổ sung nhiều nhóm bệnh ngoài không gian nhãn. Đây là các bước ưu tiên trước khi mở rộng khẳng định của khóa luận.
 
-Thứ nhất, phương pháp phát hiện dữ liệu ngoài phân phối hiện được xây dựng theo hướng hậu xử lý bằng khoảng cách Mahalanobis. Các nghiên cứu tiếp theo có thể khảo sát những phương pháp OOD hiện đại hơn hoặc tích hợp trực tiếp mục tiêu phát hiện OOD vào quá trình huấn luyện để nâng cao khả năng phát hiện các trường hợp Near-OOD.
+Về kiến trúc, kết quả gợi ý một phiên bản XBone-Net gọn hơn dùng mean pooling hoặc ít token cục bộ hơn, đồng thời khảo sát concat hoặc chú ý một chiều. Việc chọn cấu hình nên dựa trên tối ưu đa mục tiêu giữa Macro-F1, Macro-AUROC, Macro-AUPRC, ECE, GFLOPs và độ trễ thay vì chỉ một độ đo. Đầu tuyến tính và đầu tâm lớp cũng có thể được kết hợp hoặc hiệu chỉnh hậu nghiệm để duy trì Macro-F1 mà không mất hình học phục vụ OOD.
 
-Thứ hai, phạm vi thực nghiệm của luận văn mới được đánh giá trên bộ dữ liệu BTXRD và bộ dữ liệu CTCH. Trong tương lai, cần mở rộng thực nghiệm trên nhiều bộ dữ liệu X-quang xương có quy mô lớn hơn cũng như đánh giá khả năng tổng quát hóa giữa các bệnh viện, thiết bị chụp và điều kiện thu nhận ảnh khác nhau.
+Về dữ liệu đa phương thức, cần đánh giá thêm các tình huống thiếu văn bản, văn bản sai một phần, văn bản lỗi thời và mức độ phụ thuộc vào từng trường siêu dữ liệu. Với BTXRD, nên tách rõ văn bản được tạo từ thông tin không chứa nhãn với văn bản dùng cờ nhóm bệnh, qua đó định lượng nguy cơ rò rỉ ngữ nghĩa. Với CTCH, cần kiểm định trên bệnh sử từ cơ sở khác và đánh giá sai lệch dịch thuật.
 
-Cuối cùng, hệ thống hiện tập trung vào hai nhiệm vụ chính là phân loại và phát hiện dữ liệu ngoài phân phối. Trong tương lai, có thể tích hợp thêm các phương pháp giải thích mô hình (Explainable AI) hoặc các mô hình ngôn ngữ lớn y khoa nhằm hỗ trợ sinh báo cáo chẩn đoán, giải thích kết quả dự đoán và tăng cường khả năng tương tác với bác sĩ trong quá trình hỗ trợ ra quyết định lâm sàng.
+Về OOD, cần mở rộng từ hai kịch bản hiện tại sang near-OOD có kiểm soát, dịch chuyển thiết bị và dịch chuyển bệnh viện; hiệu chỉnh ngưỡng trên tập xác thực độc lập; đồng thời khảo sát các mục tiêu huấn luyện trực tiếp cho OOD hoặc selective prediction. Mọi cơ chế từ chối cần được đánh giá bằng chi phí lỗi lâm sàng và không chỉ bằng AUROC.
+
+Cuối cùng, cần thực hiện kiểm định ngoài và nghiên cứu tiền cứu với bác sĩ đọc phim. Chỉ sau khi xác nhận độ ổn định theo cơ sở, thiết bị, quần thể và chất lượng văn bản, hệ thống mới có thể được xem xét như một công cụ hỗ trợ quyết định thay vì một mô hình thử nghiệm.

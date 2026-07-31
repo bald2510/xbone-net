@@ -20,9 +20,10 @@ The OOD protocol fits density estimators on CTCH train, calibrates thresholds on
 CTCH validation ID only, and evaluates on CTCH test versus:
 
 1. CTCH semantic OOD;
-2. FracAtlas domain OOD (primary analysis uses visual-global features);
-3. cross-class report mismatch;
-4. same-class report mismatch (secondary control).
+2. BTXRD cross-dataset OOD.
+
+Report mismatch remains available as a separate consistency control, but is not
+part of the default OOD dataset evaluation.
 
 The explainability protocol performs stratified batch analysis with integrated
 gradients, visual and clinical-token attribution, branch ablation,
@@ -33,7 +34,7 @@ and full-dimensional representation/clustering metrics.
 Useful subsets:
 
 ```powershell
-python tools/benchmark/ood_analysis.py --seeds 42 --analyses ood --ood-scenarios domain_ood
+python tools/benchmark/ood_analysis.py --seeds 42 --analyses ood --ood-scenarios semantic_ood domain_ood_btxrd
 python tools/benchmark/ood_analysis.py --seeds 42 --analyses explainability
 python tools/benchmark/ood_analysis.py --feature-only
 python tools/benchmark/ood_analysis.py --table

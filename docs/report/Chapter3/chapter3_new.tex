@@ -78,7 +78,7 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
 \label{subsec:ch3_image_preprocessing}
 \label{subsec:ch3_high_resolution}
 
-Ảnh X-quang có thể khác nhau về độ phân giải, tỷ lệ khung hình và độ rộng vùng nền do quy trình thu nhận ảnh, trong khi bộ mã hóa thị giác tiếp nhận ảnh vuông có kích thước cố định. Việc co giãn trực tiếp toàn bộ ảnh có thể làm thay đổi tỷ lệ giải phẫu và làm suy giảm một phần chi tiết khu trú; do đó, quy trình tạo một ảnh toàn cục duy trì bố cục chung và bốn ảnh cục bộ tập trung vào các vùng có nội dung giải phẫu hoặc đặc trưng kết cấu đáng chú ý. Quá trình lựa chọn được thực hiện từ tín hiệu điểm ảnh thông qua các kỹ thuật xử lý ảnh.
+Ảnh X-quang $x_i^{img}$ có thể khác nhau về độ phân giải, tỷ lệ khung hình và độ rộng vùng nền do quy trình thu nhận ảnh, trong khi bộ mã hóa thị giác tiếp nhận ảnh vuông có kích thước cố định. Việc co giãn trực tiếp toàn bộ ảnh có thể làm thay đổi tỷ lệ giải phẫu và làm suy giảm một phần chi tiết khu trú; do đó, quy trình tạo một ảnh toàn cục $x_i^{img,g}$ duy trì bố cục chung và bốn ảnh cục bộ $x_{i,m}^{img,\ell}$ tập trung vào các vùng có nội dung giải phẫu hoặc đặc trưng kết cấu đáng chú ý. Các ký hiệu này được dùng tiếp trong phần bộ mã hóa thị giác, tránh định nghĩa thêm một hệ ký hiệu riêng cho cùng các đầu vào. Quá trình lựa chọn được thực hiện hoàn toàn từ tín hiệu điểm ảnh.
 
 \begin{figure}[H]
     \centering
@@ -87,34 +87,160 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
     \label{fig:ch3_high_resolution_preprocessing}
 \end{figure}
 
-Như minh họa trong Hình \ref{fig:ch3_high_resolution_preprocessing}, quy trình gồm xác định vùng tiền cảnh, cắt vùng nội dung, sinh và lựa chọn các cửa sổ ứng viên, ánh xạ các cửa sổ về ảnh nguồn, trích xuất bốn ảnh cục bộ và tạo ảnh toàn cục. Trước tiên, ảnh được chuyển sang thang xám và cường độ nền được ước lượng từ trung vị của dải điểm ảnh nằm dọc biên ảnh. 
+Như minh họa trong Hình \ref{fig:ch3_high_resolution_preprocessing}, quy trình gồm xác định vùng tiền cảnh, cắt vùng nội dung, sinh và lựa chọn các cửa sổ ứng viên, ánh xạ các cửa sổ về ảnh nguồn, trích xuất bốn ảnh cục bộ và tạo ảnh toàn cục. Trước tiên, $x_i^{img}$ được chuyển thành ảnh thang xám chuẩn hóa $x_i^{gray}$ có cường độ thuộc đoạn $[0,1]$; mức nền được ước lượng từ dải điểm ảnh nằm dọc biên ảnh. Trong các công thức xử lý từng cửa sổ dưới đây, chỉ số mẫu $i$ được lược bỏ ở các đại lượng phụ trợ khi không gây nhập nhằng.
 
 \subsubsection{Xác định vùng tiền cảnh}
 Một điểm ảnh được xem là thuộc vùng tiền cảnh khi độ lệch của nó so với mức nền vượt qua một ngưỡng thích nghi:
 
-\begin{equation}M(p)=\mathbb{I}\left(\left|I(p)-\mu^{\partial}\right|\geq\tau\right),\qquad \tau=\max\left(\tau_{\min},4\sigma^{\partial}\right).\label{eq:ch3_foreground_mask}\end{equation}
+\begin{equation}
+m_i^{fg}(p)
+=
+\mathbb{I}\!\left(
+\left|x_i^{gray}(p)-\mu_i^{\partial}\right|
+\geq \tau_i
+\right),
+\qquad
+\tau_i
+=
+\max\!\left(\tau_{\min},4\sigma_i^{\partial}\right).
+\label{eq:ch3_foreground_mask}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_foreground_mask}, $I(p)$ là cường độ tại vị trí $p$ của ảnh đang xử lý, $\mu^{\partial}$ là trung vị cường độ ở biên ảnh, $\sigma^{\partial}$ là độ lệch tuyệt đối trung vị đã hiệu chỉnh tại biên, $\tau_{\min}$ là mức tương phản tối thiểu, $\tau$ là ngưỡng thích nghi và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Hình chữ nhật bao quanh các hàng và cột có tỷ lệ điểm ảnh tiền cảnh đủ lớn được mở rộng thêm một biên nhỏ để giảm nguy cơ cắt mất cấu trúc giải phẫu; nếu vùng ước lượng quá hẹp, quá nhỏ hoặc không giữ đủ năng lượng tương phản, toàn bộ ảnh $X$ được sử dụng thay cho phép cắt.
+Trong Công thức \ref{eq:ch3_foreground_mask}, $p$ là vị trí điểm ảnh, $\mu_i^{\partial}$ là trung vị cường độ biên, $\sigma_i^{\partial}$ là độ lệch tuyệt đối trung vị đã hiệu chỉnh tại biên, $\tau_{\min}$ là mức tương phản tối thiểu, $\tau_i$ là ngưỡng thích nghi, $m_i^{fg}$ là mặt nạ tiền cảnh và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Hình chữ nhật bao quanh các hàng và cột có tỷ lệ điểm ảnh tiền cảnh đủ lớn được mở rộng thêm một biên nhỏ để giảm nguy cơ cắt mất cấu trúc giải phẫu; nếu vùng ước lượng quá hẹp, quá nhỏ hoặc không giữ đủ năng lượng tương phản, toàn bộ $x_i^{img}$ được sử dụng thay cho phép cắt.
 
-Từ vùng tiền cảnh, ảnh toàn cục được thay đổi kích thước theo cùng một tỷ lệ trên hai trục và được đệm thành ảnh vuông $224\times224$. Hệ số thay đổi kích thước được xác định bởi:
+Từ vùng tiền cảnh, ảnh toàn cục được thay đổi kích thước theo cùng một tỷ lệ trên hai trục và được đệm thành ảnh vuông $224\times224$. Phép tạo đầu vào toàn cục được viết gọn như sau:
 
-\begin{equation}s=\min\left(\frac{224}{W^{f}},\frac{224}{H^{f}}\right),\qquad X^{g}=\mathcal{L}_{224}\!\left(\mathcal{C}(X)\right).\label{eq:ch3_global_image}\end{equation}
+\begin{equation}
+x_i^{img,g}
+=
+\mathcal{L}_{224}\!\left(
+\mathcal{C}\!\left(x_i^{img};m_i^{fg}\right)
+\right).
+\label{eq:ch3_global_image}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_global_image}, $W^{f}$ và $H^{f}$ lần lượt là chiều rộng và chiều cao của vùng tiền cảnh, $s$ là hệ số thay đổi kích thước, $\mathcal{C}(\cdot)$ là phép cắt vùng tiền cảnh và $\mathcal{L}_{224}(\cdot)$ là phép đổi kích thước giữ tỷ lệ kết hợp với đệm biên để thu được ảnh toàn cục $X^{g}$. Màu đệm được ước lượng từ trung vị biên của vùng ảnh thay vì gán cố định bằng màu đen, sau đó ảnh được chuẩn hóa theo quy tắc đầu vào của bộ mã hóa thị giác.
+Trong Công thức \ref{eq:ch3_global_image}, $\mathcal{C}(\cdot)$ là phép cắt theo vùng tiền cảnh và $\mathcal{L}_{224}(\cdot)$ là phép đổi kích thước đồng nhất trên hai trục kết hợp với đệm biên để thu được ảnh vuông $224\times224$. Màu đệm được ước lượng từ trung vị biên của vùng ảnh thay vì gán cố định bằng màu đen, sau đó $x_i^{img,g}$ được chuẩn hóa theo quy tắc đầu vào của bộ mã hóa thị giác.
 
 \subsubsection{Sinh và lựa chọn ứng viên}
 
-Đối với nhánh cục bộ, cạnh dài của vùng tiền cảnh được đưa về tối đa $896$ điểm ảnh mà không phóng lớn ảnh có độ phân giải thấp. Trên ảnh trung gian này, các cửa sổ vuông $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh; một cửa sổ được ưu tiên xem xét khi tỷ lệ điểm ảnh tiền cảnh bên trong không thấp hơn $0{,}60$. Tập cửa sổ ứng viên có thể được biểu diễn như sau:
+Đối với nhánh cục bộ, cạnh dài của vùng tiền cảnh được đưa về tối đa $896$ điểm ảnh mà không phóng lớn ảnh có độ phân giải thấp. Trên ảnh trung gian này, các cửa sổ vuông $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh; một cửa sổ được ưu tiên xem xét khi tỷ lệ điểm ảnh tiền cảnh bên trong không thấp hơn $0{,}60$. Gọi $\mathcal{G}$ là lưới cửa sổ của một ảnh và $r(b)$ là tỷ lệ tiền cảnh trong cửa sổ $b$, tập ứng viên được xác định bởi:
 
-\begin{equation}\mathcal{G}=\operatorname{Grid}\!\left(H^{c},W^{c};224,168\right),\qquad \mathcal{B}=\left\{b\in\mathcal{G}\mid r(b)\geq0{,}60\right\}.\label{eq:ch3_candidate_regions}\end{equation}
+\begin{equation}
+\mathcal{G}
+=
+\operatorname{Grid}\!\left(
+\mathcal{R}_{\leq896}\!\left(
+\mathcal{C}\!\left(x_i^{img};m_i^{fg}\right)
+\right);
+224,168
+\right),
+\qquad
+r(b)
+=
+\frac{1}{|b|}
+\sum_{p\in b}m_i^{fg}(p),
+\qquad
+\mathcal{B}
+=
+\left\{
+b\in\mathcal{G}\mid r(b)\geq0{,}60
+\right\}.
+\label{eq:ch3_candidate_regions}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_candidate_regions}, $H^{c}$ và $W^{c}$ là chiều cao và chiều rộng của ảnh trung gian, $\mathcal{G}$ là lưới các cửa sổ vuông cạnh $224$ được sinh với bước dịch chuyển $168$, $r(b)$ là tỷ lệ điểm ảnh tiền cảnh trong cửa sổ $b$, còn $\mathcal{B}$ là tập cửa sổ đáp ứng ngưỡng tiền cảnh; vị trí cuối mỗi trục được bổ sung khi cần thiết để hạn chế bỏ sót phần biên của vùng giải phẫu.
+Trong Công thức \ref{eq:ch3_candidate_regions}, $\mathcal{R}_{\leq896}$ là phép thu nhỏ giữ tỷ lệ để cạnh dài không vượt quá $896$ điểm ảnh, $|b|$ là số điểm ảnh trong cửa sổ, còn $\mathcal{B}$ là tập cửa sổ đáp ứng ngưỡng tiền cảnh. Trên ảnh trung gian, mức nền được ước lượng lại bằng khoảng có tần suất lớn nhất trong histogram cường độ biên và mặt nạ tiền cảnh được tính lại theo ngưỡng tương phản; để tránh thêm ký hiệu, mặt nạ ở độ phân giải đang xét vẫn được viết là $m_i^{fg}$. Vị trí cuối mỗi trục được bổ sung khi cần thiết để hạn chế bỏ sót phần biên của vùng giải phẫu.
 
-Mỗi cửa sổ ứng viên được chấm điểm từ ba thành phần gồm năng lượng Laplacian biểu thị mức thay đổi cường độ cục bộ, entropy biểu thị mức đa dạng của phân bố mức xám và tỷ lệ tiền cảnh biểu thị lượng nội dung khác nền:
+Mỗi cửa sổ ứng viên được chấm điểm từ ba thành phần gồm đáp ứng Laplacian, entropy mức xám và tỷ lệ tiền cảnh. Laplacian là toán tử đạo hàm bậc hai thường được sử dụng để làm nổi bật biến thiên cường độ và biên ảnh \cite{Marr1980EdgeDetection}; các độ đo dựa trên Laplacian cũng được khảo sát rộng rãi như thước đo độ sắc nét hoặc lượng chi tiết cục bộ \cite{Pertuz2013FocusMeasures}. Với điểm ảnh bên trong ảnh, Laplacian rời rạc bốn láng giềng và năng lượng của một cửa sổ được tính bởi:
 
-\begin{equation}q(b)=0{,}55\,\widehat{E}(b)+0{,}35\,\widehat{\mathcal{H}}(b)+0{,}10\,r(b).\label{eq:ch3_candidate_score}\end{equation}
+\begin{equation}
+\begin{aligned}
+\Delta x_i^{gray}(u,v)
+&=
+4x_i^{gray}(u,v)
+-x_i^{gray}(u-1,v)
+-x_i^{gray}(u+1,v) \\
+&\quad
+-x_i^{gray}(u,v-1)
+-x_i^{gray}(u,v+1),
+\\
+E(b)
+&=
+\frac{1}{|b|}
+\sum_{(u,v)\in b}
+\left|
+\Delta x_i^{gray}(u,v)
+\right|.
+\end{aligned}
+\label{eq:ch3_laplacian_energy}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_candidate_score}, $\widehat{E}(b)$ và $\widehat{\mathcal{H}}(b)$ lần lượt là năng lượng Laplacian và entropy của cửa sổ $b$ sau khi chuẩn hóa về đoạn $[0,1]$, $r(b)$ là tỷ lệ điểm ảnh tiền cảnh và $q(b)$ là điểm thông tin của cửa sổ. Trọng số lớn hơn dành cho năng lượng Laplacian làm điểm số nhạy hơn với biên và biến đổi kết cấu, trong khi entropy và tỷ lệ tiền cảnh cung cấp thêm thông tin về sự đa dạng cường độ và mức độ hiện diện của cấu trúc giải phẫu.
+Tại biên ảnh, giá trị gần nhất được lặp lại trước khi áp dụng toán tử. Công thức \ref{eq:ch3_laplacian_energy} phản ánh đúng hiện thực trong quy trình: $E(b)$ là trung bình trị tuyệt đối của đáp ứng Laplacian, không phải tổng bình phương đáp ứng.
+
+Entropy được xây dựng từ phân bố histogram mức xám theo định nghĩa entropy thông tin của Shannon \cite{Shannon1948Information}. Với $32$ khoảng mức xám và $\pi_k(b)$ là tỷ lệ điểm ảnh của cửa sổ $b$ thuộc khoảng thứ $k$, entropy chuẩn hóa được tính như sau:
+
+\begin{equation}
+\pi_k(b)
+=
+\frac{
+\left|
+\left\{
+p\in b
+\mid
+x_i^{gray}(p)\text{ thuộc khoảng }k
+\right\}
+\right|
+}{
+|b|
+},
+\qquad
+\mathcal{H}(b)
+=
+-\frac{1}{\log_2 32}
+\sum_{\substack{k=1\\\pi_k(b)>0}}^{32}
+\pi_k(b)\log_2\pi_k(b).
+\label{eq:ch3_gray_entropy}
+\end{equation}
+
+Do $\log_2 32=5$, $\mathcal{H}(b)$ thuộc đoạn $[0,1]$ và tăng khi cường độ trong cửa sổ phân bố đa dạng hơn. Trước khi kết hợp các thành phần, $E(b)$ và $\mathcal{H}(b)$ tiếp tục được chuẩn hóa min--max trên toàn bộ tập cửa sổ của cùng ảnh:
+
+\begin{equation}
+\widehat{a}(b)
+=
+\begin{cases}
+\displaystyle
+\frac{
+a(b)-\min_{b'\in\mathcal{G}}a(b')
+}{
+\max_{b'\in\mathcal{G}}a(b')
+-\min_{b'\in\mathcal{G}}a(b')
+},
+&
+\text{nếu }
+\max_{b'\in\mathcal{G}}a(b')
+>
+\min_{b'\in\mathcal{G}}a(b'),
+\\[10pt]
+0,
+&
+\text{ngược lại},
+\end{cases}
+\qquad
+a\in\left\{E,\mathcal{H}\right\}.
+\label{eq:ch3_candidate_normalization}
+\end{equation}
+
+Điểm thông tin cuối cùng của cửa sổ là:
+
+\begin{equation}
+q(b)
+=
+0{,}55\,\widehat{E}(b)
++0{,}35\,\widehat{\mathcal{H}}(b)
++0{,}10\,r(b).
+\label{eq:ch3_candidate_score}
+\end{equation}
+
+Trong Công thức \ref{eq:ch3_candidate_score}, trọng số lớn hơn dành cho đáp ứng Laplacian làm điểm số nhạy hơn với biên và biến đổi kết cấu, trong khi entropy và tỷ lệ tiền cảnh cung cấp thêm thông tin về sự đa dạng cường độ và mức độ hiện diện của cấu trúc giải phẫu.
 
 Việc chọn bốn vùng cục bộ được thực hiện theo hai vai trò. Hai vùng đầu tiên được chọn gần các vị trí phân bố đều dọc theo trục dài của vùng tiền cảnh nhằm duy trì độ bao phủ giải phẫu; với tâm cửa sổ đã chuẩn hóa, phép chọn vùng bao phủ thứ $j$ được mô tả bởi:
 
@@ -134,9 +260,18 @@ Khi mặt nạ tiền cảnh không tạo đủ số cửa sổ đạt ngưỡng
 
 Các hộp được chọn trên ảnh trung gian được ánh xạ ngược về tọa độ của ảnh nguồn trước khi cắt, nhờ đó mỗi vùng cục bộ được lấy từ dữ liệu ảnh ban đầu thay vì từ ảnh trung gian đã thu nhỏ. Mỗi vùng sau đó được giữ tỷ lệ, đệm biên và chuẩn hóa thành ảnh $224\times224$:
 
-\begin{equation}X_{m}^{\ell}=\mathcal{L}_{224}\!\left(X\!\mid_{b_m}\right),\qquad m=1,\ldots,4.\label{eq:ch3_local_images}\end{equation}
+\begin{equation}
+x_{i,m}^{img,\ell}
+=
+\mathcal{L}_{224}\!\left(
+x_i^{img}\!\mid_{b_m}
+\right),
+\qquad
+m=1,\ldots,4.
+\label{eq:ch3_local_images}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_local_images}, $b_m$ là hộp thứ $m$ trên ảnh nguồn, $X\!\mid_{b_m}$ là vùng ảnh được cắt theo hộp này và $X_m^{\ell}$ là ảnh cục bộ tương ứng. Kết quả của quá trình xử lý một ảnh gồm ảnh toàn cục $X^{g}$, bốn ảnh cục bộ $\{X_m^{\ell}\}_{m=1}^{4}$ và tọa độ chuẩn hóa của bốn vùng; các thành phần này được tạo trước bộ mã hóa thị giác, vì vậy cơ chế độ phân giải cao được xem là một bước chuẩn bị đầu vào thay vì một bộ mã hóa độc lập.
+Trong Công thức \ref{eq:ch3_local_images}, $b_m$ là hộp thứ $m$ trên ảnh nguồn và $x_i^{img}\!\mid_{b_m}$ là vùng ảnh được cắt theo hộp này. Kết quả của quá trình xử lý một ảnh gồm $x_i^{img,g}$, bốn ảnh cục bộ $\{x_{i,m}^{img,\ell}\}_{m=1}^{4}$ và tọa độ chuẩn hóa của bốn vùng; các thành phần này được tạo trước bộ mã hóa thị giác, vì vậy cơ chế độ phân giải cao được xem là một bước chuẩn bị đầu vào thay vì một bộ mã hóa độc lập.
 
 \subsection{Bộ mã hóa thị giác}
 \label{subsec:ch3_visual_encoder}

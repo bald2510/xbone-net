@@ -10,6 +10,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
+from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
 BTXRD_CLASS_NAMES = (
@@ -166,19 +167,52 @@ class BTXRDDataset(Dataset):
         self._high_res_selection_cache = {}
         self.preprocess_cfg = preprocess or {}
         self.text_only = bool(kwargs.get("text_only", False))
-        self.shuffle_reports = bool(kwargs.get("shuffle_reports", False))
+        self.shuffle_reports_all_splits = bool(
+            kwargs.get("shuffle_reports", False)
+        )
+        self.shuffle_report_mode = str(
+            kwargs.get("shuffle_report_mode", "derangement")
+        ).lower()
+        configured_shuffle_splits = kwargs.get(
+            "shuffle_report_splits",
+            [],
+        ) or []
+        self.shuffle_report_splits = {
+            "validate" if str(name).lower() == "val" else str(name).lower()
+            for name in configured_shuffle_splits
+        }
+        self.shuffle_reports = (
+            self.shuffle_reports_all_splits
+            or current_split in self.shuffle_report_splits
+        )
         if self.shuffle_reports:
-            import numpy as np
-            self.shuffled_report_indices = np.random.default_rng(seed).permutation(
-                len(self.df)
-            )
+            if self.shuffle_report_mode == "cross_class":
+                if "class_id" not in self.df.columns:
+                    raise ValueError(
+                        "shuffle_report_mode='cross_class' requires class_id."
+                    )
+                self.shuffled_report_indices = cross_class_donor_indices(
+                    self.df["class_id"].to_numpy(),
+                    seed,
+                )
+            elif self.shuffle_report_mode == "derangement":
+                self.shuffled_report_indices = deranged_donor_indices(
+                    len(self.df),
+                    seed,
+                )
+            else:
+                raise ValueError(
+                    "shuffle_report_mode must be 'cross_class' or "
+                    "'derangement'."
+                )
         else:
             self.shuffled_report_indices = None
 
         print(
             f"[Dataset] Initialized '{split.upper()}' with {len(self.df)} samples. "
             f"Dual reports: {self.has_dual_reports}. Sparse high-res views: "
-            f"{self.use_high_res}."
+            f"{self.use_high_res}. Text-only: {self.text_only}. "
+            f"Reports shuffled: {self.shuffle_reports}."
         )
 
     def __len__(self):

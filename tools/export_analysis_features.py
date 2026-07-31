@@ -17,10 +17,6 @@ sys.path.insert(0, str(ROOT))
 from src.datasets.analysis import CTCHOODDataset, ReportMismatchDataset
 from src.datasets.btxrd import BTXRD_CLASS_NAMES, BTXRDDataset
 from src.datasets.ctch import CTCHDataset
-from src.datasets.fracatlas import (
-    FRACATLAS_IMAGE_RESOLVER_VERSION,
-    FracAtlasDataset,
-)
 from src.utils.analysis import (
     MetadataDataset,
     SOURCE_EXPERIMENT,
@@ -38,7 +34,6 @@ SCENARIOS = (
     "ctch_val",
     "ctch_test",
     "ctch_ood",
-    "fracatlas_test",
     "btxrd_test",
     "report_mismatch_cross_class",
     "report_mismatch_same_class",
@@ -126,37 +121,6 @@ def build_scenario_dataset(
         )
         return dataset, {"coverage": dataset.coverage}
 
-    if scenario == "fracatlas_test":
-        dataset = FracAtlasDataset(
-            img_dir=str(ROOT / "data" / "FracAtlas" / "images"),
-            report_dir=str(ROOT / "data" / "FracAtlas" / "reports"),
-            csv_split_path=str(
-                ROOT / "data" / "FracAtlas" / "fracatlas-split.csv"
-            ),
-            csv_labels_path=str(
-                ROOT / "data" / "FracAtlas" / "fracatlas-labels.csv"
-            ),
-            classes=["non-fractured", "fractured"],
-            task_type="multiclass",
-            split="test",
-            transform=loaded.model.backbone.preprocess,
-            tokenizer=loaded.model.backbone.tokenizer_obj,
-            high_res=high_res,
-            strict_files=True,
-            allow_truncated_images=True,
-        )
-        return MetadataDataset(dataset, scenario), {
-            "primary_feature": "fused_embeddings",
-            "coverage": dataset.coverage,
-            "fracatlas_image_resolver_version": (
-                FRACATLAS_IMAGE_RESOLVER_VERSION
-            ),
-            "note": (
-                "Domain-OOD inference uses the trained bidirectional fused "
-                "representation of global/local image evidence and clinical text."
-            ),
-        }
-
     if scenario == "btxrd_test":
         dataset = BTXRDDataset(
             img_dir=str(ROOT / "data" / "BTXRD" / "images"),
@@ -226,31 +190,18 @@ def _can_resume(path: Path, loaded, scenario: str) -> bool:
     )
     if not matches_locked_source:
         return False
-    if scenario in {"fracatlas_test", "btxrd_test"}:
+    if scenario == "btxrd_test":
         coverage = provenance.get("coverage", {})
-        if scenario == "btxrd_test":
-            return (
-                provenance.get("ood_dataset") == "BTXRD"
-                and provenance.get("ood_split") == "test"
-                and int(coverage.get("rows", -1))
-                == int(provenance.get("sample_count", -2))
-                and int(coverage.get("resolved_images", -1))
-                == int(provenance.get("sample_count", -2))
-                and int(coverage.get("missing_images", -1)) == 0
-                and int(coverage.get("missing_xray_reports", -1)) == 0
-                and int(coverage.get("missing_clinical_reports", -1)) == 0
-            )
         return (
-            int(provenance.get("fracatlas_image_resolver_version", -1))
-            == FRACATLAS_IMAGE_RESOLVER_VERSION
+            provenance.get("ood_dataset") == "BTXRD"
+            and provenance.get("ood_split") == "test"
             and int(coverage.get("rows", -1))
             == int(provenance.get("sample_count", -2))
             and int(coverage.get("resolved_images", -1))
             == int(provenance.get("sample_count", -2))
             and int(coverage.get("missing_images", -1)) == 0
-            and int(coverage.get("missing_reports", -1)) == 0
-            and bool(coverage.get("decode_validation", False))
-            and int(coverage.get("decode_failure_count", -1)) == 0
+            and int(coverage.get("missing_xray_reports", -1)) == 0
+            and int(coverage.get("missing_clinical_reports", -1)) == 0
         )
     return True
 

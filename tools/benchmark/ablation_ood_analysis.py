@@ -1,11 +1,10 @@
-"""Run the compact CTCH ablation OOD study without training.
+"""Compare CTCH representation baselines with one shared post-hoc OOD protocol.
 
-The default preset contains only locally available, high-value ablations:
-high-resolution input handling, Phase-1/2 training, fusion, and classifier
-design.  For every experiment and seed, the runner exports the same
-``fused_embeddings`` archives used by the canonical protocol and evaluates
-Semantic OOD, FracAtlas, and BTXRD with cosine-centroid,
-Mahalanobis-centroid, kNN, and entropy scores.
+The default RQ4 preset compares XBone-Net with frozen original BiomedCLIP
+encoders, Phase-2-only training, concatenation fusion, and a linear head. For
+every trained experiment and seed, the runner exports the same
+``fused_embeddings`` archives and evaluates Semantic OOD and BTXRD
+with cosine-centroid, Mahalanobis-centroid, kNN, and entropy scores.
 """
 
 from __future__ import annotations
@@ -32,23 +31,23 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")
 
-from src.utils.analysis import SOURCE_EXPERIMENT, sha256_file
+from src.utils.analysis import (
+    SOURCE_EXPERIMENT,
+    ZEROSHOT_BIOMEDCLIP_EXPERIMENT,
+    sha256_file,
+)
 from src.utils.ood import OOD_PROTOCOL_VERSION
 
 
 OOD_CONFIG = ROOT / "configs" / "analysis" / "ctch" / "ood.yaml"
 SUMMARY_ROOT = ROOT / "results" / "summary" / "ablation_ood"
 
-SMALL_ABLATION_PRESET = OrderedDict(
+RQ4_BASELINE_PRESET = OrderedDict(
     [
         (SOURCE_EXPERIMENT, "XBone-Net"),
         (
-            "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-            "Không high-resolution",
-        ),
-        (
-            "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
-            "Mean pooling",
+            "ctch/baselines/zeroshot/biomedclip_zeroshot",
+            "BiomedCLIP zero-shot",
         ),
         (
             "ctch/ablation_study/architecture/phase/phase2_only",
@@ -59,12 +58,26 @@ SMALL_ABLATION_PRESET = OrderedDict(
             "Nối đặc trưng",
         ),
         (
-            "ctch/ablation_study/architecture/fusion/text_to_image",
-            "Văn bản truy vấn ảnh",
-        ),
-        (
             "ctch/ablation_study/architecture/classifier/linear",
             "Đầu tuyến tính",
+        ),
+    ]
+)
+
+EXTENDED_ABLATION_PRESET = OrderedDict(
+    [
+        *RQ4_BASELINE_PRESET.items(),
+        (
+            "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+            "Không high-resolution",
+        ),
+        (
+            "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
+            "Mean pooling",
+        ),
+        (
+            "ctch/ablation_study/architecture/fusion/text_to_image",
+            "Văn bản truy vấn ảnh",
         ),
         (
             "ctch/ablation_study/architecture/classifier/no_class_weight",
@@ -72,18 +85,25 @@ SMALL_ABLATION_PRESET = OrderedDict(
         ),
     ]
 )
+PRESETS = {
+    "rq4": RQ4_BASELINE_PRESET,
+    "extended": EXTENDED_ABLATION_PRESET,
+}
+DISPLAY_NAMES = {
+    experiment: label
+    for preset in PRESETS.values()
+    for experiment, label in preset.items()
+}
 
 SCENARIO_ARCHIVES = OrderedDict(
     [
         ("semantic_ood", "ctch_ood"),
-        ("domain_ood", "fracatlas_test"),
         ("domain_ood_btxrd", "btxrd_test"),
     ]
 )
 
 SCENARIO_NAMES = {
     "semantic_ood": "Semantic OOD",
-    "domain_ood": "FracAtlas",
     "domain_ood_btxrd": "BTXRD",
 }
 
@@ -130,17 +150,43 @@ def _ood_output(experiment: str, seed: int, scenario: str) -> Path:
     return _analysis_root(experiment, seed) / "ood" / scenario
 
 
+def _scenario_feature_paths(
+    experiment: str,
+    seed: int,
+    scenario: str,
+) -> dict[str, Path]:
+    return {
+        "fit": _feature_path(experiment, seed, "ctch_train"),
+        "calibration": _feature_path(experiment, seed, "ctch_val"),
+        "id_test": _feature_path(experiment, seed, "ctch_test"),
+        "ood_test": _feature_path(
+            experiment,
+            seed,
+            SCENARIO_ARCHIVES[scenario],
+        ),
+    }
+
+
 def _validate_experiment_name(experiment: str) -> str:
     experiment = str(experiment).replace("\\", "/").strip("/")
     if not (
         experiment == SOURCE_EXPERIMENT
+        or experiment == ZEROSHOT_BIOMEDCLIP_EXPERIMENT
         or experiment.startswith("ctch/ablation_study/")
     ):
         raise ValueError(
-            "Experiments must be the canonical CTCH proposed model or live "
-            "below 'ctch/ablation_study/'."
+            "Experiments must be the canonical CTCH model, the deterministic "
+            "BioMedCLIP zero-shot baseline, or live below "
+            "'ctch/ablation_study/'."
         )
     return experiment
+
+
+def _seeds_for_experiment(experiment: str, seeds: list[int]) -> list[int]:
+    """Avoid pseudo-replicating one deterministic zero-shot foundation model."""
+    if experiment == ZEROSHOT_BIOMEDCLIP_EXPERIMENT:
+        return [42] if 42 in seeds else []
+    return seeds
 
 
 def _preflight(
@@ -152,10 +198,16 @@ def _preflight(
     runnable: list[str] = []
     for experiment in experiments:
         missing = []
-        for seed in seeds:
+        experiment_seeds = _seeds_for_experiment(experiment, seeds)
+        if not experiment_seeds:
+            missing.append("deterministic zero-shot seed 42 was not requested")
+        for seed in experiment_seeds:
             if not _metrics_path(experiment, seed).is_file():
                 missing.append(f"seed {seed} metrics")
-            if not _checkpoint_path(experiment, seed).is_file():
+            if (
+                experiment != ZEROSHOT_BIOMEDCLIP_EXPERIMENT
+                and not _checkpoint_path(experiment, seed).is_file()
+            ):
                 missing.append(f"seed {seed} checkpoint")
         if missing:
             message = f"{experiment}: missing {', '.join(missing)}"
@@ -224,11 +276,12 @@ def aggregate_existing(
     scenarios: list[str],
     *,
     output_dir: Path,
+    preset_name: str,
 ) -> dict[str, Any]:
     """Aggregate available ablation OOD results and write long-form CSV."""
     output_dir.mkdir(parents=True, exist_ok=True)
     aggregate: dict[str, Any] = {
-        "preset": "small",
+        "preset": preset_name,
         "experiments_requested": experiments,
         "seeds_requested": seeds,
         "scenarios_requested": scenarios,
@@ -237,18 +290,23 @@ def aggregate_existing(
     csv_rows: list[dict[str, Any]] = []
 
     for experiment in experiments:
-        display_name = SMALL_ABLATION_PRESET.get(
+        experiment_seeds = _seeds_for_experiment(experiment, seeds)
+        display_name = DISPLAY_NAMES.get(
             experiment,
             experiment.split("/")[-1],
         )
         experiment_result = {
             "display_name": display_name,
-            "classification_f1_macro": _classification_f1(experiment, seeds),
+            "seeds_used": experiment_seeds,
+            "classification_f1_macro": _classification_f1(
+                experiment,
+                experiment_seeds,
+            ),
             "ood": {},
         }
         for scenario in scenarios:
             payloads = []
-            for seed in seeds:
+            for seed in experiment_seeds:
                 path = _ood_output(
                     experiment,
                     seed,
@@ -354,10 +412,16 @@ def main() -> None:
     ood_cfg = OmegaConf.load(OOD_CONFIG)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--preset",
+        choices=tuple(PRESETS),
+        default="rq4",
+        help="Named experiment set used when --experiments is omitted.",
+    )
+    parser.add_argument(
         "--experiments",
         nargs="+",
-        default=list(SMALL_ABLATION_PRESET),
-        help="Explicit experiment paths; defaults to the compact preset.",
+        default=None,
+        help="Explicit experiment paths; overrides --preset.",
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 456])
     parser.add_argument(
@@ -401,13 +465,18 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.list_experiments:
-        for experiment, label in SMALL_ABLATION_PRESET.items():
+        for experiment, label in PRESETS[args.preset].items():
             print(f"{experiment:<78} {label}")
         return
 
+    requested_experiments = (
+        args.experiments
+        if args.experiments is not None
+        else list(PRESETS[args.preset])
+    )
     experiments = [
         _validate_experiment_name(experiment)
-        for experiment in args.experiments
+        for experiment in requested_experiments
     ]
     experiments = list(dict.fromkeys(experiments))
     seeds = list(dict.fromkeys(int(seed) for seed in args.seeds))
@@ -423,20 +492,22 @@ def main() -> None:
             seeds,
             args.scenarios,
             output_dir=args.output_dir.resolve(),
+            preset_name=args.preset if args.experiments is None else "custom",
         )
         return
 
     print("+----------------------------------------------------------------+")
-    print("|  Compact CTCH ablation OOD study                              |")
+    print("|  CTCH representation-baseline OOD study                       |")
     print("+----------------------------------------------------------------+")
     print(f"  Experiments: {len(experiments)}")
     print(f"  Seeds      : {seeds}")
     print(f"  Scenarios  : {args.scenarios}")
+    print(f"  Preset     : {args.preset if args.experiments is None else 'custom'}")
     print("  Training   : disabled")
 
     failures = []
     for experiment in experiments:
-        for seed in seeds:
+        for seed in _seeds_for_experiment(experiment, seeds):
             try:
                 required_archives = {
                     "ctch_train",
@@ -447,6 +518,41 @@ def main() -> None:
                         for scenario in args.scenarios
                     ),
                 }
+                if (
+                    not args.dry_run
+                    and not args.overwrite
+                    and not args.feature_only
+                ):
+                    all_scenarios_current = True
+                    for scenario in args.scenarios:
+                        feature_paths = _scenario_feature_paths(
+                            experiment,
+                            seed,
+                            scenario,
+                        )
+                        if not all(path.is_file() for path in feature_paths.values()):
+                            all_scenarios_current = False
+                            break
+                        current, _ = _ood_result_is_current(
+                            _ood_output(
+                                experiment,
+                                seed,
+                                scenario,
+                            ) / "ood_metrics.json",
+                            experiment=experiment,
+                            seed=seed,
+                            feature_paths=feature_paths,
+                        )
+                        if not current:
+                            all_scenarios_current = False
+                            break
+                    if all_scenarios_current:
+                        print(
+                            f"[REUSE RQ4 OOD] {experiment} seed={seed}: "
+                            "all requested feature archives/results are current."
+                        )
+                        continue
+
                 feature_command = [
                     sys.executable,
                     str(ROOT / "tools" / "export_experiment_analysis_features.py"),
@@ -476,29 +582,11 @@ def main() -> None:
                     continue
 
                 for scenario in args.scenarios:
-                    archive = SCENARIO_ARCHIVES[scenario]
-                    feature_paths = {
-                        "fit": _feature_path(
-                            experiment,
-                            seed,
-                            "ctch_train",
-                        ),
-                        "calibration": _feature_path(
-                            experiment,
-                            seed,
-                            "ctch_val",
-                        ),
-                        "id_test": _feature_path(
-                            experiment,
-                            seed,
-                            "ctch_test",
-                        ),
-                        "ood_test": _feature_path(
-                            experiment,
-                            seed,
-                            archive,
-                        ),
-                    }
+                    feature_paths = _scenario_feature_paths(
+                        experiment,
+                        seed,
+                        scenario,
+                    )
                     output_dir = _ood_output(experiment, seed, scenario)
                     if not args.dry_run and not args.overwrite:
                         current, reason = _ood_result_is_current(
@@ -579,6 +667,7 @@ def main() -> None:
             seeds,
             args.scenarios,
             output_dir=args.output_dir.resolve(),
+            preset_name=args.preset if args.experiments is None else "custom",
         )
     if failures:
         args.output_dir.mkdir(parents=True, exist_ok=True)

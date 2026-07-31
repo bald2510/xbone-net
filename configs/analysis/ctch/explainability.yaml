@@ -5,14 +5,16 @@ train_features: "ctch_train"
 test_features: "ctch_test"
 
 target: "predicted_class"
-sampling: "stratified_by_ground_truth_class"
+sampling: "all_test_samples"
 selection_seed: 1907
-per_class: 2
-max_samples: 44
+per_class: null
+max_samples: null
 
 integrated_gradients_steps: 24
+global_image_ig_baseline: "zero_in_normalized_input_space"
 integrated_gradients_baseline: "global_image_embedding_repeated_as_local_tokens"
-clinical_token_intervention_baseline: "clinical_cls_embedding_repeated_over_removed_tokens"
+clinical_text_ig_baseline: "padding_embedding_with_special_tokens_preserved"
+clinical_token_intervention_baseline: "padding_embedding_with_special_tokens_preserved"
 random_deletion_trials: 16
 stability_repeats: 2
 stability_steps: 8

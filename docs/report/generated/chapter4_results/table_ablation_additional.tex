@@ -1,0 +1,25 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Biến thể} & \textbf{BAcc $\uparrow$} & \textbf{Macro-F1 $\uparrow$} & \textbf{Macro-AUROC $\uparrow$} & \textbf{Macro-AUPRC $\uparrow$} \\ \hline
+\cellcolor{gray!12}XBone-Net &
+\cellcolor{gray!12}$\mathbf{0.5844\pm0.0454}$ &
+\cellcolor{gray!12}$0.5558\pm0.0072$ &
+\cellcolor{gray!12}$0.9473\pm0.0246$ &
+\cellcolor{gray!12}$0.6189\pm0.0145$ \\ \hline
+Chỉ ảnh & $0.4405\pm0.0082$ & $0.3984\pm0.0176$ & $0.9275\pm0.0041$ & $0.4177\pm0.0075$ \\ \hline
+Chỉ bệnh sử & $0.5401\pm0.0149$ & $0.4770\pm0.0133$ & $0.9393\pm0.0020$ & $0.5165\pm0.0036$ \\ \hline
+Bệnh sử xáo trộn & $0.3120\pm0.0172$ & $0.3039\pm0.0048$ & $0.8494\pm0.0537$ & $0.3098\pm0.0264$ \\ \hline
+Ảnh truy vấn văn bản & $0.5674\pm0.0433$ & $0.5559\pm0.0159$ & $0.9449\pm0.0268$ & $0.6174\pm0.0292$ \\ \hline
+Văn bản truy vấn ảnh & $0.5680\pm0.0480$ & $0.5632\pm0.0217$ & $0.9410\pm0.0216$ & $\mathbf{0.6211\pm0.0137}$ \\ \hline
+Không trọng số lớp & $0.5582\pm0.0064$ & $0.5641\pm0.0093$ & $\mathbf{0.9528\pm0.0056}$ & $0.6133\pm0.0114$ \\ \hline
+Không bias theo lớp & $0.5749\pm0.0317$ & $\mathbf{0.5740\pm0.0126}$ & $0.9355\pm0.0188$ & $0.6125\pm0.0116$ \\ \hline
+Đóng băng backbone & $0.5833\pm0.0149$ & $0.5405\pm0.0061$ & $0.9502\pm0.0105$ & $0.5641\pm0.0091$ \\ \hline
+\end{tabular}
+}
+\caption{Các ablation bổ sung theo phương thức, hướng chú ý chéo, cân bằng lớp và mức cập nhật backbone trên CTCH}
+\label{tab:ablation_additional}
+\end{table}

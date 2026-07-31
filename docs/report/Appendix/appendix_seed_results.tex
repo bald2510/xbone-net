@@ -38,11 +38,11 @@ Bảng \ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net
 
 Bảng \ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống cho bốn phương pháp chấm điểm OOD trên Semantic OOD và BTXRD. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng đáng kể bởi số lượng và tỷ lệ mẫu của từng kịch bản.
 
-Đối với các tệp kết quả hiện có, mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối, trong khi kịch bản Semantic OOD chỉ đọc thành công 29 trong tổng số 44 mẫu dự kiến; 15 mẫu còn lại gặp lỗi quyền truy cập tại thời điểm chạy đánh giá. Vì vậy, kết quả Semantic OOD trong Chương \ref{Chapter4} và phụ lục này phản ánh 29 mẫu đã được xử lý, không đại diện cho toàn bộ 44 mẫu ban đầu. Giới hạn này cần được cân nhắc khi diễn giải độ lệch giữa các hạt giống và đặc biệt khi so sánh AUPR-Out giữa hai kịch bản có quy mô khác nhau.
+Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản Semantic OOD sử dụng đủ 44 mẫu trong manifest và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối; không mẫu nào bị bỏ qua trong các artifact được tổng hợp. Tuy nhiên, AUPR-Out và FPR@95\%TPR vẫn chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ ID--OOD giữa hai kịch bản, vì vậy cần được đọc cùng AUROC-OOD và cỡ mẫu ghi trong bảng.
 
 \input{generated/appendix_seed_results/table_ood_per_seed}
 
-Hình \ref{fig:appendix-ood-mahalanobis-seeds} biểu diễn riêng Mahalanobis-centroid vì đây là phương pháp được nhấn mạnh trong phần kết quả chính. Khoảng biến thiên lớn hơn trên BTXRD, đặc biệt ở AUROC-OOD, cho thấy kết quả cross-dataset nhạy với trạng thái biểu diễn được học ở từng hạt giống; Semantic OOD có AUROC-OOD gần mức ngẫu nhiên và FPR@95\%TPR cao ở cả ba lần chạy.
+Hình \ref{fig:appendix-ood-mahalanobis-seeds} biểu diễn riêng Mahalanobis-centroid vì đây là phương pháp được nhấn mạnh trong phần kết quả chính. Khoảng biến thiên lớn hơn trên BTXRD, đặc biệt ở AUROC-OOD, cho thấy kết quả cross-dataset nhạy với trạng thái biểu diễn được học ở từng hạt giống. Semantic OOD có AUROC-OOD ổn định hơn nhưng FPR@95\%TPR vẫn cao ở cả ba lần chạy.
 
 \begin{figure}[H]
 \centering

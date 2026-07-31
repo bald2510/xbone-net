@@ -6,6 +6,7 @@ import argparse
 import datetime
 import json
 import sys
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -37,13 +38,17 @@ from src.utils.explainability import (
     branch_ablation,
     curve_auc,
     forward_from_local,
+    global_image_perturbation_curves,
     gradient_text_relevance,
     gradient_visual_relevance,
     integrated_gradients,
+    integrated_gradients_global_image,
+    integrated_gradients_text,
     perturbation_curves,
     rank_correlation,
     representation_quality_metrics,
     stratified_sample_indices,
+    text_input_perturbation_curves,
     text_perturbation_curves,
 )
 
@@ -123,7 +128,7 @@ def _one_sample(sample: dict[str, Any], loaded) -> dict[str, Any]:
     }
 
 
-def _cached_tokens(model, batch: dict[str, Any]) -> dict[str, torch.Tensor]:
+def _cached_tokens(model, batch: dict[str, Any]) -> dict[str, Any]:
     with torch.no_grad():
         _, text_tokens = model.backbone(
             batch["pixel_values"],
@@ -133,13 +138,33 @@ def _cached_tokens(model, batch: dict[str, Any]) -> dict[str, torch.Tensor]:
             tile_mask=batch.get("tile_mask"),
             tile_boxes=batch.get("tile_boxes"),
         )
+    tokenizer = getattr(
+        model.backbone.tokenizer_obj,
+        "tokenizer",
+        model.backbone.tokenizer_obj,
+    )
+    text_input_ids = batch["clinical_input_ids"]
+    special_ids = [
+        int(value)
+        for value in (getattr(tokenizer, "all_special_ids", []) or [])
+    ]
+    special_mask = torch.zeros_like(text_input_ids, dtype=torch.bool)
+    for token_id in special_ids:
+        special_mask |= text_input_ids == token_id
+    pad_token_id = getattr(tokenizer, "pad_token_id", 0)
+    if pad_token_id is None:
+        pad_token_id = 0
     return {
+        "pixel_values": batch["pixel_values"].detach(),
         "global_feature": model.backbone.last_global_feature.detach(),
         "local_tokens": model.backbone.last_local_tokens.detach(),
         "local_mask": model.backbone.last_local_mask.detach(),
         "local_boxes": model.backbone.last_local_token_boxes.detach(),
         "text_tokens": text_tokens.detach(),
+        "text_input_ids": text_input_ids.detach(),
         "text_attention_mask": batch["clinical_attention_mask"],
+        "text_special_token_mask": special_mask.detach(),
+        "text_pad_token_id": int(pad_token_id),
     }
 
 
@@ -1062,8 +1087,21 @@ def _sample_explanation(
     target_class = prediction
 
     branch = branch_ablation(loaded.model, cached, target_class)
+    global_ig_scores, global_ig_attribution = integrated_gradients_global_image(
+        loaded.model,
+        cached,
+        batch["pixel_values"],
+        target_class,
+        steps=ig_steps,
+    )
     ig_scores, ig_attribution = integrated_gradients(
         loaded.model, cached, target_class, steps=ig_steps
+    )
+    text_ig_scores, text_ig_attribution = integrated_gradients_text(
+        loaded.model,
+        cached,
+        target_class,
+        steps=ig_steps,
     )
     gradient_scores = gradient_visual_relevance(
         loaded.model, cached, target_class
@@ -1076,6 +1114,19 @@ def _sample_explanation(
         target_class,
         random_trials=random_trials,
         seed=seed,
+    )
+    global_curves = global_image_perturbation_curves(
+        loaded.model,
+        cached,
+        batch["pixel_values"],
+        global_ig_scores,
+        target_class,
+    )
+    text_input_curves = text_input_perturbation_curves(
+        loaded.model,
+        cached,
+        text_ig_scores,
+        target_class,
     )
     text_curves = text_perturbation_curves(
         loaded.model,
@@ -1097,6 +1148,18 @@ def _sample_explanation(
         branch["logits"][0, target_class] - baseline_logits[0, target_class]
     )
     signed_sum = float(ig_attribution.sum())
+    full_target_logit = float(branch["logits"][0, target_class])
+    full_target_probability = float(probabilities[target_class])
+    global_signed_sum = float(global_ig_attribution.sum())
+    global_logit_difference = (
+        full_target_logit
+        - float(global_curves["delete_most_relevant_logit"][-1])
+    )
+    text_signed_sum = float(text_ig_attribution.sum())
+    text_logit_difference = (
+        full_target_logit
+        - float(text_input_curves["delete_most_relevant_logit"][-1])
+    )
 
     stability = []
     generator = torch.Generator(device=loaded.device).manual_seed(seed + 17)
@@ -1201,6 +1264,22 @@ def _sample_explanation(
     text_random_margin_auc = curve_auc(
         text_curves["fractions"], text_curves["delete_random_margin"]
     )
+    global_deletion_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_most_relevant"],
+    )
+    global_insertion_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["insert_most_relevant"],
+    )
+    text_input_deletion_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_most_relevant"],
+    )
+    text_input_insertion_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["insert_most_relevant"],
+    )
     record = {
         "image_id": image_id,
         "ground_truth": ground_truth,
@@ -1211,6 +1290,31 @@ def _sample_explanation(
         "num_local_tokens": int(cached["local_tokens"].shape[1]),
         "branch_target_logit_drop": branch["target_logit_drop"],
         "branch_target_probability_drop": branch["target_probability_drop"],
+        "source_target_probability_drop": {
+            "global_image": (
+                full_target_probability
+                - float(global_curves["delete_most_relevant"][-1])
+            ),
+            "local_image": (
+                full_target_probability
+                - float(curves["delete_most_relevant"][-1])
+            ),
+            "clinical_text": (
+                full_target_probability
+                - float(text_input_curves["delete_most_relevant"][-1])
+            ),
+        },
+        "global_image_integrated_gradients": {
+            "signed_attribution_sum": global_signed_sum,
+            "logit_difference_vs_zero_input": global_logit_difference,
+            "completeness_error": abs(
+                global_signed_sum - global_logit_difference
+            ),
+            "relative_completeness_error": abs(
+                global_signed_sum - global_logit_difference
+            ) / max(abs(global_logit_difference), 1e-8),
+            "entropy": _entropy(global_ig_scores.cpu().numpy()),
+        },
         "integrated_gradients": {
             "signed_attribution_sum": signed_sum,
             "local_logit_difference_vs_global_baseline": logit_difference,
@@ -1218,6 +1322,17 @@ def _sample_explanation(
             "relative_completeness_error": abs(signed_sum - logit_difference)
             / max(abs(logit_difference), 1e-8),
             "entropy": _entropy(ig_scores.cpu().numpy()),
+        },
+        "clinical_text_integrated_gradients": {
+            "signed_attribution_sum": text_signed_sum,
+            "logit_difference_vs_padding_baseline": text_logit_difference,
+            "completeness_error": abs(
+                text_signed_sum - text_logit_difference
+            ),
+            "relative_completeness_error": abs(
+                text_signed_sum - text_logit_difference
+            ) / max(abs(text_logit_difference), 1e-8),
+            "entropy": _entropy(text_ig_scores.cpu().numpy()),
         },
         "method_agreement_spearman": rank_correlation(
             ig_scores.cpu().numpy(), gradient_scores.cpu().numpy()
@@ -1245,6 +1360,14 @@ def _sample_explanation(
                 random_margin_auc - targeted_margin_auc
             ),
         },
+        "global_image_faithfulness": {
+            "deletion_auc": global_deletion_auc,
+            "insertion_auc": global_insertion_auc,
+        },
+        "clinical_text_input_faithfulness": {
+            "deletion_auc": text_input_deletion_auc,
+            "insertion_auc": text_input_insertion_auc,
+        },
         "text_faithfulness": {
             "deletion_auc": text_deletion_auc,
             "random_deletion_auc": text_random_auc,
@@ -1263,6 +1386,13 @@ def _sample_explanation(
             ),
         },
         "curves": {key: value.tolist() for key, value in curves.items()},
+        "global_image_curves": {
+            key: value.tolist() for key, value in global_curves.items()
+        },
+        "clinical_text_input_curves": {
+            key: value.tolist()
+            for key, value in text_input_curves.items()
+        },
         "text_curves": {
             key: value.tolist() for key, value in text_curves.items()
         },
@@ -1487,6 +1617,88 @@ def _aggregate_records(records: list[dict[str, Any]], bootstrap_seed: int) -> di
     return output
 
 
+def _aggregate_subgroups(
+    records: list[dict[str, Any]],
+    bootstrap_seed: int,
+) -> dict[str, Any]:
+    """Report whether attribution behavior changes with correctness/confidence."""
+    if not records:
+        return {}
+    confidences = np.asarray(
+        [float(record["confidence"]) for record in records],
+        dtype=np.float64,
+    )
+    q25, q75 = np.quantile(confidences, [0.25, 0.75])
+    groups = OrderedDict([
+        ("correct", [record for record in records if record["correct"]]),
+        ("incorrect", [record for record in records if not record["correct"]]),
+        (
+            "low_confidence_q1",
+            [
+                record
+                for record in records
+                if float(record["confidence"]) <= float(q25)
+            ],
+        ),
+        (
+            "high_confidence_q4",
+            [
+                record
+                for record in records
+                if float(record["confidence"]) >= float(q75)
+            ],
+        ),
+    ])
+    return {
+        name: {
+            "sample_count": len(group_records),
+            "aggregate": _aggregate_records(
+                group_records,
+                bootstrap_seed=bootstrap_seed + index,
+            ),
+        }
+        for index, (name, group_records) in enumerate(groups.items())
+        if group_records
+    }
+
+
+def _source_role_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    sources = ("global_image", "local_image", "clinical_text")
+    values = {
+        source: np.asarray(
+            [
+                float(record["source_target_probability_drop"][source])
+                for record in records
+            ],
+            dtype=np.float64,
+        )
+        for source in sources
+    }
+    dominant = {
+        source: 0
+        for source in sources
+    }
+    for index in range(len(records)):
+        source = max(sources, key=lambda name: values[name][index])
+        dominant[source] += 1
+    return {
+        "definition": (
+            "Dominant source is the intervention whose removal causes the "
+            "largest decrease in predicted-class probability."
+        ),
+        "dominant_source_counts": dominant,
+        "per_source": {
+            source: {
+                "mean_probability_drop": float(source_values.mean()),
+                "median_probability_drop": float(np.median(source_values)),
+                "positive_drop_fraction": float((source_values > 0).mean()),
+                "n": int(len(source_values)),
+            }
+            for source, source_values in values.items()
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, required=True)
@@ -1494,6 +1706,14 @@ def main() -> None:
     parser.add_argument("--test-features", type=Path, required=True)
     parser.add_argument("--per-class", type=int, default=2)
     parser.add_argument("--max-samples", type=int, default=44)
+    parser.add_argument(
+        "--all-test-samples",
+        action="store_true",
+        help=(
+            "Run quantitative IG and interventions on every CTCH test sample. "
+            "--per-class and --max-samples are ignored."
+        ),
+    )
     parser.add_argument("--selection-seed", type=int, default=1907)
     parser.add_argument("--ig-steps", type=int, default=24)
     parser.add_argument("--random-trials", type=int, default=16)
@@ -1534,12 +1754,20 @@ def main() -> None:
                     )
                 )
         protocol = existing.get("protocol", {})
+        sampling_matches = (
+            bool(protocol.get("all_test_samples", False))
+            == bool(args.all_test_samples)
+        )
+        if sampling_matches and not args.all_test_samples:
+            sampling_matches = (
+                int(protocol.get("per_class", -1)) == args.per_class
+                and int(protocol.get("max_samples", -1)) == args.max_samples
+            )
         if (
             existing.get("source_experiment") == SOURCE_EXPERIMENT
             and int(existing.get("seed", -1)) == args.seed
             and feature_shas == {existing.get("checkpoint_sha256")}
-            and int(protocol.get("per_class", -1)) == args.per_class
-            and int(protocol.get("max_samples", -1)) == args.max_samples
+            and sampling_matches
             and int(protocol.get("selection_seed", -1)) == args.selection_seed
             and int(protocol.get("ig_steps", -1)) == args.ig_steps
             and int(protocol.get("random_trials", -1)) == args.random_trials
@@ -1622,12 +1850,15 @@ def main() -> None:
         str(row["image_id"]): int(index)
         for index, row in dataset.df.iterrows()
     }
-    selected = stratified_sample_indices(
-        test["labels"],
-        per_class=args.per_class,
-        seed=args.selection_seed,
-        max_samples=args.max_samples,
-    )
+    if args.all_test_samples:
+        selected = np.arange(len(test["labels"]), dtype=np.int64)
+    else:
+        selected = stratified_sample_indices(
+            test["labels"],
+            per_class=args.per_class,
+            seed=args.selection_seed,
+            max_samples=args.max_samples,
+        )
     selected_ids = test["image_id"].astype(str)[selected]
     missing = [image_id for image_id in selected_ids if image_id not in index_by_id]
     if missing:
@@ -1673,14 +1904,31 @@ def main() -> None:
         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "protocol": {
             "target": "predicted_class",
-            "sampling": "stratified_by_ground_truth_class",
-            "per_class": args.per_class,
-            "max_samples": args.max_samples,
+            "sampling": (
+                "all_test_samples"
+                if args.all_test_samples
+                else "stratified_by_ground_truth_class"
+            ),
+            "all_test_samples": bool(args.all_test_samples),
+            "per_class": None if args.all_test_samples else args.per_class,
+            "max_samples": None if args.all_test_samples else args.max_samples,
             "selection_seed": args.selection_seed,
             "ig_steps": args.ig_steps,
-            "ig_baseline": "global_image_embedding_repeated_as_local_tokens",
+            "ig_baselines": {
+                "global_image": "zero_in_normalized_input_space",
+                "local_image": (
+                    "global_image_embedding_repeated_as_local_tokens"
+                ),
+                "clinical_text": (
+                    "padding_embedding_with_special_tokens_preserved"
+                ),
+            },
             "random_trials": args.random_trials,
-            "faithfulness_modalities": ["visual_local_tokens", "clinical_tokens"],
+            "faithfulness_modalities": [
+                "global_image",
+                "visual_local_tokens",
+                "clinical_tokens",
+            ],
             "stability_repeats": args.stability_repeats,
             "stability_steps": args.stability_steps,
             "stability_noise_scale": args.noise_scale,
@@ -1703,6 +1951,11 @@ def main() -> None:
         "explanation_aggregate": _aggregate_records(
             records, bootstrap_seed=args.selection_seed + 5000
         ),
+        "explanation_subgroups": _aggregate_subgroups(
+            records,
+            bootstrap_seed=args.selection_seed + 6000,
+        ),
+        "source_role_summary": _source_role_summary(records),
         "sample_records": str(args.output_dir / "samples.json"),
         "visualization_dir": str(args.output_dir / "visualizations"),
     }

@@ -25,9 +25,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.datasets.fracatlas import FRACATLAS_IMAGE_RESOLVER_VERSION
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
+    ZEROSHOT_BIOMEDCLIP_EXPERIMENT,
     load_feature_archive,
     sha256_file,
 )
@@ -52,7 +52,6 @@ METHOD_FEATURE_KEYS = {
 }
 SCENARIO_FEATURES = {
     "semantic_ood": "fused_embeddings",
-    "domain_ood": "fused_embeddings",
     "domain_ood_btxrd": "fused_embeddings",
     "report_mismatch_cross_class": "fused_embeddings",
     "report_mismatch_same_class": "fused_embeddings",
@@ -106,22 +105,6 @@ def _validate_archive(
                 f"Archive field {key!r} has {len(value)} rows, expected {count}."
             )
 
-    if expected_scenario == "fracatlas_test":
-        coverage = provenance.get("coverage", {})
-        if (
-            int(provenance.get("fracatlas_image_resolver_version", -1))
-            != FRACATLAS_IMAGE_RESOLVER_VERSION
-            or int(coverage.get("rows", -1)) != count
-            or int(coverage.get("resolved_images", -1)) != count
-            or int(coverage.get("missing_images", -1)) != 0
-            or int(coverage.get("missing_reports", -1)) != 0
-            or not bool(coverage.get("decode_validation", False))
-            or int(coverage.get("decode_failure_count", -1)) != 0
-        ):
-            raise ValueError(
-                "FracAtlas domain-OOD archive lacks complete fail-closed image/report "
-                "coverage. Re-export fracatlas_test features with the current loader."
-            )
     if expected_scenario == "btxrd_test":
         coverage = provenance.get("coverage", {})
         if (
@@ -138,7 +121,7 @@ def _validate_archive(
                 "coverage. Re-export btxrd_test features with the current loader."
             )
 
-    if expected_scenario in {"fracatlas_test", "btxrd_test"}:
+    if expected_scenario == "btxrd_test":
         visual = arrays.get("visual_global_embeddings")
         if visual is None:
             raise ValueError(
@@ -399,7 +382,6 @@ def main() -> None:
         "ctch_test",
         {
             "semantic_ood": "ctch_ood",
-            "domain_ood": "fracatlas_test",
             "domain_ood_btxrd": "btxrd_test",
             "report_mismatch_cross_class": "report_mismatch_cross_class",
             "report_mismatch_same_class": "report_mismatch_same_class",
@@ -414,11 +396,13 @@ def main() -> None:
     source_experiment = str(args.source_experiment).strip("/")
     if not (
         source_experiment == SOURCE_EXPERIMENT
+        or source_experiment == ZEROSHOT_BIOMEDCLIP_EXPERIMENT
         or source_experiment.startswith("ctch/ablation_study/")
     ):
         raise ValueError(
-            "--source-experiment must be the canonical CTCH proposed model "
-            "or an experiment below 'ctch/ablation_study/'."
+            "--source-experiment must be the canonical CTCH model, the "
+            "BioMedCLIP zero-shot baseline, or an experiment below "
+            "'ctch/ablation_study/'."
         )
     loaded = [
         load_feature_archive(
@@ -498,7 +482,7 @@ def main() -> None:
         "type": (
             "locked_ctch_ood_evaluation"
             if source_experiment == SOURCE_EXPERIMENT
-            else "ctch_ablation_ood_evaluation"
+            else "ctch_representation_baseline_ood_evaluation"
         ),
         "ood_protocol_version": OOD_PROTOCOL_VERSION,
         "cosine_centroids_score_definition": (

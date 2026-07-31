@@ -1,0 +1,28 @@
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.10}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|}
+\hline
+\textbf{Kịch bản} & \textbf{Biểu diễn} & \textbf{Số seed} &
+\textbf{AUROC-OOD $\uparrow$} & \textbf{AUPR-Out $\uparrow$} &
+\textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\multirow{5}{*}{Semantic OOD}
+& XBone-Net & 3 & $0{.}6286\pm0{.}0177$ & $\mathbf{0{.}1034\pm0{.}0092}$ & $\mathbf{0{.}8864\pm0{.}0394}$ \\ \cline{2-6}
+& BioMedCLIP zero-shot & 1 & $\mathbf{0{.}6362}$ & $0{.}0967$ & $0{.}9318$ \\ \cline{2-6}
+& Chỉ pha 2 & 3 & $0{.}5921\pm0{.}0535$ & $0{.}0870\pm0{.}0190$ & $0{.}9242\pm0{.}0262$ \\ \cline{2-6}
+& Nối đặc trưng & 3 & $0{.}5795\pm0{.}0151$ & $0{.}0980\pm0{.}0151$ & $0{.}9015\pm0{.}0131$ \\ \cline{2-6}
+& Đầu tuyến tính & 3 & $0{.}5464\pm0{.}0336$ & $0{.}0746\pm0{.}0079$ & $0{.}9545\pm0{.}0394$ \\ \hline
+\multirow{5}{*}{BTXRD}
+& XBone-Net & 3 & $0{.}8042\pm0{.}0938$ & $0{.}8009\pm0{.}0609$ & $0{.}7071\pm0{.}0678$ \\ \cline{2-6}
+& BioMedCLIP zero-shot & 1 & $0{.}8219$ & $0{.}7893$ & $0{.}7853$ \\ \cline{2-6}
+& Chỉ pha 2 & 3 & $0{.}6723\pm0{.}0332$ & $0{.}7015\pm0{.}0382$ & $0{.}8133\pm0{.}0501$ \\ \cline{2-6}
+& Nối đặc trưng & 3 & $\mathbf{0{.}8966\pm0{.}0478}$ & $\mathbf{0{.}8713\pm0{.}0555}$ & $\mathbf{0{.}5978\pm0{.}1744}$ \\ \cline{2-6}
+& Đầu tuyến tính & 3 & $0{.}6517\pm0{.}0651$ & $0{.}6719\pm0{.}0623$ & $0{.}8382\pm0{.}0584$ \\ \hline
+\end{tabular}%
+}
+\caption{So sánh biểu diễn RQ4 bằng cùng điểm Mahalanobis-centroid; BioMedCLIP zero-shot là mô hình tất định nên chỉ báo cáo seed 42}
+\label{tab:rq4_ood_baselines}
+\end{table}

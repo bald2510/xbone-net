@@ -10,7 +10,7 @@ echo ============================================================
 echo   XBone-Net Suite — Training Launcher
 echo ============================================================
 
-"%PYTHON_EXEC%" tools/run_all.py --seeds 42 %*
+"%PYTHON_EXEC%" tools/run_all.py --ignore-experiment-file --group btxrd/ablation_study/modality/image_only btxrd/ablation_study/modality/text_only btxrd/ablation_study/modality/shuffled_report --seeds 42 123 456 --skip-completed
 
 echo.
 echo ============================================================

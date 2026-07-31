@@ -2945,7 +2945,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ood_cmd.add_argument(
         "--scenarios",
         nargs="+",
-        default=["semantic_ood", "domain_ood", "domain_ood_btxrd"],
+        default=["semantic_ood", "domain_ood_btxrd"],
     )
     ood_cmd.add_argument(
         "--methods",
@@ -2960,12 +2960,12 @@ def _build_parser() -> argparse.ArgumentParser:
     ood_cmd.add_argument(
         "--csv-output",
         type=Path,
-        default=DEFAULT_RESULTS_ROOT / "summary" / "ood" / "ood_3scenarios.csv",
+        default=DEFAULT_RESULTS_ROOT / "summary" / "ood" / "ood_2scenarios.csv",
     )
     ood_cmd.add_argument(
         "--output",
         type=Path,
-        default=DEFAULT_RESULTS_ROOT / "summary" / "ood" / "table_ood_3scenarios.tex",
+        default=DEFAULT_RESULTS_ROOT / "summary" / "ood" / "table_ood_2scenarios.tex",
     )
 
     ood_metrics = subparsers.add_parser(
@@ -3019,7 +3019,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ood_heatmaps.add_argument(
         "--scenarios",
         nargs="+",
-        default=["semantic_ood", "domain_ood", "domain_ood_btxrd"],
+        default=["semantic_ood", "domain_ood_btxrd"],
     )
     ood_heatmaps.add_argument(
         "--methods",
@@ -3551,9 +3551,6 @@ def _generate_ood_table_legacy(output_file: Path) -> None:
         r"& Entropy     & $0{.}5719\pm0{.}0072$ & $0{.}5488\pm0{.}0090$ & $0{.}9394\pm0{.}0347$ \\ \cline{2-5}",
         r"& Energy      & $0{.}5962\pm0{.}0232$ & $0{.}5735\pm0{.}0210$ & $0{.}9242\pm0{.}0131$ \\ \cline{2-5}",
         r"& Max-logit   & $0{.}5968\pm0{.}0235$ & $0{.}5740\pm0{.}0215$ & $0{.}9242\pm0{.}0131$ \\ \hline",
-        r"\multirow{2}{*}{Domain OOD--FracAtlas}",
-        r"& \textbf{Mahalanobis} & $\mathbf{0{.}8906\pm0{.}0236}$ & $\mathbf{0{.}8715\pm0{.}0210}$ & $\mathbf{0{.}4633\pm0{.}0840}$ \\ \cline{2-5}",
-        r"& kNN         & $0{.}8353\pm0{.}0173$ & $0{.}8120\pm0{.}0185$ & $0{.}6253\pm0{.}0640$ \\ \hline",
         r"\multirow{2}{*}{Cross-dataset OOD--BTXRD}",
         r"& \textbf{Mahalanobis} & $\mathbf{0{.}8429\pm0{.}0208}$ & $\mathbf{0{.}8240\pm0{.}0225}$ & $\mathbf{0{.}6533\pm0{.}0335}$ \\ \cline{2-5}",
         r"& kNN         & $0{.}7843\pm0{.}0140$ & $0{.}7610\pm0{.}0152$ & $0{.}7831\pm0{.}0104$ \\ \hline",
@@ -3577,7 +3574,6 @@ def _generate_ood_table_legacy(output_file: Path) -> None:
 
 OOD_SCENARIO_NAMES = {
     "semantic_ood": "Semantic OOD",
-    "domain_ood": "FracAtlas",
     "domain_ood_btxrd": "BTXRD",
 }
 

@@ -1,5 +1,6 @@
 # @package _global_
-# Modality robustness: train normally and mismatch reports only at test time.
+# Modality robustness: reuse the canonical checkpoint and mismatch reports only
+# at test time. tools/run_all.py resolves the checkpoint source explicitly.
 
 defaults:
   - /experiment/ctch/proposed/ours_xbone_net

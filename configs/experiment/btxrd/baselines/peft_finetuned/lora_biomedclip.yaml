@@ -35,7 +35,7 @@ params:
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
-    target_similarity: 0.95
+    target_similarity: 0.50
     p1_report_type: clinical
     merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth

@@ -1,0 +1,25 @@
+# @package _global_
+# RQ1 modality control: classify from BTXRD synthetic clinical text only.
+
+defaults:
+  - /experiment/btxrd/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: btxrd/ablation_study/modality/text_only
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    use_image: false
+    use_text: true
+    init_from_phase1_merged: false
+    init_from_phase1_checkpoint: false
+
+dataset:
+  params:
+    # Preserve the standard batch schema without reading image files.
+    text_only: true
+    high_res:
+      enabled: false
