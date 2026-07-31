@@ -83,7 +83,7 @@ from src.utils.efficiency import (  # noqa: E402
     parameter_summary,
     summarize_measurements,
 )
-from src.utils.prompts import generate_custom_prompts  # noqa: E402
+from src.utils.prompts import generate_clip_class_prompts  # noqa: E402
 from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id  # noqa: E402
 
 
@@ -119,18 +119,14 @@ def _tokenize_prompts(tokenizer, texts: list[str], device: torch.device):
 def _encode_zero_shot_prompts(
     model,
     class_names: list[str],
-    image_context: str,
     device: torch.device,
 ) -> torch.Tensor:
     tokenizer = getattr(model.backbone, "tokenizer", None)
     if tokenizer is None:
         raise ValueError("Zero-shot efficiency benchmarking requires a tokenizer.")
 
-    prompts = generate_custom_prompts(class_names, image_context)
-    flat_prompts = []
-    for class_name in class_names:
-        pair = prompts[class_name]
-        flat_prompts.extend((pair["positive"], pair["negative"]))
+    prompts = generate_clip_class_prompts(class_names)
+    flat_prompts = [prompts[class_name] for class_name in class_names]
 
     input_ids, attention_mask = _tokenize_prompts(tokenizer, flat_prompts, device)
     encoder = getattr(model.backbone, "encode_text", None)
@@ -145,7 +141,7 @@ def _encode_zero_shot_prompts(
         except TypeError:
             features = encoder(input_ids)
         features = F.normalize(features, dim=-1)
-    return features.reshape(len(class_names), 2, -1)
+    return features
 
 
 def _select_report_inputs(
@@ -196,8 +192,8 @@ def _build_forward(
 
     def forward():
         image_features = F.normalize(image_encoder(batch["pixel_values"]), dim=-1)
-        pair_logits = torch.einsum("bd,cpd->bcp", image_features, zero_shot_features)
-        return torch.softmax(pair_logits / temperature, dim=-1)[..., 0]
+        class_logits = image_features @ zero_shot_features.T
+        return torch.softmax(class_logits / temperature, dim=-1)
 
     return forward, None
 
@@ -387,7 +383,6 @@ def main(cfg: DictConfig) -> None:
         zero_shot_features = _encode_zero_shot_prompts(
             model,
             class_names,
-            str(params_cfg.get("image_context", "a bone x-ray")),
             device,
         )
 
