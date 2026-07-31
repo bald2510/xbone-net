@@ -80,13 +80,38 @@ Các mô tả X-quang tổng hợp trực tiếp từ nhãn và có thể nêu t
 \subsection{Bộ dữ liệu CTCH}
 \label{subsec:ctch-dataset}
 
-CTCH là bộ dữ liệu X-quang xương được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh và được giảng viên cung cấp cho nghiên cứu. Dữ liệu nguồn gồm ảnh được lựa chọn từ từng ca khám cùng các trường bệnh án tiếng Việt liên quan đến lý do vào viện, diễn tiến bệnh, tiền sử, tóm tắt khám và cận lâm sàng, kết quả khảo sát hình ảnh và chẩn đoán chuyên môn. Phạm vi thực nghiệm chỉ sử dụng ảnh X-quang đã được lựa chọn; những phương thức tạo ảnh khác và những ảnh không đại diện cho vị trí bệnh lý không được đưa vào tập phân loại.
+CTCH là bộ dữ liệu X-quang xương được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh và được giảng viên cung cấp cho nghiên cứu, khóa luận trân trọng cảm ơn thầy Võ Thế Hào cùng Đỗ Phúc Thịnh đã hỗ trợ cung cấp dữ liệu. Dữ liệu nguồn gồm ảnh được lựa chọn từ từng ca khám cùng các trường bệnh án tiếng Việt liên quan đến lý do vào viện, diễn tiến bệnh, tiền sử, tóm tắt khám và cận lâm sàng, kết quả khảo sát hình ảnh và chẩn đoán chuyên môn. Phạm vi thực nghiệm chỉ sử dụng ảnh X-quang đã được lựa chọn; những phương thức tạo ảnh khác và những ảnh không đại diện cho vị trí bệnh lý không được đưa vào tập phân loại.
+
+\subsection{Đạo đức nghiên cứu, quyền riêng tư và tính sẵn có của dữ liệu}
+
+Bộ dữ liệu được cung cấp được sử dụng theo thỏa thuận bảo mật đã ký kết và chỉ phục vụ mục đích nghiên cứu. Trước khi xử lý, các thông tin có khả năng định danh trực tiếp người bệnh đã được loại bỏ; mã hồ sơ chỉ được dùng để liên kết dữ liệu và kiểm soát việc phân chia tập, không được công bố trong kết quả nghiên cứu. Do chứa thông tin y tế nhạy cảm, bộ dữ liệu gốc không được phát hành công khai; khóa luận chỉ trình bày các số liệu thống kê và kết quả đã được tổng hợp. Hệ thống được xây dựng nhằm mục đích nghiên cứu và hỗ trợ tham khảo, không thay thế kết luận chuyên môn của bác sĩ. Mọi hoạt động kiểm định hoặc triển khai trong môi trường lâm sàng về sau cần tuân thủ quy định bảo vệ dữ liệu và được cơ quan có thẩm quyền phê duyệt.
 
 \subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
 
-Quá trình kiểm tra bắt đầu từ 3.641 hồ sơ. Có 348 hồ sơ mang dụng cụ y tế như nẹp hoặc phương tiện kết hợp xương được loại bỏ nhằm hạn chế hiện tượng mô hình dựa vào dấu hiệu can thiệp thay vì đặc điểm tổn thương; không ghi nhận hồ sơ bị đánh dấu xóa hoặc thiếu ảnh đã lựa chọn trong phiên bản dữ liệu hiện tại. Sau sàng lọc còn 3.293 hồ sơ, gồm 3.249 mẫu thuộc không gian 22 lớp phân loại và 44 mẫu được tách riêng làm dữ liệu ngoài phân phối về ngữ nghĩa.
+Quần thể đích của bộ dữ liệu là các bệnh nhân được chụp X-quang xương khớp để hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương, với quần thể tiếp cận là các bệnh nhân có hồ sơ và ảnh X-quang tại Bệnh viện Chấn thương Chỉnh hình TP.HCM. Qua quá trình nhận định, luận văn xác định các đặc điểm chính của dữ liệu như sau:
+\begin{itemize}
+    \item Có nhiều loại ảnh khác nhau, bao gồm ảnh chụp X-quang, ảnh CT, ảnh MRI và các loại ảnh khác. 
+    \item Một ca khám có thể có nhiều ảnh chụp từ các vị trí giải phẫu khác nhau, từ 2 đến vài trăm ảnh, nhưng chỉ một trong số đó là đúng vị trí và có sự thể hiện về bệnh lý ở mặt thị giác. 
+    \item Một bệnh nhân có thể tái khám nhiều lần, dẫn đến việc có nhiều mẫu dữ liệu tương tự.
+    \item Nhiều ca khám thiếu hụt các trường thông tin quan trọng đến huấn luyện như không có chẩn đoán xác định, không có phân tích ảnh X-quang,...
+    \item Đôi khi chẩn đoán xác định của bác sĩ là những căn bệnh về phần mềm (sụn, dây chằng, gân, cơ) không thể hiện được trên ảnh X-quang xương, dẫn đến nhãn chẩn đoán nếu sử dụng trực tiếp chẩn đoán xác định sẽ không chính xác.
+\end{itemize}
 
-Mỗi hồ sơ được liên kết với một ảnh X-quang đại diện và một mã nhóm người bệnh. Trong quần thể phân loại hiện tại, 3.249 ảnh tương ứng với 3.249 mã người bệnh; quần thể ngoài phân phối gồm 44 ảnh từ 44 mã khác và không giao với quần thể phân loại. Mã nhóm chỉ được sử dụng để kiểm soát rò rỉ giữa các tập và không được trình bày trong báo cáo.
+Nhóm nghiên cứu đã thực hiện các bước tiền xử lý dữ liệu để chuẩn hóa và làm sạch dữ liệu trước khi đưa vào huấn luyện mô hình. Các bước tiền xử lý bao gồm:
+\begin{itemize}
+    \item Loại bỏ các ảnh không liên quan đến vị trí chấn thương được đề cập trong báo cáo hoặc không có giá trị chẩn đoán, có các dụng cụ y tế (nẹp, đinh) che lấp vùng tổn thương.
+    \item Loại bỏ các ca khám trùng lặp, tái khám nhiều lần, thiếu trường dữ liệu cần thiết (phân tích ảnh, bệnh sử bệnh,...).
+    \item Chuẩn hóa và biên dịch các báo cáo y khoa từ tiếng Việt sang tiếng Anh.
+    \item Lọc các ca hiếm gặp, không đủ số lượng mẫu và tận dụng làm dữ liệu ngoài phân phối.
+    \item Loại bỏ các ca có đa chấn thương để phù hợp với mục tiêu nghiên cứu phân loại đơn nhãn đa lớp.
+    \item Gán nhãn cho các mẫu dữ liệu dựa trên báo cáo X-quang, chia thành các chấn thương kèm tên xương. Trong đó các chấn thương về phần mềm hoặc không liên quan đến xương được gán nhãn là "bình thường" nếu ảnh không ghi nhận tổn thương về xương.
+    \item Dịch các báo cáo lâm sàng sang tiếng Anh để tạo dữ liệu văn bản đa phương thức.
+    \item Loại bỏ tên hồ sơ và chuyển thành số thứ tự trong bộ dữ liệu để bảo đảm tính ẩn danh.
+\end{itemize}
+
+Sau sàng lọc, bộ dữ liệu bao gồm 3.641 hồ sơ, trong đó, 348 hồ sơ mang dụng cụ y tế như nẹp hoặc phương tiện kết hợp xương được loại bỏ nhằm hạn chế hiện tượng mô hình dựa vào dấu hiệu can thiệp thay vì đặc điểm tổn thương. Sau sàng lọc còn 3.293 hồ sơ, gồm 3.249 mẫu thuộc không gian 22 lớp phân loại và 44 mẫu được tách riêng làm dữ liệu ngoài phân phối về ngữ nghĩa.
+
+Mỗi hồ sơ được liên kết với một ảnh X-quang duy nhất. Trong quần thể phân loại hiện tại, 3.249 ảnh tương ứng với 3.249 mã bệnh nhân; quần thể ngoài phân phối gồm 44 ảnh từ 44 mã khác và không giao với quần thể phân loại. Mã nhóm chỉ được sử dụng để kiểm soát rò rỉ giữa các tập và không được trình bày trong báo cáo.
 
 Các mẫu ngoài phân phối không tham gia huấn luyện, xác thực hoặc kiểm thử bộ phân loại 22 lớp. Trong 44 mẫu này, 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm nhưng biểu hiện bệnh lý nằm ngoài không gian nhãn đích; chúng chỉ được sử dụng trong kịch bản đánh giá Semantic OOD được trình bày ở phần thực nghiệm hậu xử lý.
 
