@@ -78,7 +78,7 @@ Song song với các Med-VLMs, sự phát triển của các mô hình ngôn ng�
 
 \subsubsection{Lựa chọn BiomedCLIP làm mô hình nền tảng}
 \label{subsubsec:biomedclip_selection}
-Trong số các mô hình ngôn ngữ-thị giác y khoa được khảo sát, luận văn lựa chọn BiomedCLIP \cite{BiomedCLIP} làm mô hình nền tảng dựa trên mức độ phù hợp với bài toán, thay vì chỉ dựa trên kết quả của một bộ dữ liệu riêng lẻ. Thứ nhất, BiomedCLIP được tiền huấn luyện trên PMC-15M, gồm khoảng 15 triệu cặp ảnh-văn bản thu thập từ nhiều loại dữ liệu y sinh, trong khi một số mô hình trước đó chủ yếu được xây dựng và đánh giá trên ảnh X-quang ngực. Phạm vi tiền huấn luyện rộng hơn tạo cơ sở phù hợp cho việc chuyển giao sang ảnh X-quang xương, vốn có sự đa dạng lớn về vùng giải phẫu, tư thế chụp và loại tổn thương. Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá zero-shot thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm backbone khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương. Kết quả phân loại không mẫu của BiomedCLIP và các mô hình nền tảng khác được trình bày trong Phần \ref{subsubsec:biomedclip_zeroshot}.
+Trong số các mô hình ngôn ngữ-thị giác y khoa được khảo sát, luận văn lựa chọn BiomedCLIP \cite{BiomedCLIP} làm mô hình nền tảng dựa trên mức độ phù hợp với bài toán, thay vì chỉ dựa trên kết quả của một bộ dữ liệu riêng lẻ. Thứ nhất, BiomedCLIP được tiền huấn luyện trên PMC-15M, gồm khoảng 15 triệu cặp ảnh-văn bản thu thập từ nhiều loại dữ liệu y sinh, trong khi một số mô hình trước đó chủ yếu được xây dựng và đánh giá trên ảnh X-quang ngực. Phạm vi tiền huấn luyện rộng hơn tạo cơ sở phù hợp cho việc chuyển giao sang ảnh X-quang xương, vốn có sự đa dạng lớn về vùng giải phẫu, tư thế chụp và loại tổn thương. Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá zero-shot thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm backbone khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương. Kết quả phân loại không mẫu của BiomedCLIP và các mô hình nền tảng khác được trình bày trong Phần \ref{subsec:foundation_model_evaluation}.
 
 \subsubsection{Cơ chế phân loại không mẫu của BioMedCLIP}
 \label{subsubsec:biomedclip_zeroshot}
@@ -115,7 +115,9 @@ Trong các mô hình ngôn ngữ-thị giác tổng quát, LLaVA-NeXT \cite{LLaV
 
 Đối với ảnh y khoa, MedBridge \cite{Li2026MedBridge} áp dụng chiến lược đa góc nhìn gồm một ảnh toàn cục và nhiều vùng cục bộ được lấy từ ảnh X-quang độ phân giải cao. Cách biểu diễn này duy trì ngữ cảnh giải phẫu của toàn ảnh, đồng thời giúp các dấu hiệu bệnh lý khu trú được quan sát ở độ phân giải phù hợp với bộ mã hóa. Kết quả loại bỏ thành phần cho thấy việc không sử dụng lấy mẫu đa góc nhìn làm hiệu năng giảm, qua đó cung cấp bằng chứng thực nghiệm cho lợi ích của biểu diễn toàn cục-cục bộ trên ảnh X-quang. Tuy nhiên, nghiên cứu được thực hiện chủ yếu trên X-quang ngực và kết hợp thêm các mô-đun thích nghi khác, nên hiệu quả trên X-quang xương vẫn cần được kiểm chứng riêng.
 
-Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược toàn cục-cục bộ với ngân sách token cố định trong bài toán phân loại ảnh X-quang xương.
+Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược toàn cục-cục bộ với ngân sách token cố định trong bài toán phân loại ảnh X-quang xương. 
+
+Bảng tổng hợp về các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính được trình bày trong Bảng \ref{tab:ch2_high_resolution}.
 
 \begin{table}[htbp]
 \centering
@@ -333,32 +335,38 @@ Thứ ba, mặc dù các mô hình nền tảng đạt hiệu quả cao, nhiều
 Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu năng phân loại mà chưa quan tâm đầy đủ đến khả năng phát hiện dữ liệu ngoài phân phối. Trong môi trường lâm sàng, mô hình có thể gặp các trường hợp bệnh lý hiếm, dữ liệu có chất lượng thấp hoặc các bất thường chưa xuất hiện trong tập huấn luyện. Nếu không có cơ chế phát hiện OOD, mô hình vẫn có thể đưa ra dự đoán với độ tin cậy cao mặc dù kết quả không chính xác.
 
 \subsection{Cơ sở lựa chọn và định hướng phương pháp đề xuất}
+\label{subsec:ch2_method_direction}
 
 Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên việc kế thừa mô hình BiomedCLIP \cite{BiomedCLIP} kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Các lựa chọn thiết kế cụ thể được đưa ra dựa trên phân tích sau:
 
-\textbf{Về xử lý ảnh độ phân giải cao:} Luận văn lựa chọn chiến lược global-local nhằm đồng thời duy trì bố cục giải phẫu toàn cục và bảo toàn các dấu hiệu bệnh lý nhỏ trên ảnh gốc. Thay vì chia ảnh thành lưới dày làm tăng chi phí tính toán, hệ thống chỉ sử dụng bốn vùng cục bộ được lựa chọn theo chiến lược sparse-focal và nén thành số token cố định. Thông tin tọa độ của từng vùng được bổ sung để duy trì quan hệ không gian, trong khi cơ chế chú ý cho phép mô hình ưu tiên các vùng phù hợp với ngữ cảnh toàn ảnh. Thiết kế này cân bằng giữa khả năng giữ lại chi tiết, độ phủ không gian và chi phí xử lý.
+\textbf{Về xử lý ảnh độ phân giải cao:}
+Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định có thể làm suy giảm các dấu hiệu tổn thương nhỏ, trong khi xử lý toàn bộ ảnh ở độ phân giải cao làm tăng đáng kể chi phí tính toán. Vì vậy, luận văn lựa chọn chiến lược toàn cục--cục bộ, trong đó ảnh toàn cục duy trì bố cục giải phẫu chung, còn bốn vùng cục bộ được lựa chọn theo chiến lược sparse-focal nhằm bảo toàn các vùng giàu thông tin. Các đặc trưng cục bộ được bổ sung thông tin vị trí và nén về số lượng token cố định để cân bằng giữa khả năng giữ lại chi tiết và chi phí xử lý.
 
-\textbf{Về kỹ thuật tinh chỉnh:} Kỹ thuật LoRA được lựa chọn thay vì tinh chỉnh toàn phần hoặc các phương pháp tinh chỉnh hiệu quả tham số khác, vì ba lý do chính:
+\textbf{Về thích nghi mô hình nền tảng:}
+LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa của BioMedCLIP với miền ảnh X-quang xương mà không cần cập nhật toàn bộ tham số nền. Lựa chọn này giúp giảm chi phí huấn luyện, hạn chế nguy cơ quá khớp trên các lớp có ít mẫu và bảo toàn phần lớn tri thức y sinh đã được học trong giai đoạn tiền huấn luyện.
+
+Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, luận văn sử dụng hàm mất mát khớp ngữ nghĩa với phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh--văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
+
+\textbf{Về khai thác và dung hợp thông tin lâm sàng:}
+Thiết lập phân loại không mẫu của BioMedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân loại không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
+
+Thay vì chỉ ghép nối hai biểu diễn toàn cục, luận văn lựa chọn cơ chế chú ý chéo hai chiều để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
+
+\textbf{Về phân loại đa lớp và mất cân bằng dữ liệu:}
+Phương pháp sử dụng đầu phân loại dựa trên tâm lớp thực nghiệm, trong đó mỗi lớp được đại diện bằng trung bình các embedding thuộc lớp đó thay vì một prototype được học tự do. Mẫu mới được phân loại dựa trên độ tương đồng với các tâm lớp. Hàm mất mát entropy chéo có trọng số được sử dụng trong quá trình huấn luyện nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
+
+\textbf{Về phát hiện dữ liệu ngoài phân phối:}
+Ngoài nhiệm vụ phân loại, luận văn bổ sung cơ chế phát hiện OOD ở giai đoạn hậu xử lý mà không yêu cầu mẫu OOD trong quá trình huấn luyện. Khoảng cách Mahalanobis được tính giữa biểu diễn của mẫu mới và các tâm lớp thực nghiệm, có xét đến cấu trúc hiệp phương sai của không gian đặc trưng. Mẫu có khoảng cách nhỏ nhất vượt quá ngưỡng xác định trên tập kiểm định sẽ được đánh dấu là dữ liệu ngoài phân phối thay vì buộc phải gán vào một lớp đã biết.
+
+\textbf{Về quy trình huấn luyện:}
+Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:
+
 \begin{itemize}
-  \item LoRA giảm số lượng tham số cần huấn luyện xuống đáng kể bằng cách tiêm các ma trận phân rã hạng thấp vào mạng nơ-ron, cho phép tinh chỉnh các mô hình VLM ngay cả khi nguồn lực tính toán bị hạn chế.
-  \item Khác với Adapter Tuning chèn thêm các lớp ẩn vật lý làm chậm tốc độ xử lý, các ma trận trọng số của LoRA có thể được cộng gộp trực tiếp vào trọng số gốc, giúp không tăng độ trễ trong lúc suy luận.
-  \item LoRA cho phép mô hình bám sát dữ liệu y tế đặc thù trong khi không phá vỡ các cấu trúc tri thức đa phương thức tổng quát đã được tiền huấn luyện.
+    \item \textbf{Giai đoạn 1 -- Thích nghi và căn chỉnh biểu diễn:}
+    hai bộ mã hóa của BioMedCLIP được thích nghi thông qua LoRA bằng hàm mất mát khớp ngữ nghĩa. Mô-đun dung hợp và đầu phân loại chưa được tối ưu trong giai đoạn này.
+
+    \item \textbf{Giai đoạn 2 -- Dung hợp và phân loại:}
+    các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân loại. Các tâm lớp thực nghiệm được cập nhật từ embedding của tập huấn luyện và được sử dụng cho cả phân loại lẫn phát hiện OOD.
 \end{itemize}
 
-\textbf{Về mục tiêu thích nghi biểu diễn:}
-Mặc dù BioMedCLIP được tiền huấn luyện bằng học tương phản, việc áp dụng trực tiếp InfoNCE trên dữ liệu đích có thể tạo ra các cặp âm tính giả, do những mẫu khác nhau trong cùng lô vẫn có thể thuộc cùng một lớp hoặc mang nội dung lâm sàng tương đồng. Vì vậy, nghiên cứu lựa chọn hàm mất mát khớp ngữ nghĩa sử dụng phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản thuộc cùng một mẫu, đồng thời giảm mức phạt đối với các mẫu khác có quan hệ ngữ nghĩa gần nhau.
-
-\textbf{Về phương pháp dung hợp đa phương thức:}
-Thay vì chỉ ghép nối hai biểu diễn toàn cục, nghiên cứu lựa chọn cơ chế chú ý chéo hai chiều để đặc trưng ảnh có thể lựa chọn các thông tin lâm sàng liên quan và đặc trưng văn bản có thể định hướng mô hình đến các vùng ảnh phù hợp. Cơ chế này phù hợp với bài toán vì mối quan hệ giữa triệu chứng lâm sàng và dấu hiệu X-quang không hoàn toàn đối xứng hoặc tương ứng trực tiếp ở mức toàn cục. Văn bản đầu vào chỉ bao gồm những thông tin có sẵn trước kết luận chẩn đoán cuối cùng nhằm hạn chế hiện tượng rò rỉ nhãn.
-
-\textbf{Về phương pháp phát hiện OOD:} Nghiên cứu đề xuất sự kết hợp tương hỗ giữa Mạng nguyên mẫu (Prototypical Networks) và khoảng cách Mahalanobis theo hai giai đoạn. Trong giai đoạn huấn luyện, hàm mất mát Entropy chéo có trọng số được kết hợp cùng Mạng nguyên mẫu để tối ưu hóa việc phân loại. Cơ chế này chủ động định hình không gian đặc trưng, ép các dữ liệu chuẩn thuộc phân phối tạo thành các cụm xung quanh các nguyên mẫu, khắc phục nhược điểm mở rộng không gian quyết định vô hạn của hàm Softmax.
-
-Trong giai đoạn suy luận, khoảng cách Mahalanobis được áp dụng ở khâu hậu kỳ (post-hoc) để phát hiện dữ liệu bất thường, thay thế cho khoảng cách Euclidean mặc định. Việc này cho phép tận dụng thông tin từ ma trận hiệp phương sai của các cụm đặc trưng đã được định hình trước đó. Nhờ vậy, hệ thống đánh giá chính xác mức độ bất thường của mẫu và nhận diện các ranh giới phân phối tinh tế hơn. Từ đó, mô hình từ chối hiệu quả các mẫu dữ liệu lạ, đặc biệt là các trường hợp có đặc trưng rất gần với dữ liệu gốc (Near-OOD) phổ biến trong ảnh y khoa, đồng thời vẫn duy trì độ chính xác cao trên tập dữ liệu chuẩn.
-
-\textbf{Về kiến trúc pipeline:} Hệ thống được thiết kế theo kiến trúc hai giai đoạn :
-\begin{itemize}
-  \item \textbf{Giai đoạn 1 - Căn chỉnh tương phản:} Chỉ huấn luyện backbone BiomedCLIP thông qua LoRA bằng hàm mất mát tương phản, giúp backbone thích ứng với miền dữ liệu y khoa chuyên biệt. Mô-đun dung hợp và bộ phân loại được đóng băng trong giai đoạn này.
-  \item \textbf{Giai đoạn 2 - Huấn luyện dung hợp và phân loại:} Tiếp tục huấn luyện backbone thông qua LoRA phục vụ cho nhiệm vụ phân loại, ngoài ra spatial resampler và mô-đun dung hợp cross-chú ý tiếp tục được tối ưu. Bộ phân loại empirical-centroid không học prototype tự do mà cập nhật centroid từ trung bình embedding của tập huấn luyện, qua đó hạn chế nguy cơ quá khớp.
-\end{itemize}
-
-Kiến trúc chi tiết của hệ thống cùng quy trình huấn luyện và đánh giá sẽ được trình bày trong Chương 3.
+Các định hướng trên được hiện thực hóa trong phương pháp XBone-Net. Kiến trúc chi tiết, quy trình huấn luyện và cơ chế suy luận được trình bày trong Chương~\ref{Chapter3}.
