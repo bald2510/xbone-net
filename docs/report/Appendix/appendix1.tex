@@ -124,29 +124,6 @@ Bảng \ref{tab:appendix-btxrd-report-audit} tổng hợp kiểm tra các báo c
 
 Bảng \ref{tab:appendix-btxrd-example} sử dụng trực tiếp mẫu \texttt{IMG000001.jpeg} trong thư mục dữ liệu để minh họa quan hệ giữa ảnh, nhãn và hai nguồn văn bản. Vì BTXRD không cung cấp bệnh sử tự do, cả \textit{clinical text} và \textit{X-ray text} đều là dữ liệu dẫn xuất chứ không phải báo cáo nguyên bản của bác sĩ.
 
-\begin{table}[H]
-\centering
-\caption{Ví dụ ảnh, nhãn và hai nguồn văn bản dẫn xuất của BTXRD}
-\label{tab:appendix-btxrd-example}
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabularx}{\textwidth}{C{1.8cm}C{1.8cm}X X}
-\toprule
-\textbf{Ảnh} & \textbf{Nhãn} & \textbf{\textit{Clinical text}} & \textbf{\textit{X-ray text}} \\
-\midrule
-\includegraphics[width=1.7cm,height=4.5cm,keepaspectratio]{../../data/BTXRD/images/IMG000001.jpeg}
-&
-\textit{other mt}
-&
-Patient: 48-year-old female. Reason for admission: Pain and swelling of the hip bone. Disease history: Pain in the hip bone for 1 month; associated with decreased appetite. Physical examination: Palpable mass; tenderness on palpation; mild swelling. Personal medical history: No prior bone disease or fracture. No relevant surgical or medical history. Radiographic evaluation: AP view of the hip bone was obtained.
-&
-A musculoskeletal radiograph of the bone in standard projection with evidence of other mt: a destructive bone lesion with ill-defined borders suggestive of malignancy. In a high-resolution diagnostic acquisition. The imaging features raise concern for malignancy.
-\\
-\bottomrule
-\end{tabularx}
-\end{table}
-
 Ví dụ cho thấy báo cáo X-quang tổng hợp nêu trực tiếp nhãn \texttt{other mt}, trong khi bệnh sử tổng hợp không chứa tên lớp nhưng mô tả triệu chứng được lựa chọn từ nhóm mẫu câu ác tính. Cách truy vết này làm rõ nguồn gốc của từng phương thức và giới hạn của việc xem văn bản tổng hợp như bệnh sử độc lập.
 
 \section{Bộ dữ liệu CTCH}
