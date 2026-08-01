@@ -82,7 +82,7 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
 \label{subsec:ch3_image_preprocessing}
 \label{subsec:ch3_high_resolution}
 
-Ảnh X-quang có thể khác nhau về độ phân giải, tỷ lệ khung hình và độ rộng vùng nền do quy trình thu nhận ảnh, trong khi bộ mã hóa thị giác tiếp nhận ảnh vuông có kích thước cố định. Việc co giãn trực tiếp toàn bộ ảnh có thể làm thay đổi tỷ lệ giải phẫu và làm suy giảm một phần chi tiết khu trú; do đó, quy trình tạo một ảnh toàn cục duy trì bố cục chung và bốn ảnh cục bộ tập trung vào các vùng có nội dung giải phẫu hoặc đặc trưng kết cấu đáng chú ý. Quá trình lựa chọn được thực hiện từ tín hiệu điểm ảnh thông qua các kỹ thuật xử lý ảnh.
+Ảnh X-quang $x_i^{img}$ có thể khác nhau về độ phân giải, tỷ lệ khung hình và độ rộng vùng nền do quy trình thu nhận ảnh, trong khi bộ mã hóa thị giác tiếp nhận ảnh vuông có kích thước cố định. Việc co giãn trực tiếp toàn bộ ảnh có thể làm thay đổi tỷ lệ giải phẫu và làm suy giảm một phần chi tiết khu trú; do đó, quy trình tạo một ảnh toàn cục $x_i^{img,g}$ duy trì bố cục chung và bốn ảnh cục bộ $x_{i,m}^{img,\ell}$ tập trung vào các vùng có nội dung giải phẫu hoặc đặc trưng kết cấu đáng chú ý. Các ký hiệu này được dùng tiếp trong phần bộ mã hóa thị giác, tránh định nghĩa thêm một hệ ký hiệu riêng cho cùng các đầu vào. Quá trình lựa chọn được thực hiện hoàn toàn từ tín hiệu điểm ảnh.
 
 \begin{figure}[H]
     \centering
@@ -91,34 +91,160 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
     \label{fig:ch3_high_resolution_preprocessing}
 \end{figure}
 
-Như minh họa trong Hình \ref{fig:ch3_high_resolution_preprocessing}, quy trình gồm xác định vùng tiền cảnh, cắt vùng nội dung, sinh và lựa chọn các cửa sổ ứng viên, ánh xạ các cửa sổ về ảnh nguồn, trích xuất bốn ảnh cục bộ và tạo ảnh toàn cục. Trước tiên, ảnh được chuyển sang thang xám và cường độ nền được ước lượng từ trung vị của dải điểm ảnh nằm dọc biên ảnh. 
+Như minh họa trong Hình \ref{fig:ch3_high_resolution_preprocessing}, quy trình gồm xác định vùng tiền cảnh, cắt vùng nội dung, sinh và lựa chọn các cửa sổ ứng viên, ánh xạ các cửa sổ về ảnh nguồn, trích xuất bốn ảnh cục bộ và tạo ảnh toàn cục. Trước tiên, $x_i^{img}$ được chuyển thành ảnh thang xám chuẩn hóa $x_i^{gray}$ có cường độ thuộc đoạn $[0,1]$; mức nền được ước lượng từ dải điểm ảnh nằm dọc biên ảnh. Trong các công thức xử lý từng cửa sổ dưới đây, chỉ số mẫu $i$ được lược bỏ ở các đại lượng phụ trợ khi không gây nhập nhằng.
 
 \subsubsection{Xác định vùng tiền cảnh}
 Một điểm ảnh được xem là thuộc vùng tiền cảnh khi độ lệch của nó so với mức nền vượt qua một ngưỡng thích nghi:
 
-\begin{equation}M(p)=\mathbb{I}\left(\left|I(p)-\mu^{\partial}\right|\geq\tau\right),\qquad \tau=\max\left(\tau_{\min},4\sigma^{\partial}\right).\label{eq:ch3_foreground_mask}\end{equation}
+\begin{equation}
+m_i^{fg}(p)
+=
+\mathbb{I}\!\left(
+\left|x_i^{gray}(p)-\mu_i^{\partial}\right|
+\geq \tau_i
+\right),
+\qquad
+\tau_i
+=
+\max\!\left(\tau_{\min},4\sigma_i^{\partial}\right).
+\label{eq:ch3_foreground_mask}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_foreground_mask}, $I(p)$ là cường độ tại vị trí $p$ của ảnh đang xử lý, $\mu^{\partial}$ là trung vị cường độ ở biên ảnh, $\sigma^{\partial}$ là độ lệch tuyệt đối trung vị đã hiệu chỉnh tại biên, $\tau_{\min}$ là mức tương phản tối thiểu, $\tau$ là ngưỡng thích nghi và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Hình chữ nhật bao quanh các hàng và cột có tỷ lệ điểm ảnh tiền cảnh đủ lớn được mở rộng thêm một biên nhỏ để giảm nguy cơ cắt mất cấu trúc giải phẫu; nếu vùng ước lượng quá hẹp, quá nhỏ hoặc không giữ đủ năng lượng tương phản, toàn bộ ảnh $X$ được sử dụng thay cho phép cắt.
+Trong Công thức \ref{eq:ch3_foreground_mask}, $p$ là vị trí điểm ảnh, $\mu_i^{\partial}$ là trung vị cường độ biên, $\sigma_i^{\partial}$ là độ lệch tuyệt đối trung vị đã hiệu chỉnh tại biên, $\tau_{\min}$ là mức tương phản tối thiểu, $\tau_i$ là ngưỡng thích nghi, $m_i^{fg}$ là mặt nạ tiền cảnh và $\mathbb{I}(\cdot)$ là hàm chỉ thị. Hình chữ nhật bao quanh các hàng và cột có tỷ lệ điểm ảnh tiền cảnh đủ lớn được mở rộng thêm một biên nhỏ để giảm nguy cơ cắt mất cấu trúc giải phẫu; nếu vùng ước lượng quá hẹp, quá nhỏ hoặc không giữ đủ năng lượng tương phản, toàn bộ $x_i^{img}$ được sử dụng thay cho phép cắt.
 
-Từ vùng tiền cảnh, ảnh toàn cục được thay đổi kích thước theo cùng một tỷ lệ trên hai trục và được đệm thành ảnh vuông $224\times224$. Hệ số thay đổi kích thước được xác định bởi:
+Từ vùng tiền cảnh, ảnh toàn cục được thay đổi kích thước theo cùng một tỷ lệ trên hai trục và được đệm thành ảnh vuông $224\times224$. Phép tạo đầu vào toàn cục được viết gọn như sau:
 
-\begin{equation}s=\min\left(\frac{224}{W^{f}},\frac{224}{H^{f}}\right),\qquad X^{g}=\mathcal{L}_{224}\!\left(\mathcal{C}(X)\right).\label{eq:ch3_global_image}\end{equation}
+\begin{equation}
+x_i^{img,g}
+=
+\mathcal{L}_{224}\!\left(
+\mathcal{C}\!\left(x_i^{img};m_i^{fg}\right)
+\right).
+\label{eq:ch3_global_image}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_global_image}, $W^{f}$ và $H^{f}$ lần lượt là chiều rộng và chiều cao của vùng tiền cảnh, $s$ là hệ số thay đổi kích thước, $\mathcal{C}(\cdot)$ là phép cắt vùng tiền cảnh và $\mathcal{L}_{224}(\cdot)$ là phép đổi kích thước giữ tỷ lệ kết hợp với đệm biên để thu được ảnh toàn cục $X^{g}$. Màu đệm được ước lượng từ trung vị biên của vùng ảnh thay vì gán cố định bằng màu đen, sau đó ảnh được chuẩn hóa theo quy tắc đầu vào của bộ mã hóa thị giác.
+Trong Công thức \ref{eq:ch3_global_image}, $\mathcal{C}(\cdot)$ là phép cắt theo vùng tiền cảnh và $\mathcal{L}_{224}(\cdot)$ là phép đổi kích thước đồng nhất trên hai trục kết hợp với đệm biên để thu được ảnh vuông $224\times224$. Màu đệm được ước lượng từ trung vị biên của vùng ảnh thay vì gán cố định bằng màu đen, sau đó $x_i^{img,g}$ được chuẩn hóa theo quy tắc đầu vào của bộ mã hóa thị giác.
 
 \subsubsection{Sinh và lựa chọn ứng viên}
 
-Đối với nhánh cục bộ, cạnh dài của vùng tiền cảnh được đưa về tối đa $896$ điểm ảnh mà không phóng lớn ảnh có độ phân giải thấp. Trên ảnh trung gian này, các cửa sổ vuông $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh; một cửa sổ được ưu tiên xem xét khi tỷ lệ điểm ảnh tiền cảnh bên trong không thấp hơn $0{,}60$. Tập cửa sổ ứng viên có thể được biểu diễn như sau:
+Đối với nhánh cục bộ, cạnh dài của vùng tiền cảnh được đưa về tối đa $896$ điểm ảnh mà không phóng lớn ảnh có độ phân giải thấp. Trên ảnh trung gian này, các cửa sổ vuông $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh; một cửa sổ được ưu tiên xem xét khi tỷ lệ điểm ảnh tiền cảnh bên trong không thấp hơn $0{,}60$. Gọi $\mathcal{G}$ là lưới cửa sổ của một ảnh và $r(b)$ là tỷ lệ tiền cảnh trong cửa sổ $b$, tập ứng viên được xác định bởi:
 
-\begin{equation}\mathcal{G}=\operatorname{Grid}\!\left(H^{c},W^{c};224,168\right),\qquad \mathcal{B}=\left\{b\in\mathcal{G}\mid r(b)\geq0{,}60\right\}.\label{eq:ch3_candidate_regions}\end{equation}
+\begin{equation}
+\mathcal{G}
+=
+\operatorname{Grid}\!\left(
+\mathcal{R}_{\leq896}\!\left(
+\mathcal{C}\!\left(x_i^{img};m_i^{fg}\right)
+\right);
+224,168
+\right),
+\qquad
+r(b)
+=
+\frac{1}{|b|}
+\sum_{p\in b}m_i^{fg}(p),
+\qquad
+\mathcal{B}
+=
+\left\{
+b\in\mathcal{G}\mid r(b)\geq0{,}60
+\right\}.
+\label{eq:ch3_candidate_regions}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_candidate_regions}, $H^{c}$ và $W^{c}$ là chiều cao và chiều rộng của ảnh trung gian, $\mathcal{G}$ là lưới các cửa sổ vuông cạnh $224$ được sinh với bước dịch chuyển $168$, $r(b)$ là tỷ lệ điểm ảnh tiền cảnh trong cửa sổ $b$, còn $\mathcal{B}$ là tập cửa sổ đáp ứng ngưỡng tiền cảnh; vị trí cuối mỗi trục được bổ sung khi cần thiết để hạn chế bỏ sót phần biên của vùng giải phẫu.
+Trong Công thức \ref{eq:ch3_candidate_regions}, $\mathcal{R}_{\leq896}$ là phép thu nhỏ giữ tỷ lệ để cạnh dài không vượt quá $896$ điểm ảnh, $|b|$ là số điểm ảnh trong cửa sổ, còn $\mathcal{B}$ là tập cửa sổ đáp ứng ngưỡng tiền cảnh. Trên ảnh trung gian, mức nền được ước lượng lại bằng khoảng có tần suất lớn nhất trong histogram cường độ biên và mặt nạ tiền cảnh được tính lại theo ngưỡng tương phản; để tránh thêm ký hiệu, mặt nạ ở độ phân giải đang xét vẫn được viết là $m_i^{fg}$. Vị trí cuối mỗi trục được bổ sung khi cần thiết để hạn chế bỏ sót phần biên của vùng giải phẫu.
 
-Mỗi cửa sổ ứng viên được chấm điểm từ ba thành phần gồm năng lượng Laplacian biểu thị mức thay đổi cường độ cục bộ, entropy biểu thị mức đa dạng của phân bố mức xám và tỷ lệ tiền cảnh biểu thị lượng nội dung khác nền:
+Mỗi cửa sổ ứng viên được chấm điểm từ ba thành phần gồm đáp ứng Laplacian, entropy mức xám và tỷ lệ tiền cảnh. Laplacian là toán tử đạo hàm bậc hai thường được sử dụng để làm nổi bật biến thiên cường độ và biên ảnh \cite{Marr1980EdgeDetection}; các độ đo dựa trên Laplacian cũng được khảo sát rộng rãi như thước đo độ sắc nét hoặc lượng chi tiết cục bộ \cite{Pertuz2013FocusMeasures}. Với điểm ảnh bên trong ảnh, Laplacian rời rạc bốn láng giềng và năng lượng của một cửa sổ được tính bởi:
 
-\begin{equation}q(b)=0{,}55\,\widehat{E}(b)+0{,}35\,\widehat{\mathcal{H}}(b)+0{,}10\,r(b).\label{eq:ch3_candidate_score}\end{equation}
+\begin{equation}
+\begin{aligned}
+\Delta x_i^{gray}(u,v)
+&=
+4x_i^{gray}(u,v)
+-x_i^{gray}(u-1,v)
+-x_i^{gray}(u+1,v) \\
+&\quad
+-x_i^{gray}(u,v-1)
+-x_i^{gray}(u,v+1),
+\\
+E(b)
+&=
+\frac{1}{|b|}
+\sum_{(u,v)\in b}
+\left|
+\Delta x_i^{gray}(u,v)
+\right|.
+\end{aligned}
+\label{eq:ch3_laplacian_energy}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_candidate_score}, $\widehat{E}(b)$ và $\widehat{\mathcal{H}}(b)$ lần lượt là năng lượng Laplacian và entropy của cửa sổ $b$ sau khi chuẩn hóa về đoạn $[0,1]$, $r(b)$ là tỷ lệ điểm ảnh tiền cảnh và $q(b)$ là điểm thông tin của cửa sổ. Trọng số lớn hơn dành cho năng lượng Laplacian làm điểm số nhạy hơn với biên và biến đổi kết cấu, trong khi entropy và tỷ lệ tiền cảnh cung cấp thêm thông tin về sự đa dạng cường độ và mức độ hiện diện của cấu trúc giải phẫu.
+Tại biên ảnh, giá trị gần nhất được lặp lại trước khi áp dụng toán tử. Công thức \ref{eq:ch3_laplacian_energy} phản ánh đúng hiện thực trong quy trình: $E(b)$ là trung bình trị tuyệt đối của đáp ứng Laplacian, không phải tổng bình phương đáp ứng.
+
+Entropy được xây dựng từ phân bố histogram mức xám theo định nghĩa entropy thông tin của Shannon \cite{Shannon1948Information}. Với $32$ khoảng mức xám và $\pi_k(b)$ là tỷ lệ điểm ảnh của cửa sổ $b$ thuộc khoảng thứ $k$, entropy chuẩn hóa được tính như sau:
+
+\begin{equation}
+\pi_k(b)
+=
+\frac{
+\left|
+\left\{
+p\in b
+\mid
+x_i^{gray}(p)\text{ thuộc khoảng }k
+\right\}
+\right|
+}{
+|b|
+},
+\qquad
+\mathcal{H}(b)
+=
+-\frac{1}{\log_2 32}
+\sum_{\substack{k=1\\\pi_k(b)>0}}^{32}
+\pi_k(b)\log_2\pi_k(b).
+\label{eq:ch3_gray_entropy}
+\end{equation}
+
+Do $\log_2 32=5$, $\mathcal{H}(b)$ thuộc đoạn $[0,1]$ và tăng khi cường độ trong cửa sổ phân bố đa dạng hơn. Trước khi kết hợp các thành phần, $E(b)$ và $\mathcal{H}(b)$ tiếp tục được chuẩn hóa min-max trên toàn bộ tập cửa sổ của cùng ảnh:
+
+\begin{equation}
+\widehat{a}(b)
+=
+\begin{cases}
+\displaystyle
+\frac{
+a(b)-\min_{b'\in\mathcal{G}}a(b')
+}{
+\max_{b'\in\mathcal{G}}a(b')
+-\min_{b'\in\mathcal{G}}a(b')
+},
+&
+\text{nếu }
+\max_{b'\in\mathcal{G}}a(b')
+>
+\min_{b'\in\mathcal{G}}a(b'),
+\\[10pt]
+0,
+&
+\text{ngược lại},
+\end{cases}
+\qquad
+a\in\left\{E,\mathcal{H}\right\}.
+\label{eq:ch3_candidate_normalization}
+\end{equation}
+
+Điểm thông tin cuối cùng của cửa sổ là:
+
+\begin{equation}
+q(b)
+=
+0{,}55\,\widehat{E}(b)
++0{,}35\,\widehat{\mathcal{H}}(b)
++0{,}10\,r(b).
+\label{eq:ch3_candidate_score}
+\end{equation}
+
+Trong Công thức \ref{eq:ch3_candidate_score}, trọng số lớn hơn dành cho đáp ứng Laplacian làm điểm số nhạy hơn với biên và biến đổi kết cấu, trong khi entropy và tỷ lệ tiền cảnh cung cấp thêm thông tin về sự đa dạng cường độ và mức độ hiện diện của cấu trúc giải phẫu.
 
 Việc chọn bốn vùng cục bộ được thực hiện theo hai vai trò. Hai vùng đầu tiên được chọn gần các vị trí phân bố đều dọc theo trục dài của vùng tiền cảnh nhằm duy trì độ bao phủ giải phẫu; với tâm cửa sổ đã chuẩn hóa, phép chọn vùng bao phủ thứ $j$ được mô tả bởi:
 
@@ -138,9 +264,18 @@ Khi mặt nạ tiền cảnh không tạo đủ số cửa sổ đạt ngưỡng
 
 Các hộp được chọn trên ảnh trung gian được ánh xạ ngược về tọa độ của ảnh nguồn trước khi cắt, nhờ đó mỗi vùng cục bộ được lấy từ dữ liệu ảnh ban đầu thay vì từ ảnh trung gian đã thu nhỏ. Mỗi vùng sau đó được giữ tỷ lệ, đệm biên và chuẩn hóa thành ảnh $224\times224$:
 
-\begin{equation}X_{m}^{\ell}=\mathcal{L}_{224}\!\left(X\!\mid_{b_m}\right),\qquad m=1,\ldots,4.\label{eq:ch3_local_images}\end{equation}
+\begin{equation}
+x_{i,m}^{img,\ell}
+=
+\mathcal{L}_{224}\!\left(
+x_i^{img}\!\mid_{b_m}
+\right),
+\qquad
+m=1,\ldots,4.
+\label{eq:ch3_local_images}
+\end{equation}
 
-Trong Công thức \ref{eq:ch3_local_images}, $b_m$ là hộp thứ $m$ trên ảnh nguồn, $X\!\mid_{b_m}$ là vùng ảnh được cắt theo hộp này và $X_m^{\ell}$ là ảnh cục bộ tương ứng. Kết quả của quá trình xử lý một ảnh gồm ảnh toàn cục $X^{g}$, bốn ảnh cục bộ $\{X_m^{\ell}\}_{m=1}^{4}$ và tọa độ chuẩn hóa của bốn vùng; các thành phần này được tạo trước bộ mã hóa thị giác, vì vậy cơ chế độ phân giải cao được xem là một bước chuẩn bị đầu vào thay vì một bộ mã hóa độc lập.
+Trong Công thức \ref{eq:ch3_local_images}, $b_m$ là hộp thứ $m$ trên ảnh nguồn và $x_i^{img}\!\mid_{b_m}$ là vùng ảnh được cắt theo hộp này. Kết quả của quá trình xử lý một ảnh gồm $x_i^{img,g}$, bốn ảnh cục bộ $\{x_{i,m}^{img,\ell}\}_{m=1}^{4}$ và tọa độ chuẩn hóa của bốn vùng; các thành phần này được tạo trước bộ mã hóa thị giác, vì vậy cơ chế độ phân giải cao được xem là một bước chuẩn bị đầu vào thay vì một bộ mã hóa độc lập.
 
 \subsection{Bộ mã hóa thị giác}
 \label{subsec:ch3_visual_encoder}
@@ -357,9 +492,9 @@ LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu 
 \section{Dung hợp đa phương thức bằng chú ý chéo}
 \label{sec:ch3_fusion}
 
-Từ hai nhánh mã hóa, hệ thống thu được chuỗi đặc trưng ảnh $\boldsymbol{V}_{i}$, ma trận đặc trưng văn bản $\boldsymbol{H}_{i}^{T}$ và hai biểu diễn toàn cục $\boldsymbol{g}_{i}$, $\boldsymbol{t}_{i}$. Nếu chỉ ghép nối trực tiếp các vectơ toàn cục, mô hình chưa thể hiện rõ nội dung lâm sàng nào liên quan đến từng dấu hiệu trên ảnh. Vì vậy, XBone-Net sử dụng cơ chế chú ý chéo hai chiều để mỗi phương thức chủ động truy vấn thông tin cần thiết từ phương thức còn lại trước khi hình thành biểu diễn chung.
+Từ hai nhánh mã hóa, hệ thống thu được chuỗi đặc trưng ảnh $\boldsymbol{V}_{i}$, ma trận đặc trưng văn bản $\boldsymbol{H}_{i}^{T}$ và hai biểu diễn toàn cục $\boldsymbol{g}_{i}$, $\boldsymbol{t}_{i}$. Nếu chỉ ghép nối trực tiếp các vectơ toàn cục, mô hình chưa thể hiện rõ nội dung lâm sàng nào liên quan đến từng dấu hiệu trên ảnh. Vì vậy, XBone-Net sử dụng cơ chế chú ý chéo hai chiều để mỗi phương thức chủ động truy vấn thông tin cần thiết từ phương thức còn lại trước khi hình thành biểu diễn chung, được thể hiện trong Hình \ref{fig:ch3_fusion}.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.62\textwidth]{images/fusion.png}
     \caption{Mô-đun dung hợp bằng chú ý chéo hai chiều}
@@ -641,7 +776,7 @@ q_{ji}^{T\rightarrow I}
 
 Dạng mất mát trong Công thức \ref{eq:ch3_phase1_loss} kế thừa nguyên lý khớp ngữ nghĩa hai chiều của các mô hình ảnh-văn bản y khoa \cite{MedCLIP}. So với nhãn khớp cứng, phân phối đích mềm tránh xem mọi cặp khác mẫu là âm hoàn toàn khi chúng cùng mô tả một lớp bệnh. Việc lấy mẫu theo lớp làm tăng khả năng một lô có nhiều cặp cùng lớp để cung cấp tín hiệu ngữ nghĩa cho mục tiêu này.
 
-Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để tạo ra không gian ảnh--văn bản phù hợp hơn với dữ liệu X-quang xương. Tuy nhiên, các đặc trưng mới chỉ được căn chỉnh ở mức biểu diễn và chưa được tối ưu trực tiếp cho quyết định phân loại đa lớp. Vì vậy, giai đoạn thứ hai tiếp tục sử dụng các bộ mã hóa đã thích nghi, đồng thời đưa mô-đun dung hợp và mạng nguyên mẫu vào quá trình huấn luyện có giám sát.
+Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để tạo ra không gian ảnh-văn bản phù hợp hơn với dữ liệu X-quang xương. Tuy nhiên, các đặc trưng của cặp ảnh-văn bản mới chỉ được căn chỉnh gần nhau hơn ở mức biểu diễn trong không gian nhúng và chưa được tối ưu trực tiếp cho quyết định phân loại đa lớp. Vì vậy, giai đoạn thứ hai tiếp tục sử dụng các bộ mã hóa đã thích nghi, đồng thời đưa mô-đun dung hợp và mạng nguyên mẫu vào quá trình huấn luyện có giám sát.
 
 \subsection{Giai đoạn 2: học dung hợp và phân loại}
 \label{subsec:ch3_phase2}
@@ -653,7 +788,7 @@ Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để t�
     \label{fig:ch3_phase2}
 \end{figure}
 
-Trong giai đoạn thứ hai, hai nhánh mã hóa tạo chuỗi đặc trưng toàn cục và cục bộ. Các chuỗi này được đưa qua mô-đun chú ý chéo để tạo vectơ tổng hợp $\boldsymbol{z}_{i}$. Mạng nguyên mẫu sử dụng các vectơ của tập huấn luyện để ước lượng tâm lớp và tính xác suất dự đoán. Trọng số nền của BiomedCLIP tiếp tục được giữ cố định, trong khi LoRA, thành phần biểu diễn ảnh cục bộ và mô-đun dung hợp được cập nhật.
+Trong giai đoạn thứ hai, hai nhánh mã hóa tạo chuỗi đặc trưng toàn cục và cục bộ. Các chuỗi này được đưa qua mô-đun chú ý chéo để tạo vectơ tổng hợp $\boldsymbol{z}_{i}$. Mạng nguyên mẫu sử dụng các vectơ của tập huấn luyện để ước lượng tâm lớp và tính xác suất dự đoán. Trọng số nền của BiomedCLIP tiếp tục được giữ cố định, trong khi LoRA, thành phần biểu diễn ảnh cục bộ và mô-đun dung hợp tiếp tục được cập nhật, với mục tiêu giúp biểu diễn đa phương thức có tính phân biệt giữa các lớp.
 
 Do số mẫu của các lớp có thể chênh lệch lớn, hàm mất mát sử dụng trọng số cân bằng lớp dựa trên số lượng mẫu hiệu dụng \cite{Cui2019ClassBalanced}. Với $n_k$ là số mẫu của lớp $k$, trọng số chưa chuẩn hóa được xác định bởi:
 
@@ -736,8 +871,18 @@ p\left(y_k\mid x^{img},x^{txt}\right),
 
 Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net. Nó cung cấp thêm một tín hiệu cảnh báo về mức độ phù hợp của mẫu với phân bố đã quan sát. Vì vậy, đầu ra phân loại và cảnh báo ngoài phân phối có hai vai trò khác nhau: đầu ra thứ nhất chọn lớp gần nhất trong tập lớp đã biết, còn đầu ra thứ hai đánh giá liệu quyết định đó có được thực hiện trên một mẫu đủ quen thuộc hay không.
 
-\section{Tóm tắt chương}
+\section{Kết luận chương}
 
-Chương này đã trình bày XBone-Net theo luồng từ tổng quan đến từng thành phần. Nhánh ảnh sử dụng bộ mã hóa thị giác kế thừa từ BiomedCLIP và cơ chế xử lý độ phân giải cao để kết hợp bối cảnh toàn cục với chi tiết cục bộ. Nhánh văn bản mã hóa thông tin lâm sàng trong cùng không gian đặc trưng. LoRA thích nghi hai bộ mã hóa với số tham số huấn luyện nhỏ, cơ chế chú ý chéo hai chiều trao đổi thông tin giữa hai phương thức và mạng nguyên mẫu thực hiện quyết định theo khoảng cách đến tâm lớp.
+Qua các nội dung đã trình bày, chương này đã hệ thống hóa kiến trúc, tối ưu không gian biểu diễn thông qua quy trình huấn luyện và cơ chế suy luận của XBone-Net cho bài toán phân loại đa lớp ảnh X-quang xương có kết hợp thông tin lâm sàng. Các thành phần chính của phương pháp được tổng kết như sau:
 
-Quy trình huấn luyện gồm hai giai đoạn ngoại tuyến. Giai đoạn thứ nhất căn chỉnh biểu diễn ảnh-văn bản bằng hàm mất mát khớp ngữ nghĩa, còn giai đoạn thứ hai tối ưu biểu diễn dung hợp và mục tiêu phân loại có cân bằng lớp. Trong quá trình trực tuyến, mô hình giữ cố định toàn bộ tham số, thực hiện phân loại cho ca mới và có thể bổ sung cảnh báo ngoài phân phối đã được hiệu chỉnh trước.
+\begin{enumerate}
+    \item \textbf{Biểu diễn ảnh toàn cục-cục bộ:} Ảnh X-quang độ phân giải cao được biểu diễn bằng một ảnh toàn cục và bốn vùng ảnh cục bộ. Trong đó, hai vùng được lựa chọn nhằm duy trì độ bao phủ giải phẫu, còn hai vùng ưu tiên các vị trí giàu thông tin dựa trên đáp ứng Laplacian, entropy mức xám và tỷ lệ tiền cảnh. Các vùng được ánh xạ về ảnh nguồn trước khi trích xuất và được bổ sung biểu diễn tọa độ, qua đó kết hợp bối cảnh giải phẫu tổng thể với các dấu hiệu tổn thương khu trú.
+
+    \item \textbf{Thích nghi BiomedCLIP bằng LoRA:} XBone-Net kế thừa bộ mã hóa thị giác ViT-B/16 và bộ mã hóa văn bản PubMedBERT từ BiomedCLIP. Các tham số nền được giữ cố định, trong khi các ma trận LoRA được cập nhật để thích nghi biểu diễn ảnh và văn bản với miền X-quang xương. Thiết kế này làm giảm số lượng tham số cần huấn luyện và hạn chế nguy cơ quá khớp trong điều kiện dữ liệu y khoa có quy mô hạn chế và phân bố lớp không đồng đều.
+
+    \item \textbf{Dung hợp đa phương thức bằng chú ý chéo hai chiều:} Chuỗi đặc trưng ảnh toàn cục--cục bộ và các token thông tin lâm sàng được tương tác theo hai hướng. Ở hướng thứ nhất, đặc trưng ảnh truy vấn các nội dung lâm sàng có liên quan; ở hướng ngược lại, biểu diễn văn bản truy vấn các bằng chứng thị giác phù hợp. Hai kết quả được tổng hợp thành một vectơ đa phương thức chung, cho phép mô hình khai thác mối liên hệ giữa dấu hiệu trên ảnh và ngữ cảnh bệnh sử thay vì chỉ ghép nối các biểu diễn toàn cục.
+
+    \item \textbf{Chiến lược huấn luyện hai giai đoạn và phân loại nguyên mẫu:} Giai đoạn thứ nhất thích nghi không gian ảnh-văn bản bằng hàm mất mát khớp ngữ nghĩa với phân phối đích mềm, trong đó các mẫu khác nhau nhưng cùng lớp không bị xem là các cặp âm tính hoàn toàn. Giai đoạn thứ hai tối ưu mô-đun dung hợp và biểu diễn đa phương thức cho nhiệm vụ phân loại. Mỗi lớp được biểu diễn bằng một nguyên mẫu tính từ các mẫu huấn luyện, còn hàm mất mát entropy chéo có trọng số được sử dụng để giảm ảnh hưởng của sự mất cân bằng lớp.
+
+    \item \textbf{Suy luận trực tuyến và phát hiện ngoài phân phối:} Trong quá trình trực tuyến, toàn bộ tham số mô hình và các nguyên mẫu lớp được cố định. Nhãn dự đoán được xác định dựa trên độ tương đồng côsin giữa biểu diễn của mẫu mới và các nguyên mẫu lớp. Bên cạnh kết quả phân loại, khoảng cách Mahalanobis được sử dụng như một cơ chế hậu xử lý để cảnh báo các mẫu ngoài phân phối mà không yêu cầu dữ liệu OOD trong quá trình huấn luyện.
+\end{enumerate}
