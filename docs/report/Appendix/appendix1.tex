@@ -3,257 +3,246 @@
 \chapter{Chi tiết về bộ dữ liệu}
 \label{Appendix1}
 
-Phụ lục này bổ sung các thông tin kỹ thuật cần thiết để tái lập quá trình chuẩn bị hai bộ dữ liệu BTXRD và CTCH. Nội dung của mỗi bộ dữ liệu được tổ chức theo cấu trúc dữ liệu, các phép kiểm tra tính toàn vẹn và cách xây dựng nguồn văn bản sử dụng trong thực nghiệm. Các thống kê được tính trực tiếp từ phiên bản dữ liệu mà mã nguồn hiện tại sử dụng.
+Phụ lục này bổ sung các thông tin kỹ thuật cần thiết để tái lập quá trình chuẩn bị hai bộ dữ liệu BTXRD và CTCH. Nội dung của mỗi bộ dữ liệu được tổ chức theo cấu trúc dữ liệu, cách xây dựng nguồn văn bản sử dụng trong thực nghiệm đối với bộ dữ liệu BTXRD và cách sàng lọc dữ liệu đối với bộ dữ liệu CTCH. Các thống kê được tính trực tiếp từ phiên bản dữ liệu mà mã nguồn hiện tại sử dụng.
 
 \section{Bộ dữ liệu BTXRD}
 \label{AppendixBTXRD}
 
-Phần này trình bày cấu trúc lưu trữ, quy trình chuẩn hóa nhãn và phân chia dữ liệu, các phép kiểm tra tính toàn vẹn, cách sinh văn bản tổng hợp và quá trình tạo đầu vào ảnh của BTXRD.
+Phần này trình bày cấu trúc dữ liệu, đặc điểm kỹ thuật của ảnh và phương pháp xây dựng văn bản dạng lâm sàng tổng hợp cho BTXRD. Ảnh và siêu dữ liệu thuộc phiên bản BTXRD được sử dụng trong nghiên cứu riêng văn bản tổng hợp được sinh ngoại tuyến và cố định trước khi huấn luyện. Nội dung này tập trung vào cách sinh nguồn dữ liệu giả lâm sàng.
 
-\subsection{Cấu trúc dữ liệu}
+\subsection{Cấu trúc lưu trữ và đặc điểm kỹ thuật}
 
-Bảng \ref{tab:appendix-btxrd-storage} mô tả vai trò của từng thành phần trên đĩa. Tên tệp ảnh được sử dụng làm khóa liên kết giữa siêu dữ liệu, nhãn, tập chia, ảnh và các báo cáo văn bản, tên không có phần mở rộng được sử dụng để truy cập các tệp JSON và TXT tương ứng.
+Bảng \ref{tab:appendix-btxrd-storage} mô tả các thành phần liên quan đến phạm vi phân loại của nghiên cứu. Định danh ảnh là khóa liên kết một-một giữa siêu dữ liệu, nhãn, tập chia, ảnh và văn bản tổng hợp.
 
 \begin{table}[H]
 \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Thành phần}                    & \textbf{Số tệp} & \textbf{Vai trò}                          \\ \hline
+\texttt{images/}          & 3,746           & Lưu ảnh X-quang đầu vào.                  \\ \hline
+\texttt{Annotations/} &
+  1,867 &
+  \begin{tabular}[c]{@{}l@{}}Lưu chú thích JSON cho các ảnh có u; \\ không được sử dụng trong huấn luyện phân loại.\end{tabular} \\ \hline
+\texttt{reports/} &
+  3,746 &
+  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một văn bản dạng lâm sàng được \\ sinh ngoại tuyến từ siêu dữ liệu.\end{tabular} \\ \hline
+\texttt{dataset.csv} &
+  3,746 &
+  \begin{tabular}[c]{@{}l@{}}Siêu dữ liệu gốc, gồm định danh ảnh,\\  nguồn thu thập, tuổi, giới tính, vị trí giải phẫu, \\ tư thế chụp và các cờ nhóm bệnh.\end{tabular} \\ \hline
+\texttt{btxrd-labels.csv} & 3,746           & Chứa định danh ảnh và 10 cột chỉ báo lớp. \\ \hline
+\texttt{btxrd-split.csv} &
+  3,746 &
+  \begin{tabular}[c]{@{}l@{}}Ánh xạ mỗi ảnh vào \texttt{train}, \\ \texttt{validate} hoặc \texttt{test}.\end{tabular} \\ \hline
+\end{tabular}%
+}
 \caption{Cấu trúc lưu trữ của bộ dữ liệu BTXRD trong nghiên cứu}
 \label{tab:appendix-btxrd-storage}
-\scriptsize
-\begin{tabularx}{\textwidth}{L{3.7cm}C{2.0cm}X}
-\toprule
-\textbf{Thành phần} & \textbf{Số tệp/hàng} & \textbf{Vai trò} \\
-\midrule
-\texttt{images/} & 3.746 & Lưu ảnh X-quang đầu vào. \\
-\texttt{Annotations/} & 1.867 & Lưu chú thích JSON cho các ảnh có u; không được sử dụng trong huấn luyện phân loại. \\
-\texttt{reports/}\newline\texttt{clinical/} & 3.746 & Nguồn văn bản tổng hợp chuẩn được cấu hình cho các thí nghiệm chính. \\
-\texttt{reports/}\newline\texttt{xray/} & 3.746 & Mô tả X-quang tổng hợp từ nhãn; không được sử dụng trong thiết lập phân loại chính. \\
-\texttt{dataset.csv} & 3.746 & Siêu dữ liệu gốc, gồm định danh ảnh, mã nguồn, tuổi, giới tính, vị trí giải phẫu, tư thế chụp và các cờ bệnh lý. \\
-\texttt{btxrd-labels.csv} & 3.746 & Manifest chứa định danh ảnh và 10 cột chỉ báo lớp. \\
-\texttt{btxrd-split.csv} & 3.746 & Manifest ánh xạ mỗi ảnh vào \texttt{train}, \texttt{validate} hoặc \texttt{test}. \\
-\bottomrule
-\end{tabularx}
 \end{table}
 
-\subsection{Kiểm tra tính toàn vẹn}
-
-Kiểm tra định danh cho thấy ba tệp CSV đều có 3.746 định danh duy nhất và không có hàng lặp theo. Tập định danh của các tệp ảnh và của ba thư mục báo cáo khớp hoàn toàn với siêu dữ liệu, không phát hiện ảnh, nhãn, split hoặc báo cáo bị thiếu hay không có siêu dữ liệu tương ứng. Số tệp JSON bằng đúng số mẫu có \texttt{tumor=1}, vì vậy 1.879 ảnh bình thường không có chú thích vùng tổn thương là phù hợp với tổ chức dữ liệu nguồn.
-
-\begin{table}[H]
-\centering
-\caption{Kết quả kiểm tra tính toàn vẹn của các thành phần BTXRD}
-\label{tab:appendix-btxrd-integrity}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-\textbf{Thành phần} & \textbf{Tổng} & \textbf{Định danh lặp} & \textbf{Thiếu} & \textbf{Dư} \\
-\midrule
-\texttt{dataset.csv} & 3.746 & 0 & 0 & 0 \\
-\texttt{btxrd-labels.csv} & 3.746 & 0 & 0 & 0 \\
-\texttt{btxrd-split.csv} & 3.746 & 0 & 0 & 0 \\
-Ảnh & 3.746 & 0 & 0 & 0 \\
-\texttt{clinical} & 3.746 & 0 & 0 & 0 \\
-\texttt{xray} & 3.746 & 0 & 0 & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Bảng \ref{tab:appendix-btxrd-image-properties} cho thấy dữ liệu ảnh có định dạng không hoàn toàn đồng nhất. Mặc dù tất cả tệp đều mang phần mở rộng JPEG, kiểm tra bằng Pillow xác định 3.744 tệp được mã hóa JPEG, một tệp được mã hóa BMP và một tệp được nhận diện là MPO; toàn bộ 3.746 tệp vẫn giải mã thành công. Các dữ liệu khi nạp vào sẽ được chuyển đổi sang RGB trước khi tạo tensor, do đó sự khác biệt giữa ảnh một kênh và ba kênh không làm thay đổi số kênh đầu vào của mô hình.
+Bảng \ref{tab:appendix-btxrd-image-properties} cho thấy dữ liệu ảnh có định dạng không hoàn toàn đồng nhất. Mặc dù tất cả tên tệp đều mang định dạng JPEG, kiểm tra nội dung tệp xác định 3,744 ảnh được mã hóa JPEG, một ảnh được mã hóa BMP và một ảnh được nhận diện là MPO; toàn bộ 3,746 ảnh vẫn giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, do đó ảnh thang xám và ảnh ba kênh đều tạo đầu vào ba kênh cho mô hình.
 
 \begin{table}[H]
 \centering
 \caption{Đặc điểm kỹ thuật của các tệp ảnh BTXRD}
 \label{tab:appendix-btxrd-image-properties}
 \small
-\begin{tabularx}{\textwidth}{L{4.2cm}X}
-\toprule
-\textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\
-\midrule
-Phần mở rộng & 3.719 tệp \texttt{.jpeg} và 27 tệp \texttt{.jpg}. \\
-Chế độ màu khi giải mã & 2.895 ảnh thang xám \texttt{L} và 851 ảnh \texttt{RGB}. \\
-Định dạng mã hóa & 3.744 JPEG, 1 BMP và 1 MPO. \\
-Chiều rộng & Nhỏ nhất 153 px, trung vị 1.612 px, lớn nhất 3.594 px. \\
-Chiều cao & Nhỏ nhất 311 px, trung vị 2.256 px, lớn nhất 4.881 px. \\
-Khả năng giải mã & 3.746/3.746 tệp được đọc thành công. \\
-\bottomrule
+\begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
+\hline
+\textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
+Phần mở rộng & 3,719 tệp \texttt{.jpeg} và 27 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 2,895 ảnh thang xám \texttt{L} và 851 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3,744 JPEG, 1 BMP và 1 MPO. \\ \hline
+Chiều rộng & Nhỏ nhất 153 px, trung vị 1,612 px, lớn nhất 3,594 px. \\ \hline
+Chiều cao & Nhỏ nhất 311 px, trung vị 2,256 px, lớn nhất 4,881 px. \\ \hline
+Khả năng giải mã & 3,746/3,746 tệp được đọc thành công. \\ \hline
 \end{tabularx}
 \end{table}
 
-\subsection{Cách sinh văn bản lâm sàng}
+\subsection{Phương pháp tạo dữ liệu giả lâm sàng}
 
-BTXRD không có báo cáo bệnh sử tự do đi kèm từng ảnh. Hai thư mục văn bản hiện có đều được sinh ngoại tuyến từ siêu dữ liệu với seed 42, trong đó \texttt{clinical} là nguồn chuẩn của thiết lập hiện tại và \texttt{xray} là mô tả được tạo trực tiếp từ nhãn. Văn bản nguồn chuẩn được tạo và lưu trước khi chạy mô hình, sau đó được dùng nhất quán trong huấn luyện và suy luận; tại thời điểm suy luận, nhãn đúng không được cấp cho mô hình và văn bản không được sinh lại. Việc tách hai nguồn giúp tránh sử dụng nhầm văn bản chứa tên lớp trong các thí nghiệm phân loại chính.
+BTXRD không cung cấp bệnh sử tự do tương ứng với từng ảnh. Để mô phỏng đầu vào văn bản của một hệ thống đa phương thức, nghiên cứu xây dựng một văn bản dạng lâm sàng cho mỗi mẫu bằng quy trình dựa trên luật và ngân hàng mẫu câu. Mục tiêu của quy trình là tạo một cấu trúc đầu vào thống nhất, không phải khôi phục bệnh sử thật của người bệnh.
 
-\texttt{clinical} sử dụng tuổi, giới tính, vị trí xương hoặc khớp, vùng giải phẫu, tư thế chụp, số xương được đánh dấu, mức liên quan khớp và nhóm trạng thái bình thường--lành tính--ác tính. Các trường đầu ra gồm \textit{Patient}, \textit{Reason for admission}, \textit{Disease history}, \textit{Physical examination}, \textit{Personal medical history} và \textit{Radiographic evaluation}. Quy trình không dùng trực tiếp tên nhãn, nhưng việc lựa chọn mẫu câu vẫn phụ thuộc vào \texttt{tumor} và \texttt{malignant}; vì vậy, văn bản giảm rò rỉ từ khóa trực tiếp nhưng vẫn chứa tín hiệu có điều kiện liên quan đến nhãn.
+\subsubsection{Thông tin đầu vào và luật điều kiện}
 
-\texttt{xray} sử dụng trực tiếp phân nhóm bệnh và các mô tả X-quang điển hình, do đó có thể nêu tên lớp hoặc mô tả đặc hiệu của lớp. Nguồn này được giữ để kiểm tra dữ liệu và minh họa.
+Các trường được lấy trực tiếp từ siêu dữ liệu gồm tuổi, giới tính, vị trí xương, vị trí khớp, vùng giải phẫu và tư thế chụp. Vị trí chính được chọn theo thứ tự ưu tiên xương, khớp, vùng giải phẫu nếu không có trường vị trí cụ thể, một mô tả tổng quát về xương sẽ được sử dụng. Tuổi được chia thành bốn nhóm gồm dưới 20 tuổi, 20-34 tuổi, 35-49 tuổi và từ 50 tuổi trở lên để lựa chọn ngữ cảnh tiền sử phù hợp.
 
-\begin{algorithm}[H]
-\caption{Sinh và nạp văn bản BTXRD}
-\label{alg:appendix-btxrd-text}
-\begin{algorithmic}[1]
-\Require Hàng siêu dữ liệu $r$, định danh ảnh $u$ và seed $s=42$
-\Ensure Chuỗi token lâm sàng $t_{clinical}$
-\State Đọc tuổi, giới tính, vị trí, tư thế chụp, số xương và khớp liên quan từ $r$
-\State Xác định nhóm mẫu câu từ \texttt{tumor} và \texttt{malignant}
-\State Chọn các mẫu câu bằng bộ sinh giả ngẫu nhiên có seed $s$
-\State Ghép các trường thành báo cáo \texttt{clinical}
-\State Lưu báo cáo tại \texttt{reports/clinical/\{stem(u)\}.txt}
-\State Đọc báo cáo theo stem của $u$ và thay bằng câu mặc định nếu tệp thiếu hoặc rỗng
-\State Chuẩn hóa $h\gets\operatorname{lower}(\operatorname{strip}(h))$
-\State Mã hóa $t_{clinical}\gets\Call{Tokenizer}{h}$
-\State \Return $t_{clinical}$
-\end{algorithmic}
-\end{algorithm}
+Ngân hàng mẫu câu được chia thành ba nhóm hành vi. Mẫu không có cờ u được gán nhóm "không u" còn mẫu có cờ u và cờ ác tính được gán nhóm "ác tính" và các mẫu có u còn lại được gán nhóm "lành tính". Theo luật này, dữ liệu gồm 1.879 mẫu không u, 1.525 mẫu có u nhưng không mang cờ ác tính và 342 mẫu ác tính. Nhóm này quyết định tập mẫu câu dùng cho lý do vào viện, diễn tiến bệnh và khám thực thể. Ngoài ra, 182 mẫu có nhiều hơn một xương được đánh dấu và 61 mẫu có khớp liên quan thì được nối thêm một câu mô tả bối cảnh nhiều vị trí hoặc hạn chế vận động quanh khớp.
 
-Bảng \ref{tab:appendix-btxrd-report-audit} tổng hợp kiểm tra các báo cáo thực tế trên đĩa. Không có tệp rỗng trong cả ba nguồn. \texttt{clinical} có 3.745 nội dung duy nhất trên 3.746 tệp, trong khi \texttt{xray} chỉ có 1.555 nội dung duy nhất do sử dụng tập mẫu câu phụ thuộc mạnh vào lớp. Phép tìm kiếm không phân biệt hoa--thường đối với tên các lớp cụ thể không ghi nhận lần xuất hiện nào trong \texttt{clinical}, nhưng phát hiện các tên bệnh tương ứng trong \texttt{xray}; kiểm tra này chỉ xác nhận việc không chèn tên lớp trực tiếp và không loại trừ tín hiệu nhãn gián tiếp.
+\subsubsection{Ghép văn bản và cố định dữ liệu}
+
+Các lựa chọn ngẫu nhiên sử dụng phân phối đều trên từng ngân hàng câu và hạt giống 42. Ngân hàng mẫu câu ban đầu được sinh từ tên bệnh bằng ChatGPT-4o \cite{OpenAI2024GPT4oSystemCard}, tham chiếu cấu trúc các trường bệnh sử của CTCH để mô phỏng cách trình bày. Danh sách khoảng thời gian có 10 lựa chọn; số mẫu câu lý do vào viện của ba nhóm không u/lành tính/ác tính lần lượt là 6/7/6, số mẫu diễn tiến bệnh là 6/8/8 và số mẫu khám thực thể là 4/7/7. Ngân hàng tiền sử chung có 9 câu, mỗi nhóm tuổi có 3 câu ngữ cảnh, còn hai ngân hàng bổ sung nhiều xương và quanh khớp đều có 5 câu. Sau bước biên soạn ngân hàng, quy trình chọn và ghép văn bản không gọi mô hình ngôn ngữ và không có bước xác nhận nội dung bởi bác sĩ.
+
+Với thứ tự hàng siêu dữ liệu được giữ cố định, mỗi lần chạy quy trình tạo ra cùng một lựa chọn mẫu câu. Văn bản được ghép theo thứ tự: thông tin người bệnh, lý do vào viện, diễn tiến bệnh, khám thực thể, tiền sử bản thân và thông tin thu nhận ảnh.
+
+Bảng \ref{tab:appendix-btxrd-template-examples} liệt kê các mẫu câu đại diện cho từng ngân hàng. Các mẫu được giữ nguyên bằng tiếng Anh vì đây là ngôn ngữ của đầu vào văn bản BTXRD trong thí nghiệm với các ký hiệu "location", "duration" và "joint" lần lượt được thay bằng vị trí chính, khoảng thời gian được chọn và khớp liên quan
 
 \begin{table}[H]
 \centering
-\caption{Thống kê các nguồn văn bản BTXRD trên đĩa}
-\label{tab:appendix-btxrd-report-audit}
-\scriptsize
-\begin{tabular}{lrrrrrr}
-\toprule
-\textbf{Nguồn} & \textbf{Tệp} & \textbf{Rỗng} & \textbf{Duy nhất} & \textbf{Từ nhỏ nhất} & \textbf{Trung vị} & \textbf{Từ lớn nhất} \\
-\midrule
-\texttt{clinical} & 3.746 & 0 & 3.684 & 40 & 51 & 89 \\
-\texttt{clinical} & 3.746 & 0 & 3.745 & 44 & 56 & 91 \\
-\texttt{xray} & 3.746 & 0 & 1.555 & 19 & 25 & 42 \\
-\bottomrule
-\end{tabular}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Ngân hàng} &
+  \textbf{Mẫu câu đại diện} \\ \hline
+Khoảng thời gian &
+  \begin{tabular}[c]{@{}l@{}}\textit{2 weeks}; \textit{1 month}; \textit{3 months}; \textit{6 months}; \\ \textit{several weeks}; \textit{a few months}; \textit{2 months}; \\ \textit{4 weeks}; \textit{several months}; \textit{1 year}.\end{tabular} \\ \hline
+Lý do vào viện &
+  \begin{tabular}[c]{@{}l@{}}Không u: \textit{Pain in the \{location\}}. \\ Lành tính: \textit{Swelling of the \{location\}}. \\ Ác tính: \textit{Persistent pain in the \{location\}}.\end{tabular} \\ \hline
+Diễn tiến bệnh &
+  \begin{tabular}[c]{@{}l@{}}Không u: \textit{Onset \{duration\} ago; mild symptoms}. \\ Lành tính: \textit{The patient noticed swelling in the \{location\} \{duration\} ago}. \\ Ác tính: \textit{Pain and swelling in the \{location\} for \{duration\}; progressively worsening}.\end{tabular} \\ \hline
+Khám thực thể &
+  \begin{tabular}[c]{@{}l@{}}Không u: \textit{No tenderness or swelling on palpation}. \\ Lành tính: \textit{Palpable firm mass; non-tender; no skin changes}. \\ Ác tính: \textit{Firm, tender mass on the \{location\}; local warmth noted}.\end{tabular} \\ \hline
+Bổ sung nhiều xương &
+  \begin{tabular}[c]{@{}l@{}}\textit{Multiple bony prominences palpated at several sites}; \\ \textit{Multiple hard masses involving several bones on examination}.\end{tabular} \\ \hline
+Bổ sung quanh khớp &
+  \begin{tabular}[c]{@{}l@{}}\textit{Joint involvement noted; restricted range of motion at the \{joint\}}; \\ \textit{Soft tissue swelling observed around the \{joint\}}.\end{tabular} \\ \hline
+Tiền sử chung &
+  \begin{tabular}[c]{@{}l@{}}\textit{No significant medical history}; \\ \textit{No prior bone disease or fracture}; \\ \textit{No relevant prior medical or surgical history}.\end{tabular} \\ \hline
+Ngữ cảnh theo tuổi &
+  \begin{tabular}[c]{@{}l@{}}Dưới 20 tuổi: \textit{Growth and development appropriate for age}. \\ Từ 20--34 tuổi: \textit{No prior bone lesions}. \\ Từ 35--49 tuổi: \textit{No relevant surgical or medical history}. \\ Từ 50 tuổi trở lên: \textit{History of age-related degenerative changes; no prior bone lesions}.\end{tabular} \\ \hline
+\end{tabular}%
+}
+\caption{Các mẫu câu đại diện trong ngân hàng văn bản giả lâm sàng BTXRD}
+\label{tab:appendix-btxrd-template-examples}
 \end{table}
 
-Bảng \ref{tab:appendix-btxrd-example} sử dụng trực tiếp mẫu \texttt{IMG000001.jpeg} trong thư mục dữ liệu để minh họa quan hệ giữa ảnh, nhãn và hai nguồn văn bản. Vì BTXRD không cung cấp bệnh sử tự do, cả \textit{clinical text} và \textit{X-ray text} đều là dữ liệu dẫn xuất chứ không phải báo cáo nguyên bản của bác sĩ.
+Quy trình không chèn trực tiếp tên của 10 lớp đích vào văn bản. Tuy nhiên, cờ có u và cờ ác tính tham gia trực tiếp vào việc chọn ngân hàng mẫu câu; vì vậy, nội dung tổng hợp vẫn mang tín hiệu liên hệ mạnh với nhãn. Các triệu chứng, thời gian mắc bệnh, dấu hiệu khám và tiền sử được chọn từ mẫu câu là dữ liệu giả lập, không phải lời khai của người bệnh hoặc ghi nhận của nhân viên y tế. Do đó, kết quả liên quan đến văn bản BTXRD chỉ phản ánh thiết lập giả lâm sàng có điều kiện này và không được diễn giải tương đương với bệnh sử tự nhiên của CTCH.
 
-Ví dụ cho thấy báo cáo X-quang tổng hợp nêu trực tiếp nhãn \texttt{other mt}, trong khi bệnh sử tổng hợp không chứa tên lớp nhưng mô tả triệu chứng được lựa chọn từ nhóm mẫu câu ác tính. Cách truy vết này làm rõ nguồn gốc của từng phương thức và giới hạn của việc xem văn bản tổng hợp như bệnh sử độc lập.
+Hình \ref{fig:appendix-btxrd-example-flow} minh họa toàn bộ quá trình đối với mẫu \texttt{IMG000001.jpeg}. Do đây là hàng đầu tiên của siêu dữ liệu, trạng thái bộ sinh giả ngẫu nhiên bắt đầu trực tiếp từ hạt giống 42.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=4mm,
+    flowbox/.style={draw, rounded corners, align=left, text width=0.8\textwidth, inner sep=5pt, fill=gray!7},
+    flowarrow/.style={-{Latex[length=2.4mm]}, semithick}
+]
+\node[flowbox] (metadata) {\textbf{1. Hàng siêu dữ liệu}\quad \texttt{IMG000001.jpeg}: tuổi 48, giới tính F, \texttt{hip bone}=1, \texttt{pelvis}=1, \texttt{tumor}=1, \texttt{malignant}=1 và \texttt{frontal}=1.};
+
+\node[flowbox, below=of metadata] (rules) {\textbf{2. Suy ra điều kiện}\quad Vị trí chính: \textit{hip bone}; nhóm tuổi: 35--49; nhóm mẫu câu: ác tính; tư thế: AP; không có nhiều xương hoặc khớp liên quan.};
+
+\node[flowbox, below=of rules] (selection) {\textbf{3. Chọn đều với hạt giống 42}\quad Khoảng thời gian: \textit{1 month}; lý do: \textit{Pain and swelling of the hip bone}; diễn tiến: \textit{Pain in the hip bone for 1 month; associated with decreased appetite}; khám: \textit{Palpable mass; tenderness on palpation; mild swelling}; tiền sử: \textit{No prior bone disease or fracture} và \textit{No relevant surgical or medical history}.};
+
+\node[flowbox, below=of selection] (assembly) {\textbf{4. Ghép theo thứ tự cố định}\quad \textit{Patient: 48-year-old female. Reason for admission: Pain and swelling of the hip bone. Disease history: Pain in the hip bone for 1 month; associated with decreased appetite. Physical examination: Palpable mass; tenderness on palpation; mild swelling. Personal medical history: No prior bone disease or fracture. No relevant surgical or medical history. Radiographic evaluation: AP view of the hip bone was obtained.}};
+
+\node[flowbox, below=of assembly] (storage) {\textbf{5. Cố định đầu vào}\quad Lưu thành \texttt{IMG000001.txt}};
+
+\draw[flowarrow] (metadata) -- (rules);
+\draw[flowarrow] (rules) -- (selection);
+\draw[flowarrow] (selection) -- (assembly);
+\draw[flowarrow] (assembly) -- (storage);
+\end{tikzpicture}
+\caption{Quá trình tạo văn bản minh họa cho mẫu \texttt{IMG000001.jpeg}}
+\label{fig:appendix-btxrd-example-flow}
+\end{figure}
 
 \section{Bộ dữ liệu CTCH}
 \label{AppendixCTCH}
 
-Phụ lục này mô tả quy trình chuẩn bị CTCH ở mức phương pháp luận nhằm hỗ trợ tái lập và đánh giá tính hợp lệ của dữ liệu. Tên tệp, cấu trúc thư mục và định danh nội bộ của mã nguồn được lược bỏ vì không đóng góp trực tiếp cho việc hiểu thiết kế thực nghiệm; thay vào đó, nội dung tập trung vào tiêu chí lựa chọn mẫu, cách hình thành nhãn, nguyên tắc chia tập, nguồn gốc văn bản và các phép kiểm tra toàn vẹn.
+Phụ lục này mô tả quy trình chuẩn bị CTCH nhằm hỗ trợ tái lập và đánh giá tính hợp lệ của dữ liệu. Tên tệp, cấu trúc thư mục và định danh nội bộ của mã nguồn được lược bỏ vì không đóng góp trực tiếp cho việc hiểu thiết kế thực nghiệm; thay vào đó, nội dung tập trung vào tiêu chí lựa chọn mẫu, cách hình thành nhãn, nguyên tắc chia tập, nguồn gốc văn bản và các phép kiểm tra toàn vẹn.
 
-\subsection{Cấu trúc dữ liệu}
+\subsection{Cấu trúc dữ liệu và đặc điểm kỹ thuật}
 
 \subsubsection{Sàng lọc và hình thành các quần thể}
 
-Dữ liệu nguồn gồm 3.641 hồ sơ đã được lựa chọn sơ bộ từ các ca khám tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Mỗi hồ sơ liên kết thông tin bệnh án với một ảnh đại diện cho vị trí cần khảo sát. Quá trình sàng lọc tiếp tục loại những ca có nẹp, đinh hoặc phương tiện kết hợp xương vì các cấu trúc này có thể che khuất tổn thương và tạo dấu hiệu thị giác ngoài mục tiêu phân loại.
+Bảng \ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đến phạm vi phân loại của nghiên cứu. Định danh ảnh là khóa liên kết một-một giữa siêu dữ liệu, nhãn, tập chia, ảnh và văn bản tổng hợp.
 
-Trong phiên bản hiện tại, 348 hồ sơ có dụng cụ y tế bị loại; không có hồ sơ bị đánh dấu xóa và không có hồ sơ thiếu ảnh đã lựa chọn. Phần còn lại gồm 3.293 mẫu, được tách thành 3.249 mẫu trong phân phối phục vụ phân loại và 44 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
+\begin{table}[H]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Thành phần}                    & \textbf{Số lượng} & \textbf{Vai trò}                          \\ \hline
+\texttt{images/}          & 3,293            & Lưu ảnh X-quang đầu vào.                  \\ \hline
+\texttt{reports/} &
+  3,293  &
+  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một văn bản dạng lâm sàng được \\ sinh ngoại tuyến từ siêu dữ liệu.\end{tabular} \\ \hline
+\texttt{ctch-labels.csv} & 3,249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
+\texttt{ctch-ood.csv} & 44           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
+\texttt{ctch-split.csv} &
+  3,249  &
+  \begin{tabular}[c]{@{}l@{}}Ánh xạ mỗi ảnh vào \texttt{train}, \\ \texttt{validate} hoặc \texttt{test}.\end{tabular} \\ \hline
+\end{tabular}%
+}
+\caption{Cấu trúc lưu trữ của bộ dữ liệu CTCH trong nghiên cứu}
+\label{tab:appendix-ctch-storage}
+\end{table}
+
+Bảng \ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3,464 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3,464 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
+
+\begin{table}[H]
+\centering
+\caption{Đặc điểm kỹ thuật của các tệp ảnh CTCH}
+\label{tab:appendix-ctch-image-properties}
+\small
+\begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
+\hline
+\textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
+Phần mở rộng & 3,464 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 3,464 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3,464 JPEG. \\ \hline
+Chiều rộng & Nhỏ nhất 1,186 px, trung vị 1,213 px, lớn nhất 2,836 px. \\ \hline
+Chiều cao & Nhỏ nhất 1,213 px, trung vị 1,713 px, lớn nhất 2,880 px. \\ \hline
+Khả năng giải mã & 3,464/3,464 tệp được đọc thành công. \\ \hline
+\end{tabularx}
+\end{table}
+
+Dữ liệu nguồn gồm 3,641 hồ sơ đã được lựa chọn sơ bộ từ các ca khám tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Mỗi hồ sơ liên kết thông tin bệnh án với một ảnh đại diện cho vị trí cần khảo sát. Quá trình sàng lọc tiếp tục loại những ca có nẹp, đinh hoặc phương tiện kết hợp xương vì các cấu trúc này có thể che khuất tổn thương và tạo dấu hiệu thị giác ngoài mục tiêu phân loại.
+
+Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo phạm vi nghiên cứu, đồng thời giúp đảm bảo chất lượng dữ liệu đầu vào là đồng nhất. Phần còn lại gồm 3,293 mẫu, được tách thành 3,249 mẫu trong phân phối phục vụ phân loại và 44 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
 
 \begin{table}[H]
 \centering
 \caption{Dòng dữ liệu qua các bước sàng lọc CTCH}
 \label{tab:appendix-ctch-cohort-flow}
 \small
-\begin{tabular}{lr}
-\toprule
-\textbf{Giai đoạn} & \textbf{Số hồ sơ} \\
-\midrule
-Hồ sơ nguồn & 3.641 \\
-Loại do có dụng cụ y tế & 348 \\
-Còn lại sau sàng lọc & 3.293 \\
-Quần thể trong phân phối & 3.249 \\
-Quần thể ngoài phân phối & 44 \\
-\bottomrule
+\begin{tabular}{|l|r|}
+\hline
+\textbf{Giai đoạn} & \textbf{Số hồ sơ} \\ \hline
+Hồ sơ nguồn & 3,641 \\ \hline
+Loại do có dụng cụ y tế & 348 \\ \hline
+Còn lại sau sàng lọc & 3,293 \\ \hline
+Quần thể trong phân phối & 3,249 \\ \hline
+Quần thể ngoài phân phối & 44 \\ \hline
 \end{tabular}
 \end{table}
 
-Quần thể ngoài phân phối gồm 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm, nhưng biểu hiện cụ thể không thuộc 22 lớp đích. Cách tổ chức này tạo một kịch bản Semantic OOD trong cùng nguồn bệnh viện, qua đó giảm mức trộn lẫn giữa sai lệch ngữ nghĩa với thay đổi thiết bị hoặc cơ sở thu nhận. Tuy nhiên, số lượng 44 mẫu còn nhỏ nên khoảng bất định của các độ đo OOD cần được trình bày và kết quả không nên được khái quát thành mọi dạng bất thường lâm sàng.
+Quần thể ngoài phân phối gồm 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm, nhưng biểu hiện cụ thể không thuộc 22 lớp đích. Cách tổ chức này tạo một kịch bản ngoài dữ liệu trong cùng nguồn bệnh viện, qua đó giảm mức trộn lẫn giữa sai lệch ngữ nghĩa với thay đổi thiết bị hoặc cơ sở thu nhận. Tuy nhiên, số lượng 44 mẫu còn nhỏ nên khoảng bất định của các độ đo ngoài phân phối cần được trình bày và kết quả không nên được khái quát thành mọi dạng bất thường lâm sàng.
 
-\subsubsection{Chuẩn hóa nhãn và phân chia theo người bệnh}
+\subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
 
-Tên lớp được chuẩn hóa về cùng biểu diễn Unicode, loại khoảng trắng không cần thiết và đối chiếu không phân biệt chữ hoa với chữ thường. Mỗi mẫu trong phân phối được ánh xạ vào một lớp duy nhất trong danh sách 22 lớp có thứ tự cố định, sau đó được kiểm tra để bảo đảm không có mẫu thiếu nhãn, đa nhãn hoặc nằm ngoài miền lớp hợp lệ.
+Quần thể đích của bộ dữ liệu CTCH gồm các bệnh nhân được chụp X-quang xương khớp nhằm hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương. Quần thể tiếp cận bao gồm các bệnh nhân có bệnh án và dữ liệu hình ảnh được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
 
-Phép chia được thực hiện trên mã nhóm người bệnh thay vì trên ảnh riêng lẻ. Đối với mỗi người bệnh, lớp xuất hiện nhiều nhất được xem là lớp chính để hỗ trợ phân bổ; danh sách người bệnh trong từng lớp được xáo trộn bằng hạt giống 42 và phân chia theo tỷ lệ mục tiêu 70/10/20. Với những lớp có ít nhất ba người bệnh, quy trình cố gắng dành tối thiểu một người cho mỗi tập.
-
-\begin{algorithm}[H]
-\caption{Chuẩn hóa và phân chia dữ liệu CTCH}
-\label{alg:appendix-ctch-split}
-\begin{algorithmic}[1]
-\Require Bảng bệnh án đã mã hóa định danh, ảnh đã lựa chọn và danh sách 22 lớp đích
-\Ensure Ba tập trong phân phối và một quần thể ngoài phân phối độc lập
-\State Loại hồ sơ bị đánh dấu xóa, hồ sơ có dụng cụ y tế và hồ sơ không có ảnh đại diện
-\State Tách các mẫu được xác định nằm ngoài không gian 22 lớp khỏi quần thể phân loại
-\State Chuẩn hóa tên lớp và ánh xạ mỗi mẫu trong phân phối vào đúng một lớp
-\State Tạo mã nhóm từ mã người bệnh; sử dụng mã ca khám khi mã người bệnh không có
-\State Xác định lớp chính của từng người bệnh theo tần suất xuất hiện
-\State Xáo trộn người bệnh trong từng lớp bằng hạt giống 42
-\State Phân bổ người bệnh vào tập huấn luyện, xác thực và kiểm thử theo tỷ lệ mục tiêu 70/10/20
-\State Kiểm tra ba tập không giao nhau theo người bệnh và không giao với quần thể ngoài phân phối
-\end{algorithmic}
-\end{algorithm}
-
-Kết quả phân chia có 2.265 người bệnh trong tập huấn luyện, 315 người bệnh trong tập xác thực và 669 người bệnh trong tập kiểm thử. Mỗi người bệnh trong phiên bản dữ liệu hiện tại đóng góp một ảnh đã lựa chọn, do đó số người bệnh bằng số ảnh ở từng tập. Kiểm tra giao tập cho kết quả bằng 0 đối với cả ba cặp huấn luyện--xác thực, huấn luyện--kiểm thử và xác thực--kiểm thử.
-
-\subsection{Kiểm tra tính toàn vẹn}
-
-Toàn bộ ảnh được sử dụng có định dạng JPEG và được giải mã thành ba kênh màu. Chiều rộng dao động từ 1.186 đến 2.836 pixel với trung vị 1.213 pixel; chiều cao dao động từ 1.213 đến 2.880 pixel với trung vị 1.713 pixel. Trước khi đưa vào mô hình, ảnh được chuyển về cùng không gian màu và xử lý bằng chiến lược ảnh toàn cục kết hợp bốn vùng cục bộ có ngân sách cố định như mô tả ở Phụ lục BTXRD.
-
-Kiểm tra SHA-256 trên toàn bộ 3.464 ảnh đang lưu trữ không phát hiện hai tệp có nội dung byte giống nhau. Trong số này, 3.293 ảnh thuộc hai quần thể được sử dụng và 171 ảnh là phần dư từ các lần chuẩn bị trước, không được tham chiếu bởi bảng phân chia hiện hành. Tương tự, mỗi nguồn báo cáo trên đĩa có 5.212 tệp, trong đó 3.293 tệp được sử dụng và 1.919 tệp cũ được loại khỏi thực nghiệm thông qua bảng ánh xạ mẫu.
+Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này chưa thể được sử dụng trực tiếp vì có sự khác biệt về loại dữ liệu cận lâm sàng, thời điểm thăm khám, tình trạng điều trị và mức độ phù hợp của nhãn. Quy trình sàng lọc được thực hiện tuần tự nhằm hình thành quần thể có ảnh X-quang, bệnh sử và nhãn phù hợp với phạm vi phân loại của nghiên cứu. Số lượng hồ sơ còn lại sau từng bước được trình bày trong Bảng \ref{tab:appendix-ctch-screening-flow}.
 
 \begin{table}[H]
 \centering
-\caption{Tóm tắt kiểm tra toàn vẹn CTCH}
-\label{tab:appendix-ctch-integrity}
-\small
-\begin{tabularx}{\textwidth}{X C{2.3cm} X}
-\toprule
-\textbf{Nội dung kiểm tra} & \textbf{Kết quả} & \textbf{Diễn giải} \\
-\midrule
-Mẫu trong phân phối có đủ ảnh và bốn phiên bản văn bản & 3.249/3.249 & Không phát hiện thành phần bắt buộc bị thiếu. \\
-Mẫu ngoài phân phối có đủ ảnh và bốn phiên bản văn bản & 44/44 & Quần thể OOD có đủ hai phương thức cho suy luận. \\
-Giao người bệnh giữa ba tập phân loại & 0 & Không phát hiện rò rỉ người bệnh giữa các tập. \\
-Giao người bệnh giữa hai quần thể & 0 & Quần thể trong và ngoài phân phối độc lập theo người bệnh. \\
-Nhóm ảnh trùng nội dung tuyệt đối & 0 & Không phát hiện ảnh trùng theo SHA-256. \\
-Ảnh lưu trữ không thuộc quần thể hiện hành & 171 & Không được truy cập trong thực nghiệm. \\
-Báo cáo cũ không thuộc quần thể hiện hành ở mỗi nguồn & 1.919 & Không được truy cập trong thực nghiệm. \\
-\bottomrule
-\end{tabularx}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Giai đoạn sàng lọc}                         & \textbf{Số hồ sơ còn lại} \\ \hline
+Dữ liệu bệnh án ban đầu                             & 12.949                    \\ \hline
+Sau khi lọc nội dung cận lâm sàng không phù hợp     & 9.142                     \\ \hline
+Sau khi loại các trường hợp đã mổ                   & 7.900                     \\ \hline
+Sau khi loại các ca tái khám                        & 7.070                     \\ \hline
+Sau khi chỉ giữ lần khám đầu tiên                   & 6.575                     \\ \hline
+Sau khi hoàn tất chuẩn hóa nhãn và lập tập ứng viên & 4.132                     \\ \hline
+Sau khi loại các hồ sơ có cờ \texttt{Deleted}       & 3.641                     \\ \hline
+Sau khi loại các hồ sơ có dụng cụ y tế              & 3.293                     \\ \hline
+\end{tabular}%
+}
+\caption{Số lượng hồ sơ còn lại qua các bước sàng lọc bộ dữ liệu CTCH}
+\label{tab:appendix-ctch-screening-flow}
 \end{table}
 
-Các kiểm tra trên xác nhận tập dữ liệu được dùng trong thí nghiệm có độ phủ đầy đủ và không có giao nhau theo người bệnh.
+Trước hết, các bệnh án có nội dung cận lâm sàng không phù hợp với phạm vi nghiên cứu được loại bỏ, làm số lượng hồ sơ giảm từ 12.949 xuống còn 9.142. Các trường hợp đã trải qua phẫu thuật tiếp tục được loại nhằm hạn chế ảnh hưởng của quá trình điều trị lên biểu hiện hình ảnh và thông tin lâm sàng, còn lại 7.900 hồ sơ.
 
-\subsection{Xây dựng và dịch văn bản}
+Đối với các bệnh nhân có nhiều lần thăm khám, các ca được xác định là tái khám được loại trước, làm số lượng giảm xuống 7.070. Sau đó, với những bệnh nhân vẫn còn nhiều lần khám hợp lệ, nghiên cứu chỉ giữ lần khám đầu tiên để giảm sự phụ thuộc giữa các mẫu và hạn chế việc cùng một bệnh nhân xuất hiện nhiều lần trong dữ liệu. Sau bước này, quần thể còn 6.575 hồ sơ.
 
-Bệnh sử lâm sàng được ghép từ ba nhóm thông tin: lý do vào viện, diễn tiến bệnh và tiền sử bản thân. Mô tả X-quang được ghép từ tóm tắt khám và cận lâm sàng cùng phần tổng hợp kết quả khảo sát. Mỗi trường không rỗng được đặt sau một tiền tố ngữ nghĩa thống nhất; nếu toàn bộ nguồn của một loại báo cáo không có nội dung, một thông báo trung tính được sử dụng để tránh suy diễn thông tin không tồn tại.
+Các trường chẩn đoán được chuẩn hóa và ánh xạ vào không gian nhãn của bài toán. Những hồ sơ không đáp ứng yêu cầu về nhãn hoặc không thuộc tập ứng viên được loại bỏ, tạo thành tập gồm 4.132 hồ sơ. Tiếp theo, 491 hồ sơ có cờ \texttt{Deleted} bị loại, còn lại 3.641 hồ sơ đã được lựa chọn sơ bộ.
 
-\begin{table}[H]
-\centering
-\caption{Nguồn nội dung dùng để hình thành hai phương thức văn bản CTCH}
-\label{tab:appendix-ctch-text-sources}
-\small
-\begin{tabularx}{\textwidth}{L{3.4cm}X X}
-\toprule
-\textbf{Nguồn văn bản} & \textbf{Thông tin được sử dụng} & \textbf{Thông tin không nối trực tiếp} \\
-\midrule
-Bệnh sử lâm sàng & Lý do vào viện, diễn tiến bệnh và tiền sử bản thân. & Nhãn phân loại và chẩn đoán xác định. \\
-Mô tả X-quang & Tóm tắt khám, cận lâm sàng và tổng hợp kết quả khảo sát. & Nhãn phân loại và trường chẩn đoán xác định riêng biệt. \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Bước sàng lọc cuối cùng loại 348 hồ sơ có nẹp, đinh hoặc các dụng cụ y tế khác. Những cấu trúc này có thể che khuất tổn thương, làm thay đổi đặc điểm thị giác của ảnh và tạo ra dấu hiệu không thuộc mục tiêu phân loại. Quần thể cuối cùng do đó gồm 3.293 mẫu, tương ứng khoảng 25,4\% số bệnh án ban đầu.
 
-Nội dung tiếng Việt được chuẩn hóa Unicode, loại khoảng trắng thừa và dịch sang tiếng Anh theo từng trường để giữ cấu trúc báo cáo. Những đoạn đã dịch được tái sử dụng nhằm giảm sai khác giữa các lần xử lý. Khi dịch vụ không trả về kết quả hợp lệ trong chế độ chuẩn bị thông thường, đoạn tiếng Việt gốc được giữ lại; đối với quy trình khôi phục quần thể ngoài phân phối, lỗi dịch được báo cáo thay vì tự động tạo nội dung thay thế.
-
-Việc không nối trực tiếp nhãn và chẩn đoán xác định làm giảm nguy cơ rò rỉ từ trường đích, nhưng không bảo đảm văn bản độc lập hoàn toàn với lớp. Các mô tả do bác sĩ ghi trong phần khám hoặc khảo sát vẫn có thể nêu vị trí gãy, loại tổn thương hoặc nhận định chuyên môn. Vì vậy, văn bản CTCH được xem là bằng chứng lâm sàng đồng hành với ảnh, không phải một phương thức đã loại bỏ mọi thông tin chẩn đoán.
-
-Bảng \ref{tab:appendix-ctch-text-audit} thống kê 3.293 báo cáo thuộc hai quần thể được sử dụng. Không có báo cáo rỗng hoặc thiếu ở bốn phiên bản. Số nội dung duy nhất thấp hơn số mẫu vì một số hồ sơ có cùng cách diễn đạt, đặc biệt ở mô tả X-quang; điều này phản ánh tính lặp lại của thuật ngữ lâm sàng và cần được cân nhắc khi phân tích mức đóng góp của văn bản.
-
-\begin{table}[H]
-\centering
-\caption{Thống kê văn bản CTCH thuộc quần thể được sử dụng}
-\label{tab:appendix-ctch-text-audit}
-\scriptsize
-\begin{tabular}{lrrrrrr}
-\toprule
-\textbf{Nguồn} & \textbf{Số báo cáo} & \textbf{Rỗng} & \textbf{Duy nhất} & \textbf{Từ nhỏ nhất} & \textbf{Trung vị} & \textbf{Từ lớn nhất} \\
-\midrule
-Bệnh sử tiếng Việt & 3.293 & 0 & 3.154 & 7 & 42 & 113 \\
-Bệnh sử tiếng Anh & 3.293 & 0 & 3.151 & 7 & 41 & 119 \\
-Mô tả X-quang tiếng Việt & 3.293 & 0 & 2.696 & 10 & 23 & 116 \\
-Mô tả X-quang tiếng Anh & 3.293 & 0 & 2.609 & 8 & 24 & 116 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-CTCH vẫn là dữ liệu đơn trung tâm, có phân bố lớp mất cân bằng, phụ thuộc vào quá trình lựa chọn một ảnh đại diện và sử dụng bản dịch tự động cho bộ mã hóa tiếng Anh. Đây là các giới hạn cần được giữ trong phần diễn giải kết quả và trong đánh giá khả năng khái quát sang bệnh viện khác.
+Trong số 3.293 mẫu được giữ lại, 3.249 mẫu thuộc 22 lớp đích và được sử dụng làm quần thể trong phân phối cho tác vụ phân loại. Bốn mươi bốn mẫu còn lại có biểu hiện không thuộc không gian nhãn đích và được tách thành quần thể ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
 
 \input{Appendix/appendix_seed_results}

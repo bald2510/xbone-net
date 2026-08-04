@@ -2485,7 +2485,7 @@ def plot_full_shot_paired_forest(
         y=0.99,
     )
     figure.supxlabel(
-        rf"Chênh lệch {metric_label}: XBone-Net $-$ baseline ($\Delta$)",
+        rf"Chênh lệch {metric_label}: XBone-Net $-$ mô hình cơ sở ($\Delta$)",
         y=0.08,
     )
     handles = [
@@ -2503,7 +2503,7 @@ def plot_full_shot_paired_forest(
             marker="o",
             linestyle="none",
             color=REPORT_PALETTE["orange"],
-            label="Khoảng tin cậy nằm phía baseline",
+            label="Khoảng tin cậy nằm phía mô hình cơ sở",
         ),
         Line2D(
             [0],
@@ -3573,13 +3573,13 @@ def _generate_ood_table_legacy(output_file: Path) -> None:
 
 
 OOD_SCENARIO_NAMES = {
-    "semantic_ood": "Semantic OOD",
+    "semantic_ood": "OOD ngữ nghĩa",
     "domain_ood_btxrd": "BTXRD",
 }
 
 OOD_METHOD_NAMES = {
-    "cosine_centroids": "Cosine-centroid",
-    "mahalanobis_centroid": "Mahalanobis-centroid",
+    "cosine_centroids": "Cosine theo tâm lớp",
+    "mahalanobis_centroid": "Mahalanobis theo tâm lớp",
     "knn": "kNN",
     "entropy": "Entropy",
 }
@@ -3589,7 +3589,7 @@ OOD_METRICS = {
         "column": "auroc_ood_mean",
         "std_column": "auroc_ood_std",
         "label": r"AUROC-OOD $\uparrow$",
-        "title": "AUROC-OOD trung bình trên 3 seed",
+        "title": "AUROC-OOD trung bình trên 3 hạt giống",
         "colorbar": "AUROC-OOD",
         "cmap": "Blues",
         "filename": "ood_auroc_heatmap.png",
@@ -3598,7 +3598,7 @@ OOD_METRICS = {
         "column": "aupr_out_mean",
         "std_column": "aupr_out_std",
         "label": r"AUPR-Out $\uparrow$",
-        "title": "AUPR-Out trung bình trên 3 seed",
+        "title": "AUPR-Out trung bình trên 3 hạt giống",
         "colorbar": "AUPR-Out",
         "cmap": "Blues",
         "filename": "ood_aupr_out_heatmap.png",
@@ -3607,7 +3607,7 @@ OOD_METRICS = {
         "column": "fpr_at_95tpr_mean",
         "std_column": "fpr_at_95tpr_std",
         "label": r"FPR@95\%TPR $\downarrow$",
-        "title": "FPR@95%TPR trung bình trên 3 seed",
+        "title": "FPR@95%TPR trung bình trên 3 hạt giống",
         "colorbar": "FPR@95%TPR",
         "cmap": "Reds",
         "filename": "ood_fpr95_heatmap.png",
@@ -3749,14 +3749,14 @@ LEAVE_ONE_OUT_CONFIGS = (
         "experiment": (
             "ctch/ablation_study/architecture/preprocess/xbone_nohighres"
         ),
-        "label": "Không high-res",
+        "label": "Không dùng ảnh độ phân giải cao",
         "components": (False, None, True, True, True),
     },
     {
         "experiment": (
             "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling"
         ),
-        "label": "Mean pooling",
+        "label": "Gộp trung bình",
         "components": (True, False, True, True, True),
     },
     {
@@ -3766,22 +3766,22 @@ LEAVE_ONE_OUT_CONFIGS = (
     },
     {
         "experiment": "ctch/ablation_study/architecture/fusion/concat",
-        "label": "Concat",
+        "label": "Nối đặc trưng",
         "components": (True, True, True, False, True),
     },
     {
         "experiment": "ctch/ablation_study/architecture/classifier/linear",
-        "label": "Linear head",
+        "label": "Đầu tuyến tính",
         "components": (True, True, True, True, False),
     },
 )
 
 LEAVE_ONE_OUT_COMPONENT_LABELS = (
     "Nhánh ảnh độ phân giải cao",
-    "Attention pooling cục bộ",
+    "Gộp chú ý cục bộ",
     "Huấn luyện pha 1",
-    "Cross-attention hai chiều",
-    "Empirical centroid",
+    "Chú ý chéo hai chiều",
+    "Tâm lớp thực nghiệm",
 )
 
 LEAVE_ONE_OUT_METRICS = (
@@ -3932,14 +3932,14 @@ def generate_ablation_leave_one_out_table(
             (
                 r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net "
                 r"trên CTCH. Mỗi cột chỉ loại bỏ hoặc thay thế thành phần được "
-                r"khảo sát so với cấu hình đầy đủ: direct resize thay cho nhánh "
-                r"high-resolution, mean pooling thay cho attention pooling, chỉ "
-                r"huấn luyện pha 2, concat thay cho cross-attention hai chiều và "
-                r"linear head thay cho empirical centroid. Kết quả được trình bày "
+                r"khảo sát so với cấu hình đầy đủ: co giãn trực tiếp thay cho nhánh "
+                r"ảnh độ phân giải cao, gộp trung bình thay cho gộp chú ý, chỉ "
+                r"huấn luyện pha 2, nối đặc trưng thay cho chú ý chéo hai chiều và "
+                r"đầu tuyến tính thay cho tâm lớp thực nghiệm. Kết quả được trình bày "
                 rf"dưới dạng trung bình $\pm$ độ lệch chuẩn trên {seed_count} hạt "
                 r"giống; chữ đậm biểu thị kết quả tốt nhất theo từng độ đo. Ký "
-                r"hiệu ``--'' chỉ trường hợp attention pooling không còn áp dụng "
-                r"khi nhánh high-resolution bị loại bỏ.}"
+                r"hiệu ``--'' chỉ trường hợp gộp chú ý không còn áp dụng "
+                r"khi nhánh ảnh độ phân giải cao bị loại bỏ.}"
             ),
             r"\label{tab:ablation_leave_one_out_classification}",
             r"\end{table}",
@@ -4965,7 +4965,19 @@ def plot_ablation_forest(
             zorder=3,
         )
     axis.axvline(0.0, color="#222222", linestyle="--", linewidth=1.1)
-    axis.set_yticks(positions, labels=plot_data["variant"].astype(str))
+    variant_names = {
+        "Không high-res": "Không dùng ảnh độ phân giải cao",
+        "Mean pooling": "Gộp trung bình",
+        "Concat": "Nối đặc trưng",
+        "Linear head": "Đầu tuyến tính",
+    }
+    axis.set_yticks(
+        positions,
+        labels=[
+            variant_names.get(value, value)
+            for value in plot_data["variant"].astype(str)
+        ],
+    )
     axis.invert_yaxis()
     axis.grid(axis="x", color="#D9D9D9", linewidth=0.8, alpha=0.8)
     axis.set_axisbelow(True)
@@ -4976,7 +4988,7 @@ def plot_ablation_forest(
         rf"Chênh lệch {metric_label}: biến thể $-$ XBone-Net ($\Delta$)"
     )
     axis.set_title(
-        f"Ảnh hưởng leave-one-out đối với {metric_label} trên CTCH"
+        f"Ảnh hưởng của phép loại bỏ từng thành phần đối với {metric_label} trên CTCH"
     )
     for position, upper, p_value in zip(
         positions,
@@ -6552,7 +6564,7 @@ def plot_ood_metric_summary(
                 va="bottom",
                 fontsize=9,
             )
-    axes[0].set_ylabel("Giá trị trung bình trên ba seed")
+    axes[0].set_ylabel("Giá trị trung bình trên ba hạt giống")
     method_name = OOD_METHOD_NAMES.get(method, method)
     fig.suptitle(title or f"Hiệu năng OOD của {method_name}", y=1.01)
     fig.tight_layout()

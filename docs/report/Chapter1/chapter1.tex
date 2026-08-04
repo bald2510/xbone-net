@@ -1,23 +1,27 @@
 \chapter{Giới thiệu}
 \label{Chapter1}
 
-Chương này trình bày bối cảnh, vấn đề nghiên cứu và phạm vi của bài toán phân loại ảnh X-quang xương bằng học sâu đa phương thức. Trọng tâm của khóa luận là khai thác đồng thời ảnh X-quang và nguồn văn bản đi kèm. Khóa luận áp dụng hai kịch bản dữ liệu gồm nguồn văn bản chính là bệnh sử lâm sàng có sẵn trong bệnh án và bệnh sử lâm sàng được sinh ngoại tuyến từ siêu dữ liệu do bộ dữ liệu không cung cấp bệnh sử tương ứng với từng ảnh. Hai nguồn này được phân tích riêng vì không có mức độ xác thực lâm sàng và quan hệ với nhãn giống nhau. Chương cũng xác định các thách thức liên quan đến độ phân giải ảnh, dữ liệu hạn chế, mất cân bằng lớp, dữ liệu ngoài phân phối và khả năng giải thích để từ đó xây dựng mục tiêu, câu hỏi nghiên cứu và các đóng góp của khóa luận.
+Chương này trình bày bối cảnh, vấn đề nghiên cứu và phạm vi của bài toán phân loại ảnh X-quang xương bằng học sâu đa phương thức. Trọng tâm của khóa luận là khai thác đồng thời ảnh X-quang và nguồn văn bản đi kèm. Khóa luận áp dụng hai kịch bản dữ liệu gồm nguồn văn bản chính là bệnh sử lâm sàng có sẵn trong bệnh án và văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu do bộ dữ liệu không cung cấp bệnh sử tương ứng với từng ảnh. Hai nguồn này được phân tích riêng vì không có mức độ xác thực lâm sàng và quan hệ với nhãn giống nhau. Chương cũng xác định các thách thức liên quan đến độ phân giải ảnh, dữ liệu hạn chế, mất cân bằng lớp, dữ liệu ngoài phân phối và khả năng giải thích để từ đó xây dựng mục tiêu, câu hỏi nghiên cứu và các đóng góp của khóa luận.
 
 %\section{Lý do chọn đề tài}
 \section{Bối cảnh và lý do chọn đề tài}
 
-Hệ xương đóng vai trò rất lớn trong việc nâng đỡ cơ thể, bảo vệ các cơ quan trọng yếu và đảm bảo khả năng vận động của con người. Do đó, chấn thương xương khớp và các bệnh lý về xương là một trong những vấn đề y tế phổ biến, đòi hỏi việc chẩn đoán phải được thực hiện nhanh chóng và chính xác. Trong thực hành lâm sàng, ảnh X-quang là phương tiện chẩn đoán hình ảnh cơ bản, phổ biến và có chi phí thấp, cho phép bác sĩ khảo sát cấu trúc xương, phát hiện tổn thương, bất thường và hỗ trợ định hướng điều trị. 
+Hệ xương đóng vai trò quan trọng trong việc nâng đỡ cơ thể, bảo vệ các cơ quan trọng yếu và đảm bảo khả năng vận động của con người. Do đó, chấn thương xương khớp và các bệnh lý về xương là một trong những vấn đề y tế phổ biến, đòi hỏi việc chẩn đoán phải được thực hiện nhanh chóng và chính xác. Trong thực hành lâm sàng, ảnh X-quang là phương tiện chẩn đoán hình ảnh cơ bản, phổ biến và có chi phí thấp, cho phép bác sĩ khảo sát cấu trúc xương, phát hiện tổn thương, bất thường và hỗ trợ định hướng điều trị. 
 
-Tuy nhiên, việc đọc và phân tích ảnh X-quang truyền thống hiện nay có thể gặp khó khăn khi tổn thương nhỏ, ảnh có tương phản thấp hoặc khi số lượng ca cần đọc lớn, lúc đó kết quả phụ thuộc rất lớn vào kinh nghiệm thực tiễn và sự tập trung của bác sĩ.
+Tuy nhiên, việc đọc và phân tích ảnh X-quang truyền thống hiện nay có thể gặp khó khăn khi tổn thương nhỏ, ảnh có tương phản thấp hoặc khi số lượng ca cần đọc lớn, lúc đó kết quả phụ thuộc đáng kể vào kinh nghiệm thực tiễn và sự tập trung của bác sĩ.
 
 Để giải quyết các thách thức này, nhiều nghiên cứu đã ứng dụng các mô hình học sâu vào việc hỗ trợ phân tích và phân loại ảnh X-quang và đưa ra quyết định dựa trên thông tin trên ảnh như các kiến trúc mạng nơ-ron tích chập ResNet \cite{ResNet} và DenseNet \cite{DenseNet}. Tuy nhiên, các mô hình chỉ sử dụng hình ảnh không khai thác được các thông tin lâm sàng có sẵn trước khi đọc ảnh, chẳng hạn triệu chứng, tiền sử bệnh hoặc cơ chế chấn thương. Trong khi đó, quá trình ra quyết định lâm sàng thực tế của bác sĩ thường dựa trên sự kết hợp giữa bằng chứng hình ảnh và bối cảnh bệnh hoặc chấn thương của người bệnh. 
 
-Dựa vào thực tế đó, các mô hình ngôn ngữ trực quan y khoa như MedCLIP \cite{MedCLIP}, BiomedCLIP \cite{BiomedCLIP} và BioViL \cite{BioViL} cung cấp một hướng tiếp cận phù hợp để học biểu diễn chung giữa ảnh và văn bản. Nhờ được tiền huấn luyện trên các tập dữ liệu ảnh–văn bản y khoa quy mô lớn, các mô hình này có thể được chuyển giao sang những bài toán y khoa ở tác vụ đích.
+Dựa vào thực tế đó, các mô hình ngôn ngữ trực quan y khoa như MedCLIP \cite{MedCLIP}, BioMedCLIP \cite{BiomedCLIP} và BioViL \cite{BioViL} cung cấp một hướng tiếp cận phù hợp để học biểu diễn chung giữa ảnh và văn bản. Nhờ được tiền huấn luyện trên các tập dữ liệu ảnh–văn bản y khoa quy mô lớn, các mô hình này có thể được chuyển giao sang những bài toán y khoa ở tác vụ đích.
 
 Tuy nhiên, việc chuyển giao các mô hình ngôn ngữ trực quan y khoa sang bài toán phân loại ảnh X-quang xương vẫn gặp nhiều trở ngại. Những trở ngại này xuất phát từ sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu đầu vào thực tế, số lượng dữ liệu gán nhãn hạn chế và mất cân bằng, nguy cơ xuất hiện dữ liệu ngoài phân phối, yêu cầu bảo toàn các tổn thương nhỏ trên ảnh có độ phân giải cao, cũng như nhu cầu giải thích quyết định của mô hình.
 
+\clearpage
+
 \section{Động lực nghiên cứu}
 \subsection{Kịch bản thực tế}
+
+Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-quang, quy trình chẩn đoán bệnh lý xương thường tuân theo Hình \ref{fig:procedure} bao gồm các bước: bác sĩ chính khai thác bệnh sử, khám lâm sàng, chỉ định chụp X-quang. Sau đó, bác sĩ đọc ảnh sẽ phân tích ảnh X-quang và kết hợp với các ngữ cảnh lâm sàng để đưa ra nhận định cận lâm sàng. Cuối cùng, bác sĩ chính sử dụng tất cả các thông tin kể trên để làm căn cứ cho quyết định chẩn đoán cuối cùng và đưa ra hướng xử trí.
 
 \begin{figure}[H]
 \centering
@@ -26,9 +30,7 @@ Tuy nhiên, việc chuyển giao các mô hình ngôn ngữ trực quan y khoa s
     \label{fig:procedure}
 \end{figure}
 
-Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-quang, quy trình chẩn đoán bệnh lý xương thường tuân theo Hình \ref{fig:procedure} bao gồm các bước: bác sĩ chính khai thác bệnh sử, khám lâm sàng, chỉ định chụp X-quang. Sau đó, bác sĩ đọc ảnh sẽ phân tích ảnh X-quang và kết hợp với các ngữ cảnh lâm sàng để đưa ra nhận định cận lâm sàng. Cuối cùng, bác sĩ chính sử dụng tất cả các thông tin kể trên để làm căn cứ cho quyết định chẩn đoán cuối cùng và đưa ra hướng xử trí.
-
-Hệ thống được đề xuất trong khóa luận được thiết kế nhằm hỗ trợ quá trình phân tích ảnh X-quang bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản đi kèm để dự đoán lớp bệnh lý của bệnh nhân như thể hiện ở Hình \ref{fig:procedureXbone}. Hai kịch bản văn bản là bệnh sử có sẵn trong bệnh án và văn bản là dữ liệu tổng hợp được chuẩn bị trước do dữ liệu nguồn không có bệnh sử tự do. Việc kết hợp hai nguồn dữ liệu cho phép khảo sát khả năng học biểu diễn đa phương thức, nhưng kết quả có được từ bệnh sử được tổng hợp không được diễn giải tương đương với việc sử dụng bệnh sử tự nhiên.
+Hệ thống được đề xuất trong khóa luận được thiết kế nhằm hỗ trợ quá trình phân tích ảnh X-quang bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản đi kèm để dự đoán lớp bệnh lý của bệnh nhân như thể hiện ở Hình \ref{fig:procedureXbone}. Hai kịch bản văn bản là bệnh sử có sẵn trong bệnh án và văn bản lâm sàng được chuẩn bị trước do dữ liệu nguồn không có bệnh sử tự do. Việc kết hợp hai nguồn dữ liệu cho phép khảo sát khả năng học biểu diễn đa phương thức, nhưng kết quả có được từ bệnh sử được tổng hợp không được diễn giải tương đương với việc sử dụng bệnh sử tự nhiên.
 
 \begin{figure}[H]
 \centering
@@ -43,11 +45,11 @@ Cần lưu ý rằng hệ thống được nghiên cứu như một công cụ h
 
 \subsection{Ý nghĩa khoa học của đề tài}
 
-Đề tài cung cấp đánh giá thực nghiệm về việc kết hợp ảnh X-quang với văn bản trong hai điều kiện dữ liệu lâm sàng khác nhau. Một kịch bản cho phép khảo sát bệnh sử lâm sàng có sẵn trong bệnh án, trong khi kịch bản còn lại được sử dụng để khảo sát pipeline đa phương thức với văn bản tổng hợp từ siêu dữ liệu. Sự phân biệt này giúp tránh quy kết giá trị lâm sàng của văn bản tổng hợp cho bệnh sử tự nhiên.
+Đề tài cung cấp đánh giá thực nghiệm về việc kết hợp ảnh X-quang với văn bản trong hai điều kiện dữ liệu lâm sàng khác nhau. Một kịch bản cho phép khảo sát bệnh sử lâm sàng có sẵn trong bệnh án, trong khi kịch bản còn lại được sử dụng để khảo sát quy trình đa phương thức với văn bản tổng hợp từ siêu dữ liệu. Sự phân biệt này giúp tránh quy kết giá trị lâm sàng của văn bản tổng hợp cho bệnh sử tự nhiên.
 
 Nghiên cứu đồng thời khảo sát khả năng thích nghi của mô hình ngôn ngữ trực quan y khoa được tiền huấn luyện trên dữ liệu quy mô lớn đối với dữ liệu X-quang xương có quy mô hạn chế và phân bố mất cân bằng. Kết quả nghiên cứu cung cấp thêm cơ sở thực nghiệm cho việc ứng dụng các mô hình nền tảng đa phương thức vào những miền y khoa chuyên biệt.
 
-Bên cạnh hiệu quả phân loại, đề tài xem xét khả năng nhận diện dữ liệu ngoài phân phối và phân tích vùng ảnh ảnh hưởng đến dự đoán. Việc đánh giá đồng thời các khía cạnh này góp phần mở rộng tiêu chí nghiên cứu từ độ chính xác đơn thuần sang khả năng tổng quát hóa, độ tin cậy và tính minh bạch của hệ thống.
+Bên cạnh hiệu quả phân loại, đề tài xem xét khả năng nhận diện dữ liệu ngoài phân phối và phân tích các vùng ảnh có ảnh hưởng đến dự đoán. Việc đánh giá đồng thời các khía cạnh này góp phần mở rộng tiêu chí nghiên cứu từ độ chính xác đơn thuần sang khả năng tổng quát hóa, độ tin cậy và tính minh bạch của hệ thống.
 
 \subsection{Ý nghĩa thực tiễn của đề tài}
 
@@ -55,74 +57,74 @@ Hệ thống được đề xuất hướng đến hỗ trợ bác sĩ trong qu�
 
 Ngoài ra, quá trình nghiên cứu góp phần xây dựng và chuẩn hóa một bộ dữ liệu đa phương thức gồm ảnh X-quang và bệnh sử lâm sàng từ dữ liệu thực tế tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Bộ dữ liệu và quy trình xử lý có thể tạo nền tảng cho các nghiên cứu tiếp theo về phân loại bệnh lý xương và mô hình ngôn ngữ trực quan y khoa tại Việt Nam.
 
-Đồng thời, mô hình cung cấp bản đồ độ dốc tích hợp để khảo sát trường hợp những vùng ảnh và token văn bản ảnh hưởng đến dự đoán, cùng các điểm bất thường hậu xử lý cho dữ liệu ngoài phân phối. Các đầu ra này phục vụ phân tích mô hình, chưa phải bằng chứng định vị tổn thương hoặc cơ chế bảo đảm an toàn lâm sàng.
+Đồng thời, mô hình cung cấp bản đồ nhiệt đóng góp để khảo sát những vùng ảnh và đơn vị từ ngữ có liên hệ với dự đoán, cùng các điểm bất thường hậu xử lý cho dữ liệu ngoài phân phối. Các đầu ra này phục vụ phân tích mô hình, chưa phải bằng chứng định vị tổn thương hoặc cơ chế bảo đảm an toàn lâm sàng.
 
 \section{Giới thiệu bài toán}
 
-Bài toán được nghiên cứu trong đề tài là bài toán phân loại đa lớp ảnh X-quang sử dụng học sâu đa phương thức. Mục tiêu của hệ thống là dự đoán các loại bệnh hoặc tổn thương dựa trên đồng thời dữ liệu hình ảnh X-quang và bệnh sử lâm sàng liên quan.
-
+Bài toán được nghiên cứu trong đề tài là bài toán phân loại đa lớp ảnh X-quang sử dụng học sâu đa phương thức. Mục tiêu của hệ thống là dự đoán các loại bệnh hoặc tổn thương dựa đồng thời vào ảnh X-quang và văn bản đi kèm.
+\subsubsection{Đầu vào}
+Hệ thống nhận vào các nguồn dữ liệu sau:
 \begin{itemize}
-  \item \textbf{Đầu vào:} Hệ thống nhận vào các nguồn dữ liệu sau:
-
-  \begin{itemize}
     \item Ảnh X-quang của bệnh nhân:
-\[ x^{img} \in \mathrm{R}^{H \times W \times C} \] trong đó:
-    \begin{itemize}
-        \item $H, W$: chiều cao và chiều rộng ảnh,
-        \item $C$: số kênh màu của ảnh.
-    \end{itemize}
+    \[ x^{\mathrm{img}} \in \mathbb{R}^{H \times W \times C} \] 
 
-    \item Văn bản đi kèm: bệnh sử lâm sàng hoặc văn bản dạng lâm sàng được sinh từ siêu dữ liệu.
-\[ x^{txt} = (w_1, w_2, ..., w_T) \] trong đó:
-    \begin{itemize}
-        \item $w_t$: token tại vị trí thứ $t$ trong văn bản.
-        \item $T$: số lượng token trong văn bản.
-    \end{itemize}
+    Với $H, W$ là chiều cao và chiều rộng ảnh, $C$ là số kênh màu của ảnh.
 
-\clearpage
+    \item Văn bản đi kèm: bệnh sử lâm sàng hoặc văn bản lâm sàng được sinh từ siêu dữ liệu.
+    \[ x^{\mathrm{txt}} = (w_1, w_2, \ldots, w_T) \] 
+
+    Với $w_t$ là đơn vị từ ngữ tại vị trí thứ $t$ trong văn bản, $T$ là số lượng đơn vị từ ngữ trong văn bản.
 
     \item Tập nhãn được định nghĩa trước:
-\[ \mathcal{Y} = \{y_1, y_2, ..., y_K\} \] với $K$ là số lớp bệnh cần phân loại.
-  \end{itemize}
-
-  \item \textbf{Đầu ra:} Hệ thống sinh ra hai kết quả ra chính:
-
-    \begin{itemize}
-        \item Nhãn dự đoán cuối cùng hoặc cảnh báo dữ liệu ngoài phân phối:
-            \[
-            \hat{y} =
-            \begin{cases}
-            \mathrm{OOD},
-            & \text{nếu } s_{\mathrm{OOD}}\left(x^{img},x^{txt}\right) > \tau, \\[4pt]
-            \displaystyle
-            \operatorname*{arg\,max}_{y_k \in \mathcal{Y}}
-            p\left(y_k \mid x^{img},x^{txt}\right),
-            & \text{ngược lại}.
-            \end{cases}
-            \]
-            trong đó:
-            \begin{itemize}
-                \item $s_{\mathrm{OOD}}\left(x^{img},x^{txt}\right)$ là điểm ngoài phân phối của mẫu đầu vào.
-                \item $\tau$ là ngưỡng từ chối được xác định trên tập dữ liệu.
-                \item $p\left(y_k \mid x^{img},x^{txt}\right)$ là điểm dự đoán của lớp $y_k$.
-                \item $\mathcal{Y} = \{y_1,y_2,\ldots,y_K\}$ là tập các lớp trong phân phối đã biết.
-            \end{itemize}
-
-        \item \textbf{Bản đồ độ dốc tích hợp:} Hệ thống sinh ra bản đồ độ dốc tích hợp trên ảnh nhằm thể hiện các vùng có ảnh hưởng đến quyết định dự đoán của mô hình.
-
-    \end{itemize}
+    \[ \mathcal{Y} = \{y_1, y_2, \ldots, y_K\} \] với $K$ là số lớp bệnh cần phân loại.
 \end{itemize}
+\subsubsection{Đầu ra}
+
+Hệ thống sinh ra ba đầu ra chính:
+
+\begin{itemize}
+\item \textbf{Nhãn dự đoán cuối cùng:}
+    \[
+        \hat{y}
+        =
+        \operatorname*{arg,max}_{y_k \in \mathcal{Y}}
+        p\left(
+        y_k \mid x^{\mathrm{img}},x^{\mathrm{txt}}
+        \right),
+    \]
+Với $p\left(y_k \mid x^{\mathrm{img}},x^{\mathrm{txt}}\right)$ là xác suất dự đoán của lớp $y_k$.
+
+\item \textbf{Cảnh báo dữ liệu ngoài phân phối:}
+    \[
+        \omega_{\mathrm{OOD}}
+        =
+        \begin{cases}
+            1,
+            & \text{nếu }
+            s_{\mathrm{OOD}}\left(
+                x^{\mathrm{img}},x^{\mathrm{txt}}
+            \right) > \tau, \\[4pt]
+            0,
+            & \text{ngược lại},
+        \end{cases}
+    \]
+Với $s_{\mathrm{OOD}}\left(x^{\mathrm{img}},x^{\mathrm{txt}}\right)$ là điểm ngoài phân phối của mẫu đầu vào, $\tau$ là ngưỡng cảnh báo được xác định trước và $\omega_{\mathrm{OOD}}=1$ biểu thị rằng mẫu được phát hiện là dữ liệu ngoài phân phối.
+
+\item \textbf{Thông tin hỗ trợ giải thích:}
+Hệ thống sinh ra các bản đồ nhiệt đóng góp cho ảnh toàn cục, các vùng ảnh cục bộ và văn bản lâm sàng tổng hợp nhằm khảo sát mức độ liên hệ của từng nguồn thông tin với dự đoán của mô hình.
+\end{itemize}
+
 
 \subsection{Các thách thức trong bài toán}
 \label{sec:challenges}
 Mặc dù các mô hình học sâu đa phương thức đã đạt được nhiều kết quả tích cực, bài toán vẫn tồn tại nhiều thách thức cần được giải quyết:
 
 \begin{itemize}
-    \item \textbf{Sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu đầu vào thực tế:} Tồn tại sự chênh lệch lớn giữa các bộ dữ liệu đa phương thức hiện có (thường là cặp ảnh X-quang và báo cáo đọc ảnh X-quang) so với luồng công việc thực tế lâm sàng (bao gồm ảnh chụp X-quang kết hợp với báo cáo tổng quát), làm hạn chế khả năng ứng dụng trực tiếp của các mô hình.
+    \item \textbf{Sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu đầu vào thực tế:} Tồn tại sự chênh lệch giữa các bộ dữ liệu đa phương thức hiện có, thường là cặp ảnh X-quang và báo cáo đọc ảnh, so với dữ liệu đầu vào được khảo sát trong khóa luận gồm ảnh X-quang kết hợp với bệnh sử hoặc thông tin lâm sàng ban đầu. Sự khác biệt này có thể hạn chế khả năng chuyển giao trực tiếp của mô hình.
     \item \textbf{Sự khác biệt về không gian và ngữ nghĩa giữa dữ liệu hình ảnh và dữ liệu văn bản:} Sự khác biệt này gây khó khăn cho quá trình học biểu diễn chung, yêu cầu một cơ chế dung hợp hiệu quả.
     \item \textbf{Bảo toàn tổn thương nhỏ trên ảnh độ phân giải cao:} Việc co toàn bộ ảnh X-quang về kích thước cố định ở độ phân giải thấp của các mô hình hiện nay có thể làm mất đi các chi tiết cục bộ quan trọng, đặc biệt là các tổn thương nhỏ, dẫn đến hiệu quả phân loại bị hạn chế.
     \item \textbf{Hạn chế của dữ liệu thực tế:} Dữ liệu y tế thường có số lượng hạn chế và mất cân bằng giữa các loại bệnh, đặt ra yêu cầu đặc biệt về thiết kế mô hình để tận dụng tối đa thông tin có sẵn.
-    \item \textbf{Dữ liệu ngoài phân phối:} Các bộ phân loại đóng phổ biến hiện tại chưa được thiết kế để xử lý các trường hợp dữ liệu ngoài phân phối, dẫn đến nguy cơ đưa ra dự đoán không chính xác với độ tin cậy cao đối với những ca bệnh mới chưa từng xuất hiện trong dữ liệu huấn luyện, đặt ra yêu cầu về khả năng tổng quát hóa và thích ứng của mô hình.
+    \item \textbf{Dữ liệu ngoài phân phối:} Các bộ phân loại theo giả định tập đóng chưa được thiết kế để xử lý các trường hợp dữ liệu ngoài phân phối, dẫn đến nguy cơ đưa ra dự đoán không chính xác với độ tin cậy cao đối với những ca bệnh mới chưa từng xuất hiện trong dữ liệu huấn luyện, đặt ra yêu cầu về khả năng tổng quát hóa và thích ứng của mô hình.
     \item \textbf{Khả năng giải thích của mô hình:} Khả năng giải thích của các mô hình vẫn còn hạn chế khiến độ tin cậy của người dùng vào các dự đoán của hệ thống là không cao, gây khó khăn cho việc triển khai trong thực tế lâm sàng.
 
 \end{itemize}
@@ -130,8 +132,6 @@ Mặc dù các mô hình học sâu đa phương thức đã đạt được nhi
 \section{Mục tiêu nghiên cứu}
 
 Đề tài hướng đến xây dựng và đánh giá một hệ thống học sâu đa phương thức phục vụ phân loại bệnh lý trên ảnh X-quang xương bằng cách khai thác đồng thời thông tin hình ảnh và bệnh sử lâm sàng. Hệ thống được nghiên cứu trong điều kiện dữ liệu gán nhãn hạn chế và mất cân bằng lớp, đồng thời được đánh giá về hiệu năng phân loại, khả năng phát hiện dữ liệu ngoài phân phối, tính giải thích và chi phí tính toán.
-
-\clearpage
 
 Các mục tiêu cụ thể của đề tài bao gồm:
 \begin{enumerate}
@@ -145,7 +145,7 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 
 \item Nghiên cứu cơ chế phát hiện dữ liệu ngoài phân phối nhằm nhận diện các mẫu khác biệt so với dữ liệu huấn luyện và hỗ trợ đánh giá độ tin cậy của dự đoán.
 
-\item Xây dựng cơ chế giải thích dựa trên bản đồ độ dốc tích hợp để trực quan hóa những vùng ảnh có ảnh hưởng đến quyết định của mô hình.
+\item Xây dựng cơ chế giải thích dựa trên phương pháp tích phân gradient và can thiệp nguồn thông tin để khảo sát vai trò của ảnh toàn cục, các vùng ảnh cục bộ và bệnh sử đối với quyết định của mô hình.
 
 \item Xây dựng và đánh giá XBone-Net trên các bộ dữ liệu X-quang xương mất cân bằng; đồng thời so sánh với các mô hình ảnh đơn phương thức và mô hình ngôn ngữ trực quan y khoa trong các thiết lập không mẫu, mẫu hạn chế và toàn bộ mẫu.
 
@@ -166,7 +166,7 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 
 \item Các kiến trúc đầu phân loại đa lớp trên dữ liệu mất cân bằng, bao gồm bộ phân loại tuyến tính và bộ phân loại dựa trên tâm lớp.
 
-\item Các phương pháp phát hiện dữ liệu ngoài phân phối và trực quan hóa bản đồ chú ý nhằm hỗ trợ đánh giá độ tin cậy và khả năng giải thích của mô hình.
+\item Các phương pháp phát hiện dữ liệu ngoài phân phối và trực quan hóa bản đồ tích phân gradient nhằm hỗ trợ đánh giá độ tin cậy và khả năng giải thích của mô hình.
 
 \end{itemize}
 
@@ -174,8 +174,8 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Đề tài tập trung vào bài toán phân loại đa lớp bệnh lý xương trên ảnh X-quang, kết hợp với bệnh sử lâm sàng. Phạm vi cụ thể bao gồm:
 
 \begin{itemize}
-  \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD gồm 10 lớp bệnh lý xương, và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
-  \item \textbf{Dữ liệu văn bản:} Bộ dữ liệu CTCH sử dụng bệnh sử có sẵn trong bệnh án, gồm lý do vào viện, diễn tiến bệnh và tiền sử. Bộ dữ liệu BTXRD không có bệnh sử tự do nên sử dụng văn bản dạng lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Vì mẫu câu tổng hợp có phụ thuộc vào các cờ nhóm bệnh, kết quả BTXRD chỉ phản ánh thiết lập văn bản tổng hợp và không được xem là bằng chứng tương đương với bệnh sử lâm sàng tự nhiên.
+  \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương, và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
+  \item \textbf{Dữ liệu văn bản:} Bộ dữ liệu CTCH sử dụng bệnh sử có sẵn trong bệnh án, gồm lý do vào viện, diễn tiến bệnh và tiền sử. Bộ dữ liệu BTXRD không có bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Vì mẫu câu tổng hợp có phụ thuộc vào các cờ nhóm bệnh, kết quả BTXRD chỉ phản ánh thiết lập văn bản tổng hợp và không được xem là bằng chứng tương đương với bệnh sử lâm sàng tự nhiên.
   \item \textbf{Vai trò hệ thống:} Hệ thống được thiết kế làm công cụ hỗ trợ phân tích ảnh, không thay thế vai trò của bác sĩ trong quá trình ra quyết định.
   \item \textbf{Giới hạn:} Đề tài không tập trung vào các bài toán phát hiện đối tượng, phân đoạn ảnh hay sinh báo cáo y khoa tự động.
 \end{itemize}
@@ -185,7 +185,7 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Để đạt được các mục tiêu đã đề ra, nghiên cứu tập trung trả lời các câu hỏi sau:
 
 \begin{itemize}
-\item \textbf{Câu hỏi nghiên cứu 1:} Việc kết hợp ảnh X-quang với bệnh sử lâm sàng đi kèm ảnh hưởng như thế nào đến hiệu năng phân loại so với các mô hình chỉ sử dụng hình ảnh? Ảnh hưởng này khác nhau ra sao giữa bệnh sử thực của CTCH và văn bản tổng hợp từ siêu dữ liệu của BTXRD?
+\item \textbf{Câu hỏi nghiên cứu 1:} Việc kết hợp ảnh X-quang với bệnh sử lâm sàng đi kèm ảnh hưởng như thế nào đến hiệu năng phân loại so với các mô hình chỉ sử dụng hình ảnh? Ảnh hưởng này khác nhau ra sao giữa bệnh sử thực và văn bản tổng hợp từ siêu dữ liệu?
 
 \item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần của XBone-Net, bao gồm nhánh xử lý ảnh độ phân giải cao, quá trình huấn luyện hai pha, cơ chế dung hợp hai chiều và đầu phân loại dựa trên tâm lớp, đóng góp như thế nào vào hiệu năng phân loại, khả năng xếp hạng và hiệu chuẩn của mô hình?
 
@@ -193,7 +193,7 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 
 \item \textbf{Câu hỏi nghiên cứu 4:} Không gian biểu diễn của XBone-Net có hỗ trợ phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước hay không?
 
-\item \textbf{Câu hỏi nghiên cứu 5:} Phương pháp độ dốc tích hợp phản ánh vai trò của ảnh toàn cục, các vùng ảnh cục bộ và thông tin văn bản đối với quyết định phân loại của XBone-Net như thế nào?
+\item \textbf{Câu hỏi nghiên cứu 5:} Phương pháp tích phân gradient phản ánh vai trò của ảnh toàn cục, các vùng ảnh cục bộ và thông tin văn bản đối với quyết định phân loại của XBone-Net như thế nào?
 
 \end{itemize}
 
@@ -202,19 +202,19 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Các đóng góp chính của đề tài bao gồm:
 
 \begin{enumerate}
-\item \textbf{Quy trình khai thác dữ liệu đa phương thức:} Sử dụng ảnh X-quang kết hợp với bệnh sử thực trên CTCH và văn bản lâm sàng tổng hợp từ siêu dữ liệu trên BTXRD. Các nguồn văn bản được chuẩn bị nhất quán cho huấn luyện và suy luận.
+\item \textbf{Quy trình khai thác dữ liệu đa phương thức:} Sử dụng ảnh X-quang kết hợp với bệnh sử thực trên CTCH và văn bản lâm sàng tổng hợp từ siêu dữ liệu trên BTXRD.
 
-\item \textbf{Kiến trúc XBone-Net cho ảnh độ phân giải cao:} Xây dựng nhánh thị giác khai thác đồng thời ảnh toàn cục và các vùng ảnh cục bộ, sử dụng thông tin tọa độ để tổng hợp token trước khi dung hợp với biểu diễn văn bản bằng cơ chế chú ý chéo hai chiều.
+\item \textbf{Kiến trúc XBone-Net cho ảnh độ phân giải cao:} Xây dựng nhánh thị giác khai thác đồng thời ảnh toàn cục và các vùng ảnh cục bộ, sử dụng thông tin tọa độ để tổng hợp các đơn vị biểu diễn trước khi dung hợp với biểu diễn văn bản bằng cơ chế chú ý chéo hai chiều.
 
-\item \textbf{Quy trình huấn luyện hai giai đoạn với LoRA:} Giai đoạn đầu căn chỉnh biểu diễn ảnh-văn bản, sau đó tối ưu các bộ điều hợp của LoRA và mô-đun dung hợp cho tác vụ phân loại. Quy trình này giúp thích nghi BioMedCLIP với ảnh X-quang xương trong khi chỉ cập nhật một phần tham số.
+\item \textbf{Quy trình huấn luyện hai giai đoạn với LoRA:} Giai đoạn đầu căn chỉnh biểu diễn ảnh-văn bản, sau đó tối ưu các bộ điều hợp của LoRA và mô-đun dung hợp cho tác vụ phân loại ở giai đoạn sau. Quy trình này giúp thích nghi BioMedCLIP với ảnh X-quang xương trong khi chỉ cập nhật một phần tham số.
 
-\item \textbf{Bộ phân loại dựa trên tâm lớp:} Xây dựng bộ phân loại sử dụng độ tương đồng cosine với các tâm lớp được ước lượng từ tập huấn luyện, kết hợp với hàm mất mát Cross-Entropy có trọng số nhằm hạn chế ảnh hưởng của mất cân bằng lớp.
+\item \textbf{Bộ phân loại dựa trên tâm lớp:} Xây dựng bộ phân loại sử dụng độ tương đồng cosine với các tâm lớp được ước lượng từ tập huấn luyện, kết hợp với hàm mất mát entropy chéo có trọng số nhằm hạn chế ảnh hưởng của mất cân bằng lớp.
 
 \item \textbf{Khung phát hiện dữ liệu ngoài phân phối:} Đánh giá các điểm ngoài phân phối dựa trên khoảng cách đến tâm lớp, Mahalanobis, kNN và entropy dự đoán đối với các mẫu cùng bộ dữ liệu và các mẫu khác bộ dữ liệu.
 
 \clearpage
 
-\item \textbf{Cơ chế giải thích ở cấp độ trường hợp:} Áp dụng độ dốc tích hợp và can thiệp thông tin đầu vào để phân tích đóng góp của ảnh toàn cục, ảnh cục bộ và văn bản đối với các dự đoán của mô hình. Phân tích này hỗ trợ truy vết quyết định, không thay thế đánh giá định vị tổn thương hoặc đánh giá lâm sàng.
+\item \textbf{Cơ chế giải thích ở cấp độ trường hợp:} Áp dụng tích phân gradient và can thiệp thông tin đầu vào để phân tích đóng góp của ảnh toàn cục, ảnh cục bộ và văn bản đối với các dự đoán của mô hình. Phân tích này hỗ trợ truy vết quyết định, không thay thế đánh giá định vị tổn thương hoặc đánh giá lâm sàng.
 
 \end{enumerate}
 

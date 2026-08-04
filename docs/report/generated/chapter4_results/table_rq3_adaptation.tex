@@ -1,37 +1,18 @@
 \begin{table}[H]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.12}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|c|c|c|c|c|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
 \hline
-\textbf{Mức thích nghi backbone} &
-\textbf{Tham số cập nhật} &
-\textbf{Macro-F1 $\uparrow$} &
-\textbf{Macro-AUROC $\uparrow$} &
-\textbf{Macro-AUPRC $\uparrow$} &
-\textbf{Thời gian thực $\downarrow$} \\ \hline
-Đóng băng backbone &
-$3{.}49$M ($1{.}75\%$) &
-$0{.}5405\pm0{.}0061$ &
-$0{.}9502\pm0{.}0105$ &
-$0{.}5641\pm0{.}0091$ &
-Không lưu \\ \hline
+\textbf{Phương pháp} & \textbf{Tham số cập nhật} & \textbf{Macro-F1 $\uparrow$} & \textbf{Macro-AUROC $\uparrow$} & \textbf{Macro-AUPRC $\uparrow$} \\ \hline
+Đóng băng bộ mã hóa               & $3{.}49$M ($1{.}75\%$)    & $0{.}5405\pm0{.}0061$        & $0{.}9502\pm0{.}0105$           & $0{.}5641\pm0{.}0091$           \\ \hline
 \cellcolor{gray!12}LoRA (XBone-Net) &
 \cellcolor{gray!12}$8{.}63$M ($4{.}22\%$) &
 \cellcolor{gray!12}$\mathbf{0{.}5558\pm0{.}0072}$ &
 \cellcolor{gray!12}$0{.}9473\pm0{.}0246$ &
-\cellcolor{gray!12}$\mathbf{0{.}6189\pm0{.}0145}$ &
-\cellcolor{gray!12}$2{.}61\pm0{.}44$ giờ ($n=3$) \\ \hline
-Tinh chỉnh toàn bộ &
-$199{.}43$M ($100\%$) &
-$0{.}5412\pm0{.}0089$ &
-$\mathbf{0{.}9507\pm0{.}0091}$ &
-$0{.}5832\pm0{.}0192$ &
-$1{.}94$ giờ ($n=1$) \\ \hline
+\cellcolor{gray!12}$\mathbf{0{.}6189\pm0{.}0145}$ \\ \hline
+Tinh chỉnh toàn bộ                & $199{.}43$M ($100\%$)     & $0{.}5412\pm0{.}0089$        & $\mathbf{0{.}9507\pm0{.}0091}$  & $0{.}5832\pm0{.}0192$           \\ \hline
 \end{tabular}%
 }
-\caption{Đánh đổi mức thích nghi backbone trên CTCH phục vụ RQ3; thời gian là wall-clock và số lần đo được ghi riêng}
+\caption{So sánh các mức thích nghi trên bộ dữ liệu CTCH}
 \label{tab:rq3_adaptation}
 \end{table}

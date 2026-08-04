@@ -3,7 +3,7 @@
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.08}
 \begin{longtable}{L{1.8cm}L{2.65cm}C{0.9cm}C{0.9cm}C{0.9cm}*{3}{C{1.45cm}}}
-\caption{Kết quả OOD hậu xử lý của từng hạt giống; các hàng Mahalanobis-centroid được tô xám.}\label{tab:appendix-ood-seeds}\\
+\caption{Kết quả OOD hậu xử lý của từng hạt giống; các hàng Mahalanobis theo tâm lớp được tô xám.}\label{tab:appendix-ood-seeds}\\
 \toprule
 \textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
 \midrule
@@ -17,28 +17,28 @@
 \endfoot
 \bottomrule
 \endlastfoot
-Semantic OOD & Cosine-centroid & 42 & 669 & 44 & 0{,}5856 & 0{,}1040 & 0{,}8864 \\
-\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 42 & 669 & 44 & 0{,}6112 & 0{,}1134 & 0{,}8409 \\
-Semantic OOD & kNN & 42 & 669 & 44 & 0{,}6094 & 0{,}1212 & 0{,}8636 \\
-Semantic OOD & Entropy & 42 & 669 & 44 & 0{,}5969 & 0{,}1237 & 0{,}8409 \\
-Semantic OOD & Cosine-centroid & 123 & 669 & 44 & 0{,}6061 & 0{,}0941 & 0{,}8864 \\
-\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 123 & 669 & 44 & 0{,}6278 & 0{,}0953 & 0{,}9091 \\
-Semantic OOD & kNN & 123 & 669 & 44 & 0{,}6267 & 0{,}1014 & 0{,}8864 \\
-Semantic OOD & Entropy & 123 & 669 & 44 & 0{,}5595 & 0{,}0983 & 0{,}8864 \\
-Semantic OOD & Cosine-centroid & 456 & 669 & 44 & 0{,}6102 & 0{,}0916 & 0{,}8864 \\
-\rowcolor{gray!12}Semantic OOD & Mahalanobis-centroid & 456 & 669 & 44 & 0{,}6467 & 0{,}1014 & 0{,}9091 \\
-Semantic OOD & kNN & 456 & 669 & 44 & 0{,}6445 & 0{,}1023 & 0{,}8864 \\
-Semantic OOD & Entropy & 456 & 669 & 44 & 0{,}5550 & 0{,}0936 & 0{,}9091 \\
-BTXRD & Cosine-centroid & 42 & 669 & 750 & 0{,}8052 & 0{,}7974 & 0{,}7307 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 42 & 669 & 750 & 0{,}8762 & 0{,}8591 & 0{,}6307 \\
+OOD ngữ nghĩa & Cosine theo tâm lớp & 42 & 669 & 44 & 0{,}5856 & 0{,}1040 & 0{,}8864 \\
+\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 42 & 669 & 44 & 0{,}6112 & 0{,}1134 & 0{,}8409 \\
+OOD ngữ nghĩa & kNN & 42 & 669 & 44 & 0{,}6094 & 0{,}1212 & 0{,}8636 \\
+OOD ngữ nghĩa & Entropy & 42 & 669 & 44 & 0{,}5969 & 0{,}1237 & 0{,}8409 \\
+OOD ngữ nghĩa & Cosine theo tâm lớp & 123 & 669 & 44 & 0{,}6061 & 0{,}0941 & 0{,}8864 \\
+\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 123 & 669 & 44 & 0{,}6278 & 0{,}0953 & 0{,}9091 \\
+OOD ngữ nghĩa & kNN & 123 & 669 & 44 & 0{,}6267 & 0{,}1014 & 0{,}8864 \\
+OOD ngữ nghĩa & Entropy & 123 & 669 & 44 & 0{,}5595 & 0{,}0983 & 0{,}8864 \\
+OOD ngữ nghĩa & Cosine theo tâm lớp & 456 & 669 & 44 & 0{,}6102 & 0{,}0916 & 0{,}8864 \\
+\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 456 & 669 & 44 & 0{,}6467 & 0{,}1014 & 0{,}9091 \\
+OOD ngữ nghĩa & kNN & 456 & 669 & 44 & 0{,}6445 & 0{,}1023 & 0{,}8864 \\
+OOD ngữ nghĩa & Entropy & 456 & 669 & 44 & 0{,}5550 & 0{,}0936 & 0{,}9091 \\
+BTXRD & Cosine theo tâm lớp & 42 & 669 & 750 & 0{,}8052 & 0{,}7974 & 0{,}7307 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 42 & 669 & 750 & 0{,}8762 & 0{,}8591 & 0{,}6307 \\
 BTXRD & kNN & 42 & 669 & 750 & 0{,}8544 & 0{,}8379 & 0{,}6573 \\
 BTXRD & Entropy & 42 & 669 & 750 & 0{,}7325 & 0{,}7583 & 0{,}7453 \\
-BTXRD & Cosine-centroid & 123 & 669 & 750 & 0{,}6379 & 0{,}6751 & 0{,}8160 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 123 & 669 & 750 & 0{,}6982 & 0{,}7377 & 0{,}7600 \\
+BTXRD & Cosine theo tâm lớp & 123 & 669 & 750 & 0{,}6379 & 0{,}6751 & 0{,}8160 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 123 & 669 & 750 & 0{,}6982 & 0{,}7377 & 0{,}7600 \\
 BTXRD & kNN & 123 & 669 & 750 & 0{,}6654 & 0{,}6979 & 0{,}8067 \\
 BTXRD & Entropy & 123 & 669 & 750 & 0{,}5931 & 0{,}6203 & 0{,}8680 \\
-BTXRD & Cosine-centroid & 456 & 669 & 750 & 0{,}7471 & 0{,}7079 & 0{,}8400 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis-centroid & 456 & 669 & 750 & 0{,}8381 & 0{,}8058 & 0{,}7307 \\
+BTXRD & Cosine theo tâm lớp & 456 & 669 & 750 & 0{,}7471 & 0{,}7079 & 0{,}8400 \\
+\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 456 & 669 & 750 & 0{,}8381 & 0{,}8058 & 0{,}7307 \\
 BTXRD & kNN & 456 & 669 & 750 & 0{,}7977 & 0{,}7564 & 0{,}8373 \\
 BTXRD & Entropy & 456 & 669 & 750 & 0{,}7498 & 0{,}7313 & 0{,}8640 \\
 \end{longtable}

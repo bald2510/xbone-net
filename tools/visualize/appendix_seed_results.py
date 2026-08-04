@@ -42,24 +42,24 @@ FEW_SHOT_MODELS = (
 ABLATION_VARIANTS = (
     ("XBone-Net", "proposed/ours_xbone_net"),
     (
-        "Không high-resolution",
+        "Không dùng ảnh độ phân giải cao",
         "ablation_study/architecture/preprocess/xbone_nohighres",
     ),
     (
-        "Mean pooling",
+        "Gộp trung bình",
         "ablation_study/architecture/preprocess/xbone_mean_pooling",
     ),
     ("Chỉ pha 2", "ablation_study/architecture/phase/phase2_only"),
-    ("Concat", "ablation_study/architecture/fusion/concat"),
+    ("Nối đặc trưng", "ablation_study/architecture/fusion/concat"),
     ("Đầu tuyến tính", "ablation_study/architecture/classifier/linear"),
 )
 OOD_SCENARIOS = (
-    ("Semantic OOD", "semantic_ood"),
+    ("OOD ngữ nghĩa", "semantic_ood"),
     ("BTXRD", "domain_ood_btxrd"),
 )
 OOD_METHODS = (
-    ("Cosine-centroid", "cosine_centroids"),
-    ("Mahalanobis-centroid", "mahalanobis_centroid"),
+    ("Cosine theo tâm lớp", "cosine_centroids"),
+    ("Mahalanobis theo tâm lớp", "mahalanobis_centroid"),
     ("kNN", "knn"),
     ("Entropy", "entropy"),
 )
@@ -331,7 +331,7 @@ def write_full_shot_tables(
                 column_spec=r"L{3.2cm}C{1.15cm}*{5}{C{1.55cm}}",
                 headers=headers,
                 caption=(
-                    "Kết quả full-shot của từng hạt giống trên "
+                    "Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên "
                     f"{display}; hàng XBone-Net được tô xám để dễ đối chiếu."
                 ),
                 label=f"tab:appendix-full-shot-seeds-{dataset}",
@@ -417,7 +417,7 @@ def write_ablation_table(output: Path, rows: list[dict[str, Any]]) -> Path:
                 "ECE",
             ],
             caption=(
-                "Kết quả của từng hạt giống trong nghiên cứu leave-one-out "
+                "Kết quả của từng hạt giống trong nghiên cứu loại bỏ từng thành phần "
                 "trên CTCH; cấu hình đầy đủ được tô xám."
             ),
             label="tab:appendix-ablation-seeds",
@@ -461,7 +461,7 @@ def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
             ],
             caption=(
                 "Kết quả OOD hậu xử lý của từng hạt giống; các hàng "
-                "Mahalanobis-centroid được tô xám."
+                "Mahalanobis theo tâm lớp được tô xám."
             ),
             label="tab:appendix-ood-seeds",
             shaded_rows=shaded,
@@ -520,7 +520,7 @@ def plot_full_shot_seed_f1(
                 color=color,
                 label=model,
             )
-        axis.set_title(f"Macro-F1 full-shot trên {display}")
+        axis.set_title(f"Macro-F1 khi sử dụng toàn bộ dữ liệu trên {display}")
         axis.set_xlabel("Hạt giống ngẫu nhiên")
         axis.set_xticks(seed_positions, [str(seed) for seed in SEEDS])
         axis.set_ylabel("Macro-F1")
@@ -552,7 +552,7 @@ def plot_ood_seed_metrics(
         ("fpr_at_95tpr", "FPR@95%TPR"),
     )
     scenario_specs = (
-        ("semantic_ood", "Semantic OOD", REPORT_PALETTE["blue"], "o"),
+        ("semantic_ood", "OOD ngữ nghĩa", REPORT_PALETTE["blue"], "o"),
         ("domain_ood_btxrd", "BTXRD", REPORT_PALETTE["orange"], "s"),
     )
     for axis, (metric_key, metric_label) in zip(axes, metric_specs):

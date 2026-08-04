@@ -6,19 +6,19 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{l>{\columncolor{gray!12}}c*{5}{c}}
 \toprule
-\multicolumn{1}{c}{\textbf{Thành phần hoặc độ đo}} &
+\multicolumn{1}{c}{\textbf{Thành phần/ độ đo}} &
 \multicolumn{1}{>{\columncolor{gray!12}}c}{\textbf{XBone-Net}} &
-\multicolumn{1}{c}{\textbf{Không high-res}} &
-\multicolumn{1}{c}{\textbf{Mean pooling}} &
+\multicolumn{1}{c}{\textbf{Không tiền xử lý}} &
+\multicolumn{1}{c}{\textbf{Gộp trung bình}} &
 \multicolumn{1}{c}{\textbf{Chỉ pha 2}} &
-\multicolumn{1}{c}{\textbf{Concat}} &
-\multicolumn{1}{c}{\textbf{Linear head}} \\
+\multicolumn{1}{c}{\textbf{Nối đặc trưng}} &
+\multicolumn{1}{c}{\textbf{Đầu tuyến tính}} \\
 \midrule
-Nhánh ảnh độ phân giải cao & $\checkmark$ &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
-Attention pooling cục bộ & $\checkmark$ & -- &  & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+Tiền xử lý ảnh & $\checkmark$ &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+Gộp chú ý cục bộ & $\checkmark$ & -- &  & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
 Huấn luyện pha 1 & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ & $\checkmark$ \\
-Cross-attention hai chiều & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ \\
-Empirical centroid & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  \\
+Chú ý chéo hai chiều & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ \\
+Tâm lớp thực nghiệm & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  \\
 \midrule
 Accuracy $\uparrow$ &
 $0{.}5725\pm0{.}0286$ &

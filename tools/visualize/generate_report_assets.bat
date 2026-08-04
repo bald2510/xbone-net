@@ -250,7 +250,7 @@ echo [3/6] Tao bang va bieu do OOD cho Semantic OOD va BTXRD...
   --input results\ctch\proposed\ours_xbone_net\analysis\aggregated_results.json ^
   --scenarios semantic_ood domain_ood_btxrd ^
   --method mahalanobis_centroid ^
-  --title "Mahalanobis-centroid trên Semantic OOD và BTXRD" ^
+  --title "Mahalanobis theo tâm lớp trên OOD ngữ nghĩa và BTXRD" ^
   --dpi 300 ^
   --output "%OOD%\mahalanobis_semantic_btxrd_metrics.png"
 

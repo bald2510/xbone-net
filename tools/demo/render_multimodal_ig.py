@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
 def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None:
     axis.set_axis_off()
     axis.set_title(
-        "(d) Integrated Gradients trên token bệnh sử "
+        "(d) Integrated Gradients trên đơn vị từ ngữ của bệnh sử "
         "(xanh: phản đối, cam: ủng hộ)",
         loc="left",
         fontsize=12,
@@ -156,14 +156,14 @@ def _draw_faithfulness_curve(
 
 
 def _draw_contribution(axis, values: dict[str, float]) -> None:
-    labels = ["Global visual", "Local visual", "Clinical text"]
+    labels = ["Ảnh toàn cục", "Ảnh cục bộ", "Bệnh sử lâm sàng"]
     keys = ["global_visual", "local_visual", "clinical_text"]
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
     drops = np.asarray([float(values[key]) for key in keys])
     bars = axis.barh(labels, drops, color=colors, alpha=0.9)
     axis.axvline(0.0, color="#333333", linewidth=1)
     axis.set_title(
-        "(e) Mức giảm xác suất khi thay từng nguồn bằng baseline",
+        "(e) Mức giảm xác suất khi thay từng nguồn bằng mốc tham chiếu",
         fontsize=11,
     )
     axis.set_xlabel(r"$\Delta p$ của lớp dự đoán")
@@ -258,14 +258,14 @@ def main() -> None:
     original_axis.axis("off")
     global_axis.imshow(global_overlay)
     global_axis.set_title(
-        "(b) IG trên global visual view\n"
+        "(b) IG trên ảnh toàn cục\n"
         "Màu nóng biểu thị đóng góp lớn hơn",
         fontsize=12,
     )
     global_axis.axis("off")
     local_axis.imshow(local_overlay)
     local_axis.set_title(
-        "(c) IG trên local visual token\n"
+        "(c) IG trên đơn vị biểu diễn ảnh cục bộ\n"
         "Màu nóng biểu thị đóng góp lớn hơn",
         fontsize=12,
     )
@@ -278,21 +278,21 @@ def main() -> None:
     _draw_contribution(contribution_axis, result.contribution_drops)
     _draw_faithfulness_curve(
         global_curve_axis,
-        "(f1) Global visual",
+        "(f1) Ảnh toàn cục",
         result.global_faithfulness,
-        unit="patch",
+        unit="vùng ảnh",
     )
     _draw_faithfulness_curve(
         local_curve_axis,
-        "(f2) Local visual",
+        "(f2) Ảnh cục bộ",
         result.visual_faithfulness,
-        unit="token",
+        unit="đơn vị biểu diễn",
     )
     _draw_faithfulness_curve(
         text_curve_axis,
-        "(f3) Clinical text",
+        "(f3) Bệnh sử lâm sàng",
         result.text_faithfulness,
-        unit="token",
+        unit="đơn vị từ ngữ",
     )
 
     predicted_label = str(result.predicted_label)
@@ -312,7 +312,7 @@ def main() -> None:
         else "không áp dụng cổng OOD"
     )
     figure.suptitle(
-        f"{args.image_id}\nGT: {ground_truth} | Dự đoán: {predicted_label} "
+        f"{args.image_id}\nNhãn đúng: {ground_truth} | Dự đoán: {predicted_label} "
         f"({100.0 * float(result.probabilities.max()):.1f}%) | "
         f"{ood_summary}",
         fontsize=13,
