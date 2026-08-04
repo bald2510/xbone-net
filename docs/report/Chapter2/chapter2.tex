@@ -340,12 +340,12 @@ Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu 
 Từ những hạn chế trên, luận văn lựa chọn xây dựng hệ thống dựa trên việc kế thừa mô hình BiomedCLIP \cite{BiomedCLIP} kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Các lựa chọn thiết kế cụ thể được đưa ra dựa trên phân tích sau:
 
 \textbf{Về xử lý ảnh độ phân giải cao:}
-Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định có thể làm suy giảm các dấu hiệu tổn thương nhỏ, trong khi xử lý toàn bộ ảnh ở độ phân giải cao làm tăng đáng kể chi phí tính toán. Vì vậy, luận văn lựa chọn chiến lược toàn cục--cục bộ, trong đó ảnh toàn cục duy trì bố cục giải phẫu chung, còn bốn vùng cục bộ được lựa chọn theo chiến lược sparse-focal nhằm bảo toàn các vùng giàu thông tin. Các đặc trưng cục bộ được bổ sung thông tin vị trí và nén về số lượng token cố định để cân bằng giữa khả năng giữ lại chi tiết và chi phí xử lý.
+Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định có thể làm suy giảm các dấu hiệu tổn thương nhỏ, trong khi xử lý toàn bộ ảnh ở độ phân giải cao làm tăng đáng kể chi phí tính toán. Vì vậy, luận văn lựa chọn chiến lược toàn cục-cục bộ, trong đó ảnh toàn cục duy trì bố cục giải phẫu chung, còn bốn vùng cục bộ được lựa chọn theo chiến lược sparse-focal nhằm bảo toàn các vùng giàu thông tin. Các đặc trưng cục bộ được bổ sung thông tin vị trí và nén về số lượng token cố định để cân bằng giữa khả năng giữ lại chi tiết và chi phí xử lý.
 
 \textbf{Về thích nghi mô hình nền tảng:}
 LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa của BioMedCLIP với miền ảnh X-quang xương mà không cần cập nhật toàn bộ tham số nền. Lựa chọn này giúp giảm chi phí huấn luyện, hạn chế nguy cơ quá khớp trên các lớp có ít mẫu và bảo toàn phần lớn tri thức y sinh đã được học trong giai đoạn tiền huấn luyện.
 
-Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, luận văn sử dụng hàm mất mát khớp ngữ nghĩa với phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh--văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
+Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, luận văn sử dụng hàm mất mát khớp ngữ nghĩa với phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
 
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân loại không mẫu của BioMedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân loại không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
@@ -362,10 +362,10 @@ Ngoài nhiệm vụ phân loại, luận văn bổ sung cơ chế phát hiện O
 Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:
 
 \begin{itemize}
-    \item \textbf{Giai đoạn 1 -- Thích nghi và căn chỉnh biểu diễn:}
+    \item \textbf{Giai đoạn 1 - Thích nghi và căn chỉnh biểu diễn:}
     hai bộ mã hóa của BioMedCLIP được thích nghi thông qua LoRA bằng hàm mất mát khớp ngữ nghĩa. Mô-đun dung hợp và đầu phân loại chưa được tối ưu trong giai đoạn này.
 
-    \item \textbf{Giai đoạn 2 -- Dung hợp và phân loại:}
+    \item \textbf{Giai đoạn 2 - Dung hợp và phân loại:}
     các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân loại. Các tâm lớp thực nghiệm được cập nhật từ embedding của tập huấn luyện và được sử dụng cho cả phân loại lẫn phát hiện OOD.
 \end{itemize}
 
