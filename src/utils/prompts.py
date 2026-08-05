@@ -6,7 +6,7 @@ utility for the optional text-anchor OOD detector.
 """
 
 
-ORIGINAL_CLIP_PROMPT_TEMPLATE = "A photo of a {label}."
+ORIGINAL_CLIP_PROMPT_TEMPLATE = "A radiograph showing {label}."
 
 
 # ============================================================
@@ -20,7 +20,7 @@ def generate_clip_class_prompts(
     """Generate one canonical CLIP prompt for every class.
 
     The default is the single prompt reported by Radford et al.:
-    ``A photo of a {label}.``.  Each class competes with all other classes
+    ``A radiograph showing {label}.``.  Each class competes with all other classes
     through one class-wise softmax during zero-shot classification.
 
     Args:

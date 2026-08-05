@@ -143,8 +143,6 @@ Phụ lục này mô tả quy trình chuẩn bị CTCH nhằm hỗ trợ tái l�
 
 \subsection{Cấu trúc dữ liệu và đặc điểm kỹ thuật}
 
-\subsubsection{Sàng lọc và hình thành các quần thể}
-
 Bảng \ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đến phạm vi phân loại của nghiên cứu. Định danh ảnh là khóa liên kết một-một giữa siêu dữ liệu, nhãn, tập chia, ảnh và văn bản tổng hợp.
 
 \begin{table}[H]
@@ -156,7 +154,7 @@ Bảng \ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \texttt{images/}          & 3,293            & Lưu ảnh X-quang đầu vào.                  \\ \hline
 \texttt{reports/} &
   3,293  &
-  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một văn bản dạng lâm sàng được \\ sinh ngoại tuyến từ siêu dữ liệu.\end{tabular} \\ \hline
+  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một bệnh sử lâm sàng \\ tương ứng của bệnh nhân.\end{tabular} \\ \hline
 \texttt{ctch-labels.csv} & 3,249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
 \texttt{ctch-ood.csv} & 44           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
 \texttt{ctch-split.csv} &
@@ -168,7 +166,7 @@ Bảng \ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \label{tab:appendix-ctch-storage}
 \end{table}
 
-Bảng \ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3,464 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3,464 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
+Bảng \ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3,293 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3,293 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
 
 \begin{table}[H]
 \centering
@@ -178,12 +176,12 @@ Bảng \ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có
 \begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
 \hline
 \textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
-Phần mở rộng & 3,464 tệp \texttt{.jpg}. \\ \hline
-Chế độ màu khi giải mã & 3,464 ảnh \texttt{RGB}. \\ \hline
-Định dạng mã hóa & 3,464 JPEG. \\ \hline
+Phần mở rộng & 3,293 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 3,293 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3,293 JPEG. \\ \hline
 Chiều rộng & Nhỏ nhất 1,186 px, trung vị 1,213 px, lớn nhất 2,836 px. \\ \hline
 Chiều cao & Nhỏ nhất 1,213 px, trung vị 1,713 px, lớn nhất 2,880 px. \\ \hline
-Khả năng giải mã & 3,464/3,464 tệp được đọc thành công. \\ \hline
+Khả năng giải mã & 3,293/3,293 tệp được đọc thành công. \\ \hline
 \end{tabularx}
 \end{table}
 
@@ -221,14 +219,14 @@ Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này c
 \begin{tabular}{|l|l|}
 \hline
 \textbf{Giai đoạn sàng lọc}                         & \textbf{Số hồ sơ còn lại} \\ \hline
-Dữ liệu bệnh án ban đầu                             & 12.949                    \\ \hline
-Sau khi lọc nội dung cận lâm sàng không phù hợp     & 9.142                     \\ \hline
-Sau khi loại các trường hợp đã mổ                   & 7.900                     \\ \hline
-Sau khi loại các ca tái khám                        & 7.070                     \\ \hline
-Sau khi chỉ giữ lần khám đầu tiên                   & 6.575                     \\ \hline
-Sau khi hoàn tất chuẩn hóa nhãn và lập tập ứng viên & 4.132                     \\ \hline
-Sau khi loại các hồ sơ có cờ \texttt{Deleted}       & 3.641                     \\ \hline
-Sau khi loại các hồ sơ có dụng cụ y tế              & 3.293                     \\ \hline
+Dữ liệu bệnh án ban đầu                             & 12,949                    \\ \hline
+Sau khi lọc nội dung cận lâm sàng không phù hợp     & 9,142                     \\ \hline
+Sau khi loại các trường hợp đã mổ                   & 7,900                     \\ \hline
+Sau khi loại các ca tái khám                        & 7,070                     \\ \hline
+Sau khi chỉ giữ lần khám đầu tiên                   & 6,575                     \\ \hline
+Sau khi hoàn tất chuẩn hóa nhãn và lập tập ứng viên & 4,132                     \\ \hline
+Sau khi loại các hồ sơ không đáp ứng yêu cầu        & 3,641                     \\ \hline
+Sau khi loại các hồ sơ có dụng cụ y tế              & 3,293                     \\ \hline
 \end{tabular}%
 }
 \caption{Số lượng hồ sơ còn lại qua các bước sàng lọc bộ dữ liệu CTCH}
@@ -245,4 +243,94 @@ Bước sàng lọc cuối cùng loại 348 hồ sơ có nẹp, đinh hoặc cá
 
 Trong số 3.293 mẫu được giữ lại, 3.249 mẫu thuộc 22 lớp đích và được sử dụng làm quần thể trong phân phối cho tác vụ phân loại. Bốn mươi bốn mẫu còn lại có biểu hiện không thuộc không gian nhãn đích và được tách thành quần thể ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
 
-\input{Appendix/appendix_seed_results}
+\chapter{Kết quả chi tiết theo từng hạt giống}
+\label{AppendixSeedResults}
+
+\section{Phạm vi trình bày}
+
+Phụ lục này công bố các kết quả riêng của ba hạt giống ngẫu nhiên 42, 123 và 456 nhằm bổ trợ cho các giá trị trung bình và độ lệch chuẩn được trình bày trong Chương \ref{Chapter4}. Sự thay đổi giữa các hạt giống được sử dụng chủ yếu để đánh giá độ nhạy của quy trình huấn luyện và hỗ trợ việc diễn giải khoảng tin cậy, thay vì khẳng định phân phối hiệu năng của mô hình.
+
+Các kết quả gồm phân loại khi sử dụng toàn bộ dữ liệu, phân loại trong trường hợp mẫu học hạn chế, nghiên cứu loại bỏ từng thành phần và đánh giá dữ liệu ngoài phân phối bằng hậu xử lý. Đây là các nội dung trong Chương \ref{Chapter4} có đủ kết quả cho cả ba hạt giống và có thể đối chiếu trực tiếp với các bảng tổng hợp. Kết quả không mẫu, phép đo hiệu quả suy luận và hai trường hợp minh họa bằng phương pháp tích phân gradient không được lặp lại dưới dạng bảng ba hạt giống vì các nội dung này hiện chỉ được thực hiện một lần hoặc được dùng như minh họa định tính.
+
+\section{Phân loại khi sử dụng toàn bộ dữ liệu huấn luyện}
+
+Bảng \ref{tab:appendix-full-shot-seeds-btxrd} và Bảng \ref{tab:appendix-full-shot-seeds-ctch} trình bày năm độ đo phân loại của từng mô hình tại từng hạt giống. Việc giữ đồng thời Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC và Macro-AUPRC cho phép kiểm tra liệu thứ hạng trung bình trong Chương \ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo cụ thể.
+
+\input{generated/appendix_seed_results/table_full_shot_per_seed}
+
+Hình \ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai mô hình cơ sở PEFT gần nhất để minh họa biến thiên Macro-F1 mà không lặp lại toàn bộ thông tin trong hai bảng. Trên BTXRD, đường của XBone-Net thay đổi ít hơn hai mô hình cơ sở nhưng nằm ở mức thấp hơn; trên CTCH, ba đường giao nhau giữa các hạt giống, phù hợp với nhận định rằng chênh lệch Macro-F1 giữa các mô hình ngôn ngữ trực quan chưa ổn định trong phạm vi ba lần huấn luyện.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{generated/appendix_seed_results/full_shot_macro_f1_by_seed.png}
+\caption{Macro-F1 khi sử dụng toàn bộ dữ liệu của XBone-Net và hai mô hình cơ sở PEFT tại từng hạt giống trên BTXRD và CTCH}
+\label{fig:appendix-full-shot-f1-seeds}
+\end{figure}
+
+Hình \ref{fig:full_shot_paired_f1_forest} trình bày trung bình chênh lệch Macro-F1 giữa XBone-Net và từng mô hình đối sánh tại cùng hạt giống; khoảng tin cậy được tính theo phân phối $t$ hai phía với hai bậc tự do. Trên BTXRD, khoảng ước lượng khi so với LoRA-BioMedCLIP nằm dưới mốc 0, còn khoảng khi so với các mô hình chỉ dùng ảnh nằm trên mốc 0. Trên CTCH, các khoảng khi so với hai mô hình chỉ dùng ảnh nằm trên mốc 0, trong khi các khoảng của nhóm mô hình ngôn ngữ trực quan và nhóm tinh chỉnh hiệu quả tham số cắt mốc 0. Vì chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên giữa các lần huấn luyện hiện có.
+
+\section{Phân loại trong trường hợp mẫu học hạn chế}
+
+Bảng \ref{tab:appendix-few-shot-seeds-btxrd} và Bảng \ref{tab:appendix-few-shot-seeds-ctch} báo cáo kết quả tại từng hạt giống cho các mức ngân sách tối đa 1, 10 và 20 mẫu trên mỗi lớp. Khi số mẫu huấn luyện của một lớp thấp hơn ngân sách, toàn bộ mẫu hiện có được giữ lại và không lấy lặp; vì vậy mức 20 mẫu của CTCH sử dụng 19 mẫu cho lớp gãy xương thuyền và 16 mẫu cho lớp gãy xương vùng chậu. Các giá trị này bổ sung cho biểu đồ trung bình trong Chương \ref{Chapter4}, đồng thời cho phép nhận diện trường hợp chênh lệch trung bình nhỏ hơn mức dao động giữa các lần huấn luyện.
+
+\input{generated/appendix_seed_results/table_few_shot_per_seed}
+
+\section{Nghiên cứu loại bỏ từng thành phần}
+
+Bảng \ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net và năm biến thể loại bỏ từng thành phần tại từng hạt giống trên CTCH. Một biến thể có giá trị trung bình cao hơn nhưng thay đổi dấu chênh lệch giữa các hạt giống không được xem là bằng chứng về ưu thế ổn định.
+
+\input{generated/appendix_seed_results/table_ablation_per_seed}
+
+Các khoảng trong Hình \ref{fig:ablation_forest_accuracy}--\ref{fig:ablation_forest_auprc_macro} được tính bằng 10.000 lần tái lấy mẫu bắt cặp; hai cận là phân vị $2{,}5\%$ và $97{,}5\%$ của phân bố chênh lệch. Trong mỗi lần, người bệnh được tái lấy mẫu theo cụm và phân tầng theo lớp, đồng thời ba hạt giống huấn luyện được tái lấy mẫu có hoàn lại. Cùng một mẫu tái lập được áp dụng cho cấu hình tham chiếu và biến thể. Thành phần biến thiên theo hạt giống chỉ dựa trên ba giá trị quan sát, vì vậy các khoảng được diễn giải theo hướng mô tả và thăm dò.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_accuracy.png}
+\caption{Khoảng tin cậy 95\% của chênh lệch Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\label{fig:ablation_forest_accuracy}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_balanced_accuracy.png}
+\caption{Khoảng tin cậy 95\% của chênh lệch Balanced Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\label{fig:ablation_forest_balanced_accuracy}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_f1_macro.png}
+\caption{Khoảng tin cậy 95\% của chênh lệch Macro-F1 giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\label{fig:ablation_forest_f1_macro}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auroc_macro.png}
+\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUROC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\label{fig:ablation_forest_auroc_macro}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auprc_macro.png}
+\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUPRC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\label{fig:ablation_forest_auprc_macro}
+\end{figure}
+
+\section{Kết quả đánh giá dữ liệu ngoài phân phối}
+
+Bảng \ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống cho bốn phương pháp chấm điểm OOD trên kịch bản OOD ngữ nghĩa và BTXRD. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu của từng kịch bản.
+
+Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản OOD ngữ nghĩa sử dụng đủ 44 mẫu trong danh sách đánh giá và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối; không mẫu nào bị bỏ qua trong các tệp kết quả được tổng hợp. Tuy nhiên, AUPR-Out và FPR@95\%TPR vẫn chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ mẫu trong--ngoài phân phối giữa hai kịch bản, vì vậy cần được đọc cùng AUROC-OOD và cỡ mẫu ghi trong bảng.
+
+\input{generated/appendix_seed_results/table_ood_per_seed}
+
+Hình \ref{fig:appendix-ood-mahalanobis-seeds} biểu diễn riêng phương pháp Mahalanobis theo tâm lớp vì đây là phương pháp được nhấn mạnh trong phần kết quả chính. Khoảng biến thiên lớn hơn trên BTXRD, đặc biệt ở AUROC-OOD, cho thấy kết quả liên bộ dữ liệu nhạy với trạng thái biểu diễn được học ở từng hạt giống. Kịch bản OOD ngữ nghĩa có AUROC-OOD ổn định hơn nhưng FPR@95\%TPR vẫn cao ở cả ba lần chạy.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{generated/appendix_seed_results/ood_mahalanobis_by_seed.png}
+\caption{Các độ đo OOD của phương pháp Mahalanobis theo tâm lớp tại từng hạt giống trên kịch bản OOD ngữ nghĩa và BTXRD}
+\label{fig:appendix-ood-mahalanobis-seeds}
+\end{figure}
