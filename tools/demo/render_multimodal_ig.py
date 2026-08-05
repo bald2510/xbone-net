@@ -62,16 +62,16 @@ def parse_args() -> argparse.Namespace:
 def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None:
     axis.set_axis_off()
     axis.set_title(
-        "(d) Integrated Gradients trên đơn vị từ ngữ của bệnh sử "
+        "(d) Integrated Gradients trên đơn vị từ ngữ của bệnh sử\n"
         "(xanh: phản đối, cam: ủng hộ)",
-        loc="left",
+        loc="center",
         fontsize=12,
     )
     figure = axis.figure
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
-    x, y = 0.01, 0.84
-    line_height = 0.19
+    x, y = 0.01, 0.94
+    line_height = 0.08
 
     for token, score in zip(tokens, scores):
         color = TEXT_ATTRIBUTION_CMAP(
@@ -236,22 +236,17 @@ def main() -> None:
 
     global_overlay = render_global_ig_overlay(image, result)
     local_overlay = render_local_ig_overlay(image, result)
-    figure = plt.figure(figsize=(15.0, 15.0), facecolor="white")
+    figure = plt.figure(figsize=(24.0, 6.0), facecolor="white")
     grid = figure.add_gridspec(
+        1,
         4,
-        3,
-        height_ratios=[2.15, 1.1, 0.85, 1.15],
-        hspace=0.42,
-        wspace=0.24,
+        wspace=0.05,
+        top=0.8,
     )
     original_axis = figure.add_subplot(grid[0, 0])
     global_axis = figure.add_subplot(grid[0, 1])
     local_axis = figure.add_subplot(grid[0, 2])
-    text_axis = figure.add_subplot(grid[1, :])
-    contribution_axis = figure.add_subplot(grid[2, :])
-    global_curve_axis = figure.add_subplot(grid[3, 0])
-    local_curve_axis = figure.add_subplot(grid[3, 1])
-    text_curve_axis = figure.add_subplot(grid[3, 2])
+    text_axis = figure.add_subplot(grid[0, 3])
 
     original_axis.imshow(image, cmap="gray")
     original_axis.set_title("(a) Ảnh X-quang đầu vào", fontsize=12)
@@ -275,25 +270,6 @@ def main() -> None:
         result.text_tokens,
         result.text_ig_scores,
     )
-    _draw_contribution(contribution_axis, result.contribution_drops)
-    _draw_faithfulness_curve(
-        global_curve_axis,
-        "(f1) Ảnh toàn cục",
-        result.global_faithfulness,
-        unit="vùng ảnh",
-    )
-    _draw_faithfulness_curve(
-        local_curve_axis,
-        "(f2) Ảnh cục bộ",
-        result.visual_faithfulness,
-        unit="đơn vị biểu diễn",
-    )
-    _draw_faithfulness_curve(
-        text_curve_axis,
-        "(f3) Bệnh sử lâm sàng",
-        result.text_faithfulness,
-        unit="đơn vị từ ngữ",
-    )
 
     predicted_label = str(result.predicted_label)
     if result.predicted_index is not None:
@@ -309,7 +285,7 @@ def main() -> None:
     ood_summary = (
         f"OOD score={result.ood_score:.2f} < {result.ood_threshold:.2f}"
         if args.enable_ood
-        else "không áp dụng cổng OOD"
+        else ""
     )
     figure.suptitle(
         f"{args.image_id}\nNhãn đúng: {ground_truth} | Dự đoán: {predicted_label} "
