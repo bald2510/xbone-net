@@ -461,9 +461,13 @@ def global_image_perturbation_curves(
     target_class: int,
     fractions: Optional[np.ndarray] = None,
     baseline: Optional[torch.Tensor] = None,
+    random_trials: int = 16,
+    seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Patch deletion/insertion for the global view using pixel-level IG ranks."""
+    """Patch deletion/insertion for the global view with a random control."""
 
+    if random_trials < 1:
+        raise ValueError("random_trials must be positive.")
     pixels = pixel_values.detach()
     baseline = (
         torch.zeros_like(pixels)
@@ -504,9 +508,21 @@ def global_image_perturbation_curves(
             patch_scores.append(relevance[y_slice, x_slice].mean())
     ranking = torch.argsort(torch.stack(patch_scores), descending=True)
     patch_count = len(patch_slices)
-    deletion, insertion = [], []
-    deletion_logits, insertion_logits = [], []
-    deletion_margins, insertion_margins = [], []
+    generator = torch.Generator(device=pixels.device).manual_seed(int(seed))
+    # A random-control curve must be generated from one fixed ordering per
+    # trial.  Re-sampling a subset at every fraction would not form a
+    # coherent deletion curve and would make its AUC harder to interpret.
+    random_orders = [
+        torch.randperm(
+            patch_count,
+            generator=generator,
+            device=pixels.device,
+        )
+        for _ in range(random_trials)
+    ]
+    deletion, random_deletion, insertion = [], [], []
+    deletion_logits, random_deletion_logits, insertion_logits = [], [], []
+    deletion_margins, random_deletion_margins, insertion_margins = [], [], []
 
     def evaluate(current_pixels: torch.Tensor) -> tuple[float, float, float]:
         with torch.no_grad():
@@ -540,13 +556,39 @@ def global_image_perturbation_curves(
         insertion_logits.append(insertion_output[1])
         insertion_margins.append(insertion_output[2])
 
+        # At both endpoints every ordering produces the same perturbed image.
+        # Reuse the targeted result there; intermediate points use prefixes of
+        # the fixed random orders generated above.
+        if count in {0, patch_count}:
+            random_output = np.asarray(deletion_output, dtype=np.float64)
+        else:
+            random_outputs = []
+            for random_order in random_orders:
+                randomly_deleted = pixels.clone()
+                random_indices = random_order[:count]
+                for random_index in random_indices.tolist():
+                    y_slice, x_slice = patch_slices[int(random_index)]
+                    randomly_deleted[:, :, y_slice, x_slice] = baseline[
+                        :, :, y_slice, x_slice
+                    ]
+                random_outputs.append(evaluate(randomly_deleted))
+            random_output = np.asarray(
+                random_outputs, dtype=np.float64
+            ).mean(axis=0)
+        random_deletion.append(float(random_output[0]))
+        random_deletion_logits.append(float(random_output[1]))
+        random_deletion_margins.append(float(random_output[2]))
+
     return {
         "fractions": fractions,
         "delete_most_relevant": np.asarray(deletion),
+        "delete_random": np.asarray(random_deletion),
         "insert_most_relevant": np.asarray(insertion),
         "delete_most_relevant_logit": np.asarray(deletion_logits),
+        "delete_random_logit": np.asarray(random_deletion_logits),
         "insert_most_relevant_logit": np.asarray(insertion_logits),
         "delete_most_relevant_margin": np.asarray(deletion_margins),
+        "delete_random_margin": np.asarray(random_deletion_margins),
         "insert_most_relevant_margin": np.asarray(insertion_margins),
     }
 
@@ -577,6 +619,14 @@ def perturbation_curves(
     descending = torch.argsort(relevance, descending=True)
     ascending = descending.flip(0)
     generator = torch.Generator(device=local.device).manual_seed(int(seed))
+    random_orders = [
+        torch.randperm(
+            token_count,
+            generator=generator,
+            device=local.device,
+        )
+        for _ in range(random_trials)
+    ]
     top, low, random_values, insertion = [], [], [], []
     top_logits, low_logits, random_logits, insertion_logits = [], [], [], []
     top_margins, low_margins, random_margins, insertion_margins = [], [], [], []
@@ -603,12 +653,10 @@ def perturbation_curves(
         insertion_margins.append(insertion_output[2])
 
         trials = []
-        for _ in range(random_trials):
+        for random_order in random_orders:
             random_tokens = local.clone()
             if count:
-                indices = torch.randperm(
-                    token_count, generator=generator, device=local.device
-                )[:count]
+                indices = random_order[:count]
                 random_tokens[:, indices] = baseline[:, indices]
             trials.append(
                 _target_outputs(model, cached, random_tokens, target_class)
@@ -680,6 +728,14 @@ def text_perturbation_curves(
         "insert_most_relevant_margin": [],
     }
     token_count = int(candidate_indices.numel())
+    random_orders = [
+        torch.randperm(
+            token_count,
+            generator=generator,
+            device=text.device,
+        )
+        for _ in range(random_trials)
+    ]
     for fraction in fractions:
         count = min(token_count, int(round(float(fraction) * token_count)))
         top_text = text.clone()
@@ -699,13 +755,10 @@ def text_perturbation_curves(
             model, cached, None, target_class, text_tokens=inserted_text
         )
         random_outputs = []
-        for _ in range(random_trials):
+        for random_order in random_orders:
             random_text = text.clone()
             if count:
-                order = torch.randperm(
-                    token_count, generator=generator, device=text.device
-                )[:count]
-                indices = candidate_indices[order]
+                indices = candidate_indices[random_order[:count]]
                 random_text[:, indices] = baseline[:, indices]
             random_outputs.append(
                 _target_outputs(
@@ -730,8 +783,10 @@ def text_input_perturbation_curves(
     relevance: torch.Tensor,
     target_class: int,
     fractions: Optional[np.ndarray] = None,
+    random_trials: int = 16,
+    seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Deletion/insertion over input word embeddings using the IG baseline.
+    """Deletion/insertion over word embeddings with a random control.
 
     The image branch is held fixed. Content-token embeddings are replaced by
     the padding embedding while special tokens, positions and the original
@@ -739,6 +794,8 @@ def text_input_perturbation_curves(
     to the target class, matching the evidence used by deletion/insertion.
     """
 
+    if random_trials < 1:
+        raise ValueError("random_trials must be positive.")
     text, baseline, transformer, projection = _text_embedding_path(
         model,
         cached,
@@ -763,9 +820,18 @@ def text_input_perturbation_curves(
         torch.argsort(relevance[candidate_indices], descending=True)
     ]
     token_count = int(candidate_indices.numel())
-    deletion, insertion = [], []
-    deletion_logits, insertion_logits = [], []
-    deletion_margins, insertion_margins = [], []
+    generator = torch.Generator(device=text.device).manual_seed(int(seed))
+    random_orders = [
+        torch.randperm(
+            token_count,
+            generator=generator,
+            device=text.device,
+        )
+        for _ in range(random_trials)
+    ]
+    deletion, random_deletion, insertion = [], [], []
+    deletion_logits, random_deletion_logits, insertion_logits = [], [], []
+    deletion_margins, random_deletion_margins, insertion_margins = [], [], []
 
     def evaluate(word_embeddings: torch.Tensor) -> tuple[float, float, float]:
         with torch.no_grad():
@@ -800,13 +866,32 @@ def text_input_perturbation_curves(
         insertion_logits.append(insertion_output[1])
         insertion_margins.append(insertion_output[2])
 
+        if count in {0, token_count}:
+            random_output = np.asarray(deletion_output, dtype=np.float64)
+        else:
+            random_outputs = []
+            for random_order in random_orders:
+                randomly_deleted = text.clone()
+                indices = candidate_indices[random_order[:count]]
+                randomly_deleted[:, indices] = baseline[:, indices]
+                random_outputs.append(evaluate(randomly_deleted))
+            random_output = np.asarray(
+                random_outputs, dtype=np.float64
+            ).mean(axis=0)
+        random_deletion.append(float(random_output[0]))
+        random_deletion_logits.append(float(random_output[1]))
+        random_deletion_margins.append(float(random_output[2]))
+
     return {
         "fractions": fractions,
         "delete_most_relevant": np.asarray(deletion),
+        "delete_random": np.asarray(random_deletion),
         "insert_most_relevant": np.asarray(insertion),
         "delete_most_relevant_logit": np.asarray(deletion_logits),
+        "delete_random_logit": np.asarray(random_deletion_logits),
         "insert_most_relevant_logit": np.asarray(insertion_logits),
         "delete_most_relevant_margin": np.asarray(deletion_margins),
+        "delete_random_margin": np.asarray(random_deletion_margins),
         "insert_most_relevant_margin": np.asarray(insertion_margins),
     }
 

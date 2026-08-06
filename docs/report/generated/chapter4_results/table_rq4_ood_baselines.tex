@@ -1,26 +1,27 @@
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{3.5pt}
-\renewcommand{\arraystretch}{1.10}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|l|c|c|c|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|c|l|c|c|c|}
 \hline
-\textbf{Kịch bản} & \textbf{Biểu diễn} &
-\textbf{AUROC-OOD $\uparrow$} & \textbf{AUPR-Out $\uparrow$} &
-\textbf{FPR@95\%TPR $\downarrow$} \\ \hline
-\multirow{4}{*}{OOD ngữ nghĩa}
-& XBone-Net & $\mathbf{0{.}6286\pm0{.}0177}$ & $\mathbf{0{.}1034\pm0{.}0092}$ & $\mathbf{0{.}8864\pm0{.}0394}$ \\ \cline{2-5}
-& Chỉ pha 2 & $0{.}5921\pm0{.}0535$ & $0{.}0870\pm0{.}0190$ & $0{.}9242\pm0{.}0262$ \\ \cline{2-5}
-& Nối đặc trưng & $0{.}5795\pm0{.}0151$ & $0{.}0980\pm0{.}0151$ & $0{.}9015\pm0{.}0131$ \\ \cline{2-5}
-& Đầu tuyến tính & $0{.}5464\pm0{.}0336$ & $0{.}0746\pm0{.}0079$ & $0{.}9545\pm0{.}0394$ \\ \hline
-\multirow{4}{*}{BTXRD}
-& XBone-Net & $0{.}8042\pm0{.}0938$ & $0{.}8009\pm0{.}0609$ & $0{.}7071\pm0{.}0678$ \\ \cline{2-5}
-& Chỉ pha 2 & $0{.}6723\pm0{.}0332$ & $0{.}7015\pm0{.}0382$ & $0{.}8133\pm0{.}0501$ \\ \cline{2-5}
-& Nối đặc trưng & $\mathbf{0{.}8966\pm0{.}0478}$ & $\mathbf{0{.}8713\pm0{.}0555}$ & $\mathbf{0{.}5978\pm0{.}1744}$ \\ \cline{2-5}
-& Đầu tuyến tính & $0{.}6517\pm0{.}0651$ & $0{.}6719\pm0{.}0623$ & $0{.}8382\pm0{.}0584$ \\ \hline
+\textbf{Kịch bản} &
+  \multicolumn{1}{c|}{\textbf{Biểu diễn}} &
+  \textbf{AUROC-OOD $\uparrow$} &
+  \textbf{AUPR-Out $\uparrow$} &
+  \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\multirow{4}{*}{\begin{tabular}[c]{@{}c@{}}OOD \\ CTCH\end{tabular}} &
+  XBone-Net &
+  $\mathbf{0{.}6286\pm0{.}0177}$ &
+  $\mathbf{0{.}1034\pm0{.}0092}$ &
+  $\mathbf{0{.}8864\pm0{.}0394}$ \\ \cline{2-5} 
+                       & Chỉ pha 2      & $0{.}5921\pm0{.}0535$          & $0{.}0870\pm0{.}0190$          & $0{.}9242\pm0{.}0262$          \\ \cline{2-5} 
+                       & Nối đặc trưng  & $0{.}5795\pm0{.}0151$          & $0{.}0980\pm0{.}0151$          & $0{.}9015\pm0{.}0131$          \\ \cline{2-5} 
+                       & Đầu tuyến tính & $0{.}5464\pm0{.}0336$          & $0{.}0746\pm0{.}0079$          & $0{.}9545\pm0{.}0394$          \\ \hline
+\multirow{4}{*}{BTXRD} & XBone-Net      & $0{.}8042\pm0{.}0938$          & $0{.}8009\pm0{.}0609$          & $0{.}7071\pm0{.}0678$          \\ \cline{2-5} 
+                       & Chỉ pha 2      & $0{.}6723\pm0{.}0332$          & $0{.}7015\pm0{.}0382$          & $0{.}8133\pm0{.}0501$          \\ \cline{2-5} 
+                       & Nối đặc trưng  & $\mathbf{0{.}8966\pm0{.}0478}$ & $\mathbf{0{.}8713\pm0{.}0555}$ & $\mathbf{0{.}5978\pm0{.}1744}$ \\ \cline{2-5} 
+                       & Đầu tuyến tính & $0{.}6517\pm0{.}0651$          & $0{.}6719\pm0{.}0623$          & $0{.}8382\pm0{.}0584$          \\ \hline
 \end{tabular}%
 }
-\caption{So sánh biểu diễn RQ4 bằng cùng điểm Mahalanobis theo tâm lớp}
+\caption{So sánh điểm Mahalanobis giữa các biến thể của XBone-Net}
 \label{tab:rq4_ood_baselines}
 \end{table}

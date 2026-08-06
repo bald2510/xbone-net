@@ -1,9 +1,10 @@
 \begin{table}[H]
 \centering
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|l|l|c|c|}
 \hline
-\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Thiết lập}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Macro-AUROC $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-AUPRC $\uparrow$}} \\ \hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Thiết lập}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Macro-AUROC $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-AP $\uparrow$}} \\ \hline
 \multirow{9}{*}{BTXRD} & \multirow{3}{*}{1 mẫu} & LoRA-BiomedCLIP & $0.6319\pm0.0404$ & $0.2085\pm0.0342$ \\ \cline{3-5}
  &  & LoRA-PubMedCLIP & $\mathbf{0.6511\pm0.0259}$ & $\mathbf{0.2501\pm0.0364}$ \\ \cline{3-5}
  &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.6274\pm0.0274$ & \cellcolor{gray!12}$0.2035\pm0.0383$ \\ \cline{2-5}
@@ -22,7 +23,8 @@
  & \multirow{3}{*}{20 mẫu} & LoRA-BiomedCLIP & $0.9416\pm0.0143$ & $0.5088\pm0.0308$ \\ \cline{3-5}
  &  & LoRA-PubMedCLIP & $\mathbf{0.9501\pm0.0011}$ & $\mathbf{0.5263\pm0.0191}$ \\ \cline{3-5}
  &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.9457\pm0.0072$ & \cellcolor{gray!12}$0.5217\pm0.0147$ \\ \hline
-\end{tabular}
+\end{tabular}%
+}
 \caption{Kết quả xếp hạng xác suất trong thiết lập mẫu học hạn chế}
 \label{tab:classification_few_shot_ranking}
 \end{table}

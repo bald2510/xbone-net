@@ -140,7 +140,7 @@ def project_cosine_space(
     centroids: np.ndarray,
     embeddings: np.ndarray | None = None,
     seed: int = 42,
-) -> tuple[np.ndarray, np.ndarray | None, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, PCA]:
     """Fit a reproducible 2-D PCA projection on normalized vectors."""
     normalized_centroids = l2_normalize(centroids)
     normalized_embeddings = l2_normalize(embeddings) if embeddings is not None else None
@@ -154,9 +154,9 @@ def project_cosine_space(
     pca = PCA(n_components=2, svd_solver="randomized", random_state=seed)
     projected = pca.fit_transform(fit_values)
     if normalized_embeddings is None:
-        return projected, None, pca.explained_variance_ratio_
+        return projected, None, pca.explained_variance_ratio_, pca
     split = normalized_embeddings.shape[0]
-    return projected[split:], projected[:split], pca.explained_variance_ratio_
+    return projected[split:], projected[:split], pca.explained_variance_ratio_, pca
 
 
 def compute_centroid_diagnostics(

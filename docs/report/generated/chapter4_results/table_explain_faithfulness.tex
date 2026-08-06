@@ -1,16 +1,17 @@
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
-\small
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|c|c|c|}
 \hline
-Thứ tự loại bỏ & AUC loại bỏ theo độ quan trọng & AUC loại bỏ ngẫu nhiên & Số mẫu/hạt giống \\ \hline
-IG trên đơn vị biểu diễn ảnh cục bộ & $0{.}6322\pm0{.}0594$ & $0{.}6384\pm0{.}0619$ & 669 \\ \hline
-IG trên đơn vị biểu diễn bệnh sử & $0{.}6314\pm0{.}0594$ & $0{.}6350\pm0{.}0614$ & 669 \\ \hline
-Trọng số chú ý trên đơn vị biểu diễn ảnh & $0{.}7339\pm0{.}0509$ & $0{.}7335\pm0{.}0514$ & 6 \\ \hline
-Trọng số chú ý trên đơn vị biểu diễn bệnh sử & $0{.}7289\pm0{.}0567$ & $0{.}7309\pm0{.}0580$ & 6 \\ \hline
+\textbf{Nguồn thông tin} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}AUC loại bỏ \\ theo IG $\downarrow$\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}AUC loại bỏ \\ ngẫu nhiên\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}AUC khôi phục \\ theo IG $\uparrow$\end{tabular}} \\ \hline
+Ảnh toàn cục     & $0{.}3325\pm0{.}0406$ & $0{.}4118\pm0{.}0459$ & $0{.}5320\pm0{.}0573$ \\ \hline
+Ảnh cục bộ       & $0{.}6322\pm0{.}0594$ & $0{.}6384\pm0{.}0619$ & $0{.}6439\pm0{.}0641$ \\ \hline
+Bệnh sử lâm sàng & $0{.}3791\pm0{.}0405$ & $0{.}4491\pm0{.}0496$ & $0{.}5081\pm0{.}0642$ \\ \hline
 \end{tabular}%
 }
-\caption{Độ trung thực của thứ tự đơn vị biểu diễn theo IG và trọng số chú ý chéo trên CTCH. AUC loại bỏ thấp hơn cho biết xác suất lớp đích giảm nhanh hơn khi loại bỏ trước các đơn vị được xếp hạng quan trọng. Hai hàng trọng số chú ý chỉ được tính trên sáu ca trực quan hóa ở mỗi hạt giống.}
+\caption{Độ trung thực của thứ tự do tích phân gradient xác định trên CTCH}
 \label{tab:explain_faithfulness}
 \end{table}

@@ -1,62 +1,267 @@
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|c|l|l|c|c|c|}
 \hline
-\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline
-\multirow[c]{9}{=}{\centering BTXRD} & \multirow[c]{3}{=}{\centering 1 mẫu} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 & 2.75\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 & 2.43\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,308 & \cellcolor{gray!12}8,632,587 & \cellcolor{gray!12}4.22\% \\ \cline{2-6}
- & \multirow[c]{3}{=}{\centering 10 mẫu} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 & 2.75\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 & 2.43\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,308 & \cellcolor{gray!12}8,632,587 & \cellcolor{gray!12}4.22\% \\ \cline{2-6}
- & \multirow[c]{3}{=}{\centering 20 mẫu} & LoRA-BiomedCLIP & 201,447,179 & 5,544,458 & 2.75\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,052,299 & 3,774,986 & 2.43\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,308 & \cellcolor{gray!12}8,632,587 & \cellcolor{gray!12}4.22\% \\ \hline
-\multirow[c]{9}{=}{\centering CTCH} & \multirow[c]{3}{=}{\centering 1 mẫu} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 & 2.76\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 & 2.44\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,320 & \cellcolor{gray!12}8,632,599 & \cellcolor{gray!12}4.22\% \\ \cline{2-6}
- & \multirow[c]{3}{=}{\centering 10 mẫu} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 & 2.76\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 & 2.44\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,320 & \cellcolor{gray!12}8,632,599 & \cellcolor{gray!12}4.22\% \\ \cline{2-6}
- & \multirow[c]{3}{=}{\centering 20 mẫu} & LoRA-BiomedCLIP & 201,453,335 & 5,550,614 & 2.76\% \\ \cline{3-6}
- &  & LoRA-PubMedCLIP & 155,058,455 & 3,781,142 & 2.44\% \\ \cline{3-6}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,320 & \cellcolor{gray!12}8,632,599 & \cellcolor{gray!12}4.22\% \\ \hline
+\textbf{Dữ liệu} &
+  \multicolumn{1}{c|}{\textbf{Kịch bản}} &
+  \multicolumn{1}{c|}{\textbf{Mô hình}} &
+  \textbf{Tổng tham số} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}Tham số \\ huấn luyện\end{tabular}} &
+  \textbf{Tỷ lệ (\%)} \\ \hline
+\multirow{9}{*}{BTXRD} &
+  \multirow{3}{*}{1 mẫu} &
+  LoRA-BiomedCLIP &
+  201,447,179 &
+  5,544,458 &
+  2.75\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,052,299 &
+  3,774,986 &
+  2.43\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,308 &
+  \cellcolor{gray!12}8,632,587 &
+  \cellcolor{gray!12}4.22\% \\ \cline{2-6} 
+ &
+  \multirow{3}{*}{10 mẫu} &
+  LoRA-BiomedCLIP &
+  201,447,179 &
+  5,544,458 &
+  2.75\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,052,299 &
+  3,774,986 &
+  2.43\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,308 &
+  \cellcolor{gray!12}8,632,587 &
+  \cellcolor{gray!12}4.22\% \\ \cline{2-6} 
+ &
+  \multirow{3}{*}{20 mẫu} &
+  LoRA-BiomedCLIP &
+  201,447,179 &
+  5,544,458 &
+  2.75\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,052,299 &
+  3,774,986 &
+  2.43\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,308 &
+  \cellcolor{gray!12}8,632,587 &
+  \cellcolor{gray!12}4.22\% \\ \hline
+\multirow{9}{*}{CTCH} &
+  \multirow{3}{*}{1 mẫu} &
+  LoRA-BiomedCLIP &
+  201,453,335 &
+  5,550,614 &
+  2.76\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,058,455 &
+  3,781,142 &
+  2.44\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,320 &
+  \cellcolor{gray!12}8,632,599 &
+  \cellcolor{gray!12}4.22\% \\ \cline{2-6} 
+ &
+  \multirow{3}{*}{10 mẫu} &
+  LoRA-BiomedCLIP &
+  201,453,335 &
+  5,550,614 &
+  2.76\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,058,455 &
+  3,781,142 &
+  2.44\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,320 &
+  \cellcolor{gray!12}8,632,599 &
+  \cellcolor{gray!12}4.22\% \\ \cline{2-6} 
+ &
+  \multirow{3}{*}{20 mẫu} &
+  LoRA-BiomedCLIP &
+  201,453,335 &
+  5,550,614 &
+  2.76\% \\ \cline{3-6} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  155,058,455 &
+  3,781,142 &
+  2.44\% \\ \cline{3-6} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}204,535,320 &
+  \cellcolor{gray!12}8,632,599 &
+  \cellcolor{gray!12}4.22\% \\ \hline
 \end{tabular}%
 }
 \caption{Đánh giá số lượng tham số của các mô hình trong thiết lập mẫu học hạn chế}
 \label{tab:efficiency_few_shot_params}
 \end{table}
 
-\begin{table}[H]
+
+\begin{table}[htbp]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|c|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|c|l|l|c|c|c|c|}
 \hline
-\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Kịch bản}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ GPU cực đại}} \\
- & & & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline
-\multirow[c]{9}{=}{\centering BTXRD} & \multirow[c]{3}{=}{\centering 1 mẫu} & LoRA-BiomedCLIP & 83.321 & 28.8 & 37.32 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 33.1 & 43.74 & 603.6 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}14.3 & \cellcolor{gray!12}82.53 & \cellcolor{gray!12}835.5 \\ \cline{2-7}
- & \multirow[c]{3}{=}{\centering 10 mẫu} & LoRA-BiomedCLIP & 83.321 & 30.9 & 35.18 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 35.2 & 38.77 & 603.6 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}14.2 & \cellcolor{gray!12}84.25 & \cellcolor{gray!12}835.5 \\ \cline{2-7}
- & \multirow[c]{3}{=}{\centering 20 mẫu} & LoRA-BiomedCLIP & 83.321 & 28.5 & 37.94 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 33.1 & 41.50 & 611.0 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}15.4 & \cellcolor{gray!12}77.28 & \cellcolor{gray!12}835.5 \\ \hline
-\multirow[c]{9}{=}{\centering CTCH} & \multirow[c]{3}{=}{\centering 1 mẫu} & LoRA-BiomedCLIP & 83.321 & 32.2 & 33.56 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 34.6 & 39.98 & 603.6 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}16.6 & \cellcolor{gray!12}73.73 & \cellcolor{gray!12}835.6 \\ \cline{2-7}
- & \multirow[c]{3}{=}{\centering 10 mẫu} & LoRA-BiomedCLIP & 83.321 & 30.7 & 35.61 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 35.9 & 38.31 & 603.6 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}16.8 & \cellcolor{gray!12}66.27 & \cellcolor{gray!12}835.6 \\ \cline{2-7}
- & \multirow[c]{3}{=}{\centering 20 mẫu} & LoRA-BiomedCLIP & 83.321 & 28.2 & 37.91 & 792.6 \\ \cline{3-7}
- &  & LoRA-PubMedCLIP & 15.198 & 31.9 & 43.91 & 603.6 \\ \cline{3-7}
- &  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}14.5 & \cellcolor{gray!12}80.92 & \cellcolor{gray!12}835.6 \\ \hline
+\textbf{Dữ liệu} &
+  \multicolumn{1}{c|}{\textbf{Kịch bản}} &
+  \multicolumn{1}{c|}{\textbf{Mô hình}} &
+  \textbf{GFLOPs} &
+  \textbf{Thông lượng} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}Độ trễ \\ trung bình\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}Bộ nhớ GPU \\ cực đại\end{tabular}} \\ \hline
+\multirow{9}{*}{BTXRD} &
+  \multirow{3}{*}{1 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  28.8 &
+  37.32 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  33.1 &
+  43.74 &
+  603.6 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}14.3 &
+  \cellcolor{gray!12}82.53 &
+  \cellcolor{gray!12}835.5 \\ \cline{2-7} 
+ &
+  \multirow{3}{*}{10 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  30.9 &
+  35.18 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  35.2 &
+  38.77 &
+  603.6 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}14.2 &
+  \cellcolor{gray!12}84.25 &
+  \cellcolor{gray!12}835.5 \\ \cline{2-7} 
+ &
+  \multirow{3}{*}{20 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  28.5 &
+  37.94 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  33.1 &
+  41.50 &
+  611.0 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}15.4 &
+  \cellcolor{gray!12}77.28 &
+  \cellcolor{gray!12}835.5 \\ \hline
+\multirow{9}{*}{CTCH} &
+  \multirow{3}{*}{1 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  32.2 &
+  33.56 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  34.6 &
+  39.98 &
+  603.6 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}16.6 &
+  \cellcolor{gray!12}73.73 &
+  \cellcolor{gray!12}835.6 \\ \cline{2-7} 
+ &
+  \multirow{3}{*}{10 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  30.7 &
+  35.61 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  35.9 &
+  38.31 &
+  603.6 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}16.8 &
+  \cellcolor{gray!12}66.27 &
+  \cellcolor{gray!12}835.6 \\ \cline{2-7} 
+ &
+  \multirow{3}{*}{20 mẫu} &
+  LoRA-BiomedCLIP &
+  83.321 &
+  28.2 &
+  37.91 &
+  792.6 \\ \cline{3-7} 
+ &
+   &
+  LoRA-PubMedCLIP &
+  15.198 &
+  31.9 &
+  43.91 &
+  603.6 \\ \cline{3-7} 
+ &
+   &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}229.020 &
+  \cellcolor{gray!12}14.5 &
+  \cellcolor{gray!12}80.92 &
+  \cellcolor{gray!12}835.6 \\ \hline
 \end{tabular}%
 }
 \caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình trong thiết lập mẫu học hạn chế}

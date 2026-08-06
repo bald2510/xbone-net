@@ -71,7 +71,7 @@ def _render_representation_overview(
     seed: int,
 ) -> None:
     """Render deterministic PCA views; quantitative claims use full dimensions."""
-    figure, axes = plt.subplots(2, 3, figsize=(17, 10), facecolor="white")
+    figure, axes = plt.subplots(2, 3, figsize=(17, 10), facecolor="white", constrained_layout=True)
     labels = np.asarray(test["labels"], dtype=np.int64)
     scatter = None
     for axis, key in zip(axes.flat, REPRESENTATIONS):
@@ -80,6 +80,8 @@ def _render_representation_overview(
         combined = np.vstack([train_values, test_values])
         projected = PCA(n_components=2, random_state=seed).fit_transform(combined)
         test_projected = projected[len(train_values):]
+        
+        # Plot on the overview 2x3 grid
         scatter = axis.scatter(
             test_projected[:, 0],
             test_projected[:, 1],
@@ -91,20 +93,47 @@ def _render_representation_overview(
         )
         axis.set_title(
             f"{key.replace('_embeddings', '')}\n"
-            f"sil={metrics[key]['silhouette_cosine']:.3f}, "
-            f"NC-BAcc={metrics[key]['nearest_train_centroid_balanced_accuracy']:.3f}"
+            f"Silhouette={metrics[key]['silhouette_cosine']:.3f}, "
+            f"Davies-Bouldin={metrics[key]['davies_bouldin']:.3f}"
         )
         axis.set_xticks([])
         axis.set_yticks([])
         axis.grid(alpha=0.15)
+        
+        # Plot and save individual figures
+        ind_fig, ind_ax = plt.subplots(figsize=(6, 5), facecolor="white")
+        ind_scatter = ind_ax.scatter(
+            test_projected[:, 0],
+            test_projected[:, 1],
+            c=labels,
+            cmap="turbo",
+            s=12,
+            alpha=0.68,
+            linewidths=0,
+        )
+        ind_ax.set_title(
+            f"{key.replace('_embeddings', '')}\n"
+            f"Silhouette={metrics[key]['silhouette_cosine']:.3f}, "
+            f"Davies-Bouldin={metrics[key]['davies_bouldin']:.3f}"
+        )
+        ind_ax.set_xticks([])
+        ind_ax.set_yticks([])
+        ind_ax.grid(alpha=0.15)
+        ind_cbar = ind_fig.colorbar(ind_scatter, ax=ind_ax)
+        ind_cbar.set_label("Lớp bệnh CTCH")
+        ind_fig.tight_layout()
+        ind_output = output.with_name(f"{output.stem}_{key}{output.suffix}")
+        ind_output.parent.mkdir(parents=True, exist_ok=True)
+        ind_fig.savefig(ind_output, dpi=170, bbox_inches="tight")
+        plt.close(ind_fig)
+        
     if scatter is not None:
         colorbar = figure.colorbar(scatter, ax=axes.ravel().tolist(), shrink=0.72)
-        colorbar.set_label("CTCH class ID")
+        colorbar.set_label("Lớp bệnh CTCH")
     figure.suptitle(
-        "CTCH proposed representation geometry (PCA shown; metrics use full 512-D features)",
+        "Không gian biểu diễn đặc trưng XBone-Net (sử dụng PCA, độ gom cụm tính trên toàn bộ 512 chiều)",
         fontsize=14,
     )
-    figure.subplots_adjust(top=0.91, wspace=0.16, hspace=0.24, right=0.92)
     output.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output, dpi=170, bbox_inches="tight")
     plt.close(figure)
@@ -1121,12 +1150,16 @@ def _sample_explanation(
         batch["pixel_values"],
         global_ig_scores,
         target_class,
+        random_trials=random_trials,
+        seed=seed + 2000,
     )
     text_input_curves = text_input_perturbation_curves(
         loaded.model,
         cached,
         text_ig_scores,
         target_class,
+        random_trials=random_trials,
+        seed=seed + 3000,
     )
     text_curves = text_perturbation_curves(
         loaded.model,
@@ -1268,17 +1301,57 @@ def _sample_explanation(
         global_curves["fractions"],
         global_curves["delete_most_relevant"],
     )
+    global_random_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_random"],
+    )
     global_insertion_auc = curve_auc(
         global_curves["fractions"],
         global_curves["insert_most_relevant"],
+    )
+    global_logit_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_most_relevant_logit"],
+    )
+    global_random_logit_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_random_logit"],
+    )
+    global_margin_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_most_relevant_margin"],
+    )
+    global_random_margin_auc = curve_auc(
+        global_curves["fractions"],
+        global_curves["delete_random_margin"],
     )
     text_input_deletion_auc = curve_auc(
         text_input_curves["fractions"],
         text_input_curves["delete_most_relevant"],
     )
+    text_input_random_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_random"],
+    )
     text_input_insertion_auc = curve_auc(
         text_input_curves["fractions"],
         text_input_curves["insert_most_relevant"],
+    )
+    text_input_logit_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_most_relevant_logit"],
+    )
+    text_input_random_logit_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_random_logit"],
+    )
+    text_input_margin_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_most_relevant_margin"],
+    )
+    text_input_random_margin_auc = curve_auc(
+        text_input_curves["fractions"],
+        text_input_curves["delete_random_margin"],
     )
     record = {
         "image_id": image_id,
@@ -1362,11 +1435,39 @@ def _sample_explanation(
         },
         "global_image_faithfulness": {
             "deletion_auc": global_deletion_auc,
+            "random_deletion_auc": global_random_auc,
             "insertion_auc": global_insertion_auc,
+            "random_minus_targeted_deletion_auc": (
+                global_random_auc - global_deletion_auc
+            ),
+            "target_logit_deletion_auc": global_logit_auc,
+            "random_target_logit_deletion_auc": global_random_logit_auc,
+            "random_minus_targeted_logit_auc": (
+                global_random_logit_auc - global_logit_auc
+            ),
+            "target_margin_deletion_auc": global_margin_auc,
+            "random_target_margin_deletion_auc": global_random_margin_auc,
+            "random_minus_targeted_margin_auc": (
+                global_random_margin_auc - global_margin_auc
+            ),
         },
         "clinical_text_input_faithfulness": {
             "deletion_auc": text_input_deletion_auc,
+            "random_deletion_auc": text_input_random_auc,
             "insertion_auc": text_input_insertion_auc,
+            "random_minus_targeted_deletion_auc": (
+                text_input_random_auc - text_input_deletion_auc
+            ),
+            "target_logit_deletion_auc": text_input_logit_auc,
+            "random_target_logit_deletion_auc": text_input_random_logit_auc,
+            "random_minus_targeted_logit_auc": (
+                text_input_random_logit_auc - text_input_logit_auc
+            ),
+            "target_margin_deletion_auc": text_input_margin_auc,
+            "random_target_margin_deletion_auc": text_input_random_margin_auc,
+            "random_minus_targeted_margin_auc": (
+                text_input_random_margin_auc - text_input_margin_auc
+            ),
         },
         "text_faithfulness": {
             "deletion_auc": text_deletion_auc,
@@ -1771,6 +1872,8 @@ def main() -> None:
             and int(protocol.get("selection_seed", -1)) == args.selection_seed
             and int(protocol.get("ig_steps", -1)) == args.ig_steps
             and int(protocol.get("random_trials", -1)) == args.random_trials
+            and bool(protocol.get("global_image_random_deletion", False))
+            and bool(protocol.get("clinical_text_input_random_deletion", False))
             and int(protocol.get("stability_repeats", -1))
             == args.stability_repeats
             and int(protocol.get("stability_steps", -1)) == args.stability_steps
@@ -1924,6 +2027,14 @@ def main() -> None:
                 ),
             },
             "random_trials": args.random_trials,
+            "global_image_random_deletion": True,
+            "clinical_text_input_random_deletion": True,
+            "random_seed_offsets": {
+                "visual_local_tokens": 0,
+                "clinical_tokens": 1000,
+                "global_image_patches": 2000,
+                "clinical_text_input": 3000,
+            },
             "faithfulness_modalities": [
                 "global_image",
                 "visual_local_tokens",

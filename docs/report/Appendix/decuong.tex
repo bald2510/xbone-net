@@ -20,7 +20,7 @@
 \centering
       \includegraphics[scale = .35]{logo.png}
   \end{minipage}%
-  \begin{minipage}[c]{1.0\textwidth}
+  \begin{minipage}[c]{1\textwidth}
 \centering \fontsize{10}{16}\selectfont\textbf{TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN\\KHOA CÔNG NGHỆ THÔNG TIN}
   \end{minipage}
 \vspace{0.8cm}
@@ -756,7 +756,7 @@ Dù đưa đến các phương pháp có độ chính xác cao đến rất cao 
   \begin{itemize}
       \item \textbf{Bộ mã hóa ảnh:} Kế thừa lại mô hình ViT-Base của phương pháp BiomedCLIP \cite{BiomedCLIP}
       \item \textbf{Bộ mã hóa văn bản:} Kế thừa lại mô hình PubMedBERT của phương pháp BiomedCLIP \cite{BiomedCLIP}
-      \item \textbf{Bộ dung hợp dữ liệu:} Nhóm hướng đến sử dụng cơ chế \textbf{\textit{Knowledge-guided Cross-Attention}} - Các khái niệm y học được trích xuất và liên kết từ văn bản lâm sàng thông qua sẽ được sử dụng để tạo thiên lệch (bias) trong quá trình tính toán cross attention. Cơ chế này giúp điều hướng mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý, thay vì các vùng nền không liên quan. Nhờ đó, mô hình không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
+      \item \textbf{Bộ dung hợp dữ liệu:} Nhóm hướng đến sử dụng cơ chế \textbf{\textit{Knowledge-guided Cross-\allowbreak Attention}} - Các khái niệm y học được trích xuất và liên kết từ văn bản lâm sàng thông qua sẽ được sử dụng để tạo thiên lệch (bias) trong quá trình tính toán cross attention. Cơ chế này giúp điều hướng mô hình tập trung vào các vùng ảnh có liên quan đến bệnh lý, thay vì các vùng nền không liên quan. Nhờ đó, mô hình không chỉ cải thiện hiệu năng mà còn cung cấp khả năng giải thích thông qua việc truy vết mối liên hệ giữa khái niệm y khoa và vùng ảnh được chú ý.
       \item \textbf{Bộ phân loại:} Sử dụng một mạng phân loại (Multi-Layer Perceptron) để dự đoán nhãn bệnh lý.
   \end{itemize}
 Đồng thời, các trọng số attention và thông tin từ tri thức y khoa được khai thác để trực quan hóa và giải thích kết quả dự đoán.
@@ -791,7 +791,7 @@ Dù đưa đến các phương pháp có độ chính xác cao đến rất cao 
       \end{itemize}
   \end{itemize}
 
-\pagebreak
+\clearpage
 
   \subsection{Kế hoạch thực hiện}
   % Please add the following required packages to your document preamble:
@@ -837,8 +837,12 @@ Dù đưa đến các phương pháp có độ chính xác cao đến rất cao 
   \caption{Kế hoạch bố trí thời gian nghiên cứu}
   \label{tab:plan}
   \end{table}
-\pagebreak \nocite{*} \printbibliography[heading=subbibliography, title={Tài liệu tham khảo}]
 
+\begingroup
+\emergencystretch=3em
+\printbibliography[heading=subbibliography, title={Tài liệu tham khảo}]
+\endgroup
+\thispagestyle{empty}
 \vspace{1.5cm} \noindent \hfill
   \begin{minipage}[t]{0.4\textwidth}
 \centering
@@ -853,7 +857,6 @@ Dù đưa đến các phương pháp có độ chính xác cao đến rất cao 
 \fontsize{12}{16}\textit{(Ký và ghi rõ họ tên)}
   \end{minipage}%
 \hfill\null \normalsize
-\clearpage
 \endgroup
 \end{refsection}
 

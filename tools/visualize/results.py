@@ -61,7 +61,7 @@ then redraw the primary forest plot from the generated CSV::
         --metric f1_macro \
         --output results/summary/ablation/statistics/forest_f1_macro.png
 
-Generate separate Macro-AUROC and Macro-AUPRC statistical tables::
+Generate separate Macro-AUROC and Macro-AP statistical tables::
 
     python tools/visualize/results.py ablation-statistics \
         --metrics auroc_macro auprc_macro --test-method bootstrap \
@@ -398,6 +398,7 @@ def generate_latex_table(
     minimize_columns: Sequence[str] | None = None,
     resize_to_textwidth: bool = False,
     bold_best: bool = True,
+    column_widths: Mapping[str, str] | None = None,
 ) -> str:
     """Return a LaTeX table with bold, centered column headers.
 
@@ -468,8 +469,19 @@ def generate_latex_table(
         minima = {
             column: pd.Series(False, index=frame.index) for column in values
         }
-    alignments = ["c" if column in values else "l" for column in selected]
-    tabular_spec = "|" + "|".join(alignments) + "|"
+    widths = dict(column_widths or {})
+    unknown_widths = sorted(set(widths).difference(selected))
+    if unknown_widths:
+        raise ValueError(
+            "Column widths must refer to selected columns: "
+            + ", ".join(unknown_widths)
+        )
+    alignments = ["C" if column in values else "L" for column in selected]
+    column_specs = [
+        f"{alignment}{{{widths[column]}}}" if column in widths else alignment.lower()
+        for column, alignment in zip(selected, alignments)
+    ]
+    tabular_spec = "|" + "|".join(column_specs) + "|"
     lines: list[str] = []
     if table_environment:
         lines.extend([rf"\begin{{table}}[{position}]", r"\centering"])
@@ -480,8 +492,10 @@ def generate_latex_table(
     lines.extend([rf"\begin{{tabular}}{{{tabular_spec}}}", r"\hline"])
     header = " & ".join(
         (
-            rf"\multicolumn{{1}}{{{'|c|' if index == 0 else 'c|'}}}"
-            rf"{{\textbf{{{labels.get(column, _latex_escape(column))}}}}}"
+            rf"\multicolumn{{1}}{{"
+            + ("|" if index == 0 else "")
+            + (f"C{{{widths[column]}}}" if column in widths else "c")
+            + rf"|}}{{\textbf{{{labels.get(column, _latex_escape(column))}}}}}"
         )
         for index, column in enumerate(selected)
     )
@@ -526,7 +540,7 @@ def generate_latex_table(
                     cells.append(
                         body
                         if span == 1
-                        else rf"\multirow{{{span}}}{{*}}{{{body}}}"
+                        else rf"\multirow{{{span}}}{{{'=' if column in widths else '*'}}}{{{body}}}"
                     )
                 continue
             if column in values:
@@ -2101,7 +2115,7 @@ def plot_full_shot_comparison(
         ("balanced_accuracy_mean", "balanced_accuracy_std", "Balanced Acc."),
         ("f1_macro_mean", "f1_macro_std", "Macro-F1"),
         ("auroc_macro_mean", "auroc_macro_std", "Macro-AUROC"),
-        ("auprc_macro_mean", "auprc_macro_std", "Macro-AUPRC"),
+        ("auprc_macro_mean", "auprc_macro_std", "Macro-AP"),
     )
 
     plt = _load_pyplot()
@@ -2392,7 +2406,7 @@ def plot_full_shot_paired_forest(
         "balanced_accuracy": "Balanced Accuracy",
         "f1_macro": "Macro-F1",
         "auroc_macro": "Macro-AUROC",
-        "auprc_macro": "Macro-AUPRC",
+        "auprc_macro": "Macro-AP",
     }
     metric_label = metric_labels[metric]
 
@@ -3170,7 +3184,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Use the crossed patient/seed permutation test, or a centered "
             "paired bootstrap test. The bootstrap test is much faster for "
-            "Macro-AUROC and Macro-AUPRC."
+            "Macro-AUROC and Macro-AP."
         ),
     )
     ablation_statistics.add_argument("--alpha", type=float, default=0.05)
@@ -3271,14 +3285,13 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
 
     # Table 1: Parameters
     lines_params = [
-        r"\begin{table}[H]",
+        r"\begin{table}[!htbp]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|}",
+        r"\begin{tabular}{|C{1.50cm}|L{3.15cm}|C{2.75cm}|C{3.05cm}|C{1.55cm}|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
+        r"\multicolumn{1}{|C{1.50cm}|}{\textbf{Dữ liệu}} & \multicolumn{1}{C{3.15cm}|}{\textbf{Mô hình}} & \multicolumn{1}{C{2.75cm}|}{\textbf{Tổng tham số}} & \multicolumn{1}{C{3.05cm}|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{C{1.55cm}|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -3309,15 +3322,14 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
 
     # Table 2: Computation
     lines_compute = [
-        r"\begin{table}[H]",
+        r"\begin{table}[!htbp]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|c|}",
+        r"\begin{tabular}{|C{1.55cm}|L{2.55cm}|C{1.90cm}|C{1.85cm}|C{2.15cm}|C{2.05cm}|}",
         r"\hline",
-        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
-        r" & & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
+        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{C{1.90cm}|}{\textbf{GFLOPs}} & \multicolumn{1}{C{1.85cm}|}{\textbf{Thông lượng}} & \multicolumn{1}{C{2.15cm}|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{C{2.05cm}|}{\textbf{Bộ nhớ GPU cực đại}} \\",
+        r" & & \multicolumn{1}{C{1.90cm}|}{\textbf{\makecell{(GFLOP/\\mẫu)}}} & \multicolumn{1}{C{1.85cm}|}{\textbf{(mẫu/s)}} & \multicolumn{1}{C{2.15cm}|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{C{2.05cm}|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -3414,12 +3426,11 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_params = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3pt}",
+        r"\footnotesize",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|}",
+        r"\begin{tabular}{|C{1.30cm}|C{1.35cm}|L{2.50cm}|C{2.40cm}|C{2.65cm}|C{1.20cm}|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
+        r"\multicolumn{1}{|C{1.30cm}|}{\textbf{Dữ liệu}} & \multicolumn{1}{C{1.35cm}|}{\textbf{Kịch bản}} & \multicolumn{1}{C{2.50cm}|}{\textbf{Mô hình}} & \multicolumn{1}{C{2.40cm}|}{\textbf{Tổng tham số}} & \multicolumn{1}{C{2.65cm}|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{C{1.20cm}|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -3475,13 +3486,12 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     lines_compute = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3pt}",
+        r"\footnotesize",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{1.8cm}|>{\raggedright\arraybackslash}m{3.5cm}|c|c|c|c|}",
+        r"\begin{tabular}{|C{1.35cm}|C{1.25cm}|L{2.20cm}|C{1.75cm}|C{1.45cm}|C{1.75cm}|C{1.65cm}|}",
         r"\hline",
-        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Kịch bản}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{c|}{\textbf{Peak GPU}} \\",
-        r" & & & \multicolumn{1}{c|}{\textbf{(GFLOP/mẫu)}} & \multicolumn{1}{c|}{\textbf{(mẫu/s)}} & \multicolumn{1}{c|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{c|}{\textbf{(MiB)}} \\ \hline",
+        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Kịch bản}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{C{1.75cm}|}{\textbf{GFLOPs}} & \multicolumn{1}{C{1.45cm}|}{\textbf{Thông lượng}} & \multicolumn{1}{C{1.75cm}|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{C{1.65cm}|}{\textbf{Bộ nhớ GPU cực đại}} \\",
+        r" & & & \multicolumn{1}{C{1.75cm}|}{\textbf{\makecell{(GFLOP/\\mẫu)}}} & \multicolumn{1}{C{1.45cm}|}{\textbf{(mẫu/s)}} & \multicolumn{1}{C{1.75cm}|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{C{1.65cm}|}{\textbf{(MiB)}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -3736,7 +3746,7 @@ ABLATION_METRICS = {
     "balanced_accuracy": r"Balanced Acc. $\uparrow$",
     "f1_macro": r"Macro-F1 $\uparrow$",
     "auroc_macro": r"Macro-AUROC $\uparrow$",
-    "auprc_macro": r"Macro-AUPRC $\uparrow$",
+    "auprc_macro": r"Macro-AP $\uparrow$",
 }
 
 LEAVE_ONE_OUT_CONFIGS = (
@@ -3794,7 +3804,7 @@ LEAVE_ONE_OUT_METRICS = (
     ),
     ("Macro-F1", "f1_macro_mean", "f1_macro_std", False),
     ("Macro-AUROC", "auroc_macro_mean", "auroc_macro_std", False),
-    ("Macro-AUPRC", "auprc_macro_mean", "auprc_macro_std", False),
+    ("Macro-AP", "auprc_macro_mean", "auprc_macro_std", False),
     ("ECE", "ece_15_mean", "ece_15_std", True),
 )
 
@@ -3868,24 +3878,26 @@ def generate_ablation_leave_one_out_table(
             if np.isclose(value, optimum, rtol=1e-9, atol=1e-12)
         }
 
-    column_definition = r"l>{\columncolor{gray!12}}c*{5}{c}"
+    column_definition = (
+        r"L{3.20cm}>{\columncolor{gray!12}}C{3.15cm}*{5}{C{3.15cm}}"
+    )
     lines = [
+        r"\begin{landscape}",
         r"\begin{table}[H]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{4pt}",
+        r"\small",
         r"\renewcommand{\arraystretch}{1.15}",
         r"\resizebox{\textwidth}{!}{%",
         rf"\begin{{tabular}}{{{column_definition}}}",
         r"\toprule",
-        r"\multicolumn{1}{c}{\textbf{Thành phần hoặc độ đo}} &",
+        r"\multicolumn{1}{C{3.20cm}}{\textbf{Thành phần hoặc độ đo}} &",
     ]
     header_cells = [
         (
-            rf"\multicolumn{{1}}{{>{{\columncolor{{gray!12}}}}c}}"
+            rf"\multicolumn{{1}}{{>{{\columncolor{{gray!12}}}}C{{3.15cm}}}}"
             rf"{{\textbf{{{_latex_escape(specification['label'])}}}}}"
             if index == 0
-            else rf"\multicolumn{{1}}{{c}}{{\textbf{{{_latex_escape(specification['label'])}}}}}"
+            else rf"\multicolumn{{1}}{{C{{3.15cm}}}}{{\textbf{{{_latex_escape(specification['label'])}}}}}"
         )
         for index, specification in enumerate(LEAVE_ONE_OUT_CONFIGS)
     ]
@@ -3931,18 +3943,13 @@ def generate_ablation_leave_one_out_table(
             r"}",
             (
                 r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net "
-                r"trên CTCH. Mỗi cột chỉ loại bỏ hoặc thay thế thành phần được "
-                r"khảo sát so với cấu hình đầy đủ: co giãn trực tiếp thay cho nhánh "
-                r"ảnh độ phân giải cao, gộp trung bình thay cho gộp chú ý, chỉ "
-                r"huấn luyện pha 2, nối đặc trưng thay cho chú ý chéo hai chiều và "
-                r"đầu tuyến tính thay cho tâm lớp thực nghiệm. Kết quả được trình bày "
+                r"trên CTCH. Kết quả được trình bày "
                 rf"dưới dạng trung bình $\pm$ độ lệch chuẩn trên {seed_count} hạt "
-                r"giống; chữ đậm biểu thị kết quả tốt nhất theo từng độ đo. Ký "
-                r"hiệu ``--'' chỉ trường hợp gộp chú ý không còn áp dụng "
-                r"khi nhánh ảnh độ phân giải cao bị loại bỏ.}"
+                r"giống; chữ đậm biểu thị kết quả tốt nhất theo từng độ đo.}"
             ),
             r"\label{tab:ablation_leave_one_out_classification}",
             r"\end{table}",
+            r"\end{landscape}",
             "",
         ]
     )
@@ -3975,8 +3982,8 @@ PAIRED_STATISTIC_METRICS = {
         "higher_is_better": True,
     },
     "auprc_macro": {
-        "label": "Macro-AUPRC",
-        "latex": r"Macro-AUPRC $\uparrow$",
+        "label": "Macro-AP",
+        "latex": r"Macro-AP $\uparrow$",
         "higher_is_better": True,
     },
     "ece_15": {
@@ -5438,7 +5445,7 @@ def generate_ablation_report(
             "hình tham chiếu."
         ),
         label="tab:ctch_ablation_variants",
-        font_size=r"\scriptsize",
+        font_size=r"\footnotesize",
         multirow_columns=["group"],
         resize_to_textwidth=True,
     )
@@ -6321,12 +6328,13 @@ def generate_explainability_report(
         caption=(
             "Các độ đo attention và attribution đã được sử dụng trong nghiên cứu "
             "trước trên XBone-Net và CTCH; "
-            "độ lệch chuẩn được tính giữa ba seed."
+            "độ lệch chuẩn được tính giữa ba hạt giống."
         ),
         label="tab:explainability_mechanism_results",
         position="htbp",
         multirow_columns=["metric"],
-        resize_to_textwidth=True,
+        font_size=r"\footnotesize",
+        resize_to_textwidth=False,
         bold_best=False,
     )
     explanation_table = destination_dir / "table_explanation_mechanism.tex"
@@ -6483,16 +6491,24 @@ def generate_ood_table(
         caption=(
             "Kết quả phát hiện OOD hậu xử lý của XBone-Net trên các kịch bản "
             "được xét; các giá trị được trình bày dưới dạng trung bình "
-            "$\\pm$ độ lệch chuẩn trên ba seed."
+            "$\\pm$ độ lệch chuẩn trên ba hạt giống."
         ),
         label=(
             "tab:ood_semantic_btxrd"
             if list(scenarios) == ["semantic_ood", "domain_ood_btxrd"]
             else "tab:ood_selected_scenarios"
         ),
-        position="htbp",
+        position="H",
+        font_size=r"\footnotesize",
         multirow_columns=["scenario"],
         resize_to_textwidth=True,
+        column_widths={
+            "scenario": "2.20cm",
+            "method": "3.30cm",
+            "auroc_ood_mean": "2.70cm",
+            "aupr_out_mean": "2.70cm",
+            "fpr_at_95tpr_mean": "2.80cm",
+        },
     )
     destination = _prepare_plot_output(output_file)
     destination.write_text(latex, encoding="utf-8")
@@ -6850,7 +6866,7 @@ def main() -> None:
             f"±{summary['macro_auroc']['std']:.6f}"
         )
         print(
-            "Macro-AUPRC="
+            "Macro-AP="
             f"{summary['macro_auprc']['mean']:.6f}"
             f"±{summary['macro_auprc']['std']:.6f}"
         )

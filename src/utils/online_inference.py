@@ -576,6 +576,8 @@ class OnlineInferenceEngine:
                     global_relevance,
                     predicted_index,
                     fractions=fractions,
+                    random_trials=1,
+                    seed=self.seed + 2000,
                 )
             visual_curves = perturbation_curves(
                 self.loaded.model,
@@ -592,11 +594,14 @@ class OnlineInferenceEngine:
                 text_ig_relevance,
                 predicted_index,
                 fractions=fractions,
+                random_trials=1,
+                seed=self.seed + 3000,
             )
             if global_curves is not None:
                 global_faithfulness = {
                     "fractions": global_curves["fractions"],
                     "deletion": global_curves["delete_most_relevant"],
+                    "random_deletion": global_curves["delete_random"],
                     "insertion": global_curves["insert_most_relevant"],
                     "deletion_auc": curve_auc(
                         global_curves["fractions"],
@@ -606,7 +611,15 @@ class OnlineInferenceEngine:
                         global_curves["fractions"],
                         global_curves["insert_most_relevant"],
                     ),
+                    "random_deletion_auc": curve_auc(
+                        global_curves["fractions"],
+                        global_curves["delete_random"],
+                    ),
                 }
+                global_faithfulness["random_minus_targeted_deletion_auc"] = (
+                    global_faithfulness["random_deletion_auc"]
+                    - global_faithfulness["deletion_auc"]
+                )
             visual_faithfulness = {
                 "fractions": visual_curves["fractions"],
                 "deletion": visual_curves["delete_most_relevant"],
@@ -623,6 +636,7 @@ class OnlineInferenceEngine:
             text_faithfulness = {
                 "fractions": text_curves["fractions"],
                 "deletion": text_curves["delete_most_relevant"],
+                "random_deletion": text_curves["delete_random"],
                 "insertion": text_curves["insert_most_relevant"],
                 "deletion_auc": curve_auc(
                     text_curves["fractions"],
@@ -632,7 +646,15 @@ class OnlineInferenceEngine:
                     text_curves["fractions"],
                     text_curves["insert_most_relevant"],
                 ),
+                "random_deletion_auc": curve_auc(
+                    text_curves["fractions"],
+                    text_curves["delete_random"],
+                ),
             }
+            text_faithfulness["random_minus_targeted_deletion_auc"] = (
+                text_faithfulness["random_deletion_auc"]
+                - text_faithfulness["deletion_auc"]
+            )
             if global_faithfulness is not None:
                 full_probability = float(probabilities[predicted_index])
                 contribution_drops = {

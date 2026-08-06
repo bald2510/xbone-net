@@ -221,7 +221,7 @@ Nguồn thông tin của dự đoán & Ảnh toàn cục, các đơn vị ảnh 
 Ở thiết lập không mẫu, CLIP, MedCLIP, PubMedCLIP và BiomedCLIP được giữ cố định; tên lớp tiếng Anh được thay vào câu nhắc \cite{CLIP}:
 \begin{quote}
 \small\raggedright\ttfamily
-A photo of a [class].
+A radiograph showing [tên lớp].
 \end{quote}
 Biểu diễn ảnh và câu nhắc được chuẩn hóa rồi so sánh bằng độ tương đồng cosin. Thiết lập này chỉ đóng vai trò mốc chuyển giao trực tiếp. Trong trường hợp mẫu học hạn chế, tối đa 1, 10 hoặc 20 mẫu mỗi lớp được lấy không hoàn lại theo từng hạt giống, trong khi tập Đánh giá và tập kiểm thử được giữ nguyên. CTCH chỉ có 19 mẫu gãy xương thuyền và 16 mẫu gãy xương vùng chậu ở mức 20 mẫu, do đó ngân sách thực tế của hai lớp này không đạt đủ 20 mẫu. Trong thiết lập toàn bộ dữ liệu, các đối chứng gồm ResNet-50, DenseNet-121, bốn mô hình ngôn ngữ trực quan được tinh chỉnh toàn bộ và hai mô hình cơ sở dùng LoRA với phép nối đặc trưng và đầu tuyến tính.
 
@@ -682,6 +682,13 @@ Bảng \ref{tab:explain_representation} cho thấy biểu diễn dung hợp đ�
 
 Mọi giá trị Silhouette đều âm. Tóm tắt ảnh cục bộ có Silhouette thấp nhất ($-0{.}1595\pm0{.}0284$) và Davies-Bouldin cao nhất ($4{.}3243\pm0{.}2035$). Hai độ đo cùng cho thấy dung hợp làm giảm mức chồng lấn tương đối giữa các lớp trên CTCH, nhưng giá trị gần 0 chưa xác nhận các cụm tách biệt ổn định. Hình học thuận lợi hơn trong dữ liệu kiểm thử CTCH cũng không bảo đảm khả năng phát hiện mọi dạng dịch chuyển, vì mục tiêu phân tách lớp trong phân phối khác với mục tiêu tách một phân phối mới.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{generated/chapter4_results/centroid_projection.png}
+\caption{Kết quả phát hiện dữ liệu ngoài phân phối bằng khoảng cách Mahalanobis theo tâm lớp trong hai kịch bản}
+\label{fig:centroid_projection}
+\end{figure}
+
 \subsection{Phát hiện dữ liệu ngoài phân phối}
 Bảng \ref{tab:ood_semantic_btxrd} sử dụng 669 mẫu CTCH trong phân phối, 44 mẫu ngoài không gian nhãn của CTCH và 750 mẫu BTXRD. Khoảng cách Mahalanobis đạt diện tích dưới đường cong phân biệt cao nhất trong bốn phương pháp trên BTXRD ($0{.}8042\pm0{.}0938$) và trên nhóm ngoài không gian nhãn ($0{.}6286\pm0{.}0177$). Năm láng giềng gần nhất đạt diện tích dưới đường cong độ chính xác-độ nhạy cao nhất trên nhóm ngoài không gian nhãn.
 
@@ -699,6 +706,21 @@ Hình \ref{fig:mahalanobis_ood_summary} cho thấy tín hiệu phân biệt rõ 
 \end{figure}
 
 Khi giữ cố định điểm Mahalanobis để so sánh không gian biểu diễn, BiomedCLIP không mẫu đạt diện tích dưới đường cong phân biệt $0{.}6362$ trên nhóm ngoài không gian nhãn trong một lần đánh giá, cao hơn nhẹ XBone-Net. XBone-Net đạt diện tích dưới đường cong độ chính xác-độ nhạy cao nhất trong nhóm các biểu diễn được huấn luyện trên kịch bản này. Trên BTXRD, nối đặc trưng dẫn đầu cả ba độ đo với diện tích dưới đường cong phân biệt $0{.}8966\pm0{.}0478$ và tỷ lệ chấp nhận nhầm $0{.}5978\pm0{.}1744$. Kiến trúc dung hợp phức tạp vì vậy không mặc nhiên tạo không gian tốt nhất cho mọi dạng dịch chuyển.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{generated/chapter4_results/centroid_projection_ood.png}
+\caption{Kết quả phát hiện dữ liệu ngoài phân phối bằng khoảng cách Mahalanobis theo tâm lớp trong hai kịch bản}
+\label{fig:centroid_projection_ood}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{generated/chapter4_results/ood_sample_comparison.png}
+\caption{Kết quả phát hiện dữ liệu ngoài phân phối bằng khoảng cách Mahalanobis theo tâm lớp trong hai kịch bản}
+\label{fig:ood_sample}
+\end{figure}
+
 
 \subsection{Kết luận}
 Biểu diễn dung hợp có cấu trúc lớp thuận lợi hơn tương đối trên CTCH và chứa tín hiệu phân biệt dữ liệu ngoài phân phối. Tín hiệu rõ hơn khi nguồn ảnh, văn bản và không gian nhãn cùng thay đổi như kịch bản BTXRD, nhưng yếu đối với các bệnh ngoài không gian nhãn còn gần miền CTCH. Tỷ lệ chấp nhận nhầm còn cao ở cả hai kịch bản; mô-đun hiện tại chỉ phù hợp làm cảnh báo bổ trợ và chưa đủ cho cơ chế từ chối tự động.

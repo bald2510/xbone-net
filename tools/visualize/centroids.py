@@ -50,7 +50,7 @@ from src.utils.centroid_visualization import (  # noqa: E402
 )
 
 
-DEFAULT_EXPERIMENT = "ctch/proposed/ours_xbone_net_v3"
+DEFAULT_EXPERIMENT = "ctch/proposed/ours_xbone_net"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -85,12 +85,24 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--max-points-per-class", type=int, default=500)
-    parser.add_argument("--dpi", type=int, default=180)
+    parser.add_argument("--max-points-per-class", type=int, default=1000)
+    parser.add_argument("--dpi", type=int, default=300)
     parser.add_argument(
         "--overwrite-embeddings",
         action="store_true",
         help="Re-extract the default selected-split embedding cache.",
+    )
+    parser.add_argument(
+        "--ood-split",
+        type=str,
+        default=None,
+        help="Optional OOD split name to plot a sample from (e.g., ctch_ood, btxrd_test).",
+    )
+    parser.add_argument(
+        "--ood-index",
+        type=int,
+        default=0,
+        help="Index of the OOD sample to plot from the OOD split.",
     )
     args = parser.parse_args()
     if args.batch_size < 1:
@@ -312,6 +324,7 @@ def _plot_projection(
     output: Path,
     dpi: int,
     split: str,
+    ood_projection: np.ndarray | None = None,
 ) -> None:
     colors = _class_colors(len(class_names))
     fig, axis = plt.subplots(figsize=(16, 10))
@@ -323,7 +336,7 @@ def _plot_projection(
                 sample_projection[mask, 1],
                 s=16,
                 alpha=0.25,
-                color=colors[class_id],
+                color="0.8" if ood_projection is not None else colors[class_id],
                 edgecolors="none",
                 rasterized=True,
             )
@@ -351,39 +364,66 @@ def _plot_projection(
             weight="bold",
         )
 
+    split_vn = "huấn luyện" if split == "train" else "kiểm thử"
     variance = 100.0 * explained_variance
-    axis.set_xlabel(f"PCA 1 ({variance[0]:.1f}% explained variance)")
-    axis.set_ylabel(f"PCA 2 ({variance[1]:.1f}% explained variance)")
+    axis.set_xlabel(f"PCA 1 ({variance[0]:.1f}% phương sai)")
+    axis.set_ylabel(f"PCA 2 ({variance[1]:.1f}% phương sai)")
     axis.set_title(
-        f"Proposed v3: CTCH {split} fused embeddings and empirical centroids"
+        f"XBone-Net: Không gian biểu diễn đặc trưng (tập {split_vn})"
     )
     axis.axhline(0.0, color="0.85", linewidth=0.8)
     axis.axvline(0.0, color="0.85", linewidth=0.8)
     axis.grid(alpha=0.16)
 
-    type_legend = axis.legend(
-        handles=[
+    legend_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            markerfacecolor="0.45",
+            markeredgecolor="none",
+            alpha=0.45,
+            label=f"Mẫu dữ liệu",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="X",
+            linestyle="none",
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markersize=10,
+            label="Vector nguyên mẫu",
+        ),
+    ]
+
+    if ood_projection is not None:
+        axis.scatter(
+            ood_projection[:, 0],
+            ood_projection[:, 1],
+            s=400,
+            marker="*",
+            color="red",
+            edgecolor="black",
+            linewidth=1.5,
+            zorder=10,
+        )
+        legend_handles.append(
             Line2D(
                 [0],
                 [0],
-                marker="o",
+                marker="*",
                 linestyle="none",
-                markerfacecolor="0.45",
-                markeredgecolor="none",
-                alpha=0.45,
-                label=f"{split.capitalize()} sample",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="X",
-                linestyle="none",
-                markerfacecolor="white",
+                markerfacecolor="red",
                 markeredgecolor="black",
-                markersize=10,
-                label="Classifier centroid",
-            ),
-        ],
+                markersize=12,
+                label="Mẫu OOD",
+            )
+        )
+
+    type_legend = axis.legend(
+        handles=legend_handles,
         loc="upper left",
         frameon=True,
     )
@@ -402,7 +442,7 @@ def _plot_projection(
     ]
     axis.legend(
         handles=class_handles,
-        title="CTCH classes",
+        title="Các lớp bệnh CTCH",
         loc="center left",
         bbox_to_anchor=(1.01, 0.5),
         fontsize=8,
@@ -592,7 +632,7 @@ def main() -> None:
         max_points_per_class=args.max_points_per_class,
         seed=args.seed,
     )
-    centroid_projection, sample_projection, explained = project_cosine_space(
+    centroid_projection, sample_projection, explained, pca = project_cosine_space(
         centroids,
         sampled_embeddings,
         seed=args.seed,
@@ -608,6 +648,20 @@ def main() -> None:
     csv_path = output_dir / "centroid_metrics.csv"
     summary_path = output_dir / "centroid_summary.json"
 
+    ood_projection = None
+    if args.ood_split is not None:
+        analysis_root = ROOT / "results" / experiment / f"seed_{args.seed}" / "analysis"
+        ood_feature_path = analysis_root / "features" / f"{args.ood_split}.npz"
+        if not ood_feature_path.is_file():
+            raise FileNotFoundError(
+                f"OOD features not found at {ood_feature_path}. "
+                "Please run `python tools/benchmark/ood_analysis.py --analyses ood` first to extract them."
+            )
+        ood_embeddings, _, _ = load_fused_embeddings(ood_feature_path)
+        ood_sample = ood_embeddings[args.ood_index : args.ood_index + 1]
+        normalized_ood = l2_normalize(ood_sample)
+        ood_projection = pca.transform(normalized_ood)
+
     _plot_projection(
         centroid_projection,
         sample_projection,
@@ -618,6 +672,7 @@ def main() -> None:
         projection_path,
         args.dpi,
         args.split,
+        ood_projection=ood_projection,
     )
     _plot_similarity_heatmap(
         diagnostics["cosine_similarity_matrix"],

@@ -15,7 +15,7 @@ CLASSIFICATION_METRICS = (
     ("balanced_accuracy", "BAcc"),
     ("f1_macro", "Macro-F1"),
     ("auroc_macro", "Macro-AUROC"),
-    ("auprc_macro", "Macro-AUPRC"),
+    ("auprc_macro", "Macro-AP"),
 )
 ABLATION_METRICS = (*CLASSIFICATION_METRICS, ("ece_15", "ECE"))
 OOD_METRICS = (
@@ -157,36 +157,37 @@ def longtable(
     column_spec: str,
     headers: list[str],
     caption: str,
-    label: str,
+    label: str | None,
     shaded_rows: set[int] | None = None,
+    continued: bool = False,
+    include_in_list: bool = True,
+    placement: str = "H",
 ) -> str:
     shaded_rows = shaded_rows or set()
-    column_count = len(headers)
-    lines = [
-        r"\begingroup",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3pt}",
+    lines = [rf"\begin{{table}}[{placement}]"]
+    if continued:
+        lines.append(r"\ContinuedFloat")
+    lines.extend(
+        [
+        r"\centering",
+        r"\footnotesize",
         r"\renewcommand{\arraystretch}{1.08}",
-        rf"\begin{{longtable}}{{{column_spec}}}",
-        rf"\caption{{{caption}}}\label{{{label}}}\\",
+        r"\resizebox{\textwidth}{!}{%",
+        rf"\begin{{tabular}}{{{column_spec}}}",
         r"\toprule",
         " & ".join(rf"\textbf{{{header}}}" for header in headers) + r" \\",
         r"\midrule",
-        r"\endfirsthead",
-        rf"\multicolumn{{{column_count}}}{{c}}{{\tablename\ \thetable\ (tiếp theo)}}\\",
-        r"\toprule",
-        " & ".join(rf"\textbf{{{header}}}" for header in headers) + r" \\",
-        r"\midrule",
-        r"\endhead",
-        rf"\midrule \multicolumn{{{column_count}}}{{r}}{{Còn tiếp ở trang sau}}\\",
-        r"\endfoot",
-        r"\bottomrule",
-        r"\endlastfoot",
-    ]
+        ]
+    )
     for index, row in enumerate(rows):
         prefix = r"\rowcolor{gray!12}" if index in shaded_rows else ""
         lines.append(prefix + " & ".join(row) + r" \\")
-    lines.extend([r"\end{longtable}", r"\endgroup", ""])
+    lines.extend([r"\bottomrule", r"\end{tabular}%", r"}"])
+    caption_command = r"\caption" if include_in_list else r"\caption[]"
+    lines.append(rf"{caption_command}{{{caption}}}")
+    if label:
+        lines.append(rf"\label{{{label}}}")
+    lines.extend([r"\end{table}", ""])
     return "\n".join(lines)
 
 
@@ -308,7 +309,7 @@ def write_full_shot_tables(
         "BAcc",
         "Macro-F1",
         "Macro-AUROC",
-        "Macro-AUPRC",
+        "Macro-AP",
     ]
     for dataset, display in (("btxrd", "BTXRD"), ("ctch", "CTCH")):
         rows = collected[dataset]
@@ -328,7 +329,7 @@ def write_full_shot_tables(
         tables.append(
             longtable(
                 table_rows,
-                column_spec=r"L{3.2cm}C{1.15cm}*{5}{C{1.55cm}}",
+                column_spec=r"L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}",
                 headers=headers,
                 caption=(
                     "Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên "
@@ -355,119 +356,159 @@ def write_few_shot_tables(
         "BAcc",
         "Macro-F1",
         "Macro-AUROC",
-        "Macro-AUPRC",
+        "Macro-AP",
     ]
     for dataset, display in (("btxrd", "BTXRD"), ("ctch", "CTCH")):
         rows = collected[dataset]
+        for part_index, shot in enumerate((1, 10, 20)):
+            tables.append(r"\clearpage")
+            part_rows = [row for row in rows if int(row["shot"]) == shot]
+            table_rows = [
+                [
+                    f"{row['shot']} mẫu",
+                    latex_escape(str(row["model"])),
+                    str(row["seed"]),
+                    *(
+                        number(float(row[key]))
+                        for key, _ in CLASSIFICATION_METRICS
+                    ),
+                ]
+                for row in part_rows
+            ]
+            shaded = {
+                index
+                for index, row in enumerate(part_rows)
+                if row["model"] == "XBone-Net"
+            }
+            tables.append(
+                longtable(
+                    table_rows,
+                    column_spec=(
+                        r"C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}"
+                    ),
+                    headers=headers,
+                    caption=(
+                        "Kết quả mẫu học hạn chế của từng hạt giống trên "
+                        f"{display} ở thiết lập {shot} mẫu; hàng XBone-Net "
+                        "được tô xám để dễ đối chiếu."
+                    ),
+                    label=(
+                        f"tab:appendix-few-shot-seeds-{dataset}"
+                        if part_index == 0
+                        else None
+                    ),
+                    shaded_rows=shaded,
+                    continued=part_index > 0,
+                    include_in_list=part_index == 0,
+                    placement="p",
+                )
+            )
+    output.write_text("\n".join(tables), encoding="utf-8")
+    return output
+
+
+def write_ablation_table(output: Path, rows: list[dict[str, Any]]) -> Path:
+    variant_groups = (
+        {"XBone-Net", "Không dùng ảnh độ phân giải cao", "Gộp trung bình"},
+        {"Chỉ pha 2", "Nối đặc trưng", "Đầu tuyến tính"},
+    )
+    tables: list[str] = []
+    for part_index, variants in enumerate(variant_groups):
+        part_rows = [row for row in rows if row["variant"] in variants]
         table_rows = [
             [
-                f"{row['shot']} mẫu",
-                latex_escape(str(row["model"])),
+                latex_escape(str(row["variant"])),
                 str(row["seed"]),
-                *(number(float(row[key])) for key, _ in CLASSIFICATION_METRICS),
+                *(number(float(row[key])) for key, _ in ABLATION_METRICS),
             ]
-            for row in rows
+            for row in part_rows
         ]
         shaded = {
             index
-            for index, row in enumerate(rows)
-            if row["model"] == "XBone-Net"
+            for index, row in enumerate(part_rows)
+            if row["variant"] == "XBone-Net"
         }
         tables.append(
             longtable(
                 table_rows,
-                column_spec=r"C{1.15cm}L{2.65cm}C{1.05cm}*{5}{C{1.35cm}}",
-                headers=headers,
+                column_spec=r"L{2.55cm}C{1.0cm}*{6}{C{1.45cm}}",
+                headers=[
+                    "Cấu hình",
+                    "Hạt giống",
+                    "Accuracy",
+                    "BAcc",
+                    "Macro-F1",
+                    "Macro-AUROC",
+                    "Macro-AP",
+                    "ECE",
+                ],
                 caption=(
-                    "Kết quả mẫu học hạn chế của từng hạt giống trên "
-                    f"{display}; hàng XBone-Net được tô xám để dễ đối chiếu."
+                    "Kết quả của từng hạt giống trong nghiên cứu loại bỏ "
+                    f"từng thành phần trên CTCH (phần {part_index + 1}); "
+                    "cấu hình đầy đủ được tô xám."
                 ),
-                label=f"tab:appendix-few-shot-seeds-{dataset}",
+                label=(
+                    "tab:appendix-ablation-seeds"
+                    if part_index == 0
+                    else None
+                ),
                 shaded_rows=shaded,
+                continued=part_index > 0,
+                include_in_list=part_index == 0,
             )
         )
     output.write_text("\n".join(tables), encoding="utf-8")
     return output
 
 
-def write_ablation_table(output: Path, rows: list[dict[str, Any]]) -> Path:
-    table_rows = [
-        [
-            latex_escape(str(row["variant"])),
-            str(row["seed"]),
-            *(number(float(row[key])) for key, _ in ABLATION_METRICS),
-        ]
-        for row in rows
-    ]
-    shaded = {
-        index for index, row in enumerate(rows) if row["variant"] == "XBone-Net"
-    }
-    output.write_text(
-        longtable(
-            table_rows,
-            column_spec=r"L{2.8cm}C{1.0cm}*{6}{C{1.35cm}}",
-            headers=[
-                "Cấu hình",
-                "Hạt giống",
-                "Accuracy",
-                "BAcc",
-                "Macro-F1",
-                "Macro-AUROC",
-                "Macro-AUPRC",
-                "ECE",
-            ],
-            caption=(
-                "Kết quả của từng hạt giống trong nghiên cứu loại bỏ từng thành phần "
-                "trên CTCH; cấu hình đầy đủ được tô xám."
-            ),
-            label="tab:appendix-ablation-seeds",
-            shaded_rows=shaded,
-        ),
-        encoding="utf-8",
-    )
-    return output
-
-
 def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
-    table_rows = [
-        [
-            latex_escape(str(row["scenario"])),
-            latex_escape(str(row["method"])),
-            str(row["seed"]),
-            str(row["id_count"]),
-            str(row["ood_count"]),
-            *(number(float(row[key])) for key, _ in OOD_METRICS),
+    tables: list[str] = []
+    for part_index, (scenario, scenario_key) in enumerate(OOD_SCENARIOS):
+        part_rows = [row for row in rows if row["scenario_key"] == scenario_key]
+        table_rows = [
+            [
+                latex_escape(str(row["scenario"])),
+                latex_escape(str(row["method"])),
+                str(row["seed"]),
+                str(row["id_count"]),
+                str(row["ood_count"]),
+                *(number(float(row[key])) for key, _ in OOD_METRICS),
+            ]
+            for row in part_rows
         ]
-        for row in rows
-    ]
-    shaded = {
-        index
-        for index, row in enumerate(rows)
-        if row["method_key"] == "mahalanobis_centroid"
-    }
-    output.write_text(
-        longtable(
-            table_rows,
-            column_spec=r"L{1.8cm}L{2.65cm}C{0.9cm}C{0.9cm}C{0.9cm}*{3}{C{1.45cm}}",
-            headers=[
-                "Kịch bản",
-                "Phương pháp",
-                "Hạt giống",
-                "$N_{ID}$",
-                "$N_{OOD}$",
-                "AUROC-OOD",
-                "AUPR-Out",
-                "\\makecell{FPR@\\\\95\\%TPR}",
-            ],
-            caption=(
-                "Kết quả OOD hậu xử lý của từng hạt giống; các hàng "
-                "Mahalanobis theo tâm lớp được tô xám."
-            ),
-            label="tab:appendix-ood-seeds",
-            shaded_rows=shaded,
-        ),
-        encoding="utf-8",
-    )
+        shaded = {
+            index
+            for index, row in enumerate(part_rows)
+            if row["method_key"] == "mahalanobis_centroid"
+        }
+        tables.append(
+            longtable(
+                table_rows,
+                column_spec=(
+                    r"L{1.70cm}L{2.50cm}C{1.0cm}C{1.0cm}C{1.0cm}"
+                    r"*{3}{C{1.60cm}}"
+                ),
+                headers=[
+                    "Kịch bản",
+                    "Phương pháp",
+                    "Hạt giống",
+                    "$N_{ID}$",
+                    "$N_{OOD}$",
+                    "AUROC-OOD",
+                    "AUPR-Out",
+                    "\\makecell{FPR@\\\\95\\%TPR}",
+                ],
+                caption=(
+                    "Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản "
+                    f"{scenario}; các hàng Mahalanobis theo tâm lớp được tô xám."
+                ),
+                label="tab:appendix-ood-seeds" if part_index == 0 else None,
+                shaded_rows=shaded,
+                continued=part_index > 0,
+                include_in_list=part_index == 0,
+            )
+        )
+    output.write_text("\n".join(tables), encoding="utf-8")
     return output
 
 

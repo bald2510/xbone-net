@@ -1,20 +1,20 @@
+\begin{landscape}
 \begin{table}[H]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{4pt}
+\small
 \renewcommand{\arraystretch}{1.15}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{l>{\columncolor{gray!12}}c*{5}{c}}
+\begin{tabular}{L{3.20cm}>{\columncolor{gray!12}}C{3.15cm}*{5}{C{3.15cm}}}
 \toprule
-\multicolumn{1}{c}{\textbf{Thành phần/ độ đo}} &
-\multicolumn{1}{>{\columncolor{gray!12}}c}{\textbf{XBone-Net}} &
-\multicolumn{1}{c}{\textbf{Không tiền xử lý}} &
-\multicolumn{1}{c}{\textbf{Gộp trung bình}} &
-\multicolumn{1}{c}{\textbf{Chỉ pha 2}} &
-\multicolumn{1}{c}{\textbf{Nối đặc trưng}} &
-\multicolumn{1}{c}{\textbf{Đầu tuyến tính}} \\
+\multicolumn{1}{C{3.20cm}}{\textbf{Thành phần hoặc độ đo}} &
+\multicolumn{1}{>{\columncolor{gray!12}}C{3.15cm}}{\textbf{XBone-Net}} &
+\multicolumn{1}{C{3.15cm}}{\textbf{Không dùng ảnh độ phân giải cao}} &
+\multicolumn{1}{C{3.15cm}}{\textbf{Gộp trung bình}} &
+\multicolumn{1}{C{3.15cm}}{\textbf{Chỉ pha 2}} &
+\multicolumn{1}{C{3.15cm}}{\textbf{Nối đặc trưng}} &
+\multicolumn{1}{C{3.15cm}}{\textbf{Đầu tuyến tính}} \\
 \midrule
-Tiền xử lý ảnh & $\checkmark$ &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+Nhánh ảnh độ phân giải cao & $\checkmark$ &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
 Gộp chú ý cục bộ & $\checkmark$ & -- &  & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
 Huấn luyện pha 1 & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ & $\checkmark$ \\
 Chú ý chéo hai chiều & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ \\
@@ -48,7 +48,7 @@ $\mathbf{0{.}9577\pm0{.}0082}$ &
 $0{.}9144\pm0{.}0198$ &
 $0{.}9566\pm0{.}0046$ &
 $0{.}9080\pm0{.}0099$ \\
-Macro-AUPRC $\uparrow$ &
+Macro-AP $\uparrow$ &
 $0{.}6189\pm0{.}0145$ &
 $0{.}5990\pm0{.}0073$ &
 $\mathbf{0{.}6312\pm0{.}0277}$ &
@@ -68,3 +68,4 @@ $0{.}0882\pm0{.}0153$ \\
 \caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net trên CTCH}
 \label{tab:ablation_leave_one_out_classification}
 \end{table}
+\end{landscape}

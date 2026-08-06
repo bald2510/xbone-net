@@ -62,16 +62,16 @@ def parse_args() -> argparse.Namespace:
 def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None:
     axis.set_axis_off()
     axis.set_title(
-        "(d) Integrated Gradients trên đơn vị từ ngữ của bệnh sử\n"
-        "(xanh: phản đối, cam: ủng hộ)",
+        "(d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử\n"
+        "Màu xanh biểu thị tác động phản đối; màu cam biểu thị tác động ủng hộ",
         loc="center",
-        fontsize=12,
+        fontsize=11,
     )
     figure = axis.figure
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
-    x, y = 0.01, 0.94
-    line_height = 0.08
+    x, y = 0.01, 0.91
+    line_height = 0.095
 
     for token, score in zip(tokens, scores):
         color = TEXT_ATTRIBUTION_CMAP(
@@ -82,7 +82,7 @@ def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None
             y,
             token,
             transform=axis.transAxes,
-            fontsize=10,
+            fontsize=11,
             va="top",
             ha="left",
             color="#111111",
@@ -105,7 +105,7 @@ def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None
                 y,
                 token,
                 transform=axis.transAxes,
-                fontsize=10,
+                fontsize=11,
                 va="top",
                 ha="left",
                 color="#111111",
@@ -236,31 +236,44 @@ def main() -> None:
 
     global_overlay = render_global_ig_overlay(image, result)
     local_overlay = render_local_ig_overlay(image, result)
-    figure = plt.figure(figsize=(24.0, 6.0), facecolor="white")
+    # A two-by-two layout keeps every panel legible when the figure is placed on
+    # an A4 page.  In particular, the clinical-text panel receives half of the
+    # page width instead of one quarter as in the former horizontal layout.
+    figure = plt.figure(figsize=(12.5, 10.0), facecolor="white")
     grid = figure.add_gridspec(
-        1,
-        4,
-        wspace=0.05,
-        top=0.8,
+        2,
+        2,
+        wspace=0.08,
+        hspace=0.22,
+        top=0.88,
     )
     original_axis = figure.add_subplot(grid[0, 0])
     global_axis = figure.add_subplot(grid[0, 1])
-    local_axis = figure.add_subplot(grid[0, 2])
-    text_axis = figure.add_subplot(grid[0, 3])
+    local_axis = figure.add_subplot(grid[1, 0])
+    text_axis = figure.add_subplot(grid[1, 1])
+    text_position = text_axis.get_position()
+    text_axis.set_position(
+        [
+            text_position.x0,
+            text_position.y0 - 0.075,
+            text_position.width,
+            text_position.height,
+        ]
+    )
 
     original_axis.imshow(image, cmap="gray")
     original_axis.set_title("(a) Ảnh X-quang đầu vào", fontsize=12)
     original_axis.axis("off")
     global_axis.imshow(global_overlay)
     global_axis.set_title(
-        "(b) IG trên ảnh toàn cục\n"
+        "(b) Tích phân gradient trên ảnh toàn cục\n"
         "Màu nóng biểu thị đóng góp lớn hơn",
         fontsize=12,
     )
     global_axis.axis("off")
     local_axis.imshow(local_overlay)
     local_axis.set_title(
-        "(c) IG trên đơn vị biểu diễn ảnh cục bộ\n"
+        "(c) Tích phân gradient trên các đơn vị biểu diễn ảnh cục bộ\n"
         "Màu nóng biểu thị đóng góp lớn hơn",
         fontsize=12,
     )
@@ -282,17 +295,17 @@ def main() -> None:
         predicted_label = str(
             class_names.get(result.predicted_index, predicted_label)
         )
-    ood_summary = (
-        f"OOD score={result.ood_score:.2f} < {result.ood_threshold:.2f}"
-        if args.enable_ood
-        else ""
-    )
+    ood_summary = ""
+    if args.enable_ood:
+        ood_summary = (
+            f" | Điểm OOD: {result.ood_score:.2f} < "
+            f"{result.ood_threshold:.2f}"
+        )
     figure.suptitle(
-        f"{args.image_id}\nNhãn đúng: {ground_truth} | Dự đoán: {predicted_label} "
-        f"({100.0 * float(result.probabilities.max()):.1f}%) | "
-        f"{ood_summary}",
-        fontsize=13,
-        y=0.985,
+        f"Nhãn đúng: {ground_truth} | Dự đoán: {predicted_label} "
+        f"({100.0 * float(result.probabilities.max()):.1f}%){ood_summary}",
+        fontsize=14,
+        y=0.97,
     )
     args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
