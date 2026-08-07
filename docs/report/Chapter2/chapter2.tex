@@ -3,25 +3,19 @@
 
 Trong giai đoạn hiện nay, rất nhiều nghiên cứu về ứng dụng học sâu đa phương thức vào lĩnh vực y tế đã phát triển rất nhanh và đạt được nhiều thành tựu nổi bật. Nhằm xác lập cơ sở cho việc thiết kế hệ thống phân lớp, phần này sẽ mô tả tổng quan các nghiên cứu về các mô hình nền tảng của các cách tiếp cận khác nhau cho bài toán phân lớp ảnh y khoa, các chiến lược bảo toàn thông tin trên ảnh độ phân giải cao, đặc biệt là cách kết hợp ngữ cảnh toàn cục với đặc trưng cục bộ, các kỹ thuật tinh chỉnh hiệu quả tham số và phương pháp phát hiện dữ liệu ngoài phân phối. Trên cơ sở đó, đối chiếu ưu điểm, hạn chế và mức độ phù hợp của các hướng tiếp cận hiện có đối với dữ liệu thực tế, chương xác định khoảng trống nghiên cứu và làm rõ cơ sở lựa chọn các thành phần trong phương pháp được đề xuất ở Chương \ref{Chapter3}.
 
-\pagebreak
-
 \section{Các hướng tiếp cận chính và các mô hình nền tảng}
 
 \subsection{Các mô hình kết hợp ngôn ngữ - ảnh xây dựng từ đầu}
 
-Sự kết hợp giữa dữ liệu cận lâm sàng và báo cáo lâm sàng, lịch sử bệnh lý đã tạo ra những bước tiến lớn trong việc cải thiện độ chính xác của các mô hình chẩn đoán, đặc biệt là thông qua việc sử dụng văn bản để bù đắp những thiếu sót thông tin mà hình ảnh đơn thuần không thể cung cấp, hoặc giúp mô hình tập trung vào những vùng trên ảnh được xác định bởi thông tin từ nguồn văn bản. Nghiên cứu của X. Mei \cite{XMei} trong việc chẩn đoán COVID-19 là một minh chứng rõ nét: khi ảnh chụp CT ngực ở giai đoạn sớm có thể chưa biểu hiện bất thường, việc tích hợp thông tin lâm sàng thông qua mạng MLP với đặc trưng ảnh từ CNN đã giúp mô hình nhận diện chính xác 68\% số bệnh nhân dương tính mà các bác sĩ X-quang đã bỏ sót. Mô hình TieNet \cite{TieNet} đã mã hóa các báo cáo y tế và tích hợp các cơ chế chú ý đa cấp để gióng hàng các từ mang ý nghĩa quan trọng với các vùng ảnh tương ứng, cải thiện trung bình 6\% chỉ số AUC so với các mô hình chỉ dùng ảnh. Gần đây, IRENE \cite{IRENE} đưa tất cả dữ liệu về một dạng token chung và sử dụng một mô hình Transformer duy nhất, cho phép văn bản trực tiếp tương tác và giải thích các token của ảnh ở cấp độ cục bộ.
+Sự kết hợp giữa dữ liệu cận lâm sàng và báo cáo lâm sàng, lịch sử bệnh lý đã tạo ra những bước tiến lớn trong việc cải thiện độ chính xác của các mô hình chẩn đoán, đặc biệt là thông qua việc sử dụng văn bản để bù đắp những thiếu sót thông tin mà hình ảnh đơn thuần không thể cung cấp, hoặc giúp mô hình tập trung vào những vùng trên ảnh được xác định bởi thông tin từ nguồn văn bản. Nghiên cứu của X. Mei \cite{XMei} trong việc chẩn đoán COVID-19 là một minh chứng rõ nét: khi ảnh chụp CT ngực ở giai đoạn sớm có thể chưa biểu hiện bất thường, việc tích hợp thông tin lâm sàng thông qua mạng MLP với đặc trưng ảnh từ CNN đã giúp mô hình nhận diện chính xác 68\% số bệnh nhân dương tính mà các bác sĩ X-quang đã bỏ sót. Mô hình TieNet \cite{TieNet} đã mã hóa các báo cáo y tế và tích hợp các cơ chế chú ý đa cấp để gióng hàng các từ mang ý nghĩa quan trọng với các vùng ảnh tương ứng, cải thiện trung bình 6\% chỉ số AUC so với các mô hình chỉ dùng ảnh. Gần đây, IRENE \cite{IRENE} đưa tất cả dữ liệu về một dạng đơn vị biểu diễn chung và sử dụng một mô hình Transformer duy nhất, cho phép văn bản trực tiếp tương tác và giải thích các đơn vị biểu diễn của ảnh ở cấp độ cục bộ.
 
 Nhìn chung, những nghiên cứu này minh chứng rằng sự đóng góp của nhiều nguồn dữ liệu, đặc biệt là văn bản đã đi từ việc chỉ là một véc-tơ thông tin ghép nối thêm, trở thành một thành phần cốt lõi có khả năng gióng hàng ngữ nghĩa và định hướng trong cơ chế chú ý. Tuy nhiên, các mô hình xây dựng từ đầu thường đòi hỏi dữ liệu ghép cặp quy mô lớn và chi phí huấn luyện cao, tạo tiền đề cho sự xuất hiện của các mô hình ngôn ngữ trực quan y khoa.
 
 \subsection{Mô hình ngôn ngữ trực quan y khoa}
 
-Các mô hình ngôn ngữ trực quan đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu, VLMs nói chung và Med-VLMs nói riêng tập trung vào hai nguồn dữ liệu đầu vào chính là ảnh và văn bản, Med-VLMs kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet hoặc ViT cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, Med-VLMs tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng thấu hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
+Các mô hình ngôn ngữ trực quan đánh dấu một bước tiến quan trọng trong việc ứng dụng học sâu đa phương thức vào lĩnh vực y tế. Khác với các mô hình được xây dựng từ đầu, các mô hình ngôn ngữ trực quan nói chung và các mô hình ngôn ngữ trực quan y khoa nói riêng tập trung vào hai nguồn dữ liệu đầu vào chính là ảnh và văn bản, các mô hình ngôn ngữ trực quan y khoa kế thừa các bộ mã hóa đặc trưng độc lập cho từng phương thức, điển hình như ResNet \cite{ResNet} hoặc ViT \cite{Dosovitskiy2021ViT} cho hình ảnh và các mô hình ngôn ngữ cho văn bản. Thay vì sử dụng các mô-đun dung hợp phức tạp, các mô hình ngôn ngữ trực quan y khoa tối ưu hóa các hàm mất mát để căn chỉnh không gian đặc trưng của hai phương thức này. Nhờ biểu diễn đa phương thức mở rộng này, mô hình có khả năng hiểu sâu sắc ngữ nghĩa giữa ảnh X-quang và báo cáo lâm sàng, từ đó cải thiện đáng kể hiệu năng trên nhiều tác vụ y khoa khác nhau.
 
-Chiến lược \textbf{học tương phản} là hướng tiếp cận được ứng dụng rộng rãi nhất. Nguyên lý của chiến lược này là tối ưu hóa không gian biểu diễn bằng cách thu hẹp khoảng cách giữa các cặp đặc trưng ảnh - văn bản tương đồng, đồng thời đẩy các cặp khác biệt ra xa nhau.
-
-ConVIRT \cite{ConVIRT} là nghiên cứu tiên phong áp dụng học tương phản cho dữ liệu y khoa, sử dụng ResNet50 và BERT để tối ưu bộ mã hóa ảnh và văn bản, đạt độ chính xác 90,3\% trên bộ dữ liệu COVIDx. GLoRIA \cite{GLoRIA} mở rộng hướng tiếp cận này bằng cách kết hợp hai hàm mất mát toàn cục và cục bộ, cho phép căn chỉnh chi tiết giữa các vùng trong ảnh và các từ trong câu. MedCLIP \cite{MedCLIP} đề xuất cơ chế tách cặp và trích xuất tri thức cùng hàm mất mát khớp ngữ nghĩa nhằm giải quyết vấn đề âm tính giả khi các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý. BiomedCLIP \cite{BiomedCLIP} kế thừa kiến trúc CLIP với bộ mã hóa ViT-Base và PubMedBERT, được tiền huấn luyện trên 15 triệu cặp dữ liệu từ tập PMC-15M, đạt độ chính xác phân lớp 83\%, giúp mô hình có độ phủ và khả năng tổng quát tốt với nhiều nguồn dữ liệu và tác vụ y khoa.
-
-Ngoài học tương phản, các hướng tiếp cận khác bao gồm \textbf{học có che giấu} và \textbf{tích hợp tri thức y khoa}. Tuy nhiên, các phương pháp này thường phụ thuộc vào nguồn dữ liệu ghép cặp sẵn hoặc đồ thị tri thức chuyên biệt, hạn chế khả năng ứng dụng trên các bài toán không có sẵn nguồn tri thức ngoài.
+Chiến lược học tương phản là hướng tiếp cận được ứng dụng rộng rãi nhất. Nguyên lý của chiến lược này là tối ưu hóa không gian biểu diễn bằng cách thu hẹp khoảng cách giữa các cặp đặc trưng ảnh-văn bản tương đồng, đồng thời đẩy các cặp khác biệt ra xa nhau. Bảng \ref{tab:VLMPretrainingMethodPropose} tổng hợp các mô hình ngôn ngữ trực quan y khoa tiêu biểu sử dụng học tương phản.
 
 % Bảng tổng hợp các Med-VLMs liên quan
 \begin{table}[H]
@@ -74,11 +68,15 @@ Ngoài học tương phản, các hướng tiếp cận khác bao gồm \textbf{
 \label{tab:VLMPretrainingMethodPropose}
 \end{table}
 
-Song song với các Med-VLMs, sự phát triển của các mô hình ngôn ngữ lớn đa phương thức như Med-Flamingo \cite{moor_2023_medflamingo}, LLaVA-Med \cite{li_2023_llavamed} hay Med-PaLM M \cite{MED-PALM-M} đã cho thấy tiềm năng trong các tác vụ hội thoại và hỗ trợ ra quyết định y khoa. Tuy nhiên, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác. Do đó, đối với các bài toán phân lớp chuyên biệt như phân lớp ảnh X-quang xương, việc sử dụng các mô hình ngôn ngữ - thị giác chuyên dụng kết hợp tinh chỉnh hiệu quả tham số thường phù hợp và hiệu quả hơn.
+ConVIRT \cite{ConVIRT} là nghiên cứu tiên phong áp dụng học tương phản cho dữ liệu y khoa, sử dụng ResNet50 và BERT để tối ưu bộ mã hóa ảnh và văn bản, đạt độ chính xác 90,3\% trên bộ dữ liệu COVIDx. GLoRIA \cite{GLoRIA} mở rộng hướng tiếp cận này bằng cách kết hợp hai hàm mất mát toàn cục và cục bộ, cho phép căn chỉnh chi tiết giữa các vùng trong ảnh và các từ trong câu. MedCLIP \cite{MedCLIP} đề xuất cơ chế tách cặp và trích xuất tri thức cùng hàm mất mát khớp ngữ nghĩa nhằm giải quyết vấn đề âm tính giả khi các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý. BiomedCLIP \cite{BiomedCLIP} kế thừa kiến trúc CLIP với bộ mã hóa ViT-Base và PubMedBERT, được tiền huấn luyện trên 15 triệu cặp dữ liệu từ tập PMC-15M, đạt độ chính xác phân lớp 83\%, giúp mô hình có độ phủ và khả năng tổng quát tốt với nhiều nguồn dữ liệu và tác vụ y khoa.
+
+Ngoài học tương phản, các hướng tiếp cận khác bao gồm học có che giấu và tích hợp tri thức y khoa. Tuy nhiên, các phương pháp này thường phụ thuộc vào nguồn dữ liệu ghép cặp sẵn hoặc đồ thị tri thức chuyên biệt, hạn chế khả năng ứng dụng trên các bài toán không có sẵn nguồn tri thức ngoài. Song song với các các mô hình ngôn ngữ trực quan y khoa, sự phát triển của các mô hình ngôn ngữ lớn đa phương thức như Med-Flamingo \cite{moor_2023_medflamingo}, LLaVA-Med \cite{li_2023_llavamed} hay Med-PaLM M \cite{MED-PALM-M} đã cho thấy tiềm năng trong các tác vụ hội thoại và hỗ trợ ra quyết định y khoa. Tuy nhiên, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác. Do đó, đối với các bài toán phân lớp chuyên biệt như phân lớp ảnh X-quang xương, việc sử dụng các mô hình ngôn ngữ - thị giác chuyên dụng kết hợp tinh chỉnh hiệu quả tham số thường phù hợp và hiệu quả hơn.
 
 \subsubsection{Lựa chọn BiomedCLIP làm mô hình nền tảng}
 \label{subsubsec:BiomedCLIP_selection}
-Trong số các mô hình ngôn ngữ-thị giác y khoa được khảo sát, khóa luận lựa chọn BiomedCLIP \cite{BiomedCLIP} làm mô hình nền tảng dựa trên mức độ phù hợp với bài toán, thay vì chỉ dựa trên kết quả của một bộ dữ liệu riêng lẻ. Thứ nhất, BiomedCLIP được tiền huấn luyện trên PMC-15M, gồm khoảng 15 triệu cặp ảnh-văn bản thu thập từ nhiều loại dữ liệu y sinh, trong khi một số mô hình trước đó chủ yếu được xây dựng và đánh giá trên ảnh X-quang ngực. Phạm vi tiền huấn luyện rộng hơn tạo cơ sở phù hợp cho việc chuyển giao sang ảnh X-quang xương, vốn có sự đa dạng lớn về vùng giải phẫu, tư thế chụp và loại tổn thương. Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá không mẫu thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm mô hình nền tảng khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương. Kết quả phân lớp không mẫu của BiomedCLIP và các mô hình nền tảng khác được trình bày trong Phần \ref{subsec:foundation_model_evaluation}.
+Trong số các mô hình ngôn ngữ trực quan y khoa được khảo sát, khóa luận lựa chọn BiomedCLIP \cite{BiomedCLIP} làm mô hình nền tảng dựa trên mức độ phù hợp với bài toán, thay vì chỉ dựa trên kết quả của một bộ dữ liệu riêng lẻ. Thứ nhất, BiomedCLIP được tiền huấn luyện trên PMC-15M, gồm khoảng 15 triệu cặp ảnh-văn bản thu thập từ nhiều loại dữ liệu y sinh, trong khi một số mô hình trước đó chủ yếu được xây dựng và đánh giá trên ảnh X-quang ngực. Phạm vi tiền huấn luyện rộng hơn tạo cơ sở phù hợp cho việc chuyển giao sang ảnh X-quang xương, vốn có sự đa dạng lớn về vùng giải phẫu, tư thế chụp và loại tổn thương.
+
+Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá không mẫu thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm mô hình nền tảng khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương. Kết quả phân lớp không mẫu của BiomedCLIP và các mô hình nền tảng khác được trình bày trong Phần \ref{subsec:foundation_model_evaluation}.
 
 \subsubsection{Cơ chế phân lớp không mẫu của BiomedCLIP}
 \label{subsubsec:BiomedCLIP_zeroshot}
@@ -109,94 +107,48 @@ trong đó $\tau$ là hệ số nhiệt độ. Lớp có xác suất lớn nhấ
 
 \section{Biểu diễn ảnh độ phân giải cao và thông tin không gian}
 
-Ảnh y khoa thường có độ phân giải cao để ghi nhận được các dấu hiệu bệnh lý nhỏ, trong khi các bộ mã hóa thị giác tiền huấn luyện thường yêu cầu kích thước đầu vào cố định ở kích thước nhỏ. Việc co toàn bộ ảnh về kích thước nhỏ giúp giảm chi phí tính toán nhưng có thể làm mất các chi tiết cục bộ. Ngược lại, xử lý trực tiếp ảnh độ phân giải cao làm tăng bộ nhớ cần sử dụng và chi phí tính toán cao của cơ chế chú ý. FPT \cite{FPT} giải quyết sự đánh đổi này bằng cách lựa chọn một phần token kết hợp với mạng nhánh, cho thấy việc thích nghi mô hình nền tảng cho ảnh y khoa cần đồng thời bảo toàn chi tiết và kiểm soát bộ nhớ.
+Ảnh y khoa thường có độ phân giải cao để ghi nhận được các dấu hiệu bệnh lý nhỏ, trong khi các bộ mã hóa thị giác tiền huấn luyện thường yêu cầu kích thước đầu vào cố định ở kích thước nhỏ. Việc co toàn bộ ảnh về kích thước nhỏ giúp giảm chi phí tính toán nhưng có thể làm mất các chi tiết cục bộ. Ngược lại, xử lý trực tiếp ảnh độ phân giải cao làm tăng bộ nhớ cần sử dụng và chi phí tính toán cao của cơ chế chú ý. Bảng \ref{tab:ch2_high_resolution} tổng hợp về các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính được trình bày. FPT \cite{FPT} giải quyết sự đánh đổi này bằng cách lựa chọn một phần đơn vị biểu diễn kết hợp với mạng nhánh, cho thấy việc thích nghi mô hình nền tảng cho ảnh y khoa cần đồng thời bảo toàn chi tiết và kiểm soát bộ nhớ.
 
-Trong các mô hình ngôn ngữ-thị giác tổng quát, LLaVA-NeXT \cite{LLaVANeXTAblations2024} đề xuất AnyRes, trong đó ảnh được biểu diễn bởi một ảnh toàn cục và nhiều ô ảnh cục bộ theo lưới thích nghi. Phiên bản Higher-AnyRes mở rộng số ô ảnh để hỗ trợ đầu vào có độ phân giải lớn hơn, đồng thời giới hạn tổng số token bằng phép nội suy đặc trưng. Các thí nghiệm cho thấy tăng độ phân giải quan sát thường cải thiện các tác vụ phụ thuộc vào chi tiết, trong khi tăng mạnh số token hoặc phóng lớn ảnh một cách cưỡng bức làm tăng chi phí nhưng không luôn đem lại hiệu quả tương ứng. Kết quả này nhấn mạnh rằng mục tiêu chính là giữ lại thông tin cục bộ hữu ích trong một ngân sách token phù hợp.
-
-Đối với ảnh y khoa, MedBridge \cite{Li2026MedBridge} áp dụng chiến lược đa góc nhìn gồm một ảnh toàn cục và nhiều vùng cục bộ được lấy từ ảnh X-quang độ phân giải cao. Cách biểu diễn này duy trì ngữ cảnh giải phẫu của toàn ảnh, đồng thời giúp các dấu hiệu bệnh lý khu trú được quan sát ở độ phân giải phù hợp với bộ mã hóa. Kết quả loại bỏ thành phần cho thấy việc không sử dụng lấy mẫu đa góc nhìn làm hiệu năng giảm, qua đó cung cấp bằng chứng thực nghiệm cho lợi ích của biểu diễn toàn cục-cục bộ trên ảnh X-quang. Tuy nhiên, nghiên cứu được thực hiện chủ yếu trên X-quang ngực và kết hợp thêm các mô-đun thích nghi khác, nên hiệu quả trên X-quang xương vẫn cần được kiểm chứng riêng.
-
-Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược toàn cục-cục bộ với ngân sách token cố định trong bài toán phân lớp ảnh X-quang xương. 
-
-Bảng tổng hợp về các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính được trình bày trong Bảng~\ref{tab:ch2_high_resolution}.
+Trong các mô hình ngôn ngữ trực quan tổng quát, LLaVA-NeXT \cite{LLaVANeXTAblations2024} đề xuất AnyRes, trong đó ảnh được biểu diễn bởi một ảnh toàn cục và nhiều ô ảnh cục bộ theo lưới thích nghi. Phiên bản Higher-AnyRes mở rộng số ô ảnh để hỗ trợ đầu vào có độ phân giải lớn hơn, đồng thời giới hạn tổng số đơn vị biểu diễn bằng phép nội suy đặc trưng. Các thí nghiệm cho thấy tăng độ phân giải quan sát thường cải thiện các tác vụ phụ thuộc vào chi tiết, trong khi tăng mạnh số đơn vị biểu diễn hoặc phóng lớn ảnh một cách cưỡng bức làm tăng chi phí nhưng không luôn đem lại hiệu quả tương ứng. Kết quả này nhấn mạnh rằng mục tiêu chính là giữ lại thông tin cục bộ hữu ích trong một ngân sách đơn vị biểu diễn phù hợp.
 
 \begin{table}[htbp]
 \centering
-\small
-\renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{4pt}
-
-\begin{tabularx}{\textwidth}{
-|L{2.7cm}
-|L{3.2cm}
-|X
-|X|
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|l|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Chiến lược}} &
+  \multicolumn{1}{c|}{\textbf{Đặc điểm}} &
+  \multicolumn{1}{c|}{\textbf{Khả năng đáp ứng}} &
+  \multicolumn{1}{c|}{\textbf{Hạn chế cần xem xét}} \\ \hline
+Co giãn ảnh toàn cục &
+  \begin{tabular}[c]{@{}l@{}}Một ảnh được đưa về \\ kích thước cố định\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Chi phí thấp và duy \\ trì bố cục tổng thể\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Có thể làm mất các \\ dấu hiệu nhỏ hoặc \\ khu trú.\end{tabular} \\ \hline
+\begin{tabular}[c]{@{}l@{}}Xử lý trực tiếp \\ ảnh độ phân giải cao\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Tăng kích thước ảnh \\ hoặc số lượng patch\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Giữ lại nhiều chi tiết \\ hơn. FPT \cite{FPT} \\ xem xét sự đánh đổi \\ giữa khả năng bảo toàn \\ chi tiết và chi phí bộ \\ nhớ trong ảnh y khoa\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Số lượng đơn vị biểu \\ diễn và chi phí của cơ \\ chế chú ý tăng nhanh.\end{tabular} \\ \hline
+\begin{tabular}[c]{@{}l@{}}AnyRes và \\ Higher-AnyRes\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp ảnh toàn cục \\ với các vùng ảnh theo \\ lưới thích nghi và giới \\ hạn số đơn vị biểu diễn \\ bằng phép nội suy\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Tăng độ phủ không \\ gian và cải thiện các \\ tác vụ phụ thuộc vào \\ chi tiết \cite{LLaVANeXTAblations2024}\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Lưới đều có thể xử lý \\ nhiều vùng không liên \\ quan. Bằng chứng thực \\ nghiệm chủ yếu đến từ \\ dữ liệu phi y khoa.\end{tabular} \\ \hline
+Latent resampling &
+  \begin{tabular}[c]{@{}l@{}}Nén tập đơn vị biểu diễn \\ đầu vào thành một số \\ lượng latent cố định\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Kiểm soát độ dài \\ chuỗi và chi phí kết \\ nối đa phương thức\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Có nguy cơ làm mất \\ các tín hiệu nhỏ và phụ \\ thuộc vào khả năng tối \\ ưu các truy vấn học \\ được \cite{Jaegle2021Perceiver,Alayrac2022Flamingo}.\end{tabular} \\ \hline
+\begin{tabular}[c]{@{}l@{}}Toàn cục-cục bộ \\ đa góc nhìn\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp ảnh toàn cục \\ với nhiều vùng cục bộ \\ được trích xuất từ ảnh gốc\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Phù hợp với các dấu \\ hiệu bệnh lý nhỏ và \\ khu trú. MedBridge \cite{Li2026MedBridge} \\ cho thấy hiệu quả trên \\ ảnh X-quang ngực\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Làm tăng chi phí khi \\ sử dụng mô hình nền \\ tảng nhiều lần, hiệu \\ quả phụ thuộc vào \\ cách lựa chọn vùng \\ và chưa được kiểm \\ chứng trực tiếp trên \\ ảnh X-quang xương.\end{tabular} \\ \hline
+\end{tabular}%
 }
-\hline
-\textbf{Chiến lược}
-&
-\textbf{Đặc điểm}
-&
-\textbf{Khả năng đáp ứng}
-&
-\textbf{Hạn chế cần xem xét}
-\\
-\hline
-
-Co giãn ảnh toàn cục
-&
-Một ảnh được đưa về kích thước cố định
-&
-Chi phí thấp và duy trì bố cục tổng thể
-&
-Có thể làm mất các dấu hiệu nhỏ hoặc khu trú.
-\\
-\hline
-
-Xử lý trực tiếp ảnh độ phân giải cao
-&
-Tăng kích thước ảnh hoặc số lượng patch
-&
-Giữ lại nhiều chi tiết hơn; FPT \cite{FPT} xem xét sự đánh đổi giữa khả năng bảo toàn chi tiết và chi phí bộ nhớ trong ảnh y khoa
-&
-Số lượng token và chi phí của cơ chế chú ý tăng nhanh.
-\\
-\hline
-
-AnyRes và Higher-AnyRes
-&
-Kết hợp ảnh toàn cục với các vùng ảnh theo lưới thích nghi và giới hạn số token bằng phép nội suy
-&
-Tăng độ phủ không gian và cải thiện các tác vụ phụ thuộc vào chi tiết \cite{LLaVANeXTAblations2024}
-&
-Lưới đều có thể xử lý nhiều vùng không liên quan; bằng chứng thực nghiệm chủ yếu đến từ dữ liệu phi y khoa.
-\\
-\hline
-
-Latent resampling
-&
-Nén tập token đầu vào thành một số lượng latent cố định
-&
-Kiểm soát độ dài chuỗi và chi phí kết nối đa phương thức
-&
-Có nguy cơ làm mất các tín hiệu nhỏ và phụ thuộc vào khả năng tối ưu các truy vấn học được \cite{Jaegle2021Perceiver,Alayrac2022Flamingo}.
-\\
-\hline
-
-Toàn cục-cục bộ đa góc nhìn
-&
-Kết hợp ảnh toàn cục với nhiều vùng cục bộ được trích xuất từ ảnh gốc
-&
-Phù hợp với các dấu hiệu bệnh lý nhỏ và khu trú; MedBridge cho thấy hiệu quả trên ảnh X-quang ngực \cite{Li2026MedBridge}
-&
-Làm tăng chi phí khi sử dụng mô hình nền tảng nhiều lần, hiệu quả phụ thuộc vào cách lựa chọn vùng và chưa được kiểm chứng trực tiếp trên ảnh X-quang xương.
-\\
-\hline
-\end{tabularx}
-
-\caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính.}
+\caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính}
 \label{tab:ch2_high_resolution}
 \end{table}
 
+Đối với ảnh y khoa, MedBridge \cite{Li2026MedBridge} áp dụng chiến lược đa góc nhìn gồm một ảnh toàn cục và nhiều vùng cục bộ được lấy từ ảnh X-quang độ phân giải cao. Cách biểu diễn này duy trì ngữ cảnh giải phẫu của toàn ảnh, đồng thời giúp các dấu hiệu bệnh lý khu trú được quan sát ở độ phân giải phù hợp với bộ mã hóa. Kết quả loại bỏ thành phần cho thấy việc không sử dụng lấy mẫu đa góc nhìn làm hiệu năng giảm, qua đó cung cấp bằng chứng thực nghiệm cho lợi ích của biểu diễn toàn cục-cục bộ trên ảnh X-quang. Tuy nhiên, nghiên cứu được thực hiện chủ yếu trên X-quang ngực và kết hợp thêm các mô-đun thích nghi khác, nên hiệu quả trên X-quang xương vẫn cần được kiểm chứng riêng.
+
+Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược toàn cục-cục bộ với ngân sách đơn vị biểu diễn cố định trong bài toán phân lớp ảnh X-quang xương.
 
 \section{Các kỹ thuật tinh chỉnh hiệu quả tham số}
 
@@ -204,7 +156,7 @@ Sự xuất hiện của các mô hình nền tảng nói chung và mô hình ng
 
 Hướng đến yêu cầu cụ thể hơn cho bài toán sử dụng hai nguồn ảnh và văn bản lâm sàng, khóa luận tập trung vào các kỹ thuật tinh chỉnh để khai thác tối đa từ hai nguồn dữ liệu này với đặc điểm dữ liệu thực tế còn hạn chế.
 
-Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần và dò tuyến tính. Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ, yêu cầu dữ liệu huấn luyện lớn đến rất lớn, dẫn đến hiện tượng "quên thảm khốc" trên các tập dữ liệu y tế nhỏ. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân lớp duy nhất ở cuối, tiết kiệm tài nguyên nhưng hạn chế khả năng thích ứng khi sự chênh lệch phân phối giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
+Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần và dò tuyến tính. Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ, yêu cầu dữ liệu huấn luyện lớn đến rất lớn, dẫn đến hiện tượng quên biểu diễn trên các tập dữ liệu y tế nhỏ. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân lớp duy nhất ở cuối, tiết kiệm tài nguyên nhưng hạn chế khả năng thích ứng khi sự chênh lệch phân phối giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
 
 Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, tinh chỉnh hiệu quả tham số đã nổi lên như một giải pháp thay thế. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp tinh chỉnh hiệu quả tham số được chia thành ba hướng tiếp cận chính:
 
@@ -225,17 +177,17 @@ Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ, còn đượ
 Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức.
 
 \subsection{Tinh chỉnh thích nghi hạng thấp}
-LoRA giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này làm tăng một lượng nhỏ tham số huấn luyện nhưng tránh cập nhật toàn bộ mô hình.
+Tinh chỉnh thích nghi hạng thấp (LoRA) giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này làm tăng một lượng nhỏ tham số huấn luyện nhưng tránh cập nhật toàn bộ mô hình.
 \begin{itemize}
-    \item \textbf{Điểm mạnh:} Giảm đáng kể số tham số cần cập nhật và bộ nhớ tối ưu hóa; các ma trận cập nhật có thể được hợp nhất vào trọng số nền khi cách triển khai hỗ trợ.
-    \item \textbf{Điểm yếu:} Hiệu quả phụ thuộc vào vị trí chèn, hạng của ma trận và cấu hình tối ưu; việc giảm tham số huấn luyện không đồng nghĩa với giảm chi phí lan truyền tiến của toàn bộ kiến trúc.
+    \item \textbf{Điểm mạnh:} Giảm đáng kể số tham số cần cập nhật và bộ nhớ tối ưu hóa. Ngoài ra, các ma trận cập nhật có thể được hợp nhất vào trọng số nền khi cách triển khai hỗ trợ.
+    \item \textbf{Điểm yếu:} Hiệu quả phụ thuộc vào vị trí chèn, hạng của ma trận và cấu hình tối ưu. Tuy nhiên, việc giảm tham số huấn luyện không đồng nghĩa với giảm chi phí lan truyền tiến của toàn bộ kiến trúc.
 \end{itemize}
 LCBB \cite{LCBB} áp dụng LoRA cho mô hình ngôn ngữ trực quan y khoa và đạt 93,1\% AUROC trên tập RSNA với 10\% dữ liệu gán nhãn, cho thấy khả năng thích nghi với số tham số cập nhật thấp hơn tinh chỉnh toàn phần.
 
 % Bảng tổng hợp đại diện PEFT
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
-\resizebox{\textwidth}{!}{
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{|c|l|l|l|l|}
 \hline
 \textbf{STT} &
@@ -245,27 +197,27 @@ LCBB \cite{LCBB} áp dụng LoRA cho mô hình ngôn ngữ trực quan y khoa v�
   \multicolumn{1}{c|}{\textbf{Kết quả nổi bật}} \\ \hline
 \textbf{1} &
   \textbf{PLIP (2024)} &
-  Tinh chỉnh sử dụng câu nhắc &
-  \begin{tabular}[c]{@{}l@{}}Kết hợp câu nhắc thị giác với tinh chỉnh chọn lọc, \\ tận dụng đặc trưng hình ảnh để tinh chỉnh hiệu quả\end{tabular} &
-  0,896 AUC (5\% PanNuke) \\ \hline
+  \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng câu nhắc\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Kết hợp câu nhắc thị giác \\ với tinh chỉnh chọn lọc, tận \\ dụng đặc trưng hình ảnh\\ để tinh chỉnh hiệu quả\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}0,896 AUC \\ (5\% PanNuke)\end{tabular} \\ \hline
 \textbf{2} &
   \textbf{CLIPath (2023)} &
-  Tinh chỉnh sử dụng bộ điều hợp &
-  \begin{tabular}[c]{@{}l@{}}Sử dụng kết nối thặng dư để giảm khoảng cách miền \\ trên dữ liệu mô bệnh học\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Sử dụng kết nối thặng dư \\ để giảm khoảng cách miền \\ trên dữ liệu mô bệnh học\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Cải thiện so với CLIP \\ trên dữ liệu nhỏ\end{tabular} \\ \hline
 \textbf{3} &
   \textbf{LCBB (2024)} &
-  \begin{tabular}[c]{@{}l@{}}Thích nghi hạng thấp \\ bằng LoRA\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Bổ sung ma trận hạng thấp vào bộ mã hóa thị giác, \\ giữ cố định trọng số nền\end{tabular} &
-  93,1\% AUROC (RSNA, 10\%) \\ \hline
+  \begin{tabular}[c]{@{}l@{}}Thích nghi hạng \\ thấp bằng LoRA\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Bổ sung ma trận hạng thấp \\ vào bộ mã hóa thị giác, giữ \\ cố định trọng số nền\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}93,1\% AUROC \\ (RSNA, 10\%)\end{tabular} \\ \hline
 \textbf{4} &
   \textbf{FTB (2024)} &
-  Tinh chỉnh sử dụng bộ điều hợp &
-  \begin{tabular}[c]{@{}l@{}}Mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản, \\ chắt lọc thông tin đa phương thức\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Cải thiện trên CheXpert, \\ RSNA\end{tabular} \\ \hline
-\end{tabular}
+  \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Mô-đun dung hợp giữa bộ \\ mã hóa ảnh và văn bản, \\ chắt lọc thông tin đa \\ phương thức\end{tabular} &
+  \begin{tabular}[c]{@{}l@{}}Cải thiện trên \\ CheXpert, RSNA\end{tabular} \\ \hline
+\end{tabular}%
 }
-\caption{Bảng tổng hợp các phương pháp tinh chỉnh hiệu quả tham số đại diện cho các mô hình ngôn ngữ trực quan y khoa.}
+\caption{Bảng tổng hợp các phương pháp tinh chỉnh hiệu quả tham số đại diện cho các mô hình ngôn ngữ trực quan y khoa}
 \label{tab:VLMTransferlearningMethodPropose}
 \end{table}
 
@@ -323,7 +275,7 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
 
 Các phương pháp quy đóng gán mức ảnh hưởng cho từng thành phần đầu vào đối với một đầu ra cụ thể. Tích phân gradient \cite{Sundararajan2017IntegratedGradients} tích lũy gradient dọc theo đường nội suy từ một mốc tham chiếu đến đầu vào, nhờ đó có thể áp dụng cho vùng ảnh, đơn vị biểu diễn cục bộ và từ ngữ. Kết quả phản ánh mức phụ thuộc của đầu ra đối với mốc tham chiếu và lớp đích đã chọn, không mặc nhiên biểu thị quan hệ nhân quả hoặc vị trí tổn thương.
 
-Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu; xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
+Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
 
 Trọng số chú ý mô tả cách mô-đun phân bổ tương tác trong một lần truyền thuận nhưng không mặc nhiên là lời giải thích trung thực cho quyết định. Ngoài độ trung thực, đánh giá trong y khoa còn cần phân biệt độ ổn định của bản đồ, mức phù hợp với chú thích tổn thương và nhận định của chuyên gia. Khóa luận vì vậy sử dụng tích phân gradient và can thiệp đầu vào để khảo sát nguồn thông tin liên hệ với dự đoán, đồng thời không diễn giải bản đồ quy đóng như bằng chứng định vị hoặc xác nhận lâm sàng.
 
@@ -335,7 +287,7 @@ Mặc dù đạt được nhiều kết quả tích cực, các nghiên cứu hi
 
 Thứ nhất, phần lớn mô hình y khoa đa phương thức được phát triển trên X-quang ngực hoặc các bộ dữ liệu lớn. Ảnh X-quang xương có phạm vi giải phẫu, tư thế chụp và kiểu tổn thương đa dạng, trong khi số lượng mẫu giữa các lớp thường mất cân bằng đáng kể. Vì vậy, hiệu quả trên các miền dữ liệu khác chưa thể được chuyển trực tiếp sang bài toán này.
 
-Thứ hai, việc co toàn bộ ảnh về kích thước cố định có thể làm mất các đường gãy hoặc bất thường khu trú. Ngược lại, xử lý toàn bộ ảnh ở độ phân giải cao hoặc chia thành quá nhiều vùng làm số token và chi phí tính toán tăng nhanh. Do đó, cần kết hợp ngữ cảnh toàn cục với các vùng cục bộ có ích trong một ngân sách token được kiểm soát.
+Thứ hai, việc co toàn bộ ảnh về kích thước cố định có thể làm mất các đường gãy hoặc bất thường khu trú. Ngược lại, xử lý toàn bộ ảnh ở độ phân giải cao hoặc chia thành quá nhiều vùng làm số đơn vị biểu diễn và chi phí tính toán tăng nhanh. Do đó, cần kết hợp ngữ cảnh toàn cục với các vùng cục bộ có ích trong một ngân sách đơn vị biểu diễn được kiểm soát.
 
 Thứ ba, nhiều nghiên cứu sử dụng báo cáo đọc ảnh hoặc kết luận chẩn đoán làm đầu vào văn bản. Tuy nhiên, các báo cáo này thường được hình thành sau khi bác sĩ hoặc bác sĩ chẩn đoán hình ảnh đã quan sát phim và có thể mô tả trực tiếp vị trí, hình thái hoặc mức độ tổn thương, chẳng hạn đường gãy, di lệch hay bất thường xương. Việc sử dụng các nguồn văn bản này trong giai đoạn suy luận có thể gây rò rỉ nhãn, khiến mô hình chủ yếu học cách ánh xạ một mô tả gần với kết luận chẩn đoán sang nhãn tương ứng. Trong bối cảnh triển khai thực tế, để tạo được báo cáo chi tiết, bác sĩ đã phải nhận diện tổn thương trước, do đó mô hình không còn đóng vai trò hỗ trợ phát hiện mà chủ yếu lặp lại thông tin đã được xác định. Ngược lại, các thông tin lâm sàng có sẵn trước chẩn đoán cuối cùng, như triệu chứng, tiền sử bệnh, vị trí đau hoặc cơ chế chấn thương, vẫn chưa được khai thác đầy đủ, mặc dù đây là những nguồn thông tin quan trọng giúp định hướng quá trình chẩn đoán. Bên cạnh đó, nhiều phương pháp chỉ nối hai vectơ đặc trưng toàn cục, nên chưa mô hình hóa được quan hệ cụ thể giữa các vùng ảnh và nội dung lâm sàng liên quan.
 
@@ -349,7 +301,7 @@ Cuối cùng, hầu hết các nghiên cứu chỉ tập trung tối ưu hiệu 
 Từ những hạn chế trên, khóa luận lựa chọn xây dựng hệ thống dựa trên việc kế thừa mô hình BiomedCLIP \cite{BiomedCLIP} kết hợp với thông tin lâm sàng để khai thác đồng thời đặc trưng hình ảnh và văn bản. Các lựa chọn thiết kế cụ thể được đưa ra dựa trên phân tích sau:
 
 \textbf{Về xử lý ảnh độ phân giải cao:}
-Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định có thể làm suy giảm các dấu hiệu tổn thương nhỏ, trong khi xử lý toàn bộ ảnh ở độ phân giải cao làm tăng đáng kể chi phí tính toán. Vì vậy, khóa luận lựa chọn chiến lược toàn cục-cục bộ, trong đó ảnh toàn cục duy trì bố cục giải phẫu chung, còn bốn vùng cục bộ được lựa chọn nhằm bảo toàn các vùng giàu thông tin. Các đặc trưng cục bộ được bổ sung thông tin vị trí và nén về số lượng token cố định để cân bằng giữa khả năng giữ lại chi tiết và chi phí xử lý.
+Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định có thể làm suy giảm các dấu hiệu tổn thương nhỏ, trong khi xử lý toàn bộ ảnh ở độ phân giải cao làm tăng đáng kể chi phí tính toán. Vì vậy, khóa luận lựa chọn chiến lược toàn cục-cục bộ, trong đó ảnh toàn cục duy trì bố cục giải phẫu chung, còn bốn vùng cục bộ được lựa chọn nhằm bảo toàn các vùng giàu thông tin. Các đặc trưng cục bộ được bổ sung thông tin vị trí và nén về số lượng đơn vị biểu diễn cố định để cân bằng giữa khả năng giữ lại chi tiết và chi phí xử lý.
 
 \textbf{Về thích nghi mô hình nền tảng:}
 LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa của BiomedCLIP với miền ảnh X-quang xương mà không cần cập nhật toàn bộ tham số nền. Lựa chọn này giúp giảm chi phí huấn luyện, hạn chế nguy cơ quá khớp trên các lớp có ít mẫu và bảo toàn phần lớn tri thức y sinh đã được học trong giai đoạn tiền huấn luyện.
@@ -362,10 +314,10 @@ Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh
 Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
 
 \textbf{Về phân lớp đa lớp và mất cân bằng dữ liệu:}
-Phương pháp sử dụng đầu phân lớp dựa trên tâm lớp thực nghiệm, trong đó mỗi lớp được đại diện bằng trung bình các vectơ biểu diễn thuộc lớp đó thay vì một nguyên mẫu được học tự do. Độ tương đồng cosine với từng tâm được chuyển thành logit và kết hợp với độ lệch học được theo lớp trước khi áp dụng Softmax; vì vậy, nhãn dự đoán không nhất thiết luôn là tâm có độ tương đồng lớn nhất. Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
+Phương pháp sử dụng đầu phân lớp dựa trên tâm lớp thực nghiệm, trong đó mỗi lớp được đại diện bằng trung bình các vectơ biểu diễn thuộc lớp đó thay vì một nguyên mẫu được học tự do. Độ tương đồng cosine với từng tâm được chuyển thành logit và kết hợp với độ lệch học được theo lớp trước khi áp dụng Softmax. Vì vậy, nhãn dự đoán không nhất thiết luôn là tâm có độ tương đồng lớn nhất. Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
 
 \textbf{Về phát hiện dữ liệu ngoài phân phối:}
-Ngoài nhiệm vụ phân lớp, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không yêu cầu mẫu ngoài phân phối trong quá trình huấn luyện. Khoảng cách Mahalanobis được tính giữa biểu diễn của mẫu mới và các trung bình lớp thực nghiệm, có xét đến cấu trúc hiệp phương sai của không gian đặc trưng. Mẫu có điểm vượt ngưỡng được gắn thêm cảnh báo ngoài phân phối; trong phạm vi khóa luận, cảnh báo này không thay đổi nhãn phân lớp nội tại và chưa được sử dụng để tự động từ chối dự đoán. Ngưỡng được hiệu chỉnh trên tập xác thực.
+Ngoài nhiệm vụ phân lớp, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không yêu cầu mẫu ngoài phân phối trong quá trình huấn luyện. Khoảng cách Mahalanobis được tính giữa biểu diễn của mẫu mới và các trung bình lớp thực nghiệm, có xét đến cấu trúc hiệp phương sai của không gian đặc trưng. Mẫu có điểm vượt ngưỡng được gắn thêm cảnh báo ngoài phân phối. Trong phạm vi khóa luận, cảnh báo này không thay đổi nhãn phân lớp nội tại và chưa được sử dụng để tự động từ chối dự đoán. Ngưỡng được hiệu chỉnh trên tập xác thực.
 
 \textbf{Về quy trình huấn luyện:}
 Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:

@@ -13,7 +13,7 @@ Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân lớp đa lớp 
     \label{fig:ch3_overview}
 \end{figure}
 
-Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được so sánh với các nguyên mẫu lớp để đưa ra dự đoán.
+Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được so sánh với các nguyên mẫu lớp để đưa ra dự đoán. Định danh mô hình nền tảng, kích thước biểu diễn, vị trí chèn LoRA và cấu hình tái lập đầy đủ được trình bày tại Phụ lục~\ref{AppendixModelDetails}.
 
 Mỗi mẫu dữ liệu được ký hiệu bởi bộ ba gồm ảnh X-quang, thông tin lâm sàng và nhãn lớp. Tập huấn luyện có dạng:
 
@@ -28,7 +28,7 @@ y_i\in\mathcal{Y}.
 \label{eq:ch3_dataset}
 \end{equation}
 
-Trong đó, $x_i^{\mathrm{img}}\in\mathbb{R}^{H_i\times W_i\times C_{\mathrm{in}}}$ là ảnh X-quang của mẫu thứ $i$; $H_i$, $W_i$ và $C_{\mathrm{in}}$ lần lượt là chiều cao, chiều rộng và số kênh ảnh. Thông tin lâm sàng được ký hiệu $x_i^{\mathrm{txt}}=\left(w_{i,1},\ldots,w_{i,L_i}\right)$, với $L_i$ là số đơn vị biểu diễn trước khi cắt hoặc đệm. Nhãn $y_i$ thuộc tập chỉ số lớp $\mathcal{Y}=\{1,\ldots,K\}$, còn $N$ là số mẫu huấn luyện.
+Trong đó, $x_i^{\mathrm{img}}\in\mathbb{R}^{H_i\times W_i\times C_{\mathrm{in}}}$ là ảnh X-quang của mẫu thứ $i$. Các ký hiệu $H_i$, $W_i$ và $C_{\mathrm{in}}$ lần lượt là chiều cao, chiều rộng và số kênh ảnh. Thông tin lâm sàng được ký hiệu $x_i^{\mathrm{txt}}=\left(w_{i,1},\ldots,w_{i,L_i}\right)$, với $L_i$ là số đơn vị biểu diễn trước khi cắt hoặc đệm. Nhãn $y_i$ thuộc tập chỉ số lớp $\mathcal{Y}=\{1,\ldots,K\}$, còn $N$ là số mẫu huấn luyện.
 
 Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại tuyến. Giai đoạn thứ nhất thích nghi hai nhánh mã hóa và căn chỉnh không gian ảnh-văn bản bằng hàm mất mát khớp ngữ nghĩa. Giai đoạn thứ hai học cơ chế dung hợp và ranh giới phân lớp trong không gian nguyên mẫu. Khi suy luận trực tuyến, toàn bộ tham số và các nguyên mẫu lớp được cố định, mô hình chỉ thực hiện tính toán truyền thuận cho một ca mới.
 
@@ -58,9 +58,9 @@ Hộp nội dung được xác định từ các hàng và cột có ít nhất 
 
 \subsubsection{Sinh và lựa chọn vùng cục bộ}
 
-Vùng nội dung được thu nhỏ sao cho cạnh dài không vượt quá $896$ điểm ảnh mà không phóng lớn ảnh nhỏ. Trên ảnh trung gian, các cửa sổ $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh; vị trí cuối mỗi trục được bổ sung để phủ phần biên. Các cửa sổ có tỷ lệ tiền cảnh từ $60\%$ trở lên được ưu tiên xem xét. Mặt nạ tại bước này được tính lại với mức nền là khoảng cường độ xuất hiện nhiều nhất tại biên.
+Vùng nội dung được thu nhỏ sao cho cạnh dài không vượt quá $896$ điểm ảnh mà không phóng lớn ảnh nhỏ. Trên ảnh trung gian, các cửa sổ $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh, đồng thời vị trí cuối mỗi trục được bổ sung để phủ phần biên. Các cửa sổ có tỷ lệ tiền cảnh từ $60\%$ trở lên được ưu tiên xem xét. Mặt nạ tại bước này được tính lại với mức nền là khoảng cường độ xuất hiện nhiều nhất tại biên.
 
-Mỗi cửa sổ $b$ được đánh giá bằng lượng biến thiên cục bộ, entropy mức xám và tỷ lệ tiền cảnh. Đáp ứng Laplacian làm nổi bật biến thiên cường độ và biên ảnh \cite{Marr1980EdgeDetection}; các độ đo dựa trên Laplacian cũng thường được sử dụng để đánh giá lượng chi tiết hoặc độ sắc nét cục bộ \cite{Pertuz2013FocusMeasures}. Với lân cận bốn hướng, năng lượng Laplacian của cửa sổ được tính bởi:
+Mỗi cửa sổ $b$ được đánh giá bằng lượng biến thiên cục bộ, entropy mức xám và tỷ lệ tiền cảnh. Đáp ứng Laplacian làm nổi bật biến thiên cường độ và biên ảnh \cite{Marr1980EdgeDetection}. Các độ đo dựa trên Laplacian cũng thường được sử dụng để đánh giá lượng chi tiết hoặc độ sắc nét cục bộ \cite{Pertuz2013FocusMeasures}. Với lân cận bốn hướng, năng lượng Laplacian của cửa sổ được tính bởi:
 
 \begin{equation}
 \begin{aligned}
@@ -85,18 +85,18 @@ H_i(b)
 \label{eq:ch3_gray_entropy}
 \end{equation}
 
-Hai đại lượng trên được chuẩn hóa min--max trong phạm vi các cửa sổ của cùng ảnh; nếu mọi giá trị bằng nhau thì kết quả chuẩn hóa được đặt bằng $0$. Điểm tổng hợp của mỗi cửa sổ được xác định bởi:
+Hai đại lượng trên được chuẩn hóa min--max trong phạm vi các cửa sổ của cùng ảnh. Nếu mọi giá trị bằng nhau thì kết quả chuẩn hóa được đặt bằng $0$. Điểm tổng hợp của mỗi cửa sổ được xác định bởi:
 
 \begin{equation}
 q_i(b) = 0{,}55\,\widehat{E}_i(b) + 0{,}35\,\widehat{H}_i(b) + 0{,}10\,r_i(b),
 \label{eq:ch3_candidate_score}
 \end{equation}
 
-trong đó $\widehat{E}_i$ và $\widehat{H}_i$ lần lượt là năng lượng Laplacian và entropy đã chuẩn hóa, $r_i$ là tỷ lệ tiền cảnh. Bộ trọng số phản ánh mức ưu tiên giảm dần theo tính trực tiếp của tín hiệu đối với tổn thương xương: năng lượng Laplacian nhận trọng số cao nhất vì phản ánh trực tiếp biến thiên cường độ tại đường gãy và bờ u; entropy bổ sung thông tin về độ phức tạp kết cấu nhưng cũng nhạy với nhiễu nền nên nhận trọng số trung bình; tỷ lệ tiền cảnh chỉ đóng vai trò phạt nhẹ vùng nền vì hai thành phần kia đã ngầm ưu tiên vùng có cấu trúc. Tổng bộ ba trọng số bằng $1{,}00$ để điểm nằm trong khoảng $[0,1]$.
+trong đó $\widehat{E}_i$ và $\widehat{H}_i$ lần lượt là năng lượng Laplacian và entropy đã chuẩn hóa, còn $r_i$ là tỷ lệ tiền cảnh. Bộ trọng số phản ánh mức ưu tiên giảm dần theo tính trực tiếp của tín hiệu đối với tổn thương xương. Năng lượng Laplacian nhận trọng số cao nhất vì phản ánh trực tiếp biến thiên cường độ tại đường gãy và bờ u. Entropy bổ sung thông tin về độ phức tạp kết cấu nhưng cũng nhạy với nhiễu nền nên nhận trọng số trung bình. Cuối cùng, tỷ lệ tiền cảnh chỉ đóng vai trò phạt nhẹ vùng nền vì hai thành phần kia đã ngầm ưu tiên vùng có cấu trúc. Tổng bộ ba trọng số bằng $1{,}00$ để điểm nằm trong khoảng $[0,1]$.
 
-Bốn cửa sổ được chia thành hai vai trò. Hai cửa sổ bao phủ được chọn gần các vị trí phân bố trên trục dài của vùng nội dung và ưu tiên vùng chứa nhiều tiền cảnh. Hai cửa sổ tiêu điểm ưu tiên điểm tổng hợp $q_i$ cao, đồng thời được khuyến khích cách xa các vùng đã chọn với trọng số đa dạng $0{,}35$. Các ứng viên có mức giao trên hợp lớn hơn $0{,}30$ bị loại; ngưỡng này nằm trong khoảng $[0{,}30;\,0{,}50]$ thường dùng trong loại bỏ trùng lặp để khuyến khích các vùng phân tán không gian, phù hợp với đặc thù ảnh X-quang xương có vùng quan tâm trải dài hơn là tập trung. Nếu số ứng viên hợp lệ không đủ, quy trình lần lượt mở rộng sang toàn bộ lưới, bỏ ràng buộc chồng lấp và lặp vùng theo thứ tự xác định để luôn tạo bốn đầu vào cục bộ.
+Bốn cửa sổ được chia thành hai vai trò. Hai cửa sổ bao phủ được chọn gần các vị trí phân bố trên trục dài của vùng nội dung và ưu tiên vùng chứa nhiều tiền cảnh. Hai cửa sổ tiêu điểm ưu tiên điểm tổng hợp $q_i$ cao, đồng thời được khuyến khích cách xa các vùng đã chọn với trọng số đa dạng $0{,}35$. Các ứng viên có mức giao trên hợp lớn hơn $0{,}30$ bị loại. Ngưỡng này nằm trong khoảng $[0{,}30;\,0{,}50]$ thường dùng trong loại bỏ trùng lặp để khuyến khích các vùng phân tán không gian, phù hợp với đặc thù ảnh X-quang xương có vùng quan tâm trải dài hơn là tập trung. Nếu số ứng viên hợp lệ không đủ, quy trình lần lượt mở rộng sang toàn bộ lưới, bỏ ràng buộc chồng lấp và lặp vùng theo thứ tự xác định để luôn tạo bốn đầu vào cục bộ.
 
-Toàn bộ các giá trị trọng số và ngưỡng trên được chọn theo nguyên tắc thiết kế và giữ cố định cho mọi thí nghiệm; chúng không được tối ưu trên tập xác thực và việc khảo sát có hệ thống được xác định là hướng phát triển tương lai.
+Toàn bộ các giá trị trọng số và ngưỡng trên được chọn theo nguyên tắc thiết kế và giữ cố định cho mọi thí nghiệm. Chúng không được tối ưu trên tập xác thực, còn việc khảo sát có hệ thống được xác định là hướng phát triển tương lai.
 
 Các cửa sổ được ánh xạ ngược về ảnh gốc trước khi cắt để không lấy chi tiết từ ảnh trung gian đã thu nhỏ. Mỗi vùng được giữ tỷ lệ, đệm bằng màu biên, chuyển thành ảnh vuông $224\times224$ và chuẩn hóa giống ảnh toàn cục. Kết quả tiền xử lý gồm ảnh toàn cục $x_i^{img,g}$, bốn ảnh cục bộ $\{x_{i,m}^{img,\ell}\}_{m=1}^{4}$ và tọa độ hộp tương ứng được chuẩn hóa theo kích thước ảnh gốc.
 
@@ -126,7 +126,7 @@ $\mathcal{F}_{I}$ gồm bộ mã hóa thị giác và lớp chiếu của Biomed
 \label{eq:ch3_global_visual_embedding}
 \end{equation}
 
-Ảnh toàn cục và bốn ảnh cục bộ dùng chung $\mathcal{F}_{I}$, do đó không hình thành một bộ mã hóa riêng cho nhánh cục bộ. Đối với mỗi ảnh cục bộ, lưới $14\times14$ được gộp trung bình thích nghi thành lưới $2\times2$; đơn vị đại diện của vùng được giữ lại. Vì vậy, mỗi vùng tạo năm đơn vị biểu diễn:
+Ảnh toàn cục và bốn ảnh cục bộ dùng chung $\mathcal{F}_{I}$, do đó không hình thành một bộ mã hóa riêng cho nhánh cục bộ. Đối với mỗi ảnh cục bộ, lưới $14\times14$ được gộp trung bình thích nghi thành lưới $2\times2$, trong khi đơn vị đại diện của vùng được giữ lại. Vì vậy, mỗi vùng tạo năm đơn vị biểu diễn:
 
 \begin{equation}
 \boldsymbol{L}_{i,m}
@@ -142,7 +142,7 @@ $\mathcal{F}_{I}$ gồm bộ mã hóa thị giác và lớp chiếu của Biomed
 \label{eq:ch3_local_encoding}
 \end{equation}
 
-Phép $\operatorname{Norm}$ chuẩn hóa từng vectơ theo chuẩn $\ell_2$. Ghép kết quả của bốn vùng thu được $P=4\times5=20$ đơn vị cục bộ. Hộp của đơn vị đại diện bằng hộp của toàn vùng; bốn đơn vị còn lại nhận tọa độ của bốn ô con trong lưới $2\times2$.
+Phép $\operatorname{Norm}$ chuẩn hóa từng vectơ theo chuẩn $\ell_2$. Ghép kết quả của bốn vùng thu được $P=4\times5=20$ đơn vị cục bộ. Hộp của đơn vị đại diện bằng hộp của toàn vùng, còn bốn đơn vị còn lại nhận tọa độ của bốn ô con trong lưới $2\times2$.
 
 Gọi $\boldsymbol{\ell}_{i,n}$ và $\boldsymbol{b}_{i,n}\in[0,1]^4$ lần lượt là đơn vị cục bộ thứ $n$ và hộp tọa độ tương ứng. Tọa độ được chiếu qua một mạng hai lớp, cộng có kiểm soát vào nội dung và chuẩn hóa lại, tạo ra đơn vị biểu diễn ảnh có thông tin vị trí:
 
@@ -248,7 +248,7 @@ r\ll\min(d_i,d_o).
 
 Trong Công thức \ref{eq:ch3_lora}, $\boldsymbol{W}$ được giữ cố định, $\boldsymbol{A}$ và $\boldsymbol{B}$ là hai ma trận được cập nhật, $r$ là hạng thích nghi và $\alpha$ là hệ số tỷ lệ. Nhờ đó, mô hình chỉ học một phần nhỏ tham số bổ sung nhưng vẫn có thể điều chỉnh cả biểu diễn ảnh lẫn biểu diễn văn bản cho miền dữ liệu mới. Khi triển khai, phần cập nhật có thể được giữ riêng hoặc gộp tương đương vào trọng số nền mà không làm thay đổi kết quả tính toán.
 
-LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu trong miền đích; bản thân kỹ thuật này chưa thực hiện trao đổi thông tin giữa ảnh và văn bản. Sau khi hai nhánh đã tạo ra các đặc trưng thích nghi, các biểu diễn này được chuyển đến mô-đun dung hợp để mô hình hóa quan hệ giữa dấu hiệu thị giác và ngữ cảnh lâm sàng.
+LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu trong miền đích. Bản thân kỹ thuật này chưa thực hiện trao đổi thông tin giữa ảnh và văn bản. Sau khi hai nhánh đã tạo ra các đặc trưng thích nghi, các biểu diễn này được chuyển đến mô-đun dung hợp để mô hình hóa quan hệ giữa dấu hiệu thị giác và ngữ cảnh lâm sàng.
 
 \section{Dung hợp đa phương thức bằng chú ý chéo}
 \label{sec:ch3_fusion}
@@ -435,7 +435,7 @@ p_{ik}=p\!\left(y=k\mid\boldsymbol{z}_{i}\right)
 \label{eq:ch3_prototype_probability}
 \end{equation}
 
-trong đó $\alpha_c$ điều chỉnh độ sắc của phân phối xác suất, còn $b_k$ được tối ưu trong pha 2. Khi các độ lệch bằng nhau, nhãn dự đoán tương đương với tâm có cosine lớn nhất; khi $b_k$ được học, ranh giới còn được hiệu chỉnh theo lớp. Các tâm $\boldsymbol{c}_k$ là thống kê của tập huấn luyện, không phải tham số nhận đạo hàm.
+trong đó $\alpha_c$ điều chỉnh độ sắc của phân phối xác suất, còn $b_k$ được tối ưu trong pha 2. Khi các độ lệch bằng nhau, nhãn dự đoán tương đương với tâm có cosine lớn nhất. Khi $b_k$ được học, ranh giới còn được hiệu chỉnh theo lớp. Các tâm $\boldsymbol{c}_k$ là thống kê của tập huấn luyện, không phải tham số nhận đạo hàm.
 
 Các phần trên xác định luồng truyền thuận của XBone-Net từ dữ liệu đầu vào đến xác suất phân lớp. Tuy nhiên, các thành phần không được tối ưu đồng thời ngay từ đầu, bởi việc thích nghi không gian ảnh-văn bản và việc học nhiệm vụ phân lớp có mục tiêu khác nhau. Vì vậy, quá trình huấn luyện được tách thành hai giai đoạn ngoại tuyến.
 
@@ -472,7 +472,7 @@ Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa với phân ph
 \label{eq:ch3_phase1_visual_pooling}
 \end{equation}
 
-Trong đó, $\mathcal{P}_{i}$ là tập chỉ số đơn vị biểu diễn cục bộ hợp lệ, còn $\alpha_{i,n}$ biểu thị mức đóng góp tương đối của đơn vị biểu diễn cục bộ thứ $n$ vào biểu diễn của ảnh $i$. Trọng số này không phải là một tham số được học trực tiếp mà được tính riêng cho từng ảnh bằng Softmax trên các điểm số sinh từ đơn vị biểu diễn cục bộ $\widetilde{\boldsymbol{\ell}}_{i,n}$ và đặc trưng toàn cục $\boldsymbol{g}_{i}$ thông qua một hàm chấm điểm có tham số học được. Do đó, $\alpha_{i,n}\geq0$, $\sum_{n\in\mathcal{P}_{i}}\alpha_{i,n}=1$; giá trị càng lớn thì đơn vị biểu diễn tương ứng đóng góp càng nhiều. Vectơ $\boldsymbol{v}_{i}^{\mathrm{local}}$ tóm tắt thông tin cục bộ, còn $\overline{\boldsymbol{v}}_{i}$ giữ đặc trưng toàn cục làm thành phần chính và bổ sung $0{,}25$ lần bản tóm tắt này.
+Trong đó, $\mathcal{P}_{i}$ là tập chỉ số đơn vị biểu diễn cục bộ hợp lệ, còn $\alpha_{i,n}$ biểu thị mức đóng góp tương đối của đơn vị biểu diễn cục bộ thứ $n$ vào biểu diễn của ảnh $i$. Trọng số này không phải là một tham số được học trực tiếp mà được tính riêng cho từng ảnh bằng Softmax trên các điểm số sinh từ đơn vị biểu diễn cục bộ $\widetilde{\boldsymbol{\ell}}_{i,n}$ và đặc trưng toàn cục $\boldsymbol{g}_{i}$ thông qua một hàm chấm điểm có tham số học được. Do đó, $\alpha_{i,n}\geq0$ và $\sum_{n\in\mathcal{P}_{i}}\alpha_{i,n}=1$. Giá trị càng lớn thì đơn vị biểu diễn tương ứng đóng góp càng nhiều. Vectơ $\boldsymbol{v}_{i}^{\mathrm{local}}$ tóm tắt thông tin cục bộ, còn $\overline{\boldsymbol{v}}_{i}$ giữ đặc trưng toàn cục làm thành phần chính và bổ sung $0{,}25$ lần bản tóm tắt này.
 
 Độ tương đồng giữa ảnh $i$ và văn bản $j$ được tính trong không gian đã chuẩn hóa:
 
@@ -573,7 +573,7 @@ w_k\widetilde{y}_{ik}\log p_{ik}.
 
 Trong Công thức~\ref{eq:ch3_phase2_loss}, các lớp hiếm nhận trọng số lớn hơn, còn làm trơn nhãn hạn chế việc phân phối dự đoán tập trung tuyệt đối vào một lớp.
 
-Các tâm lớp được khởi tạo từ toàn bộ tập huấn luyện trước lần lặp đầu tiên. Trong mỗi lần lặp, chúng được giữ cố định như bộ nhớ đệm và không nhận gradient. Ngay sau lần lặp, mô hình chuyển sang chế độ đánh giá, tính lại đặc trưng của tập huấn luyện bằng trạng thái tham số mới nhất, cập nhật các tâm theo Công thức \ref{eq:ch3_prototype}, rồi mới đánh giá trên tập kiểm định. Trạng thái tốt nhất được lựa chọn theo độ đo đã định trước; cuối cùng, các tâm được tính lại từ tập huấn luyện bằng trạng thái này. Tập kiểm thử không tham gia cập nhật tham số, ước lượng tâm hoặc lựa chọn mô hình.
+Các tâm lớp được khởi tạo từ toàn bộ tập huấn luyện trước lần lặp đầu tiên. Trong mỗi lần lặp, chúng được giữ cố định như bộ nhớ đệm và không nhận gradient. Ngay sau lần lặp, mô hình chuyển sang chế độ đánh giá, tính lại đặc trưng của tập huấn luyện bằng trạng thái tham số mới nhất, cập nhật các tâm theo Công thức \ref{eq:ch3_prototype}, rồi mới đánh giá trên tập kiểm định. Trạng thái tốt nhất được lựa chọn theo độ đo đã định trước. Cuối cùng, các tâm được tính lại từ tập huấn luyện bằng trạng thái này. Tập kiểm thử không tham gia cập nhật tham số, ước lượng tâm hoặc lựa chọn mô hình.
 
 Kết quả của quá trình ngoại tuyến là tập tham số LoRA, mô-đun dung hợp, trạng thái bộ mã hóa và các tâm lớp đã được xác định từ dữ liệu huấn luyện. Các thành phần này được cố định và chuyển sang quy trình trực tuyến để xử lý từng ca mới mà không thực hiện thêm bất kỳ bước cập nhật nào.
 
@@ -632,21 +632,3 @@ p\left(y=k\mid\boldsymbol{z}\right),
 Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net. Nó cung cấp thêm một tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ về mức độ phù hợp của mẫu với phân bố đã quan sát. Vì vậy, đầu ra phân lớp $\widehat{y}$ và cảnh báo ngoài phân phối $\omega_{\mathrm{OOD}}$ có hai vai trò khác nhau: đầu ra thứ nhất chọn lớp gần nhất trong tập lớp đã biết, còn đầu ra thứ hai đánh giá liệu quyết định đó có được thực hiện trên một mẫu đủ quen thuộc hay không.
 
 Bên cạnh hai thành phần dự đoán trên, để đáp ứng yêu cầu của bài toán, quá trình suy luận trực tuyến còn cung cấp đầu ra thứ ba là thông tin hỗ trợ giải thích. Hệ thống áp dụng các kỹ thuật tính toán gradient để trích xuất bản đồ nhiệt đóng góp cho ảnh toàn cục, các đơn vị ảnh cục bộ và từng từ ngữ trong bệnh sử. Đầu ra này giúp làm rõ những vùng giải phẫu hay triệu chứng lâm sàng nào đã chi phối quyết định phân lớp $\widehat{y}$ của mô hình.
-
-\section{Kết luận chương}
-
-Chương này trình bày kiến trúc, quá trình huấn luyện và cơ chế suy luận của XBone-Net cho bài toán phân lớp ảnh X-quang xương kết hợp thông tin lâm sàng. Các nội dung chính gồm:
-
-\begin{enumerate}
-    \item \textbf{Kết hợp ngữ cảnh lâm sàng:} Thông tin bệnh sử và triệu chứng được sử dụng để bổ sung ngữ cảnh cho các dấu hiệu trên ảnh X-quang.
-    
-    \item \textbf{Biểu diễn ảnh toàn cục-cục bộ:} Một ảnh toàn cục và bốn vùng cục bộ có thông tin tọa độ được sử dụng để giữ cả cấu trúc giải phẫu và chi tiết khu trú.
-    
-    \item \textbf{Thích nghi BiomedCLIP bằng LoRA:} Hai bộ mã hóa tiền huấn luyện được thích nghi với miền X-quang xương bằng LoRA trong khi các tham số nền được giữ cố định.
-
-    \item \textbf{Dung hợp bằng chú ý chéo hai chiều:} Đặc trưng ảnh và văn bản truy vấn lẫn nhau trước khi được tổng hợp thành một biểu diễn đa phương thức chung.
-
-    \item \textbf{Huấn luyện hai giai đoạn và phân lớp nguyên mẫu:} Giai đoạn đầu khớp ngữ nghĩa ảnh-văn bản bằng đích mềm; giai đoạn sau học dung hợp và phân lớp theo nguyên mẫu với mất mát có trọng số lớp.
-
-    \item \textbf{Suy luận và phát hiện ngoài phân phối:} Mô hình cố định tham số khi suy luận, dự đoán theo các nguyên mẫu lớp và dùng khoảng cách Mahalanobis đến các nguyên mẫu để cảnh báo mẫu ngoài phân phối.
-\end{enumerate}

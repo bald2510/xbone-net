@@ -61,7 +61,7 @@ then redraw the primary forest plot from the generated CSV::
         --metric f1_macro \
         --output results/summary/ablation/statistics/forest_f1_macro.png
 
-Generate separate Macro-AUROC and Macro-AP statistical tables::
+Generate separate Macro-AUROC and Macro-AUPRC statistical tables::
 
     python tools/visualize/results.py ablation-statistics \
         --metrics auroc_macro auprc_macro --test-method bootstrap \
@@ -2115,7 +2115,7 @@ def plot_full_shot_comparison(
         ("balanced_accuracy_mean", "balanced_accuracy_std", "Balanced Acc."),
         ("f1_macro_mean", "f1_macro_std", "Macro-F1"),
         ("auroc_macro_mean", "auroc_macro_std", "Macro-AUROC"),
-        ("auprc_macro_mean", "auprc_macro_std", "Macro-AP"),
+        ("auprc_macro_mean", "auprc_macro_std", "Macro-AUPRC"),
     )
 
     plt = _load_pyplot()
@@ -2406,7 +2406,7 @@ def plot_full_shot_paired_forest(
         "balanced_accuracy": "Balanced Accuracy",
         "f1_macro": "Macro-F1",
         "auroc_macro": "Macro-AUROC",
-        "auprc_macro": "Macro-AP",
+        "auprc_macro": "Macro-AUPRC",
     }
     metric_label = metric_labels[metric]
 
@@ -3184,7 +3184,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Use the crossed patient/seed permutation test, or a centered "
             "paired bootstrap test. The bootstrap test is much faster for "
-            "Macro-AUROC and Macro-AP."
+            "Macro-AUROC and Macro-AUPRC."
         ),
     )
     ablation_statistics.add_argument("--alpha", type=float, default=0.05)
@@ -3746,7 +3746,7 @@ ABLATION_METRICS = {
     "balanced_accuracy": r"Balanced Acc. $\uparrow$",
     "f1_macro": r"Macro-F1 $\uparrow$",
     "auroc_macro": r"Macro-AUROC $\uparrow$",
-    "auprc_macro": r"Macro-AP $\uparrow$",
+    "auprc_macro": r"Macro-AUPRC $\uparrow$",
 }
 
 LEAVE_ONE_OUT_CONFIGS = (
@@ -3804,7 +3804,7 @@ LEAVE_ONE_OUT_METRICS = (
     ),
     ("Macro-F1", "f1_macro_mean", "f1_macro_std", False),
     ("Macro-AUROC", "auroc_macro_mean", "auroc_macro_std", False),
-    ("Macro-AP", "auprc_macro_mean", "auprc_macro_std", False),
+    ("Macro-AUPRC", "auprc_macro_mean", "auprc_macro_std", False),
     ("ECE", "ece_15_mean", "ece_15_std", True),
 )
 
@@ -3982,8 +3982,8 @@ PAIRED_STATISTIC_METRICS = {
         "higher_is_better": True,
     },
     "auprc_macro": {
-        "label": "Macro-AP",
-        "latex": r"Macro-AP $\uparrow$",
+        "label": "Macro-AUPRC",
+        "latex": r"Macro-AUPRC $\uparrow$",
         "higher_is_better": True,
     },
     "ece_15": {
@@ -6866,7 +6866,7 @@ def main() -> None:
             f"±{summary['macro_auroc']['std']:.6f}"
         )
         print(
-            "Macro-AP="
+            "Macro-AUPRC="
             f"{summary['macro_auprc']['mean']:.6f}"
             f"±{summary['macro_auprc']['std']:.6f}"
         )
