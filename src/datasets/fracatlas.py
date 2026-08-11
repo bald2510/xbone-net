@@ -1,12 +1,8 @@
-"""
-FracAtlas dataset loader for XBone-Net architecture.
-============================================================
-Provides a PyTorch Dataset for the FracAtlas musculoskeletal X-ray dataset.
-Used in the XBone-Net evaluation framework:
-  - Out-of-Distribution (OOD) evaluation: tests generalization of BTXRD-trained VLM models
-  - OOD detection via Mahalanobis distance feature statistics
-  - Single-report contrastive text pairing
-  - Multi-class (binary integer label) and multi-label target encoding
+"""Cung cấp thành phần dữ liệu fracatlas cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import os
@@ -28,31 +24,15 @@ _FRACATLAS_CLASS_DIRECTORIES = {
 
 
 # ============================================================
-# FracAtlas Dataset Loader
+# Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
 # ============================================================
 
 class FracAtlasDataset(Dataset):
-    """Dataset loader for the FracAtlas fracture dataset.
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``FracAtlasDataset``.
 
-    Returns (image, text_report, label) per sample. Operates in single-report mode
-    for contrastive evaluation and OOD detection in XBone-Net.
-
-    Attributes:
-        img_dir: Root directory containing X-ray image files.
-        report_dir: Directory containing text report files (.txt).
-        classes: List of target class names (defaults to ['fractured']).
-        task_type: Classification mode ('multiclass' or 'multilabel').
-        df: Filtered pandas.DataFrame for the active data split.
-
-    Example:
-        ds = FracAtlasDataset(
-            img_dir="data/fracatlas/images",
-            report_dir="data/fracatlas/reports",
-            csv_split_path="data/fracatlas/splits.csv",
-            csv_labels_path="data/fracatlas/labels.csv",
-            split="test",
-        )
-        image, input_ids, labels = ds[0]
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -71,24 +51,43 @@ class FracAtlasDataset(Dataset):
         allow_truncated_images: bool = False,
         **kwargs,
     ):
-        """Initialize the FracAtlas dataset.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            img_dir: Path to directory containing X-ray image files.
-            report_dir: Path to directory containing report .txt files.
-            csv_split_path: Path to CSV with image_id and split columns.
-            csv_labels_path: Path to CSV with image_id and fractured label columns.
-            classes: List of target class names. Defaults to ['fractured'].
-            task_type: 'multiclass' (scalar integer label) or 'multilabel' (float vector).
-            split: Data split ('train', 'val', or 'test').
-            transform: torchvision.transforms pipeline for image preprocessing.
-            tokenizer: Text tokenizer callable returning token-ID tensors.
-            max_text_len: Maximum token sequence length.
-            strict_files: Require complete report coverage in addition to the
-                always-strict image coverage check.
-            allow_truncated_images: Permit Pillow to recover JPEG files with a
-                truncated tail, while recording every recovered file.
-            **kwargs: Extra unused arguments for backward compatibility.
+        Parameters
+        ----------
+        img_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        report_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_split_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_labels_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        classes : list, optional
+            Giá trị ``classes`` được sử dụng trong phép xử lý.
+        task_type : str, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+        split : str, optional
+            Giá trị ``split`` được sử dụng trong phép xử lý.
+        transform : object, optional
+            Giá trị ``transform`` được sử dụng trong phép xử lý.
+        tokenizer : object, optional
+            Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+        max_text_len : object, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        strict_files : bool, optional
+            Giá trị ``strict_files`` được sử dụng trong phép xử lý.
+        allow_truncated_images : bool, optional
+            Giá trị ``allow_truncated_images`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        FileNotFoundError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        OSError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         self.img_dir = img_dir
         self.report_dir = report_dir
@@ -100,19 +99,19 @@ class FracAtlasDataset(Dataset):
         self.strict_files = bool(strict_files)
         self.allow_truncated_images = bool(allow_truncated_images)
 
-        # --- Load and merge metadata ---
+        # --- Tải và kết hợp siêu dữ liệu ---
         df_split = pd.read_csv(csv_split_path)
         df_labels = pd.read_csv(csv_labels_path)
         df_merged = pd.merge(df_split, df_labels, on=["image_id"], how="inner")
         
-        # --- Filter split ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         current_split = 'validate' if split == 'val' else split
         self.df = df_merged[df_merged['split'] == current_split].reset_index(drop=True)
 
-        # FracAtlas stores images below class directories in the released
-        # layout (``Fractured`` and ``Non_fractured``).  Resolve every path up
-        # front so domain-OOD evaluation cannot silently replace missing files
-        # with a constant black image.
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+        # Bước hỗ trợ để khởi tạo trạng thái.
+        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+        # bằng một ảnh đen có giá trị không đổi.
         self._image_paths, image_layout, missing_images = self._resolve_image_paths()
         missing_reports = [
             str(image_id)
@@ -165,7 +164,7 @@ class FracAtlasDataset(Dataset):
                 f"{len(decode_failures)}/{len(self.df)} files ({preview})."
             )
 
-        # --- Image preprocessing configuration ---
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
         self.high_res_cfg = kwargs.get('high_res', {})
         self.use_high_res = self.high_res_cfg.get('enabled', False)
         self.cache_high_res_selection = bool(
@@ -181,7 +180,18 @@ class FracAtlasDataset(Dataset):
         )
 
     def _resolve_image_paths(self):
-        """Resolve flat or released class-directory image paths fail-closed."""
+        """Xác định ảnh các đường dẫn cho bước xử lý hiện tại.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         resolved: list[Path] = []
         missing: list[str] = []
         layout_counts = {"flat": 0, "class_directory": 0}
@@ -216,7 +226,18 @@ class FracAtlasDataset(Dataset):
         return resolved, layout, missing
 
     def _decode_rgb_image(self, path: Path) -> tuple[Image.Image, bool]:
-        """Decode one image and explicitly recover only truncated JPEG tails."""
+        """Giải mã rgb ảnh cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        path : Path
+            Đường dẫn tài nguyên được sử dụng.
+
+        Returns
+        -------
+        tuple[Image.Image, bool]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         try:
             with Image.open(path) as source:
                 return source.convert("RGB"), False
@@ -238,7 +259,13 @@ class FracAtlasDataset(Dataset):
             ImageFile.LOAD_TRUNCATED_IMAGES = previous
 
     def _validate_image_decoding(self):
-        """Load every split image once and record controlled recoveries."""
+        """Kiểm tra tính hợp lệ của ảnh decoding cho bước xử lý hiện tại.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         recovered: list[str] = []
         failures: list[dict[str, str]] = []
         for image_id, path in zip(
@@ -255,22 +282,44 @@ class FracAtlasDataset(Dataset):
         return recovered, failures
 
     def __len__(self):
-        """Return the total number of samples in the current split."""
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.df)
         
     def _clean_report(self, text: str) -> str:
-        """Clean and normalize raw report text by stripping whitespace and lowercasing."""
+        """Thực hiện bước clean báo cáo trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+
+        Returns
+        -------
+        str
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return text.strip().lower()
 
     def _load_and_tokenize(self, path: str, default_text: str):
-        """Load a text report from disk, clean it, and tokenize if tokenizer is set.
+        """Tải and tokenize cho bước xử lý hiện tại.
 
-        Args:
-            path: Absolute path to the .txt report file.
-            default_text: Fallback string used when report is missing or empty.
+        Parameters
+        ----------
+        path : str
+            Đường dẫn tài nguyên được sử dụng.
+        default_text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
 
-        Returns:
-            torch.Tensor of token IDs if tokenizer is present, else text string.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         raw_text = ""
         if path and os.path.exists(path):
@@ -283,16 +332,22 @@ class FracAtlasDataset(Dataset):
         return cleaned_text
 
     def __getitem__(self, idx: int):
-        """Retrieve a sample by index.
+        """Thực hiện bước getitem trong quy trình hiện tại.
 
-        Args:
-            idx: Integer index into dataset.
+        Parameters
+        ----------
+        idx : int
+            Chỉ mục của phần tử cần xử lý.
 
-        Returns:
-            tuple: (image, input_ids, labels) where:
-                - image: Transformed image tensor
-                - input_ids: Tokenized report text tensor or raw string
-                - labels: torch.long scalar (multiclass) or float vector (multilabel)
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         row = self.df.iloc[idx]
         image_id = str(row['image_id'])
@@ -301,7 +356,7 @@ class FracAtlasDataset(Dataset):
         file_name_without_ext = os.path.splitext(image_id)[0]
         report_path = os.path.join(self.report_dir, f"{file_name_without_ext}.txt")
         
-        # --- Load image ---
+        # --- Tải ảnh đầu vào ---
         try:
             image, _ = self._decode_rgb_image(img_path)
         except OSError as error:
@@ -309,7 +364,7 @@ class FracAtlasDataset(Dataset):
                 f"Unable to decode FracAtlas image {img_path}."
             ) from error
             
-        # --- Fixed-budget high-resolution mode ---
+        # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if self.use_high_res:
             cached_selection = self._high_res_selection_cache.get(image_id)
             high_res_fields, selection = prepare_high_resolution_inputs(
@@ -329,13 +384,13 @@ class FracAtlasDataset(Dataset):
                 self.preprocess_cfg,
             )
             
-        # --- Encode label ---
+        # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if self.task_type == "multiclass":
             labels = torch.tensor(int(row['fractured']), dtype=torch.long)
         else:
             labels = torch.tensor([float(row.get('fractured', 0.0))], dtype=torch.float32)
 
-        # --- Load text report ---
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         input_ids = self._load_and_tokenize(report_path, "no fracture identified.")
         
         if self.use_high_res:

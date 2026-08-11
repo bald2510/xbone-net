@@ -1,9 +1,8 @@
-"""Run locked multi-seed CTCH OOD and explainability analyses.
+"""Thực hiện benchmark ood analysis cho quy trình nghiên cứu XBone-Net.
 
-This orchestrator complements ``tools/run_all.py`` but is intentionally post-hoc:
-it never invokes ``train.py`` and accepts no experiment override.  Every child
-process is pinned to ``ctch/proposed/ours_xbone_net`` and verifies checkpoint
-and feature provenance before writing results.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from typing import Any
 import numpy as np
 from omegaconf import OmegaConf
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.utils.analysis import (
@@ -58,11 +57,11 @@ OOD_ARCHIVES = {
 }
 CORE_OOD_SCENARIOS = ("semantic_ood", "domain_ood_btxrd")
 
-# The locked CTCH OOD protocol evaluates the representation learned by the
-# bidirectional fusion module.  This vector contains global image evidence,
-# high-resolution local image evidence, and clinical-text evidence.  Keep the
-# mapping in the runner (rather than trusting an arbitrary command-line/config
-# value) so a resumed analysis cannot silently fall back to a visual-only key.
+# Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
+# Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
 OOD_FEATURE_KEYS = {
     "semantic_ood": "fused_embeddings",
     "domain_ood_btxrd": "fused_embeddings",
@@ -84,7 +83,20 @@ OOD_METHOD_FEATURE_KEYS = {
 
 
 def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
-    """Reject config fields the implementation cannot faithfully execute."""
+    """Kiểm tra tính hợp lệ của locked configs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    ood_cfg : object
+        Cấu hình điều khiển bước xử lý.
+    explain_cfg : object
+        Cấu hình điều khiển bước xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     expected_ood_splits = {
         "fit_split": "ctch_train",
         "calibration_split": "ctch_val",
@@ -161,6 +173,20 @@ def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
 
 
 def _run(command: list[str], tag: str) -> None:
+    """Thực hiện kết quả cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    command : list[str]
+        Giá trị ``command`` được sử dụng trong phép xử lý.
+    tag : str
+        Giá trị ``tag`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     print(f"\n[{tag}] {' '.join(command)}")
     environment = dict(os.environ)
     environment.setdefault("PYTHONUTF8", "1")
@@ -170,6 +196,29 @@ def _run(command: list[str], tag: str) -> None:
 
 
 def _verified_json(path: Path, seed: int, expected_type: str) -> dict[str, Any]:
+    """Thực hiện bước verified json trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    expected_type : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not path.is_file():
         raise FileNotFoundError(f"Expected analysis output was not created: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -183,6 +232,20 @@ def _verified_json(path: Path, seed: int, expected_type: str) -> dict[str, Any]:
 
 
 def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
+    """Thực hiện bước flatten numeric trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    prefix : str, optional
+        Giá trị ``prefix`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output: dict[str, float] = {}
     if isinstance(value, dict):
         for key, child in value.items():
@@ -198,6 +261,20 @@ def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
 
 
 def _aggregate_payloads(payloads: dict[int, dict[str, Any]], field: str) -> dict[str, Any]:
+    """Tổng hợp payloads cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    payloads : dict[int, dict[str, Any]]
+        Giá trị ``payloads`` được sử dụng trong phép xử lý.
+    field : str
+        Giá trị ``field`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     flattened = {
         seed: _flatten_numeric(payload.get(field, {}))
         for seed, payload in payloads.items()
@@ -220,16 +297,65 @@ def _aggregate_payloads(payloads: dict[int, dict[str, Any]], field: str) -> dict
 
 
 def _feature_path(seed: int, scenario: str) -> Path:
+    """Thực hiện bước đặc trưng đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return analysis_root(seed) / "features" / f"{scenario}.npz"
 
 
 @lru_cache(maxsize=None)
 def _cached_file_sha(path_text: str, size: int, modified_ns: int) -> str:
+    """Thực hiện bước cached file sha trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path_text : str
+        Đường dẫn tài nguyên được sử dụng.
+    size : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    modified_ns : int
+        Giá trị ``modified_ns`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     del size, modified_ns
     return sha256_file(Path(path_text))
 
 
 def _feature_sha(seed: int, scenario: str) -> str:
+    """Thực hiện bước đặc trưng sha trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     path = _feature_path(seed, scenario).resolve()
     if not path.is_file():
         raise FileNotFoundError(f"Missing feature archive: {path}")
@@ -241,6 +367,20 @@ def _expected_ood_feature_hashes(
     seed: int,
     scenario: str,
 ) -> dict[str, str]:
+    """Thực hiện bước expected ood đặc trưng hashes trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return {
         "fit": _feature_sha(seed, "ctch_train"),
         "calibration": _feature_sha(seed, "ctch_val"),
@@ -254,6 +394,22 @@ def _ood_result_status(
     seed: int,
     scenario: str,
 ) -> tuple[bool, str]:
+    """Thực hiện bước ood kết quả status trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    payload : dict[str, Any]
+        Giá trị ``payload`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[bool, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if int(payload.get("ood_protocol_version", -1)) != OOD_PROTOCOL_VERSION:
         return False, "OOD protocol/Mahalanobis definition changed"
     if payload.get("mahalanobis_score_definition") != MAHALANOBIS_SCORE_DEFINITION:
@@ -286,10 +442,31 @@ def _ood_result_status(
 
 
 def _ood_output(seed: int, scenario: str) -> Path:
+    """Thực hiện bước ood đầu ra trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return analysis_root(seed) / "ood" / scenario
 
 
 def _print_ood_table(results: dict[str, dict[int, dict[str, Any]]]) -> None:
+    """In ood table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results : dict[str, dict[int, dict[str, Any]]]
+        Giá trị ``results`` được sử dụng trong phép xử lý.
+    """
     print("\nOOD RESULTS (mean +/- std across available seeds)")
     print(
         f"{'Scenario':<34} {'Method':<24} {'Role':<10} "
@@ -315,6 +492,25 @@ def _print_ood_table(results: dict[str, dict[int, dict[str, Any]]]) -> None:
 
 
 def aggregate_existing(seeds: list[int], scenarios: list[str]) -> dict[str, Any]:
+    """Tổng hợp existing cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    scenarios : list[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     ood_results: dict[str, dict[int, dict[str, Any]]] = OrderedDict()
     explain_results: dict[int, dict[str, Any]] = {}
     for scenario in scenarios:
@@ -383,6 +579,19 @@ def aggregate_existing(seeds: list[int], scenarios: list[str]) -> dict[str, Any]
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    SystemExit
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     ood_cfg = OmegaConf.load(OOD_CONFIG)
     explain_cfg = OmegaConf.load(EXPLAIN_CONFIG)
     if (

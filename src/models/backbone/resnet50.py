@@ -1,11 +1,8 @@
-"""
-ResNet-50 Backbone Foundation Module for XBone-Net.
-===============================================================================
-Provides a ResNet-50 image-only baseline architecture for bone X-ray classification.
-Extracted visual features are projected into a 512-dimensional embedding space.
+"""Cung cấp bộ mã hóa nền tảng resnet50 cho XBone-Net.
 
-Exposes a unified interface matching BiomedCLIP, returning (image_features, None)
-to indicate image-only modality, alongside dummy text/tokenizer modules.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch
@@ -15,26 +12,15 @@ from torchvision import transforms
 
 
 # ============================================================
-# ResNet-50 Image Backbone
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 # ============================================================
 
 class ResNet50Backbone(nn.Module):
-    """ResNet-50 image-only feature extractor with linear projection layer.
+    """Đóng gói hành vi của thành phần ``ResNet50Backbone``.
 
-    Extracts visual features from ResNet-50 pool layers and projects them to a
-    normalized embedding space of dimension embed_dim (default 512).
-
-    Attributes:
-        EMBED_DIM (int): Default feature embedding dimension (512).
-        pretrained_type (str): Pre-training weight initialization type ('imagenet', 'medical').
-        resnet (nn.Module): Truncated ResNet-50 feature extractor.
-        preprocess (callable): Input image preprocessing transform pipeline.
-        projection (nn.Module): Sequential linear and LayerNorm projection layers.
-        tokenizer (DummyTokenizer): Pass-through tokenizer for architecture compatibility.
-
-    Example:
-        >>> backbone = ResNet50Backbone(pretrained="imagenet", embed_dim=512)
-        >>> img_feats, _ = backbone(images)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     EMBED_DIM = 512
@@ -45,17 +31,21 @@ class ResNet50Backbone(nn.Module):
         embed_dim: int = 512,
         freeze_base: bool = False,
     ):
-        """Initialize ResNet-50 feature extractor.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            pretrained (str): Weight initialization ('imagenet' or 'medical'). Defaults to 'imagenet'.
-            embed_dim (int): Output feature projection dimension. Defaults to 512.
-            freeze_base (bool): If True, freezes ResNet backbone parameters. Defaults to False.
+        Parameters
+        ----------
+        pretrained : str, optional
+            Giá trị ``pretrained`` được sử dụng trong phép xử lý.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
         """
         super().__init__()
         self.pretrained_type = pretrained
 
-        # --- Load ResNet-50 weights and transforms ---
+        # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if pretrained == "imagenet" or pretrained == "medical":
             weights = models.ResNet50_Weights.IMAGENET1K_V2
             self.resnet = models.resnet50(weights=weights)
@@ -72,7 +62,7 @@ class ResNet50Backbone(nn.Module):
                                      std=[0.229, 0.224, 0.225]),
             ])
 
-        # --- Replace classification head with projection layer ---
+        # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
         resnet_feature_dim = self.resnet.fc.in_features
         self.resnet.fc = nn.Identity()
 
@@ -81,7 +71,7 @@ class ResNet50Backbone(nn.Module):
             nn.LayerNorm(embed_dim),
         )
 
-        # --- Freeze backbone weights if requested ---
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if freeze_base:
             for param in self.resnet.parameters():
                 param.requires_grad = False
@@ -89,14 +79,21 @@ class ResNet50Backbone(nn.Module):
         self.tokenizer = DummyTokenizer()
 
     def forward(self, images, input_ids=None, **kwargs):
-        """Extract and L2-normalize image embeddings.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor, optional): Tokenized text input (ignored). Defaults to None.
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            tuple: (image_features, None) where image_features is L2-normalized [B, D].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         feats = self.resnet(images)
         projected = self.projection(feats)
@@ -106,20 +103,31 @@ class ResNet50Backbone(nn.Module):
 
 
 # ============================================================
-# Dummy Tokenizer & Text Support Modules
+# Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
 # ============================================================
 
 class DummyTokenizer:
-    """Dummy tokenizer returning zero tensors for image-only compatibility."""
+    """Đóng gói hành vi của thành phần ``DummyTokenizer``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __call__(self, texts, **kwargs):
-        """Tokenize string input into dummy zero tensor.
+        """Thực hiện bước call trong quy trình hiện tại.
 
-        Args:
-            texts (str or list of str): Input text string or list of text strings.
+        Parameters
+        ----------
+        texts : object
+            Giá trị ``texts`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            torch.Tensor: Long tensor of shape [B, 1] containing zeros.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if isinstance(texts, str):
             texts = [texts]
@@ -127,36 +135,44 @@ class DummyTokenizer:
 
 
 class DummyTextModule(nn.Module):
-    """Dummy text module with .transformer attribute for builder compatibility."""
+    """Đóng gói hành vi của thành phần ``DummyTextModule``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self):
-        """Initialize dummy text module."""
+        """Thực hiện bước init trong quy trình hiện tại."""
         super().__init__()
         self.transformer = nn.Identity()
 
     def forward(self, x):
-        """Pass-through forward method.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            x (torch.Tensor): Input tensor.
+        Parameters
+        ----------
+        x : object
+            Giá trị ``x`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Unmodified input tensor.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return x
 
 
 # ============================================================
-# ResNet-50 Foundation Wrapper
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 class ResNet50Foundation(nn.Module):
-    """Foundation model wrapper matching BiomedCLIPFoundation interface.
+    """Bao bọc mô hình nền tảng bằng lớp ``ResNet50Foundation``.
 
-    Attributes:
-        model (ResNet50ModelWrapper): Sub-module wrapper exposing .visual and .text attributes.
-        preprocess (callable): Preprocessing transforms for input images.
-        tokenizer (DummyTokenizer): Dummy tokenizer returning pass-through tokens.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -165,12 +181,16 @@ class ResNet50Foundation(nn.Module):
         embed_dim: int = 512,
         freeze_base: bool = False,
     ):
-        """Initialize ResNet-50 foundation wrapper.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            pretrained (str): Weight initialization type. Defaults to 'imagenet'.
-            embed_dim (int): Projection embedding dimension. Defaults to 512.
-            freeze_base (bool): If True, freeze backbone weights. Defaults to False.
+        Parameters
+        ----------
+        pretrained : str, optional
+            Giá trị ``pretrained`` được sử dụng trong phép xử lý.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
         """
         super().__init__()
         self._backbone = ResNet50Backbone(
@@ -184,30 +204,44 @@ class ResNet50Foundation(nn.Module):
         self.tokenizer = self._backbone.tokenizer
 
     def forward(self, images, input_ids=None, **kwargs):
-        """Forward pass forwarding to underlying ResNet50Backbone.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            images (torch.Tensor): Input image tensor batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor, optional): Input text IDs batch (ignored).
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            tuple: (image_features, None)
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self._backbone(images, input_ids)
 
 
 # ============================================================
-# ResNet-50 Sub-module API Compatibility Wrapper
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 class ResNet50ModelWrapper:
-    """Wrapper providing .visual and .text attributes for builder compatibility."""
+    """Đóng gói hành vi của thành phần ``ResNet50ModelWrapper``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, backbone: ResNet50Backbone):
-        """Initialize model wrapper with underlying backbone.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            backbone (ResNet50Backbone): Instantiated ResNet-50 feature extractor.
+        Parameters
+        ----------
+        backbone : ResNet50Backbone
+            Mô hình hoặc thành phần mô hình cần xử lý.
         """
         self.visual = nn.Sequential(
             backbone.resnet,
@@ -216,25 +250,33 @@ class ResNet50ModelWrapper:
         self.text = DummyTextModule()
 
     def encode_image(self, images):
-        """Encode images through visual pipeline and apply L2 normalization.
+        """Mã hóa ảnh cho bước xử lý hiện tại.
 
-        Args:
-            images (torch.Tensor): Preprocessed input image batch, shape [B, 3, 224, 224].
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: L2-normalized visual feature embeddings, shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         feats = self.visual(images)
         return feats / feats.norm(dim=-1, keepdim=True)
 
     def encode_text(self, input_ids):
-        """Dummy text encoding returning zero feature vectors.
+        """Mã hóa văn bản cho bước xử lý hiện tại.
 
-        Args:
-            input_ids (torch.Tensor): Token ID tensor (used only for batch dimension and device).
+        Parameters
+        ----------
+        input_ids : object
+            Dữ liệu nguồn của phép xử lý.
 
-        Returns:
-            torch.Tensor: Zero tensor of shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         batch_size = input_ids.shape[0] if isinstance(input_ids, torch.Tensor) else 1
         return torch.zeros(batch_size, 512, device=input_ids.device if isinstance(input_ids, torch.Tensor) else "cpu")

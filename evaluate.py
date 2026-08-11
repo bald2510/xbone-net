@@ -1,17 +1,8 @@
-"""
-XBone-Net Model Evaluation Pipeline.
-===============================================================================
-Executes model evaluation, metric computation, bootstrap 95% CIs, and embedding exports:
+"""Đánh giá mô hình phân lớp và xuất các độ đo thực nghiệm.
 
-  - Model Reconstruction: Reconstructs architecture from Hydra config and loads
-    fine-tuned Phase 2/Phase 1 weights or pre-trained foundation weights.
-  - Test Set Inference: Evaluates test split in zero-shot mode (CLIP text prompts)
-    or classifier mode (cross-attention fusion + empirical-centroid/linear head).
-  - Metric Computation: Calculates AUROC, F1-Macro, Accuracy, Sensitivity, Specificity,
-    Precision, and optional 95% bootstrap confidence intervals.
-  - Embedding Export: Option to export intermediate image/text embeddings to .npz.
-
-Outputs evaluation metrics to JSON and optional .npz embeddings file.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import os
@@ -21,7 +12,7 @@ import argparse
 import datetime
 from typing import Optional, Tuple, Dict, Any
 
-# Safely force UTF-8 stdout/stderr on Windows environments
+# Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -54,14 +45,16 @@ from src.utils.metrics import (
 
 
 # ============================================================
-# Helper Functions & Checkpoint Loading
+# Kiểm tra và xử lý checkpoint tương ứng của mô hình.
 # ============================================================
 
 def seed_everything(seed: int = 42) -> None:
-    """Set random seeds across Python, NumPy, and PyTorch for deterministic evaluation.
+    """Cố định các nguồn ngẫu nhiên để bảo đảm khả năng tái lập.
 
-    Args:
-        seed (int): Integer seed value (default: 42).
+    Parameters
+    ----------
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
     """
     import random
     random.seed(seed)
@@ -78,18 +71,19 @@ def adapt_state_dict_keys(
     state_dict: Dict[str, torch.Tensor],
     model_keys: list[str],
 ) -> Dict[str, torch.Tensor]:
-    """Adapt checkpoint state-dict key prefixes for XBone-Net compatibility.
+    """Thực hiện bước adapt state dict keys trong quy trình hiện tại.
 
-    Checkpoints saved by raw OpenCLIP use prefixes like 'model.' or bare sub-module
-    names ('visual.', 'text.'), whereas the XBone-Net wrapper nests everything under
-    'backbone.model.'. This function detects mismatches and re-maps keys.
+    Parameters
+    ----------
+    state_dict : Dict[str, torch.Tensor]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    model_keys : list[str]
+        Mô hình hoặc thành phần mô hình cần xử lý.
 
-    Args:
-        state_dict (Dict[str, torch.Tensor]): Loaded checkpoint state_dict mapping.
-        model_keys (list[str]): Target model parameter name keys.
-
-    Returns:
-        Dict[str, torch.Tensor]: Adapted state_dict with aligned key prefixes.
+    Returns
+    -------
+    Dict[str, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     model_has_backbone = any(k.startswith("backbone.model.") for k in model_keys)
     checkpoint_keys = list(state_dict.keys())
@@ -110,7 +104,27 @@ def adapt_state_dict_keys(
 
 
 def load_state_dict_checked(model: nn.Module, state_dict: Dict[str, torch.Tensor], context: str):
-    """Load weights and reject missing Phase-2/PEFT modules."""
+    """Tải trọng số mô hình và kiểm tra mức độ tương thích.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    state_dict : Dict[str, torch.Tensor]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    context : str
+        Giá trị ``context`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result = model.load_state_dict(state_dict, strict=False)
     missing = list(result.missing_keys)
     unexpected = list(result.unexpected_keys)
@@ -150,19 +164,28 @@ def load_model_checkpoint(
     device: torch.device,
     is_zero_shot: bool = False,
 ) -> bool:
-    """Load model checkpoint weights using paths resolved from config.
+    """Tải mô hình checkpoint cho bước xử lý hiện tại.
 
-    Searches in priority order: params.model_dir, then checkpoint_path from
-    various config levels (root, params, params.phase2, params.phase1).
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    is_zero_shot : bool, optional
+        Giá trị ``is_zero_shot`` được sử dụng trong phép xử lý.
 
-    Args:
-        model (nn.Module): Target PyTorch model instance.
-        cfg (DictConfig): Complete Hydra configuration object.
-        device (torch.device): Computation device.
-        is_zero_shot (bool): Flag indicating zero-shot evaluation mode.
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Returns:
-        bool: True if checkpoint loaded or zero-shot foundation weights are active.
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if is_zero_shot:
         print(" -> [Zero-Shot Baseline] Using official pre-trained foundation weights loaded at model build time.\n")
@@ -225,7 +248,7 @@ def load_model_checkpoint(
 
 
 # ============================================================
-# Inference & Evaluation Core
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def run_evaluation(
@@ -240,7 +263,47 @@ def run_evaluation(
     is_multilabel: bool = False,
     save_embeddings_flag: bool = False,
 ) -> Dict[str, Any]:
-    """Run evaluation using the same masked forward path as training."""
+    """Thực hiện evaluation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    test_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    pathologies : list[str]
+        Danh sách tên bệnh lý hoặc lớp đích.
+    is_classifier : bool
+        Giá trị ``is_classifier`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    temperature : float, optional
+        Giá trị ``temperature`` được sử dụng trong phép xử lý.
+    p2_report_type : str, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    use_text_in_p2 : bool, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    is_multilabel : bool, optional
+        Giá trị ``is_multilabel`` được sử dụng trong phép xử lý.
+    save_embeddings_flag : bool, optional
+        Giá trị ``save_embeddings_flag`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    AttributeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    NotImplementedError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     tokenizer = getattr(model.backbone, "tokenizer", None)
     text_features_dict: Dict[str, torch.Tensor] = {}
     text_embeddings_np: Optional[Dict[str, np.ndarray]] = None
@@ -339,7 +402,7 @@ def run_evaluation(
                         tile_mask=tile_mask,
                         tile_boxes=tile_boxes,
                     )
-                    # Classification remains strictly on the frozen v3 path.
+                    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
                     logits = drl_output["primary_logits"]
                     fused_features = drl_output["label_features"]
                     all_auxiliary_logits.append(drl_output["auxiliary_logits"].cpu())
@@ -423,7 +486,7 @@ def run_evaluation(
     return {
         "all_probs": probs_np,
         "all_ground_truths": ground_truth_np,
-        "image_embeddings": embeddings_np,  # backward-compatible key; these are fused features.
+        "image_embeddings": embeddings_np,  # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
         "fused_embeddings": embeddings_np,
         "label_discriminative_embeddings": embeddings_np,
         "distribution_discriminative_embeddings": distribution_embeddings_np,
@@ -436,7 +499,7 @@ def run_evaluation(
 
 
 # ============================================================
-# Result Serialization & Export
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def save_results_json(
@@ -445,16 +508,23 @@ def save_results_json(
     output_dir: str,
     ci_95: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Save evaluation metrics and experiment configuration to JSON.
+    """Lưu các kết quả json cho bước xử lý hiện tại.
 
-    Args:
-        metrics (Dict[str, Any]): Dictionary of computed metric values.
-        cfg (DictConfig): Complete Hydra configuration.
-        output_dir (str): Output directory path for metrics.json.
-        ci_95 (Optional[Dict[str, Any]]): Optional 95% bootstrap confidence intervals.
+    Parameters
+    ----------
+    metrics : Dict[str, Any]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    output_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    ci_95 : Optional[Dict[str, Any]]
+        Giá trị ``ci_95`` được sử dụng trong phép xử lý.
 
-    Returns:
-        str: Absolute file path to saved metrics.json file.
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     os.makedirs(output_dir, exist_ok=True)
     params_cfg = cfg.get("params", {}) or {}
@@ -493,7 +563,34 @@ def export_embeddings(
     auxiliary_logits: Optional[np.ndarray] = None,
     drl_ood_scores: Optional[np.ndarray] = None,
 ) -> Optional[str]:
-    """Save fused/image embeddings, labels, and optional logits."""
+    """Xuất các biểu diễn cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_embeddings : Optional[np.ndarray]
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    text_embeddings : Optional[Dict[str, np.ndarray]]
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    output_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    logits : Optional[np.ndarray]
+        Giá trị ``logits`` được sử dụng trong phép xử lý.
+    probabilities : Optional[np.ndarray]
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    distribution_embeddings : Optional[np.ndarray]
+        Giá trị ``distribution_embeddings`` được sử dụng trong phép xử lý.
+    auxiliary_logits : Optional[np.ndarray]
+        Giá trị ``auxiliary_logits`` được sử dụng trong phép xử lý.
+    drl_ood_scores : Optional[np.ndarray]
+        Giá trị ``drl_ood_scores`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Optional[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if image_embeddings is None:
         print("[Warning] No embeddings to save.")
         return None
@@ -529,14 +626,16 @@ def export_embeddings(
 
 
 # ============================================================
-# Main Entry Point & CLI Parsing
+# Điểm vào chính và phân tích tham số dòng lệnh
 # ============================================================
 
 def parse_extra_args() -> argparse.Namespace:
-    """Parse non-Hydra CLI flags consumed before Hydra initialization.
+    """Phân tích extra tham số cho bước xử lý hiện tại.
 
-    Returns:
-        argparse.Namespace: CLI arguments namespace.
+    Returns
+    -------
+    argparse.Namespace
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--bootstrap", action="store_true", default=False, help="Compute bootstrap 95% confidence intervals")
@@ -555,10 +654,17 @@ extra_args = parse_extra_args()
 
 @hydra.main(config_path="configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
-    """Main execution orchestrator for XBone-Net evaluation pipeline.
+    """Thực thi điểm vào chính của mô-đun.
 
-    Args:
-        cfg (DictConfig): Complete Hydra configuration object.
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     params_cfg = cfg.get("params", {}) or {}
     seed_val = params_cfg.get("seed", cfg.get("seed", 42))
@@ -582,9 +688,9 @@ def main(cfg: DictConfig) -> None:
     exp_name = str(params_cfg.get("experiment_name", cfg.get("experiment_name", ""))).lower()
     is_zero_shot = (not is_classifier) or ("zeroshot" in exp_name)
 
-    # Dataset labels may intentionally remain in their source language because
-    # they are also CSV keys and metric display names.  Zero-shot VLMs should
-    # instead receive the index-aligned English medical terms when provided.
+    # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
+    # Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     prompt_pathologies = pathologies
     if is_zero_shot:
         prompt_pathologies = list(cfg.dataset.params.get("prompt_classes", pathologies))
@@ -601,7 +707,7 @@ def main(cfg: DictConfig) -> None:
 
     model.eval()
 
-    # --- Report parameter counts ---
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     frozen_params = total_params - trainable_params
@@ -666,7 +772,7 @@ def main(cfg: DictConfig) -> None:
         exp_name_str = params_cfg.get("experiment_name", cfg.get("experiment_name", "default"))
         output_dir = os.path.join("results", str(exp_name_str), f"seed_{seed_val}")
 
-    # Add parameter counts to metrics
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
     metrics["param_total"] = total_params
     metrics["param_trainable"] = trainable_params
     metrics["param_trainable_pct"] = round(100 * trainable_params / total_params, 2) if total_params > 0 else 0

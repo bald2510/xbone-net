@@ -1,13 +1,13 @@
-# Research-question experiment switches for tools/run_all.py.
+# Research-question experiment switches for tools/training.py.
 #
 # The selectors below are intentionally grouped by research question. Duplicate
 # configs (especially the canonical XBone-Net reference) are de-duplicated by
-# run_all.py before any subprocess is launched.
+# training.py before any subprocess is launched.
 #
 # Preview only:
-#   python tools/run_all.py --dry-run
+#   python tools/training.py --dry-run
 # List group membership:
-#   python tools/run_all.py --list-configs
+#   python tools/training.py --list-configs
 
 [enabled]
 
@@ -44,33 +44,33 @@
 # explainability summaries already exist. After an interrupted RQ4 aggregation,
 # refresh only the summaries; do not repeat feature export or OOD evaluation:
 #
-#    python tools/benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd --aggregate-only
+#    python benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd --aggregate-only
 #
 # Refresh classification/training-time and canonical OOD/explainability tables:
 #
-#    python tools/run_all.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
-#    python tools/benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd
+#    python tools/training.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
+#    python benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd
 #
 # =============================================================================
 # Full workflow when running from scratch
 # =============================================================================
 #
 # 1) Inspect the resolved classification queue:
-#    python tools/run_all.py --dry-run
+#    python tools/training.py --dry-run
 #
 # 2) Train/evaluate only missing RQ1-RQ4 classification configurations:
-#    python tools/run_all.py --seeds 42 123 456 --skip-completed
+#    python tools/training.py --seeds 42 123 456 --skip-completed
 #
 # 3) Generate classification, calibration, parameter, and training-time tables:
-#    python tools/run_all.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
+#    python tools/training.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
 #
 # 4) Run/resume RQ4 with only CTCH Semantic OOD and BTXRD. The runner reuses
 #    current archives and automatically restricts deterministic BioMedCLIP
 #    zero-shot to seed 42:
-#    python tools/benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd
+#    python benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd
 #
 # 5) Run/resume full-test CTCH quantitative explainability for RQ5:
-#    python tools/benchmark/ood_analysis.py --analyses explainability --seeds 42 123 456
+#    python benchmark/ood_analysis.py --analyses explainability --seeds 42 123 456
 #
 # 6) Aggregate canonical OOD/explainability outputs without recomputation:
-#    python tools/benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd
+#    python benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd

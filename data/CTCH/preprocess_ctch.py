@@ -1,16 +1,8 @@
-"""Prepare the cleaned CTCH workbook for XBone-Net.
+"""Chuẩn bị và kiểm tra dữ liệu bằng quy trình preprocess ctch.
 
-The cleaned release contains one selected image per encounter. Source image
-files are named ``{ID}_{SelectedImage}``, for example
-``2_img-06080-00001.jpg``. Implant cases are excluded. Rows explicitly marked
-OOD are kept in a separate manifest and are not mixed into ID classification.
-
-Examples:
-    python data/CTCH/preprocess_ctch.py --step prepare
-    python data/CTCH/preprocess_ctch.py --step prepare --dry-run
-    python data/CTCH/preprocess_ctch.py --step repair-ood
-    python data/CTCH/preprocess_ctch.py --step validate
-    python data/CTCH/preprocess_ctch.py --step translate
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -57,7 +49,7 @@ CLINICAL_FIELDS = [
     ("TienSuBenh_BanThan_LucVaoVien", "Personal medical history"),
 ]
 
-# Confirmed diagnosis and Label are deliberately excluded to reduce label leakage.
+# Chủ động loại chẩn đoán xác định và cột Label để giảm nguy cơ rò rỉ nhãn.
 XRAY_FIELDS = [
     ("KhamXet_TomTatCanLamSang", "Imaging and examination summary"),
     ("TongKetBenhAn_TomTatKetQuaXetNghiem", "Investigation summary"),
@@ -65,6 +57,18 @@ XRAY_FIELDS = [
 
 
 def normalize_text(value) -> str:
+    """Chuẩn hóa văn bản cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    value : object
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if pd.isna(value):
         return ""
     text = unicodedata.normalize("NFC", str(value)).strip()
@@ -72,10 +76,34 @@ def normalize_text(value) -> str:
 
 
 def normalize_key(value) -> str:
+    """Chuẩn hóa key cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    value : object
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return normalize_text(value).casefold()
 
 
 def format_identifier(value) -> str:
+    """Định dạng identifier cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    value : object
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if pd.isna(value):
         return ""
     if isinstance(value, (int, np.integer)):
@@ -86,7 +114,18 @@ def format_identifier(value) -> str:
 
 
 def file_sha256(path: Path) -> str:
-    """Return a streaming SHA-256 digest without modifying ``path``."""
+    """Thực hiện bước file sha256 trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -95,7 +134,25 @@ def file_sha256(path: Path) -> str:
 
 
 def load_class_labels(labels_path: Path) -> list[str]:
-    """Load the ordered CTCH class vocabulary from labels.txt."""
+    """Tải class các nhãn cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    labels_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not labels_path.is_file():
         raise FileNotFoundError(f"Labels file not found: {labels_path}")
 
@@ -121,6 +178,18 @@ def load_class_labels(labels_path: Path) -> list[str]:
 
 
 def output_paths(output_root: Path) -> dict[str, Path]:
+    """Thực hiện bước đầu ra các đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    output_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     reports = output_root / "reports"
     return {
         "images": output_root / "images",
@@ -136,6 +205,27 @@ def output_paths(output_root: Path) -> dict[str, Path]:
 
 
 def load_data(xlsx_path: Path, include_ood_in_other: bool = False):
+    """Tải data cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    xlsx_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    include_ood_in_other : bool, optional
+        Giá trị ``include_ood_in_other`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not xlsx_path.is_file():
         raise FileNotFoundError(f"Workbook not found: {xlsx_path}")
     df = pd.read_excel(xlsx_path, sheet_name=0, engine="openpyxl")
@@ -181,6 +271,23 @@ def load_data(xlsx_path: Path, include_ood_in_other: bool = False):
 
 
 def attach_image_ids(df: pd.DataFrame) -> pd.DataFrame:
+    """Thực hiện bước attach ảnh ids trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result = df.copy()
     row_ids = result[ROW_ID_COL].map(format_identifier)
     selected = result[SELECTED_IMAGE_COL].map(
@@ -194,6 +301,27 @@ def attach_image_ids(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_existing_images(df: pd.DataFrame, images_src: Path, strict: bool = True):
+    """Lọc existing các ảnh cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+    images_src : Path
+        Giá trị ``images_src`` được sử dụng trong phép xử lý.
+    strict : bool, optional
+        Giá trị ``strict`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not images_src.is_dir():
         raise FileNotFoundError(f"Image directory not found: {images_src}")
     exists = df["image_id"].map(lambda name: (images_src / name).is_file())
@@ -210,7 +338,27 @@ def assign_multiclass(
     df: pd.DataFrame,
     class_labels: list[str],
 ) -> pd.DataFrame:
-    """Map workbook labels to class IDs using labels.txt as the authority."""
+    """Thực hiện bước assign multiclass trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+    class_labels : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result = df.copy()
     label_to_id = {
         normalize_key(label): class_id
@@ -247,6 +395,18 @@ def assign_multiclass(
 
 
 def _primary_class(series: pd.Series) -> str:
+    """Thực hiện bước primary class trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    series : pd.Series
+        Giá trị ``series`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     counts = series.value_counts()
     return str(counts.index[0])
 
@@ -257,6 +417,31 @@ def create_patient_splits(
     val_ratio: float = 0.1,
     seed: int = 42,
 ) -> pd.DataFrame:
+    """Tạo patient splits cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+    train_ratio : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    val_ratio : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio >= 1:
         raise ValueError("Require train_ratio > 0, val_ratio >= 0, and train+val < 1")
 
@@ -312,6 +497,22 @@ def create_patient_splits(
 
 
 def build_report(row: pd.Series, fields, fallback: str) -> str:
+    """Xây dựng báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    row : pd.Series
+        Giá trị ``row`` được sử dụng trong phép xử lý.
+    fields : object
+        Giá trị ``fields`` được sử dụng trong phép xử lý.
+    fallback : str
+        Giá trị ``fallback`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parts = []
     for field, label in fields:
         value = normalize_text(row.get(field))
@@ -321,6 +522,20 @@ def build_report(row: pd.Series, fields, fallback: str) -> str:
 
 
 def _safe_clear_directory(path: Path, output_root: Path):
+    """Thực hiện bước safe clear directory trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     resolved = path.resolve()
     root = output_root.resolve()
     if resolved == root or root not in resolved.parents:
@@ -335,6 +550,17 @@ def write_reports(
     *,
     overwrite: bool = True,
 ):
+    """Ghi các báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+    overwrite : bool, optional
+        Giá trị ``overwrite`` được sử dụng trong phép xử lý.
+    """
     paths["clinical_vi"].mkdir(parents=True, exist_ok=True)
     paths["xray_vi"].mkdir(parents=True, exist_ok=True)
     written = Counter()
@@ -370,12 +596,39 @@ def materialize_images(
     mode: str,
     workers: int,
 ):
+    """Thực hiện bước materialize các ảnh trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Giá trị ``df`` được sử dụng trong phép xử lý.
+    images_src : Path
+        Giá trị ``images_src`` được sử dụng trong phép xử lý.
+    images_dst : Path
+        Giá trị ``images_dst`` được sử dụng trong phép xử lý.
+    mode : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    workers : int
+        Giá trị ``workers`` được sử dụng trong phép xử lý.
+    """
     if mode == "none":
         print("  Image materialization skipped (--image-mode none)")
         return
     images_dst.mkdir(parents=True, exist_ok=True)
 
     def materialize(image_id: str):
+        """Thực hiện bước materialize trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        image_id : str
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         source = images_src / image_id
         destination = images_dst / image_id
         if destination.exists():
@@ -408,6 +661,35 @@ def prepare_dataframe(
     val_ratio: float,
     seed: int,
 ):
+    """Chuẩn bị dataframe cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    xlsx_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    images_src : Path
+        Giá trị ``images_src`` được sử dụng trong phép xử lý.
+    labels_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    include_ood_in_other : bool
+        Giá trị ``include_ood_in_other`` được sử dụng trong phép xử lý.
+    train_ratio : float
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    val_ratio : float
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     class_labels = load_class_labels(labels_path)
     id_df, ood_df = load_data(xlsx_path, include_ood_in_other)
     id_df = attach_image_ids(id_df)
@@ -442,6 +724,13 @@ def prepare_dataframe(
 
 
 def step_prepare(args):
+    """Thực hiện bước step prepare trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    args : object
+        Các đối số vị trí bổ sung.
+    """
     print("=" * 72)
     print("PREPARE CLEANED CTCH DATASET")
     print("=" * 72)
@@ -466,8 +755,8 @@ def step_prepare(args):
             _safe_clear_directory(paths[key], output_root)
 
     labels = id_df[["image_id", "class_id", "mapped_class"] + class_labels]
-    # Retain an anonymized grouping key so confidence intervals can resample
-    # patients rather than treating repeated radiographs as independent.
+    # Giữ khóa nhóm đã ẩn danh để khoảng tin cậy có thể lấy mẫu lại theo bệnh
+    # nhân, thay vì xem các ảnh lặp lại là những quan sát độc lập.
     splits = id_df[["image_id", "split", "patient_key"]]
     labels.to_csv(paths["labels"], index=False)
     splits.to_csv(paths["splits"], index=False)
@@ -477,9 +766,8 @@ def step_prepare(args):
     ood_df[ood_columns].to_csv(paths["ood"], index=False)
     print(f"  Saved {len(labels):,} ID rows to {paths['labels'].name}")
     print(f"  Saved {len(ood_df):,} OOD rows to {paths['ood'].name}")
-    # OOD evaluation consumes the same image/report schema as ID inference.
-    # Materialize both populations; manifests remain separate so no OOD sample
-    # can enter a train/validation/test split.
+    # Đánh giá OOD dùng cùng cấu trúc ảnh/báo cáo với suy luận ID. Chuẩn bị tài
+    # nguyên cho cả hai nhóm nhưng vẫn tách manifest để OOD không lọt vào split.
     analysis_df = pd.concat([id_df, ood_df], ignore_index=True)
     analysis_df = analysis_df.drop_duplicates(subset=["image_id"], keep="first")
     write_reports(analysis_df, paths)
@@ -494,7 +782,23 @@ def step_prepare(args):
 
 
 def locked_manifest_hashes(paths: dict[str, Path]) -> dict[str, str]:
-    """Fingerprint the authoritative ID splits/labels and locked OOD cohort."""
+    """Thực hiện bước locked manifest hashes trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     hashes = {}
     for key in ("labels", "splits", "ood"):
         path = paths[key]
@@ -510,7 +814,20 @@ def ood_artifact_coverage(
     image_ids: list[str],
     paths: dict[str, Path],
 ) -> dict[str, list[str]]:
-    """Return missing OOD artifact IDs for every materialized modality."""
+    """Thực hiện bước ood artifact coverage trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image_ids : list[str]
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     checks = {
         "images": lambda image_id: paths["images"] / image_id,
         "clinical_vi": lambda image_id: (
@@ -540,7 +857,27 @@ def _load_locked_ood_repair_rows(
     source_ood_df: pd.DataFrame,
     paths: dict[str, Path],
 ) -> tuple[pd.DataFrame, list[str]]:
-    """Align workbook metadata to the existing OOD manifest without rewriting it."""
+    """Tải locked ood repair rows cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    source_ood_df : pd.DataFrame
+        Dữ liệu nguồn của phép xử lý.
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, list[str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not paths["ood"].is_file():
         raise FileNotFoundError(
             f"Missing OOD manifest: {paths['ood']}. Run --step prepare once first."
@@ -601,7 +938,29 @@ def translate_report_files(
     translator=None,
     strict: bool = False,
 ) -> dict[str, int]:
-    """Translate missing report files, optionally restricted to exact filenames."""
+    """Thực hiện bước translate báo cáo files trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+    selected_names : set[str] | None, optional
+        Giá trị ``selected_names`` được sử dụng trong phép xử lý.
+    translator : object, optional
+        Giá trị ``translator`` được sử dụng trong phép xử lý.
+    strict : bool, optional
+        Giá trị ``strict`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     cache = {}
     if paths["translation_cache"].exists():
         cache = json.loads(paths["translation_cache"].read_text(encoding="utf-8"))
@@ -610,6 +969,23 @@ def translate_report_files(
     counts = Counter()
 
     def translate_text(text: str):
+        """Thực hiện bước translate văn bản trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         nonlocal translator_instance
         key = text.strip()
         if not key:
@@ -696,7 +1072,39 @@ def repair_ood_artifacts(
     dry_run: bool = False,
     translator=None,
 ) -> dict[str, object]:
-    """Repair only locked CTCH-OOD artifacts and preserve all ID manifests."""
+    """Thực hiện bước repair ood artifacts trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    source_ood_df : pd.DataFrame
+        Dữ liệu nguồn của phép xử lý.
+    paths : dict[str, Path]
+        Giá trị ``paths`` được sử dụng trong phép xử lý.
+    images_src : Path
+        Giá trị ``images_src`` được sử dụng trong phép xử lý.
+    image_mode : str
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    workers : int
+        Giá trị ``workers`` được sử dụng trong phép xử lý.
+    dry_run : bool, optional
+        Giá trị ``dry_run`` được sử dụng trong phép xử lý.
+    translator : object, optional
+        Giá trị ``translator`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, object]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     before_hashes = locked_manifest_hashes(paths)
     repair_df, image_ids = _load_locked_ood_repair_rows(source_ood_df, paths)
     before = ood_artifact_coverage(image_ids, paths)
@@ -743,8 +1151,8 @@ def repair_ood_artifacts(
             workers,
         )
 
-    # OOD and ID manifests are disjoint, and overwrite=False prevents this
-    # repair path from changing any report that already exists.
+    # Manifest OOD và ID tách biệt; overwrite=False bảo đảm quy trình sửa không
+    # thay đổi bất kỳ báo cáo nào đã tồn tại.
     write_reports(repair_df, paths, overwrite=False)
     selected_names = {f"{Path(image_id).stem}.txt" for image_id in image_ids}
     translate_report_files(
@@ -778,6 +1186,13 @@ def repair_ood_artifacts(
 
 
 def step_repair_ood(args):
+    """Thực hiện bước step repair ood trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    args : object
+        Các đối số vị trí bổ sung.
+    """
     print("=" * 72)
     print("REPAIR LOCKED CTCH OOD ARTIFACTS ONLY")
     print("=" * 72)
@@ -795,11 +1210,30 @@ def step_repair_ood(args):
 
 
 def step_translate(args):
+    """Thực hiện bước step translate trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    args : object
+        Các đối số vị trí bổ sung.
+    """
     paths = output_paths(args.output_root.resolve())
     translate_report_files(paths)
 
 
 def step_validate(args):
+    """Thực hiện bước step validate trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    args : object
+        Các đối số vị trí bổ sung.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     paths = output_paths(args.output_root.resolve())
     class_labels = load_class_labels(args.labels_txt.resolve())
     labels = pd.read_csv(paths["labels"])
@@ -951,6 +1385,13 @@ def step_validate(args):
 
 
 def step_analyze(args):
+    """Thực hiện bước step analyze trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    args : object
+        Các đối số vị trí bổ sung.
+    """
     paths = output_paths(args.output_root.resolve())
     class_labels = load_class_labels(args.labels_txt.resolve())
     labels = pd.read_csv(paths["labels"])
@@ -972,6 +1413,13 @@ def step_analyze(args):
 
 
 def parse_args():
+    """Phân tích các tham số dòng lệnh.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--step",
@@ -1018,6 +1466,7 @@ def parse_args():
 
 
 def main():
+    """Thực thi điểm vào chính của mô-đun."""
     args = parse_args()
     if args.step in ("prepare", "all"):
         step_prepare(args)

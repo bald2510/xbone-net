@@ -1,8 +1,8 @@
-"""Explain OOD decisions from locked CTCH score archives.
+"""Tạo bảng hoặc hình trực quan bằng công cụ ood.
 
-This script is intentionally read-only with respect to the protocol: it never
-fits a detector, splits ID data, or chooses a threshold. All score arrays and
-ID-validation thresholds must already have been produced by ``evaluate_ood.py``.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -33,6 +33,13 @@ METHOD_DISPLAY_NAMES = {
 
 
 def _parse_args() -> argparse.Namespace:
+    """Phân tích các tham số dòng lệnh.
+
+    Returns
+    -------
+    argparse.Namespace
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scores", type=Path, required=True)
     parser.add_argument(
@@ -81,7 +88,22 @@ def _robust_margin(
     threshold: float,
     calibration: np.ndarray,
 ) -> np.ndarray:
-    """Return threshold-relative margins on a robust, comparable scale."""
+    """Thực hiện bước robust margin trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    threshold : float
+        Ngưỡng quyết định của phép đánh giá.
+    calibration : np.ndarray
+        Giá trị ``calibration`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     calibration = np.asarray(calibration, dtype=float)
     median = float(np.median(calibration))
     mad = float(np.median(np.abs(calibration - median)))
@@ -97,7 +119,33 @@ def _render_decision_heatmap(
     output: Path,
     max_samples: int,
 ) -> Path:
-    """Visualize each detector's signed evidence relative to its threshold."""
+    """Kết xuất decision heatmap cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    score_sets : dict[str, dict[str, np.ndarray | float]]
+        Giá trị điểm hoặc độ đo cần sử dụng.
+    methods : list[str]
+        Giá trị ``methods`` được sử dụng trong phép xử lý.
+    id_image_ids : np.ndarray
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    ood_image_ids : np.ndarray
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    max_samples : int
+        Giá trị ``max_samples`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if max_samples < 2:
         raise ValueError("--max-heatmap-samples must be at least 2.")
     margin_rows = []
@@ -190,6 +238,15 @@ def _render_decision_heatmap(
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     args = _parse_args()
     if args.layout_columns < 1:
         raise ValueError("--layout-columns must be positive.")

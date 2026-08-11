@@ -1,24 +1,10 @@
 # @package _global_
-# ===============================================================================
-# Experiment Config: btxrd/few_shot/10_shot/lora_pubmedclip
-# Backbone: biomedclip | PEFT: none | Fusion: none | Head: none
-# Description: Few-Shot Learning Config: few-shot baseline.
-# ===============================================================================
-
-# Few-Shot Learning Config: 10-shot
-
 defaults:
   - /experiment/btxrd/baselines/peft_finetuned/lora_pubmedclip
   - _self_
 
-# --- Experiment Identifier ---
 experiment_name: btxrd/few_shot/10_shot/lora_pubmedclip
 
-# --- Training Hyperparameters ---
-params:
-  model_dir: checkpoints/${experiment_name}/seed_${seed}/
-
-# --- Dataset Configuration ---
 dataset:
   params:
     k_shot: 10

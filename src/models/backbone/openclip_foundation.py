@@ -1,11 +1,8 @@
-"""
-OpenCLIP Foundation Backbone Module for XBone-Net.
-===============================================================================
-Provides a unified interface wrapping pre-trained OpenCLIP and HuggingFace vision-language
-foundation models (CLIP ViT-B/16, PubMedCLIP, BiomedCLIP).
+"""Cung cấp bộ mã hóa nền tảng openclip foundation cho XBone-Net.
 
-Handles tokenizer pickling compatibility for multiprocessing, attribute mapping between
-HuggingFace and OpenCLIP formats, and pre-trained parameter freezing.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch.nn as nn
@@ -14,35 +11,39 @@ from transformers import CLIPModel
 
 
 # ============================================================
-# Auxiliary Tokenizer & Model Adaptors
+# Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
 # ============================================================
 
 class PubMedCLIPTokenizerWrapper:
-    """Picklable callable wrapper around HuggingFace CLIPTokenizer.
+    """Đóng gói hành vi của thành phần ``PubMedCLIPTokenizerWrapper``.
 
-    Ensures compatibility with PyTorch DataLoader multiprocessing on Windows by wrapping
-    the tokenizer instance in a picklable structure that returns padded/truncated token IDs.
-
-    Attributes:
-        tokenizer_obj: Loaded HuggingFace tokenizer instance.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, tokenizer_obj):
-        """Initialize wrapper with HuggingFace tokenizer instance.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            tokenizer_obj: Loaded HuggingFace CLIPTokenizer instance.
+        Parameters
+        ----------
+        tokenizer_obj : object
+            Giá trị ``tokenizer_obj`` được sử dụng trong phép xử lý.
         """
         self.tokenizer_obj = tokenizer_obj
 
     def __call__(self, texts):
-        """Tokenize a sequence of text strings into PyTorch token tensors.
+        """Thực hiện bước call trong quy trình hiện tại.
 
-        Args:
-            texts (str or list of str): Input text string or list of text strings.
+        Parameters
+        ----------
+        texts : object
+            Giá trị ``texts`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Encoded token IDs tensor of shape [B, 77].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self.tokenizer_obj(
             texts, padding="max_length", max_length=77, truncation=True, return_tensors="pt"
@@ -50,37 +51,44 @@ class PubMedCLIPTokenizerWrapper:
 
 
 class PubMedCLIPModel(CLIPModel):
-    """Subclass of HuggingFace CLIPModel projecting .visual property to .vision_model.
+    """Đóng gói hành vi của thành phần ``PubMedCLIPModel``.
 
-    Bridges the interface difference between OpenCLIP (which names its vision encoder .visual)
-    and HuggingFace Transformers (which names it .vision_model), allowing PEFT/LoRA modules
-    to target vision components seamlessly across architectures.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     @property
     def visual(self):
-        """Alias for vision_model property.
+        """Thực hiện bước visual trong quy trình hiện tại.
 
-        Returns:
-            nn.Module: Vision encoder model.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self.vision_model
     
     @visual.setter
     def visual(self, value):
-        """Setter for visual property alias.
+        """Thực hiện bước visual trong quy trình hiện tại.
 
-        Args:
-            value (nn.Module): New vision encoder module.
+        Parameters
+        ----------
+        value : object
+            Giá trị ``value`` được sử dụng trong phép xử lý.
         """
         self.vision_model = value
 
     def __setattr__(self, name, value):
-        """Intercept attribute assignments for 'visual'.
+        """Thực hiện bước setattr trong quy trình hiện tại.
 
-        Args:
-            name (str): Attribute name.
-            value: Attribute value.
+        Parameters
+        ----------
+        name : object
+            Tên hoặc khóa định danh của giá trị.
+        value : object
+            Giá trị ``value`` được sử dụng trong phép xử lý.
         """
         if name == 'visual':
             super().__setattr__('vision_model', value)
@@ -89,10 +97,10 @@ class PubMedCLIPModel(CLIPModel):
 
 
 # ============================================================
-# Model Registry Mapping
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
-# Model registry mapping shorthand config keys to HuggingFace / OpenCLIP hub names.
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 OPENCLIP_MODEL_REGISTRY = {
     "clip": {
         "model_name": "ViT-B-16",
@@ -113,31 +121,31 @@ OPENCLIP_MODEL_REGISTRY = {
 
 
 # ============================================================
-# OpenCLIP Foundation Backbone
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 # ============================================================
 
 class OpenCLIPFoundation(nn.Module):
-    """Generic backbone wrapper for OpenCLIP-compatible vision-language models.
+    """Bao bọc mô hình nền tảng bằng lớp ``OpenCLIPFoundation``.
 
-    Attributes:
-        model (nn.Module): Underlying OpenCLIP or PubMedCLIP model instance.
-        preprocess (callable): Vision preprocessing pipeline.
-        tokenizer (callable): Tokenizer converting text strings to token ID tensors.
-
-    Example:
-        >>> backbone = OpenCLIPFoundation(model_key="clip", freeze_base=True)
-        >>> img_feats, txt_feats = backbone(images, input_ids)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, model_key: str = "clip", freeze_base: bool = True):
-        """Initialize OpenCLIP foundation model based on registry key.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            model_key (str): Model key in OPENCLIP_MODEL_REGISTRY ('clip', 'pubmedclip', 'biomedclip').
-            freeze_base (bool): If True, freeze base model parameters. Defaults to True.
+        Parameters
+        ----------
+        model_key : str, optional
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
 
-        Raises:
-            ValueError: If model_key is not recognized in OPENCLIP_MODEL_REGISTRY.
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         super().__init__()
 
@@ -151,7 +159,7 @@ class OpenCLIPFoundation(nn.Module):
         model_name = entry["model_name"]
         pretrained = entry["pretrained"]
 
-        # --- Load PubMedCLIP model and custom wrappers ---
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if model_key == "pubmedclip":
             from transformers import CLIPTokenizer
             from torchvision import transforms
@@ -159,7 +167,7 @@ class OpenCLIPFoundation(nn.Module):
             print("[OpenCLIP] Loading PubMedCLIP via HuggingFace Transformers")
             self.model = PubMedCLIPModel.from_pretrained("flaviagiammarino/pubmed-clip-vit-base-patch32")
             
-            # Make model parameters contiguous
+            # Thiết lập trạng thái và thống kê các tham số mô hình.
             for name, module in self.model.named_modules():
                 for param_name, param in list(module.named_parameters(recurse=False)):
                     if not param.is_contiguous():
@@ -193,34 +201,48 @@ class OpenCLIPFoundation(nn.Module):
 
             self.tokenizer = get_tokenizer(model_name)
 
-        # --- Freeze backbone weights if requested ---
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if freeze_base:
             for param in self.model.parameters():
                 param.requires_grad = False
 
     @property
     def tokenizer_obj(self):
-        """Tokenizer callable alias for interface consistency across backbones."""
+        """Thực hiện bước tokenizer obj trong quy trình hiện tại.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return self.tokenizer
 
     def forward(self, images, input_ids, attention_mask=None, **kwargs):
-        """Extract and L2-normalize image and text embeddings.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
-            attention_mask (torch.Tensor, optional): Text attention mask (1 for real, 0 for pad).
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            tuple: (image_features, text_features) with shape [B, 512], L2-normalized.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
-        # --- Feature extraction ---
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
         image_features = self.model.encode_image(images)
-        # PubMedCLIP encode_text wrapper can optionally take attention_mask if we updated it,
-        # but for standard open_clip it only takes input_ids.
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         text_features = self.model.encode_text(input_ids)
 
-        # --- L2 normalization ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 

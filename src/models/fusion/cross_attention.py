@@ -1,4 +1,9 @@
-"""Bi-directional cross-attention fusion for XBone-Net."""
+"""Cung cấp cơ chế dung hợp đa phương thức cross attention cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +17,25 @@ def reduce_attention_to_keys(
     attention: torch.Tensor,
     key_padding_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Average heads/queries while preserving the key-token distribution."""
+    """Thực hiện bước reduce attention to keys trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    attention : torch.Tensor
+        Giá trị ``attention`` được sử dụng trong phép xử lý.
+    key_padding_mask : Optional[torch.Tensor]
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if attention.ndim != 4:
         raise ValueError(
             "attention must have shape [B,H,Q,K], "
@@ -34,7 +57,12 @@ def reduce_attention_to_keys(
 
 
 class CrossAttentionFusion(nn.Module):
-    """Compact fusion of two cross-attention-enhanced modality branches."""
+    """Dung hợp biểu diễn đa phương thức bằng lớp ``CrossAttentionFusion``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     supports_padding_mask = True
 
@@ -48,6 +76,30 @@ class CrossAttentionFusion(nn.Module):
         attention_direction: str = "bidirectional",
         **kwargs,
     ):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        img_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        text_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_heads : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        dropout : float, optional
+            Giá trị ``dropout`` được sử dụng trong phép xử lý.
+        attention_direction : str, optional
+            Giá trị ``attention_direction`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         img_dim = kwargs.get("img_dim", img_dim)
         text_dim = kwargs.get("text_dim", text_dim)
@@ -107,6 +159,31 @@ class CrossAttentionFusion(nn.Module):
         name: str,
         device: torch.device,
     ) -> Optional[torch.Tensor]:
+        """Kiểm tra tính hợp lệ của mask cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        mask : Optional[torch.Tensor]
+            Giá trị ``mask`` được sử dụng trong phép xử lý.
+        batch_size : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        seq_len : int
+            Giá trị ``seq_len`` được sử dụng trong phép xử lý.
+        name : str
+            Tên hoặc khóa định danh của giá trị.
+        device : torch.device
+            Thiết bị thực thi phép tính.
+
+        Returns
+        -------
+        Optional[torch.Tensor]
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if mask is None:
             return None
         mask = mask.to(device=device, dtype=torch.bool)
@@ -126,6 +203,31 @@ class CrossAttentionFusion(nn.Module):
         txt_key_padding_mask: Optional[torch.Tensor] = None,
         return_attn: bool = False,
     ):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        img_feats : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_feats : torch.Tensor
+            Giá trị ``txt_feats`` được sử dụng trong phép xử lý.
+        img_key_padding_mask : Optional[torch.Tensor]
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_key_padding_mask : Optional[torch.Tensor]
+            Tên hoặc khóa định danh của giá trị.
+        return_attn : bool, optional
+            Giá trị ``return_attn`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if img_feats.ndim == 2:
             img_feats = img_feats.unsqueeze(1)
         if txt_feats.ndim == 2:
@@ -148,7 +250,7 @@ class CrossAttentionFusion(nn.Module):
         img_local = img_feats[:, 1:, :]
         txt_local = txt_feats[:, 1:, :]
 
-        # Global-only backbones use their global token as the key/value sequence.
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if img_local.size(1) == 0:
             img_local = img_global
             img_key_padding_mask = None
@@ -212,8 +314,8 @@ class CrossAttentionFusion(nn.Module):
                 txt_global + self.dropout(text_from_image)
             )
 
-        # Raw global embeddings are already retained by the residuals above.
-        # Only enhanced branches enter the compact fusion MLP.
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
+        # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
         joint = torch.cat(
             [
                 image_enhanced.squeeze(1),

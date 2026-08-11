@@ -6,13 +6,13 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
 
 ## 1. Key Features
 
-- **High-resolution image path:** Conservatively crop scanner padding, retain an aspect-preserving 224-pixel global view, and select exactly four 224-pixel local views using image-only coverage and focal texture scores. Each local view contributes its pretrained CLS token and one patch summary; a lightweight coordinate-gated passthrough adapter preserves the fixed eight-token budget without changing BiomedCLIP.
+- **High-resolution image path:** Conservatively crop scanner padding, retain an aspect-preserving 224-pixel global view, and select exactly four 224-pixel local views using image-only coverage and focal texture scores. Each local view contributes one pretrained CLS token and a pooled `2×2` patch grid, producing 20 local visual tokens without changing the BiomedCLIP input resolution.
 - **Two-stage training:**
   - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
   - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention. Classification uses cosine similarity to empirical class centroids recomputed from the training embeddings and effective-number weighted cross-entropy.
 - **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
-- **Robust OOD Detection:** Supports 4 OOD scoring algorithms (Mahalanobis Distance, Cosine-KNN, Energy Score, and Text-Anchor Distance) to identify anomalous radiographs.
-- **Explainability:** Built-in cross-attention map extraction to visualize which regions of the X-ray image align with specific clinical keywords.
+- **Post-hoc OOD detection:** Supports cosine distance to empirical class centroids, class-centroid Mahalanobis distance, cosine-KNN, and predictive entropy. Detectors are fitted on CTCH train features and thresholds are calibrated on CTCH validation-ID data.
+- **Explainability:** Provides Integrated Gradients for the global image, sparse-focal local tokens and clinical-text tokens, together with perturbation-based faithfulness analysis.
 
 ---
 
@@ -20,37 +20,47 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
 
 ```text
 xbone-net/
-├── configs/                # Hydra configuration files
-│   ├── dataset/            # Dataset-specific configs (btxrd, ctch)
-│   ├── model/              # Model, PEFT, fusion, and classifier configs
-│   └── experiment/         # Grouped experiment configs (Baselines & Ours)
-├── src/                    # Consolidated Python source code package
-│   ├── datasets/           # PyTorch Dataset loaders for BTXRD and CTCH
-│   ├── models/             # PyTorch modules (backbones, fusion, centroid/ablation heads)
-│   └── utils/              # Helper utilities (losses, metrics, prompts, etc.)
-├── tools/                  # Script utilities, training execution runners, and plotting
-├── train.py                # Main two-stage training script
-├── evaluate.py             # Main classification evaluation script
-├── evaluate_ood.py         # Main OOD detection evaluation script
-└── README.md               # This documentation file
+├── benchmark/              # Efficiency, OOD and explainability benchmarks
+├── configs/                # Hydra dataset, model and experiment configurations
+├── data/                   # Local datasets and dataset-specific preprocessing
+├── demo/                   # Streamlit research demo and its dependencies
+├── docs/
+│   ├── assets/             # Documentation assets
+│   ├── paper/              # Conference-paper sources
+│   └── report/             # Thesis sources and generated report artifacts
+├── scripts/                # Windows launchers for training, evaluation and reports
+├── src/                    # Reusable datasets, models and utility modules
+├── tools/                  # Experiment orchestration, exports and visualizations
+├── train.py                # Two-stage training entry point
+├── evaluate.py             # Classification evaluation entry point
+├── evaluate_ood.py         # OOD evaluation stage
+├── inference.py            # Single-sample inference entry point
+├── HuongDanCaiDat.txt      # Vietnamese installation guide
+└── HuongDanSuDung.txt      # Vietnamese execution guide
 ```
+
+Vietnamese setup and execution instructions are available in
+[`HuongDanCaiDat.txt`](HuongDanCaiDat.txt) and
+[`HuongDanSuDung.txt`](HuongDanSuDung.txt).
 
 ---
 
 ## 3. Installation
 
-We recommend using Anaconda or Miniconda to manage environments.
+We recommend using Anaconda or Miniconda to manage environments. The versions
+below match the validated project environment; use the CPU PyTorch index when
+CUDA is unavailable.
 
 ```bash
 # 1. Create and activate the conda environment
-conda create -n xbone python=3.10 -y
-conda activate xbone
+conda create -n Thesis python=3.11.15 -y
+conda activate Thesis
 
-# 2. Install PyTorch with CUDA support (adjust CUDA version if necessary)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# 2. Install the validated CUDA build of PyTorch
+python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
 
 # 3. Install other required packages
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 # Required only for experiments using the MedCLIP backbone. Its upstream
 # metadata pins an obsolete Transformers version; XBone-Net provides the
@@ -72,24 +82,26 @@ python tools/generate_requirement.py --check
 
 ## 4. Dataset Setup
 
-Place your dataset images and split CSV files in a `data/` folder in the project directory (or adjust path settings in `configs/dataset/btxrd.yaml` or `configs/dataset/ctch.yaml`):
+Place dataset payloads under `data/` or change the paths in
+`configs/dataset/btxrd.yaml` and `configs/dataset/ctch.yaml`. Dataset images,
+reports and patient data are intentionally excluded from Git.
 
 ```text
 data/
-├── btxrd/
+├── BTXRD/
 │   ├── images/
-│   │   ├── patient_001.png
-│   │   └── ...
-│   ├── train.csv
-│   ├── val.csv
-│   └── test.csv
-└── ctch/
+│   ├── reports/
+│   ├── btxrd-split.csv
+│   └── btxrd-labels.csv
+└── CTCH/
     ├── images/
-    │   ├── patient_001.png
-    │   └── ...
-    ├── train.csv
-    ├── val.csv
-    └── test.csv
+    ├── reports/clinical/
+    ├── reports/clinical_vi/
+    ├── ctch-split.csv
+    ├── ctch-labels.csv
+    ├── ctch-ood.csv
+    └── labels.txt
+
 ```
 
 ---
@@ -103,7 +115,7 @@ To train XBone-Net or a baseline model on a specific experiment config (for exam
 python train.py +experiment=btxrd/proposed/ours_xbone_net
 ```
 
-For the CTCH dataset baseline:
+For the proposed model on CTCH:
 ```bash
 python train.py +experiment=ctch/proposed/ours_xbone_net
 ```
@@ -122,29 +134,29 @@ orchestrator exports the required feature archives, fits detectors only on CTCH
 train/validation data, and evaluates all configured scenarios for three seeds:
 
 ```bash
-python tools/benchmark/ood_analysis.py
+python benchmark/ood_analysis.py
 ```
 
-See `docs/ctch_ood_explainability.md` for feature-only, OOD-only,
-explainability-only, and table-generation commands. `evaluate_ood.py` is an
-internal stage of this locked workflow and should not be invoked with unrelated
-BTXRD checkpoints.
+See Section 9 of [`HuongDanSuDung.txt`](HuongDanSuDung.txt) for feature-only,
+OOD-only, explainability-only and table-generation commands. `evaluate_ood.py`
+is an internal stage of this locked workflow and should not be invoked with
+unrelated BTXRD checkpoints.
 
 ### 5.4. Running the Entire Experiment Suite
-`run_all.py` discovers every YAML under `configs/experiment/`; the Python
+`tools/training.py` discovers every YAML under `configs/experiment/`; the Python
 registry no longer needs to be edited. Enable a config/group with `+` and
 disable it with `-` in `tools/experiments.txt` (a disabled selector always
 wins). Inspect the available selectors and preview the final queue before
 launching training:
 
 ```bash
-python tools/run_all.py --list-configs
-python tools/run_all.py --dry-run
-python tools/run_all.py --seeds 42 123 456 --bootstrap
-python tools/run_all.py --group zero_shot_baselines
-python tools/run_all.py --group finetuned_baselines
-python tools/run_all.py --group proposed
-python tools/run_all.py --group ablation
+python tools/training.py --list-configs
+python tools/training.py --dry-run
+python tools/training.py --seeds 42 123 456 --bootstrap
+python tools/training.py --group zero_shot_baselines
+python tools/training.py --group finetuned_baselines
+python tools/training.py --group proposed
+python tools/training.py --group ablation
 ```
 
 `--group` explicitly selects a subset while retaining the manifest's disabled
@@ -162,15 +174,15 @@ parameter counts; the same data are exported to
 `results/summary/run_all_table.csv`.
 
 ```bash
-python tools/run_all.py --table
-python tools/run_all.py --table --group ctch
-python tools/run_all.py --table --group ctch_proposed
-python tools/run_all.py --table --table-selected-only
+python tools/training.py --table
+python tools/training.py --table --group ctch
+python tools/training.py --table --group ctch_proposed
+python tools/training.py --table --table-selected-only
 ```
 
 ### 5.5. Canonical Pipeline and Ablations
 
-BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into `modality`, `finetune`, and `architecture` (`preprocess`, `phase`, `fusion`, and `classifier`). Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split. The `xbone_nohighres` and `xbone_letterbox` controls use one encoder view but preserve the proposed fusion budget of one global plus eight pooled visual tokens.
+BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into `modality`, `finetune`, and `architecture` (`preprocess`, `phase`, `fusion`, and `classifier`). Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split. The `xbone_nohighres` and `xbone_letterbox` controls use one encoder view while preserving the proposed fusion interface of one global token plus 20 pooled visual tokens.
 
 The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
 
@@ -183,3 +195,17 @@ python train.py +experiment=ctch/few_shot/1_shot/ours_xbone_net
 python train.py +experiment=ctch/few_shot/10_shot/lora_biomedclip
 python train.py +experiment=ctch/few_shot/20_shot/lora_pubmedclip
 ```
+
+### 5.7. Streamlit Research Demo
+
+After preparing the canonical CTCH proposed checkpoint and OOD reference
+features, launch the local interface with:
+
+```bash
+streamlit run demo/streamlit_app.py
+```
+
+The app displays preprocessing, class probabilities, maximum-softmax
+confidence, the OOD score and threshold, nearest CTCH reference images, and
+global/local/text Integrated Gradients. It is a research demonstration and not
+a medical device.

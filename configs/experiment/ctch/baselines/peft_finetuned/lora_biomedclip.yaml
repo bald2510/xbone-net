@@ -35,7 +35,7 @@ params:
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
-    # Shared optimization protocol with proposed v3.
+    # Shared optimization protocol with the canonical XBone-Net configuration.
     target_similarity: 0.50
     p1_report_type: clinical
     class_aware_sampling:

@@ -1,12 +1,8 @@
-"""
-Model Builder Factory for XBone-Net Architecture.
-===============================================================================
-Implements the builder pattern for assembling the complete XBone-Net pipeline:
-  - Backbone selection (BiomedCLIP, OpenCLIP, ResNet-50, DenseNet-121, MedCLIP)
-  - Parameter-Efficient Fine-Tuning (PEFT): LoRA, QLoRA, Full FT
-  - Multimodal fusion module wiring (Cross-Attention, Concat, Identity)
-  - Classifier head instantiation (Empirical centroid, prototype ablation, linear)
-  - Phase 2 module hot-swapping (transitioning from Phase 1 to Phase 2)
+"""Cung cấp thành phần mô hình builder trong kiến trúc XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from copy import deepcopy
@@ -23,7 +19,7 @@ from .peft import apply_peft
 from .composer import XBoneMultiModalModel
 from .drl import DRLAuxiliaryBranch
 
-# Backbone keys that are loaded via the unified OpenCLIPFoundation wrapper
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 OPENCLIP_BACKBONE_TYPES = {"clip", "pubmedclip"}
 
 
@@ -32,11 +28,21 @@ def resolve_phase_enabled(
     phase_name: str,
     default: bool = True,
 ) -> bool:
-    """Resolve legacy and nested phase switches without silent precedence.
+    """Xác định phase enabled cho bước xử lý hiện tại.
 
-    A phase runs only when both ``run_<phase>`` and ``<phase>.enabled`` allow
-    it. Either switch can therefore disable a phase, including Hydra overrides
-    issued by ``tools/run_all.py --phase2-only``.
+    Parameters
+    ----------
+    params_cfg : dict
+        Cấu hình điều khiển bước xử lý.
+    phase_name : str
+        Tên hoặc khóa định danh của giá trị.
+    default : bool, optional
+        Giá trị ``default`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     params_cfg = params_cfg or {}
     phase_cfg = params_cfg.get(phase_name, {}) or {}
@@ -46,7 +52,18 @@ def resolve_phase_enabled(
 
 
 def uses_merged_phase1_checkpoint(cfg: dict) -> bool:
-    """Return whether the final checkpoint contains merged non-PEFT weights."""
+    """Thực hiện bước uses merged phase1 checkpoint trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     params_cfg = cfg.get("params", {}) or {}
     phase1_cfg = params_cfg.get("phase1", {}) or {}
     phase2_cfg = params_cfg.get("phase2", {}) or {}
@@ -57,11 +74,17 @@ def uses_merged_phase1_checkpoint(cfg: dict) -> bool:
 
 
 def checkpoint_model_config(cfg: dict) -> dict:
-    """Return a checkpoint-compatible copy of an experiment's model config.
+    """Thực hiện bước checkpoint mô hình cấu hình trong quy trình hiện tại.
 
-    ``merge_and_unload`` removes LoRA modules from serialized checkpoints. The
-    evaluation architecture must consequently be rebuilt without PEFT wrappers
-    or it will expect missing ``lora_A``/``lora_B`` keys.
+    Parameters
+    ----------
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     model_cfg = cfg.get("model", {}) or {}
     if OmegaConf.is_config(model_cfg):
@@ -74,47 +97,31 @@ def checkpoint_model_config(cfg: dict) -> dict:
 
 
 # ============================================================
-# Model Builder Interface
+# Giao diện xây dựng mô hình
 # ============================================================
 
 def build_model(cfg: dict) -> XBoneMultiModalModel:
-    """Build the complete XBone-Net multi-modal model.
+    """Xây dựng mô hình cho bước xử lý hiện tại.
 
-    Assembly order algorithm:
-        1. Instantiate the backbone encoder based on backbone_type.
-        2. Apply PEFT (LoRA, QLoRA, or full fine-tuning) to visual and text encoders.
-        3. Build the fusion module (identity, cross-attention, or concat).
-        4. Build the classifier head (identity, linear, or empirical centroid).
-        5. Wrap sub-modules inside XBoneMultiModalModel composite.
+    Parameters
+    ----------
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
 
-    Args:
-        cfg (dict): Model configuration dictionary with keys:
-            - backbone_type (str): Backbone key (e.g., 'biomedclip', 'clip', 'resnet50').
-            - freeze_backbone (bool): If True, freeze base backbone weights.
-            - peft (dict): PEFT settings dictionary ('type', 'params').
-            - fusion (dict): Fusion module settings dictionary.
-            - classifier (dict): Classifier head settings dictionary.
+    Returns
+    -------
+    XBoneMultiModalModel
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Returns:
-        XBoneMultiModalModel: Fully assembled composite model instance ready for training.
-
-    Raises:
-        ValueError: If an invalid backbone type or PEFT type is specified.
-
-    Example:
-        >>> cfg = {
-        ...     'backbone_type': 'biomedclip',
-        ...     'freeze_backbone': True,
-        ...     'peft': {'type': 'lora', 'params': {'r': 16, 'alpha': 32}},
-        ...     'fusion': {'type': 'cross_attention', 'params': {'img_dim': 512}},
-        ...     'classifier': {'type': 'empirical_centroid', 'params': {'num_classes': 4}},
-        ... }
-        >>> model = build_model(cfg)
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     backbone_type = cfg.get('backbone_type', 'biomedclip')
     freeze_base = cfg.get('freeze_backbone', True)
     
-    # --- Instantiate backbone ---
+    # --- Khởi tạo bộ mã hóa nền tảng ---
     if backbone_type.startswith('resnet50'):
         pretrained = "medical" if "medical" in backbone_type else "imagenet"
         backbone = ResNet50Foundation(
@@ -165,7 +172,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             f"Supported options: ['biomedclip', 'pubmedclip', 'clip', 'medclip', 'resnet50_imagenet', 'densenet121_imagenet']"
         )
     
-    # --- Parameter-Efficient Fine-Tuning (PEFT) injection ---
+    # --- Chèn cơ chế tinh chỉnh hiệu quả tham số PEFT ---
     peft_cfg = cfg.get("peft", {"type": "none", "params": {}})
     peft_type = peft_cfg.get("type", "none")
 
@@ -176,14 +183,14 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
     )
 
     if is_non_adapter_backbone:
-        # CNN and MedCLIP do not expose OpenCLIP .model.visual/.text
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if peft_type == "full_ft":
             for param in backbone.parameters():
                 param.requires_grad = True
             print(f"[Builder] Full fine-tuning enabled for {backbone_type}")
 
         elif peft_type == "none":
-            # freeze_base already determines trainability
+            # Bước hỗ trợ để xây dựng model cho bước xử lý hiện tại.
             print(
                 f"[Builder] No PEFT applied to {backbone_type}; "
                 f"freeze_base={freeze_base}"
@@ -196,7 +203,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             )
 
     else:
-        # OpenCLIP-compatible backbones only
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if peft_type == "lora":
             params = peft_cfg.get("params", {})
 
@@ -282,7 +289,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
                     backbone.model.text_model = adapted_text_submodule
 
         elif peft_type == "none":
-            # Preserve freeze_base configuration
+            # Bước hỗ trợ để xây dựng model cho bước xử lý hiện tại.
             pass
 
         else:
@@ -304,7 +311,7 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
             f"trainable_visual={trainable_visual:,})"
         )
         
-    # --- Instantiate fusion and classifier head modules ---
+    # --- Khởi tạo mô-đun dung hợp và đầu phân lớp ---
     fusion_cfg = cfg.get('fusion', {'type': 'none', 'params': {}})
     classifier_cfg = cfg.get('classifier', {'type': 'none', 'params': {}})
     
@@ -319,23 +326,25 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
 
 
 # ============================================================
-# Phase 2 Module Setup Helper
+# Tiện ích thiết lập mô-đun cho pha 2
 # ============================================================
 
 def setup_phase2_modules(model, cfg: dict, device):
-    """Hot-swap fusion and classifier modules for Phase 2 classification training.
+    """Thực hiện bước setup phase2 modules trong quy trình hiện tại.
 
-    Phase 1 contrastive learning uses identity pass-through modules. When transitioning
-    to Phase 2, this function swaps uninitialized placeholder modules with configured
-    fusion (e.g., cross-attention) and head (e.g., empirical centroid) modules in-place.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
+    device : object
+        Thiết bị thực thi phép tính.
 
-    Args:
-        model (XBoneMultiModalModel): Pre-constructed composite model (modified in-place).
-        cfg (dict): Full experiment configuration containing model and dataset specs.
-        device (torch.device): Computation device to place new modules on.
-
-    Returns:
-        tuple: (model, classifier_type, fusion_type, num_classes) where model is updated.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     feature_dim = 512
     if hasattr(model.backbone, 'model') and hasattr(model.backbone.model, 'visual'):
@@ -358,7 +367,7 @@ def setup_phase2_modules(model, cfg: dict, device):
     )
     is_text_only = use_text_in_p2 and not use_image_in_p2
 
-    # --- Resolve Phase-2 module types. Explicit phase2 settings override model defaults.
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     model_fusion_cfg = cfg.model.get("fusion", {}) or {}
     model_head_cfg = cfg.model.get("classifier", {}) or {}
 
@@ -406,8 +415,8 @@ def setup_phase2_modules(model, cfg: dict, device):
         if classifier_type == "none":
             classifier_type = "empirical_centroid"
 
-    # Phase-1 fusion/head are frozen and untrained, so always reconstruct the exact
-    # requested Phase-2 modules. This also makes ablation overrides reliable.
+    # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     fusion_params_dict = {}
     if fusion_type != "none":
         fusion_params_dict = (
@@ -444,7 +453,7 @@ def setup_phase2_modules(model, cfg: dict, device):
         f"({feature_dim} -> {num_classes} classes)"
     )
 
-    # --- Enable local feature extraction for attention-based fusion ---
+    # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
     if hasattr(model.backbone, 'return_local'):
         model.backbone.return_local = fusion_type in {
             "cross_attention",
@@ -458,11 +467,21 @@ def setup_phase2_modules(model, cfg: dict, device):
 
 
 def setup_phase3_modules(model, cfg: dict, device):
-    """Attach the DRL auxiliary branch configured for Phase 3.
+    """Thực hiện bước setup phase3 modules trong quy trình hiện tại.
 
-    The primary Phase-2 network must already have been reconstructed before
-    this helper is called.  Phase-3 trainability is configured by ``train.py``;
-    this function only creates the checkpoint-compatible module structure.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
+    device : object
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     params_cfg = cfg.get("params", {}) or {}
     phase3_cfg = params_cfg.get("phase3", {}) or {}

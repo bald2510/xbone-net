@@ -15,7 +15,7 @@
 \usepackage[T5]{fontenc} \usepackage[utf8]{inputenc} \DeclareTextSymbolDefault{\DH}{T1}
 
 % Tài liệu tham khảo
-\usepackage[sorting=nty, backend=bibtex, defernumbers=true]{biblatex} \usepackage[unicode]{hyperref} % Bookmark tiếng Việt
+\usepackage[sorting=nty, backend=bibtex]{biblatex} \usepackage[unicode]{hyperref} % Bookmark tiếng Việt
 \addbibresource{References/references.bib}
 
 \makeatletter \def\blx@maxline{77} \makeatother
@@ -86,10 +86,12 @@
 % Lưu số trang La Mã trước khi vào đề cương để Mục lục nối tiếp ngay sau Lời cảm ơn
 \newcounter{savedromanpage}
 \setcounter{savedromanpage}{\value{page}}
+\pagenumbering{gobble}
 \include{Appendix/decuong}
 
 % Phục hồi số trang La Mã nối tiếp (ii, iii...) cho Mục lục và Tóm tắt
 \setcounter{page}{\value{savedromanpage}}
+\pagenumbering{roman}
 \pagestyle{plain}
 
 % Mục lục, danh sách hình, danh sách bảng
@@ -127,11 +129,9 @@
 %\DeclareNameAlias{sortname}{last-first}
 %\DeclareNameAlias{default}{last-first}
 
-\printbibliography[heading=subbibliography, title={Tiếng Anh}, notkeyword=Viet, resetnumbers=1]
+\printbibliography[heading=subbibliography, title={Tiếng Anh}, notkeyword=Viet]
 
-% ===================================================================== %
-% CHÚ Ý: phải gán lại resetnumbers=số tài liệu tham khảo tiếng Việt + 1 %
-% ===================================================================== %
+% Mỗi refsection duy trì hệ thống đánh số tài liệu tham khảo riêng.
 
 % Phần phụ lục
 \include{Appendix/appendix1}

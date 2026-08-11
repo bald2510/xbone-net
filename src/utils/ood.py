@@ -1,9 +1,8 @@
-"""Post-hoc out-of-distribution detection utilities for XBone-Net.
+"""Cung cấp tiện ích ood cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-All score functions in this module follow one convention: larger values mean
-stronger OOD evidence.  Detector fitting, ID-only threshold calibration, and
-final ID/OOD evaluation are deliberately separate operations so test samples
-are never used to choose a deployment threshold.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -25,6 +24,25 @@ COSINE_CENTROIDS_SCORE_DEFINITION = (
 
 
 def _embedding_matrix(array: np.ndarray, name: str = "embeddings") -> np.ndarray:
+    """Kiểm tra và chuẩn hóa ma trận biểu diễn đặc trưng.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Giá trị ``array`` được sử dụng trong phép xử lý.
+    name : str, optional
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     values = np.asarray(array, dtype=np.float64)
     if values.ndim != 2:
         raise ValueError(f"Expected a 2-D {name} matrix, got {values.shape}.")
@@ -36,12 +54,43 @@ def _embedding_matrix(array: np.ndarray, name: str = "embeddings") -> np.ndarray
 
 
 def _l2_normalize(array: np.ndarray) -> np.ndarray:
+    """Chuẩn hóa các vectơ theo chuẩn L2.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Giá trị ``array`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     array = _embedding_matrix(array)
     norms = np.linalg.norm(array, axis=1, keepdims=True)
     return array / np.maximum(norms, 1e-12)
 
 
 def _finite_scores(scores: np.ndarray, name: str) -> np.ndarray:
+    """Kiểm tra và chuẩn hóa dãy điểm hữu hạn.
+
+    Parameters
+    ----------
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     values = np.asarray(scores, dtype=np.float64).reshape(-1)
     if values.size == 0:
         raise ValueError(f"{name} must be non-empty.")
@@ -51,6 +100,23 @@ def _finite_scores(scores: np.ndarray, name: str) -> np.ndarray:
 
 
 def _softmax(logits: np.ndarray) -> np.ndarray:
+    """Thực hiện bước softmax trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    logits : np.ndarray
+        Giá trị ``logits`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     logits = np.asarray(logits, dtype=np.float64)
     if logits.ndim != 2 or logits.shape[1] < 2:
         raise ValueError("logits must have shape [N,C] with C >= 2.")
@@ -60,9 +126,15 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 
 class OODDetector:
-    """OOD detector supporting density-, confidence-, and text-based scores."""
+    """Phát hiện dữ liệu ngoài phân phối bằng lớp ``OODDetector``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self):
+        """Thực hiện bước init trong quy trình hiện tại."""
         self.class_means: dict[int, np.ndarray] = {}
         self.shared_cov_inv: Optional[np.ndarray] = None
         self.ref_embeddings: Optional[np.ndarray] = None
@@ -75,11 +147,32 @@ class OODDetector:
         labels: np.ndarray,
         prototypes: Optional[np.ndarray] = None,
     ):
-        # Mahalanobis statistics are estimated in the feature archive's native
-        # coordinate system.  Do not normalize inside the detector: doing so
-        # changes both the empirical mean and covariance away from the
-        # classical definition.  A separately normalized copy is retained for
-        # cosine k-NN scoring.
+        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
+        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
+        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
+        """Khớp kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        embeddings : np.ndarray
+            Giá trị ``embeddings`` được sử dụng trong phép xử lý.
+        labels : np.ndarray
+            Giá trị ``labels`` được sử dụng trong phép xử lý.
+        prototypes : Optional[np.ndarray]
+            Giá trị ``prototypes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         embeddings = _embedding_matrix(embeddings)
         labels = np.asarray(labels)
         if labels.ndim == 2:
@@ -120,8 +213,8 @@ class OODDetector:
             self.class_means[int(class_id)] = center
             centered_parts.append(class_embeddings - center)
 
-        # Centroids may cover a class absent from a deliberately small reference
-        # subset; covariance is still estimated from observed samples only.
+        # Tính hoặc cập nhật các tâm lớp trong không gian biểu diễn.
+        # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
         if prototype_centers is not None:
             for class_id, center in enumerate(prototype_centers):
                 self.class_means.setdefault(int(class_id), center)
@@ -135,11 +228,24 @@ class OODDetector:
     def score_mahalanobis_centroid(
         self, test_embeddings: np.ndarray
     ) -> np.ndarray:
-        """Return the classical Mahalanobis distance to the nearest ID class.
+        """Tính điểm mahalanobis tâm lớp cho bước xử lý hiện tại.
 
-        For each class this computes ``sqrt((x-mu)^T Sigma^-1 (x-mu))``
-        using empirical class means and one shared Ledoit-Wolf covariance.
-        The minimum class-conditional distance is the OOD score.
+        Parameters
+        ----------
+        test_embeddings : np.ndarray
+            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         if not self._fitted or self.shared_cov_inv is None:
             raise RuntimeError("Call fit() before Mahalanobis scoring.")
@@ -157,23 +263,47 @@ class OODDetector:
                 "ni,ij,nj->n", diff, self.shared_cov_inv, diff
             )
             squared_scores = np.minimum(squared_scores, squared_distances)
-        # A symmetric pseudo-inverse can still produce tiny negative values
-        # from floating-point roundoff.  Zero-clipping preserves the classical
-        # non-negative distance before taking the square root.
+        # Tính và tổng hợp các độ đo đánh giá cần thiết.
+        # do sai số làm tròn số thực. Việc chặn tại 0 giữ nguyên tính chất
+        # Bước hỗ trợ để tính điểm mahalanobis centroid cho bước xử lý hiện tại.
         return np.sqrt(np.maximum(squared_scores, 0.0))
 
     def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
-        """Backward-compatible alias for ``score_mahalanobis_centroid``."""
+        """Tính điểm mahalanobis cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        test_embeddings : np.ndarray
+            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return self.score_mahalanobis_centroid(test_embeddings)
 
     def score_cosine_centroids(
         self, test_embeddings: np.ndarray
     ) -> np.ndarray:
-        """Return cosine distance to the nearest empirical class centroid.
+        """Tính điểm cosine các tâm lớp cho bước xử lý hiện tại.
 
-        Both samples and class means are L2-normalized so the score is
-        ``1 - max_c cosine(z, mu_c)``. Larger values indicate stronger OOD
-        evidence and match the geometry used by the empirical-centroid head.
+        Parameters
+        ----------
+        test_embeddings : np.ndarray
+            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         if not self._fitted or not self.class_means:
             raise RuntimeError("Call fit() before cosine-centroid scoring.")
@@ -191,6 +321,29 @@ class OODDetector:
         k: int = 5,
         exclude_self: bool = False,
     ) -> np.ndarray:
+        """Tính điểm knn cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        test_embeddings : np.ndarray
+            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+        k : int, optional
+            Giá trị ``k`` được sử dụng trong phép xử lý.
+        exclude_self : bool, optional
+            Giá trị ``exclude_self`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if not self._fitted or self.ref_embeddings is None:
             raise RuntimeError("Call fit() before k-NN scoring.")
         test_embeddings = _l2_normalize(test_embeddings)
@@ -209,7 +362,25 @@ class OODDetector:
 
     @staticmethod
     def score_energy(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
-        """Return energy where larger values indicate stronger OOD evidence."""
+        """Tính điểm energy cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        logits : np.ndarray
+            Giá trị ``logits`` được sử dụng trong phép xử lý.
+        temperature : float, optional
+            Giá trị ``temperature`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         logits = np.asarray(logits, dtype=np.float64)
         if logits.ndim != 2:
             raise ValueError("logits must have shape [N,C].")
@@ -222,19 +393,57 @@ class OODDetector:
 
     @staticmethod
     def score_msp(logits: np.ndarray) -> np.ndarray:
-        """Return ``1 - max softmax probability``."""
+        """Tính điểm msp cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        logits : np.ndarray
+            Giá trị ``logits`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return 1.0 - _softmax(logits).max(axis=1)
 
     @staticmethod
     def score_entropy(logits: np.ndarray) -> np.ndarray:
-        """Return predictive entropy normalized to [0, 1]."""
+        """Tính điểm entropy cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        logits : np.ndarray
+            Giá trị ``logits`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         probabilities = _softmax(logits)
         entropy = -(probabilities * np.log(np.maximum(probabilities, 1e-12))).sum(axis=1)
         return entropy / np.log(probabilities.shape[1])
 
     @staticmethod
     def score_max_logit(logits: np.ndarray) -> np.ndarray:
-        """Return negative maximum logit so larger values mean more OOD."""
+        """Tính điểm max logit cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        logits : np.ndarray
+            Giá trị ``logits`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         logits = np.asarray(logits, dtype=np.float64)
         if logits.ndim != 2:
             raise ValueError("logits must have shape [N,C].")
@@ -245,6 +454,20 @@ class OODDetector:
         test_img_embeddings: np.ndarray,
         anchor_text_embeddings: np.ndarray,
     ) -> np.ndarray:
+        """Tính điểm văn bản anchor cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        test_img_embeddings : np.ndarray
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        anchor_text_embeddings : np.ndarray
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         test_img_embeddings = _l2_normalize(test_img_embeddings)
         anchor_text_embeddings = _l2_normalize(anchor_text_embeddings)
         return 1.0 - (test_img_embeddings @ anchor_text_embeddings.T).max(axis=1)
@@ -255,6 +478,27 @@ class OODDetector:
         method: str = "mahalanobis_centroid",
         **kwargs,
     ) -> np.ndarray:
+        """Tính điểm kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        test_embeddings : np.ndarray
+            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+        method : str, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if method == "mahalanobis_centroid":
             return self.score_mahalanobis_centroid(test_embeddings)
         if method == "cosine_centroids":
@@ -278,14 +522,32 @@ def calibrate_ood_threshold(
     calibration_id_scores: np.ndarray,
     target_id_fpr: float = 0.05,
 ) -> float:
-    """Choose an ID-only threshold with approximately ``target_id_fpr`` rejects."""
+    """Thực hiện bước calibrate ood threshold trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    calibration_id_scores : np.ndarray
+        Giá trị ``calibration_id_scores`` được sử dụng trong phép xử lý.
+    target_id_fpr : float, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     scores = _finite_scores(calibration_id_scores, "calibration_id_scores")
     if not 0.0 < target_id_fpr < 1.0:
         raise ValueError("target_id_fpr must be between 0 and 1.")
     quantile = 1.0 - float(target_id_fpr)
     try:
         return float(np.quantile(scores, quantile, method="higher"))
-    except TypeError:  # NumPy < 1.22
+    except TypeError:  # Tương thích với NumPy phiên bản nhỏ hơn 1.22
         return float(np.quantile(scores, quantile, interpolation="higher"))
 
 
@@ -293,12 +555,19 @@ def evaluate_ood(
     id_scores: np.ndarray,
     ood_scores: np.ndarray,
 ) -> dict:
-    """Return the three report metrics under ``higher = more OOD``.
+    """Đánh giá ood cho bước xử lý hiện tại.
 
-    AUROC-OOD and AUPR-Out designate OOD as the positive class. FPR@95%TPR
-    follows the established OOD convention: ID is positive for this operating
-    point, so FPR is the fraction of OOD samples incorrectly accepted when 95%
-    of ID samples are accepted.
+    Parameters
+    ----------
+    id_scores : np.ndarray
+        Giá trị ``id_scores`` được sử dụng trong phép xử lý.
+    ood_scores : np.ndarray
+        Giá trị ``ood_scores`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     id_scores = _finite_scores(id_scores, "id_scores")
     ood_scores = _finite_scores(ood_scores, "ood_scores")
@@ -311,9 +580,9 @@ def evaluate_ood(
     auroc_ood = float(roc_auc_score(labels, scores))
     aupr_out = float(average_precision_score(labels, scores))
 
-    # Literature-standard FPR95 treats ID acceptance as the positive decision:
-    # at 95% ID TPR, FPR is the fraction of OOD samples incorrectly accepted as
-    # ID. Since this module stores higher-is-OOD scores, ID confidence is -score.
+    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
     fpr_id, tpr_id, _ = roc_curve(1 - labels, -scores, pos_label=1)
     eligible = np.flatnonzero(tpr_id >= 0.95)
     if eligible.size:
@@ -339,10 +608,36 @@ def bootstrap_ood_metrics(
     id_groups: Optional[np.ndarray] = None,
     ood_groups: Optional[np.ndarray] = None,
 ) -> dict[str, list[float]]:
-    """Percentile bootstrap confidence intervals.
+    """Ước lượng bootstrap cho ood các độ đo cho bước xử lý hiện tại.
 
-    ``paired=True`` is intended for report-mismatch experiments where each OOD
-    score is generated from the same image as the corresponding ID score.
+    Parameters
+    ----------
+    id_scores : np.ndarray
+        Giá trị ``id_scores`` được sử dụng trong phép xử lý.
+    ood_scores : np.ndarray
+        Giá trị ``ood_scores`` được sử dụng trong phép xử lý.
+    n_bootstrap : int, optional
+        Giá trị ``n_bootstrap`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    paired : bool, optional
+        Giá trị ``paired`` được sử dụng trong phép xử lý.
+    id_groups : Optional[np.ndarray]
+        Giá trị ``id_groups`` được sử dụng trong phép xử lý.
+    ood_groups : Optional[np.ndarray]
+        Giá trị ``ood_groups`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     id_scores = _finite_scores(id_scores, "id_scores")
     ood_scores = _finite_scores(ood_scores, "ood_scores")
@@ -354,6 +649,27 @@ def bootstrap_ood_metrics(
         raise ValueError("Paired bootstrap requires equal ID and OOD sample counts.")
 
     def validate_groups(groups, expected, name):
+        """Kiểm tra tính hợp lệ của groups cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        groups : object
+            Giá trị ``groups`` được sử dụng trong phép xử lý.
+        expected : object
+            Giá trị ``expected`` được sử dụng trong phép xử lý.
+        name : object
+            Tên hoặc khóa định danh của giá trị.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if groups is None:
             return None
         values = np.asarray(groups).astype(str).reshape(-1)
@@ -371,6 +687,20 @@ def bootstrap_ood_metrics(
     rng = np.random.default_rng(seed)
 
     def draw_indices(length: int, groups: Optional[np.ndarray]) -> np.ndarray:
+        """Vẽ indices cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        length : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        groups : Optional[np.ndarray]
+            Giá trị ``groups`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        np.ndarray
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         if groups is None:
             return rng.integers(0, length, size=length)
         unique = np.unique(groups)

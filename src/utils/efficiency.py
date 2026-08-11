@@ -1,9 +1,8 @@
-"""Utilities for reproducible model-efficiency measurements.
+"""Cung cấp tiện ích efficiency cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-The FLOP counter reports operations supported by PyTorch's
-``FlopCounterMode``.  This is deliberately described as an estimate because
-pointwise operations, normalisation and some third-party/custom kernels may not
-be registered by PyTorch's counter.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -19,7 +18,18 @@ import torch.nn as nn
 
 
 def parameter_summary(model: nn.Module) -> dict[str, Any]:
-    """Return total/trainable parameter counts and top-level breakdown."""
+    """Thực hiện bước parameter summary trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     total = sum(parameter.numel() for parameter in model.parameters())
     trainable = sum(
         parameter.numel()
@@ -49,6 +59,25 @@ def parameter_summary(model: nn.Module) -> dict[str, Any]:
 
 
 def _percentile(values: Sequence[float], percentile: float) -> float:
+    """Thực hiện bước percentile trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : Sequence[float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    percentile : float
+        Giá trị ``percentile`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     ordered = sorted(float(value) for value in values)
     if not ordered:
         raise ValueError("Cannot compute a percentile of an empty sequence.")
@@ -62,7 +91,23 @@ def _percentile(values: Sequence[float], percentile: float) -> float:
 
 
 def summarize_measurements(values: Sequence[float]) -> dict[str, float | int]:
-    """Summarise repeated scalar measurements without requiring NumPy."""
+    """Thực hiện bước summarize measurements trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : Sequence[float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float | int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     numeric = [float(value) for value in values]
     if not numeric:
         raise ValueError("At least one measurement is required.")
@@ -81,10 +126,28 @@ def count_supported_flops(
     forward_fn: Callable[[], Any],
     model: nn.Module | None = None,
 ) -> int:
-    """Count forward FLOPs supported by the installed PyTorch registry."""
-    # Kept in the public signature for callers that want to associate a model
-    # with the measurement. Recent PyTorch versions no longer need ``mods`` to
-    # compute the global total.
+    """Thực hiện bước count supported flops trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    forward_fn : Callable[[], Any]
+        Giá trị ``forward_fn`` được sử dụng trong phép xử lý.
+    model : nn.Module | None, optional
+        Mô hình hoặc thành phần mô hình cần xử lý.
+
+    Returns
+    -------
+    int
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
+    # Bước hỗ trợ để thực hiện xử lý ``count_supported_flops`` trong quy trình hiện tại.
+    # khỏi phép đo. Các phiên bản PyTorch mới không còn cần ``mods`` để
+    # Bước hỗ trợ để thực hiện xử lý ``count_supported_flops`` trong quy trình hiện tại.
     del model
     try:
         from torch.utils.flop_counter import FlopCounterMode
@@ -105,7 +168,29 @@ def measure_latency_ms(
     warmup: int = 10,
     repeats: int = 50,
 ) -> list[float]:
-    """Measure model-only forward latency, excluding host-to-device transfer."""
+    """Thực hiện bước measure latency ms trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    forward_fn : Callable[[], Any]
+        Giá trị ``forward_fn`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    warmup : int, optional
+        Giá trị ``warmup`` được sử dụng trong phép xử lý.
+    repeats : int, optional
+        Giá trị ``repeats`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if warmup < 0:
         raise ValueError("warmup must be non-negative.")
     if repeats < 1:
@@ -138,7 +223,20 @@ def measure_cuda_memory_mb(
     forward_fn: Callable[[], Any],
     device: torch.device,
 ) -> dict[str, float] | None:
-    """Measure peak allocated/reserved CUDA memory for one forward pass."""
+    """Thực hiện bước measure cuda memory mb trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    forward_fn : Callable[[], Any]
+        Giá trị ``forward_fn`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    dict[str, float] | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if device.type != "cuda":
         return None
 
@@ -166,7 +264,20 @@ def batch_metadata(
     batch: dict[str, Any],
     attention_mask: torch.Tensor | None,
 ) -> dict[str, Any]:
-    """Record the dynamic image/tile/text dimensions that determine compute."""
+    """Thực hiện bước batch metadata trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+    attention_mask : torch.Tensor | None
+        Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     images = batch["pixel_values"]
     metadata: dict[str, Any] = {
         "batch_size": int(images.shape[0]),

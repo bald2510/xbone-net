@@ -1,16 +1,8 @@
-"""Reusable online inference utilities for the XBone-Net Streamlit demo.
+"""Cung cấp tiện ích online inference cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-The implementation deliberately follows the locked CTCH analysis protocol:
-
-* load the evaluated ``ctch/proposed/ours_xbone_net`` checkpoint;
-* build sparse-focal high-resolution inputs with the recorded configuration;
-* classify from the trained bidirectional fused representation;
-* fit OOD reference statistics on CTCH train and calibrate thresholds on
-  CTCH validation-ID only;
-* compute Integrated Gradients over the exact local visual tokens consumed by
-  the fusion module.
-
-Larger OOD scores always indicate stronger OOD evidence.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -57,27 +49,55 @@ OOD_METHODS = (
 
 @dataclass(frozen=True)
 class OODCalibration:
-    """Fitted train-ID references and validation-ID operating thresholds."""
+    """Đóng gói hành vi của thành phần ``OODCalibration``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     normalized_detector: OODDetector
     raw_detector: OODDetector
+    reference_image_ids: np.ndarray
+    reference_visual_embeddings: np.ndarray
     thresholds: dict[str, float]
     calibration_counts: dict[str, int]
     target_id_fpr: float
 
 
+@dataclass(frozen=True)
+class SimilarImageReference:
+    """Đóng gói hành vi của thành phần ``SimilarImageReference``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
+
+    image_id: str
+    class_index: int
+    class_label: str
+    cosine_similarity: float
+
+
 @dataclass
 class OnlineInferenceResult:
-    """All outputs needed by the interactive demo."""
+    """Đóng gói hành vi của thành phần ``OnlineInferenceResult``.
 
-    predicted_index: int | None
-    predicted_label: str | None
-    probabilities: np.ndarray | None
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
+
+    predicted_index: int
+    predicted_label: str
+    probabilities: np.ndarray
     class_labels: list[str]
     ood_method: str
     ood_score: float
     ood_threshold: float
     is_ood: bool
+    similar_images: list[SimilarImageReference]
     local_boxes: np.ndarray | None
     local_ig_scores: np.ndarray | None
     spatial_ig_boxes: np.ndarray | None
@@ -94,6 +114,18 @@ class OnlineInferenceResult:
 
 
 def _labels(values: np.ndarray) -> np.ndarray:
+    """Trích xuất danh sách nhãn theo đúng thứ tự lớp.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     labels = np.asarray(values)
     if labels.ndim == 2:
         labels = labels.argmax(axis=1)
@@ -110,6 +142,35 @@ def _score_method(
     logits: np.ndarray,
     knn_k: int,
 ) -> np.ndarray:
+    """Tính điểm OOD bằng phương pháp được lựa chọn.
+
+    Parameters
+    ----------
+    method : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    normalized_detector : OODDetector
+        Giá trị ``normalized_detector`` được sử dụng trong phép xử lý.
+    raw_detector : OODDetector
+        Giá trị ``raw_detector`` được sử dụng trong phép xử lý.
+    fused_embedding : np.ndarray
+        Biểu diễn đặc trưng cần xử lý.
+    fused_embedding_raw : np.ndarray
+        Biểu diễn đặc trưng cần xử lý.
+    logits : np.ndarray
+        Giá trị ``logits`` được sử dụng trong phép xử lý.
+    knn_k : int
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if method == "cosine_centroids":
         return normalized_detector.score_cosine_centroids(fused_embedding)
     if method == "mahalanobis_centroid":
@@ -128,6 +189,26 @@ def _calibration_scores(
     arrays: Mapping[str, np.ndarray],
     knn_k: int,
 ) -> np.ndarray:
+    """Thực hiện bước calibration các điểm trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    method : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    normalized_detector : OODDetector
+        Giá trị ``normalized_detector`` được sử dụng trong phép xử lý.
+    raw_detector : OODDetector
+        Giá trị ``raw_detector`` được sử dụng trong phép xử lý.
+    arrays : Mapping[str, np.ndarray]
+        Giá trị ``arrays`` được sử dụng trong phép xử lý.
+    knn_k : int
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return _score_method(
         method,
         normalized_detector,
@@ -145,7 +226,27 @@ def fit_locked_ood_calibration(
     target_id_fpr: float = 0.05,
     knn_k: int = 5,
 ) -> OODCalibration:
-    """Fit the canonical OOD detector from saved CTCH train/validation features."""
+    """Khớp locked ood calibration cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    target_id_fpr : float, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    knn_k : int, optional
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    OODCalibration
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     feature_root = analysis_root(loaded.provenance["seed"]) / "features"
     train, train_provenance = load_feature_archive(
@@ -170,6 +271,24 @@ def fit_locked_ood_calibration(
             )
 
     train_labels = _labels(train["labels"])
+    reference_image_ids = np.asarray(train.get("image_id", []), dtype=str).reshape(-1)
+    reference_visual_embeddings = np.asarray(
+        train.get("visual_global_embeddings", []),
+        dtype=np.float64,
+    )
+    if len(reference_image_ids) != len(train_labels):
+        raise RuntimeError(
+            "CTCH train feature archive does not contain one image_id per "
+            "reference embedding."
+        )
+    if (
+        reference_visual_embeddings.ndim != 2
+        or len(reference_visual_embeddings) != len(train_labels)
+    ):
+        raise RuntimeError(
+            "CTCH train feature archive does not contain one global visual "
+            "embedding per reference image."
+        )
     normalized_detector = OODDetector().fit(
         np.asarray(train["fused_embeddings"]),
         train_labels,
@@ -198,6 +317,8 @@ def fit_locked_ood_calibration(
     return OODCalibration(
         normalized_detector=normalized_detector,
         raw_detector=raw_detector,
+        reference_image_ids=reference_image_ids,
+        reference_visual_embeddings=reference_visual_embeddings,
         thresholds=thresholds,
         calibration_counts=counts,
         target_id_fpr=float(target_id_fpr),
@@ -205,6 +326,22 @@ def fit_locked_ood_calibration(
 
 
 def _tokenize_text(tokenizer, text: str, device: torch.device):
+    """Thực hiện bước tokenize văn bản trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    text : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     tokenized = tokenizer([text])
     attention_mask = None
     if isinstance(tokenized, Mapping):
@@ -228,6 +365,27 @@ def _tokenize_text(tokenizer, text: str, device: torch.device):
 
 
 def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
+    """Xây dựng online inputs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    clinical_text : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     cfg = loaded.cfg
     high_res_cfg = OmegaConf.to_container(
         cfg.dataset.params.high_res,
@@ -270,6 +428,25 @@ def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
 
 
 def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
+    """Thực hiện bước forward and cache trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    inputs : Mapping[str, Any]
+        Giá trị ``inputs`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     model = loaded.model
     with torch.no_grad():
         image_tokens, text_tokens = model.backbone(
@@ -307,6 +484,7 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
 
     cached = {
         "global_feature": model.backbone.last_global_feature.detach(),
+        "visual_global_embedding": image_tokens[:, 0].detach(),
         "local_tokens": model.backbone.last_local_tokens.detach(),
         "local_mask": model.backbone.last_local_mask.detach(),
         "local_boxes": model.backbone.last_local_token_boxes.detach(),
@@ -342,6 +520,27 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
 
 
 def _spatial_token_subset(model, boxes: np.ndarray, scores: np.ndarray):
+    """Thực hiện bước spatial token subset trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     tokens_per_tile = int(model.backbone.local_pool_grid) ** 2 + int(
         model.backbone.include_local_cls_token
     )
@@ -364,7 +563,29 @@ def _decoded_text_attribution(
     attention_mask: torch.Tensor,
     scores: np.ndarray,
 ) -> tuple[list[str], np.ndarray]:
-    """Decode valid WordPiece tokens and merge continuation pieces."""
+    """Thực hiện bước decoded văn bản attribution trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    input_ids : torch.Tensor
+        Dữ liệu nguồn của phép xử lý.
+    attention_mask : torch.Tensor
+        Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[list[str], np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     inner = getattr(tokenizer, "tokenizer", tokenizer)
     converter = getattr(inner, "convert_ids_to_tokens", None)
@@ -401,7 +622,12 @@ def _decoded_text_attribution(
 
 
 class OnlineInferenceEngine:
-    """Checkpoint, OOD references, prediction, and local-token explanation."""
+    """Điều phối suy luận trực tuyến bằng lớp ``OnlineInferenceEngine``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(
         self,
@@ -413,6 +639,23 @@ class OnlineInferenceEngine:
         target_id_fpr: float = 0.05,
         knn_k: int = 5,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Hạt giống phục vụ khả năng tái lập.
+        device : str | torch.device | None, optional
+            Thiết bị thực thi phép tính.
+        experiment_name : str, optional
+            Tên hoặc khóa định danh của giá trị.
+        enable_ood : bool, optional
+            Giá trị ``enable_ood`` được sử dụng trong phép xử lý.
+        target_id_fpr : float, optional
+            Nhãn hoặc chỉ số lớp liên quan.
+        knn_k : int, optional
+            Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+        """
         self.seed = int(seed)
         if device is None or str(device).lower() == "auto":
             resolved_device = torch.device(
@@ -453,7 +696,84 @@ class OnlineInferenceEngine:
 
     @property
     def device(self) -> torch.device:
+        """Thực hiện bước thiết bị trong quy trình hiện tại.
+
+        Returns
+        -------
+        torch.device
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return self.loaded.device
+
+    def _nearest_training_images(
+        self,
+        global_feature: torch.Tensor,
+        count: int,
+    ) -> list[SimilarImageReference]:
+        """Thực hiện bước nearest training các ảnh trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        global_feature : torch.Tensor
+            Biểu diễn đặc trưng cần xử lý.
+        count : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+        Returns
+        -------
+        list[SimilarImageReference]
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
+
+        if self.ood is None or int(count) <= 0:
+            return []
+        references = np.asarray(
+            self.ood.reference_visual_embeddings,
+            dtype=np.float64,
+        )
+        if references.ndim != 2 or references.shape[0] == 0:
+            return []
+        reference_norms = np.linalg.norm(references, axis=1, keepdims=True)
+        references = references / np.maximum(reference_norms, 1e-12)
+
+        query = global_feature.detach().float()
+        if query.ndim == 1:
+            query = query.unsqueeze(0)
+        query_array = F.normalize(query, dim=-1)[0].cpu().numpy().astype(np.float64)
+        if query_array.shape[0] != references.shape[1]:
+            raise RuntimeError(
+                "Online and CTCH-train global visual embedding dimensions differ."
+            )
+
+        similarities = references @ query_array
+        limit = min(max(0, int(count)), len(similarities))
+        order = np.argsort(-similarities, kind="stable")[:limit]
+        labels = self.ood.normalized_detector.ref_labels
+        if labels is None or len(labels) != len(references):
+            raise RuntimeError("CTCH-train reference labels are unavailable.")
+
+        nearest: list[SimilarImageReference] = []
+        for index in order:
+            class_index = int(labels[index])
+            class_label = (
+                self.class_labels[class_index]
+                if 0 <= class_index < len(self.class_labels)
+                else f"Class {class_index}"
+            )
+            nearest.append(
+                SimilarImageReference(
+                    image_id=str(self.ood.reference_image_ids[index]),
+                    class_index=class_index,
+                    class_label=class_label,
+                    cosine_similarity=float(similarities[index]),
+                )
+            )
+        return nearest
 
     def predict(
         self,
@@ -464,7 +784,37 @@ class OnlineInferenceEngine:
         ig_steps: int = 16,
         compute_faithfulness: bool = False,
         compute_global_ig: bool = False,
+        similar_image_count: int = 4,
     ) -> OnlineInferenceResult:
+        """Dự đoán kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        image : Image.Image
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        clinical_text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        ood_method : str, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+        ig_steps : int, optional
+            Giá trị ``ig_steps`` được sử dụng trong phép xử lý.
+        compute_faithfulness : bool, optional
+            Giá trị ``compute_faithfulness`` được sử dụng trong phép xử lý.
+        compute_global_ig : bool, optional
+            Giá trị ``compute_global_ig`` được sử dụng trong phép xử lý.
+        similar_image_count : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+        Returns
+        -------
+        OnlineInferenceResult
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         clinical_text = str(clinical_text).strip()
         if not clinical_text:
             raise ValueError("Clinical text must not be empty.")
@@ -481,6 +831,10 @@ class OnlineInferenceEngine:
         fused_raw, logits, cached = _forward_and_cache(self.loaded, inputs)
         probabilities = torch.softmax(logits, dim=-1)[0]
         predicted_index = int(probabilities.argmax().item())
+        similar_images = self._nearest_training_images(
+            cached["visual_global_embedding"],
+            int(similar_image_count),
+        )
 
         fused_embedding_raw = fused_raw.cpu().numpy()
         fused_embedding = F.normalize(fused_raw, dim=-1).cpu().numpy()
@@ -504,18 +858,20 @@ class OnlineInferenceEngine:
             threshold = float(self.ood.thresholds[ood_method])
             is_ood = bool(score > threshold)
 
-        # Do not expose a closed-set class or a class-conditioned explanation
-        # after the sample has been rejected by the locked OOD rule.
+        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+        # Bước hỗ trợ để dự đoán kết quả cho bước xử lý hiện tại.
+        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
         if is_ood:
             return OnlineInferenceResult(
-                predicted_index=None,
-                predicted_label=None,
-                probabilities=None,
+                predicted_index=predicted_index,
+                predicted_label=self.class_labels[predicted_index],
+                probabilities=probabilities.detach().cpu().numpy(),
                 class_labels=self.class_labels,
                 ood_method=ood_method,
                 ood_score=score,
                 ood_threshold=threshold,
                 is_ood=True,
+                similar_images=similar_images,
                 local_boxes=None,
                 local_ig_scores=None,
                 spatial_ig_boxes=None,
@@ -688,6 +1044,7 @@ class OnlineInferenceEngine:
             ood_score=score,
             ood_threshold=threshold,
             is_ood=False,
+            similar_images=similar_images,
             local_boxes=local_boxes,
             local_ig_scores=local_scores,
             spatial_ig_boxes=spatial_boxes,
@@ -705,6 +1062,18 @@ class OnlineInferenceEngine:
 
 
 def _global_patch_grid(model) -> tuple[int, int]:
+    """Thực hiện bước global patch grid trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+
+    Returns
+    -------
+    tuple[int, int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     trunk = getattr(
         getattr(model.backbone.model, "visual", None),
         "trunk",
@@ -724,7 +1093,29 @@ def project_global_ig_to_source(
     *,
     patch_grid: tuple[int, int] | None = None,
 ) -> np.ndarray:
-    """Undo foreground cropping and letterboxing for a global-view heatmap."""
+    """Thực hiện bước project global ig to source trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    heatmap : np.ndarray
+        Giá trị ``heatmap`` được sử dụng trong phép xử lý.
+    foreground_box : tuple[int, int, int, int]
+        Giá trị ``foreground_box`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    patch_grid : tuple[int, int] | None, optional
+        Giá trị ``patch_grid`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     values = np.maximum(np.asarray(heatmap, dtype=np.float32), 0.0)
     if values.ndim != 2:
@@ -801,6 +1192,22 @@ def _render_heatmap_overlay(
     *,
     alpha: float,
 ) -> Image.Image:
+    """Kết xuất heatmap overlay cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    heatmap : np.ndarray
+        Giá trị ``heatmap`` được sử dụng trong phép xử lý.
+    alpha : float
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Image.Image
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     resized = image.convert("RGB").resize(
         (heatmap.shape[1], heatmap.shape[0]),
         Image.Resampling.LANCZOS,
@@ -818,7 +1225,27 @@ def render_global_ig_overlay(
     *,
     alpha: float = 0.58,
 ) -> Image.Image:
-    """Overlay pixel-level global-view IG in source-image coordinates."""
+    """Kết xuất global ig overlay cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    result : OnlineInferenceResult
+        Giá trị ``result`` được sử dụng trong phép xử lý.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Image.Image
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     if result.global_ig_map is None:
         raise ValueError("Global-image Integrated Gradients is unavailable.")
@@ -836,7 +1263,24 @@ def rasterize_local_ig(
     *,
     max_side: int = 720,
 ) -> np.ndarray:
-    """Rasterize local-token attribution in source-image coordinates."""
+    """Thực hiện bước rasterize local ig trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_side : int, optional
+        Giá trị ``max_side`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
 
     width, height = image_size
     scale = min(1.0, float(max_side) / max(width, height))
@@ -884,7 +1328,27 @@ def render_local_ig_overlay(
     *,
     alpha: float = 0.58,
 ) -> Image.Image:
-    """Overlay token-level IG on a display-sized copy of the source image."""
+    """Kết xuất local ig overlay cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    result : OnlineInferenceResult
+        Giá trị ``result`` được sử dụng trong phép xử lý.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Image.Image
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     if result.spatial_ig_boxes is None or result.spatial_ig_scores is None:
         raise ValueError("Integrated Gradients is unavailable for an OOD sample.")

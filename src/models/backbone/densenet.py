@@ -1,11 +1,8 @@
-"""
-DenseNet-121 Backbone Foundation Module for XBone-Net.
-===============================================================================
-Provides a DenseNet-121 image-only baseline architecture for bone X-ray classification.
-Extracted visual features are projected into a 512-dimensional embedding space.
+"""Cung cấp bộ mã hóa nền tảng densenet cho XBone-Net.
 
-Exposes a unified interface matching BiomedCLIP, returning (image_features, None)
-to indicate image-only modality.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch
@@ -16,26 +13,15 @@ from .resnet50 import DummyTokenizer, DummyTextModule
 
 
 # ============================================================
-# DenseNet-121 Image Backbone
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 # ============================================================
 
 class DenseNetBackbone(nn.Module):
-    """DenseNet-121 image-only feature extractor with linear projection layer.
+    """Đóng gói hành vi của thành phần ``DenseNetBackbone``.
 
-    Extracts high-level visual features from DenseNet-121 bottleneck layers and projects
-    them to a normalized embedding space of dimension embed_dim (default 512).
-
-    Attributes:
-        EMBED_DIM (int): Default feature embedding dimension (512).
-        pretrained_type (str): Pre-training weight initialization type ('imagenet', 'medical').
-        densenet (nn.Module): Truncated DenseNet-121 feature extractor.
-        preprocess (callable): Input image preprocessing transform pipeline.
-        projection (nn.Module): Sequential linear and LayerNorm projection layers.
-        tokenizer (DummyTokenizer): Pass-through tokenizer for architecture compatibility.
-
-    Example:
-        >>> backbone = DenseNetBackbone(pretrained="imagenet", embed_dim=512)
-        >>> img_feats, _ = backbone(images)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     EMBED_DIM = 512
@@ -46,17 +32,21 @@ class DenseNetBackbone(nn.Module):
         embed_dim: int = 512,
         freeze_base: bool = False,
     ):
-        """Initialize DenseNet-121 feature extractor.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            pretrained (str): Weight initialization ('imagenet' or 'medical'). Defaults to 'imagenet'.
-            embed_dim (int): Output feature projection dimension. Defaults to 512.
-            freeze_base (bool): If True, freezes DenseNet backbone parameters. Defaults to False.
+        Parameters
+        ----------
+        pretrained : str, optional
+            Giá trị ``pretrained`` được sử dụng trong phép xử lý.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
         """
         super().__init__()
         self.pretrained_type = pretrained
 
-        # --- Load DenseNet backbone weights and transforms ---
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if pretrained == "imagenet" or pretrained == "medical":
             weights = models.DenseNet121_Weights.IMAGENET1K_V1
             self.densenet = models.densenet121(weights=weights)
@@ -73,7 +63,7 @@ class DenseNetBackbone(nn.Module):
                                      std=[0.229, 0.224, 0.225]),
             ])
 
-        # --- Replace classification head with projection layer ---
+        # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
         densenet_feature_dim = self.densenet.classifier.in_features
         self.densenet.classifier = nn.Identity()
 
@@ -82,7 +72,7 @@ class DenseNetBackbone(nn.Module):
             nn.LayerNorm(embed_dim),
         )
 
-        # --- Freeze backbone weights if requested ---
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
         if freeze_base:
             for param in self.densenet.parameters():
                 param.requires_grad = False
@@ -90,14 +80,21 @@ class DenseNetBackbone(nn.Module):
         self.tokenizer = DummyTokenizer()
 
     def forward(self, images, input_ids=None, **kwargs):
-        """Extract and L2-normalize image embeddings.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor, optional): Tokenized text input (ignored). Defaults to None.
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            tuple: (image_features, None) where image_features is L2-normalized [B, D].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         feats = self.densenet(images)
         projected = self.projection(feats)
@@ -107,19 +104,15 @@ class DenseNetBackbone(nn.Module):
 
 
 # ============================================================
-# DenseNet Foundation Wrapper
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 class DenseNetFoundation(nn.Module):
-    """Foundation model wrapper matching BiomedCLIPFoundation interface.
+    """Bao bọc mô hình nền tảng bằng lớp ``DenseNetFoundation``.
 
-    Wraps DenseNetBackbone to expose .model, .preprocess, and .tokenizer attributes
-    compatible with the XBone composite builder.
-
-    Attributes:
-        model (DenseNetModelWrapper): Sub-module wrapper exposing .visual and .text attributes.
-        preprocess (callable): Preprocessing transforms for input images.
-        tokenizer (DummyTokenizer): Dummy tokenizer returning pass-through tokens.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -128,12 +121,16 @@ class DenseNetFoundation(nn.Module):
         embed_dim: int = 512,
         freeze_base: bool = False,
     ):
-        """Initialize DenseNet foundation wrapper.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            pretrained (str): Weight initialization type. Defaults to 'imagenet'.
-            embed_dim (int): Projection embedding dimension. Defaults to 512.
-            freeze_base (bool): If True, freeze backbone weights. Defaults to False.
+        Parameters
+        ----------
+        pretrained : str, optional
+            Giá trị ``pretrained`` được sử dụng trong phép xử lý.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
         """
         super().__init__()
         self._backbone = DenseNetBackbone(
@@ -147,30 +144,44 @@ class DenseNetFoundation(nn.Module):
         self.tokenizer = self._backbone.tokenizer
 
     def forward(self, images, input_ids=None, **kwargs):
-        """Forward pass forwarding to underlying DenseNetBackbone.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            images (torch.Tensor): Input image tensor batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor, optional): Input text IDs batch (ignored).
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            tuple: (image_features, None)
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self._backbone(images, input_ids)
 
 
 # ============================================================
-# DenseNet Sub-module API Compatibility Wrapper
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 class DenseNetModelWrapper:
-    """Wrapper providing .visual and .text attributes for builder compatibility."""
+    """Đóng gói hành vi của thành phần ``DenseNetModelWrapper``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, backbone: DenseNetBackbone):
-        """Initialize model wrapper with underlying backbone.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            backbone (DenseNetBackbone): Instantiated DenseNet feature extractor.
+        Parameters
+        ----------
+        backbone : DenseNetBackbone
+            Mô hình hoặc thành phần mô hình cần xử lý.
         """
         self.visual = nn.Sequential(
             backbone.densenet,
@@ -179,25 +190,33 @@ class DenseNetModelWrapper:
         self.text = DummyTextModule()
 
     def encode_image(self, images):
-        """Encode images through visual pipeline and apply L2 normalization.
+        """Mã hóa ảnh cho bước xử lý hiện tại.
 
-        Args:
-            images (torch.Tensor): Preprocessed input image batch, shape [B, 3, 224, 224].
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: L2-normalized visual feature embeddings, shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         feats = self.visual(images)
         return feats / feats.norm(dim=-1, keepdim=True)
 
     def encode_text(self, input_ids):
-        """Dummy text encoding returning zero feature vectors.
+        """Mã hóa văn bản cho bước xử lý hiện tại.
 
-        Args:
-            input_ids (torch.Tensor): Token ID tensor (used only for batch dimension and device).
+        Parameters
+        ----------
+        input_ids : object
+            Dữ liệu nguồn của phép xử lý.
 
-        Returns:
-            torch.Tensor: Zero tensor of shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         batch_size = input_ids.shape[0] if isinstance(input_ids, torch.Tensor) else 1
         return torch.zeros(batch_size, 512, device=input_ids.device if isinstance(input_ids, torch.Tensor) else "cpu")

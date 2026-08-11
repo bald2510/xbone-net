@@ -28,23 +28,23 @@
 \endlastfoot
 
 %% --- Phát biểu bài toán ---
-x^{img} & Ảnh X-quang đầu vào của hệ thống. & \pageref{sec:ch1_problem_def} \\
-H,W,C & Chiều cao, chiều rộng và số kênh của ảnh (hoặc số lớp). & \pageref{sec:ch1_problem_def} \\
-x^{txt} & Chuỗi văn bản lâm sàng đầu vào. & \pageref{sec:ch1_problem_def} \\
+x^{\mathrm{img}} & Ảnh X-quang đầu vào của hệ thống. & \pageref{sec:ch1_problem_def} \\
+H,W,C & Chiều cao, chiều rộng và số kênh của ảnh. & \pageref{sec:ch1_problem_def} \\
+x^{\mathrm{txt}} & Chuỗi văn bản lâm sàng đầu vào. & \pageref{sec:ch1_problem_def} \\
 w_t,\,T & Token tại vị trí $t$ và tổng số token (hoặc nhiệt độ). & \pageref{sec:ch1_problem_def} \\
-\mathcal{Y},\,y_k,\,K & Tập nhãn nội phân phối, lớp thứ $k$ và tổng số lớp. & \pageref{sec:ch1_problem_def} \\
+\mathcal{Y},\,y_k,\,K & Tập nhãn trong phân phối, lớp thứ $k$ và tổng số lớp. & \pageref{sec:ch1_problem_def} \\
 \widehat{y} & Nhãn dự đoán cuối cùng. & \pageref{sec:ch1_problem_def} \\
 \omega_{\mathrm{OOD}} & Cảnh báo mẫu ngoài phân phối. & \pageref{sec:ch1_problem_def} \\
 s_{\mathrm{OOD}}(\cdot) & Điểm ngoài phân phối của mẫu đầu vào. & \pageref{sec:ch1_problem_def} \\
-p(y_k\mid x^{img},x^{txt}) & Xác suất dự đoán lớp $y_k$. & \pageref{sec:ch1_problem_def} \\
+p(y_k\mid x^{\mathrm{img}},x^{\mathrm{txt}}) & Xác suất dự đoán lớp $y_k$. & \pageref{sec:ch1_problem_def} \\
 
 %% --- Cơ sở OOD và học theo hệ đo ---
-E(x) & Energy score của mẫu $x$. & \pageref{sym:energy_score} \\
-f_i(x) & Logit phân loại của lớp $i$. & \pageref{sym:energy_score} \\
-d_E(z,c_k) & Khoảng cách Euclid giữa embedding $z$ và tâm lớp $c_k$. & \pageref{sym:euclid} \\
-d_M(z,\mu_k) & Khoảng cách Mahalanobis giữa embedding $z$ và trung bình $\mu_k$. & \pageref{sym:mahalanobis} \\
-\Sigma,\,\lambda,\,I & Ma trận hiệp phương sai, hệ số điều chuẩn và ma trận đơn vị. & \pageref{sym:mahalanobis} \\
-S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm embedding và prototype của lớp $k$. & \pageref{sym:protonet} \\
+E(x) & Energy score của mẫu $x$. & \pageref{eq:energy_score} \\
+f_i(x) & Logit phân loại của lớp $i$. & \pageref{eq:energy_score} \\
+d_E(z,c_k) & Khoảng cách Euclid giữa đặc trưng $z$ và tâm lớp $c_k$. & \pageref{eq:euclid} \\
+d_M(z,\mu_k) & Khoảng cách Mahalanobis giữa đặc trưng $z$ và trung bình $\mu_k$. & \pageref{eq:mahalanobis} \\
+\Sigma,\,\lambda,\,I & Ma trận hiệp phương sai, hệ số điều chuẩn và ma trận đơn vị. & \pageref{eq:mahalanobis} \\
+S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm đặc trưng và prototype của lớp $k$. & \pageref{eq:protonet} \\
 
 %% --- Đầu vào và tiền xử lý ---
 \mathcal{D}_{\mathrm{train}},\,N & Tập dữ liệu và tổng số mẫu huấn luyện. & \pageref{eq:ch3_dataset} \\
@@ -60,16 +60,16 @@ q_i(b) & Điểm tổng hợp của cửa sổ ứng viên $b$. & \pageref{eq:ch
 
 %% --- Bộ mã hóa và thích nghi miền ---
 \mathcal{E}_I,\,\mathcal{P}_I & Bộ mã hóa thị giác và phép chiếu đặc trưng. & \pageref{eq:ch3_global_visual_embedding} \\
-\boldsymbol{g}_i^I,\,D & Embedding ảnh toàn cục và số chiều không gian chung. & \pageref{eq:ch3_global_visual_embedding} \\
+\boldsymbol{g}_i^I,\,D & Đặc trưng ảnh toàn cục và số chiều không gian chung. & \pageref{eq:ch3_global_visual_embedding} \\
 \boldsymbol{L}_{i,m}^I & Các token thị giác sinh từ vùng cục bộ $m$. & \pageref{eq:ch3_local_encoding} \\
 \boldsymbol{L}_i^I,\,P & Chuỗi token cục bộ và tổng số token cục bộ. & \pageref{eq:ch3_local_encoding} \\
 \boldsymbol{B}_i,\,\mathcal{P}_s & Tọa độ chuẩn hóa hộp cục bộ và phép chiếu tọa độ. & \pageref{eq:ch3_spatial_encoding} \\
 \gamma,\,\widetilde{\boldsymbol{L}}_i^I & Hệ số vị trí học được và chuỗi token đã nhúng tọa độ. & \pageref{eq:ch3_spatial_encoding} \\
 e_{i,p},\,a_{i,p} & Điểm chú ý và trọng số pooling của token thứ $p$. & \pageref{eq:ch3_phase1_visual_pooling} \\
 \boldsymbol{W}_g,\,\boldsymbol{W}_\ell,\,\boldsymbol{w}_a & Trọng số học được của mô-đun attention pooling. & \pageref{eq:ch3_phase1_visual_pooling} \\
-\boldsymbol{z}_i^I,\,\lambda_\ell & Embedding thị giác pha~1 và hệ số đóng góp cục bộ. & \pageref{eq:ch3_phase1_visual_pooling} \\
+\boldsymbol{z}_i^I,\,\lambda_\ell & Đặc trưng thị giác pha~1 và hệ số đóng góp cục bộ. & \pageref{eq:ch3_phase1_visual_pooling} \\
 \mathcal{E}_T,\,\mathcal{P}_T & Bộ mã hóa văn bản và phép chiếu tương ứng. & \pageref{eq:ch3_text_encoder} \\
-\boldsymbol{H}_i^T,\,\boldsymbol{z}_i^T & Chuỗi embedding token và embedding văn bản toàn cục. & \pageref{eq:ch3_text_encoder} \\
+\boldsymbol{H}_i^T,\,\boldsymbol{z}_i^T & Chuỗi đặc trưng token và đặc trưng văn bản toàn cục. & \pageref{eq:ch3_text_encoder} \\
 \boldsymbol{W},\,\boldsymbol{W}' & Trọng số tiền huấn luyện và trọng số sau cập nhật LoRA. & \pageref{eq:ch3_lora} \\
 \boldsymbol{A},\,\boldsymbol{B},\,r & Các ma trận hạng thấp và hạng của LoRA. & \pageref{eq:ch3_lora} \\
 
@@ -86,7 +86,7 @@ p_{ij}^{I\rightarrow T},\,p_{ji}^{T\rightarrow I} & Xác suất dự đoán ghé
 \boldsymbol{A}_i^{I\leftarrow T},\,\boldsymbol{A}_i^{T\leftarrow I} & Phân bố chú ý chéo giữa hai phương thức. & \pageref{eq:ch3_attention} \\
 \boldsymbol{W}_Q,\,\boldsymbol{W}_K,\,\boldsymbol{W}_V & Ma trận query, key, value trong mô-đun chú ý chéo. & \pageref{eq:ch3_attention} \\
 \boldsymbol{h}_i^I,\,\boldsymbol{h}_i^T & Biểu diễn đặc trưng sau dung hợp. & \pageref{eq:ch3_image_from_text} \\
-\boldsymbol{z}_i^F & Embedding tổng hợp cuối cùng cho bộ phân loại. & \pageref{eq:ch3_fused_representation} \\
+\boldsymbol{z}_i^F & Đặc trưng tổng hợp cuối cùng cho bộ phân loại. & \pageref{eq:ch3_fused_representation} \\
 
 %% --- Bộ phân loại và huấn luyện pha 2 ---
 \boldsymbol{c}_k,\,N_k & Tâm đặc trưng thực nghiệm và số mẫu huấn luyện lớp $k$. & \pageref{eq:ch3_prototype} \\
@@ -94,7 +94,7 @@ r_{ik} & Độ tương đồng cosine giữa mẫu $i$ và tâm lớp $k$. & \pa
 \ell_{ik},\,\alpha_c,\,b_k & Logit, hệ số tỷ lệ cố định và độ lệch riêng lớp $k$. & \pageref{eq:ch3_classifier_logit} \\
 E_k,\,\beta & Số mẫu hiệu dụng của lớp $k$ và hệ số bão hòa. & \pageref{eq:ch3_class_weight} \\
 w_k & Trọng số phạt tổn thất của lớp $k$. & \pageref{eq:ch3_class_weight} \\
-\widetilde{y}_{ik},\,\varepsilon & Mục tiêu huấn luyện sau label smoothing và hệ số làm trơn. & \pageref{eq:ch3_phase2_loss} \\
+\widetilde{y}_{ik},\,\varepsilon & Mục tiêu huấn luyện sau làm trơn nhãn và hệ số làm trơn. & \pageref{eq:ch3_phase2_loss} \\
 \mathcal{L}_{\mathrm{P2}} & Hàm mất mát phân loại có trọng số (pha~2). & \pageref{eq:ch3_phase2_loss} \\
 
 %% --- Độ đo phân loại và hiệu chuẩn ---
@@ -102,7 +102,7 @@ TP_c,\,FP_c,\,TN_c,\,FN_c & Các trường hợp dương/âm tính thật/giả 
 \operatorname{TPR}_c,\,\operatorname{FPR}_c & Tỷ lệ dương tính thật và dương tính giả. & \pageref{sec:evaluation_metrics} \\
 \operatorname{AUROC}_c & Diện tích dưới đường cong ROC của lớp $c$. & \pageref{eq:ch4_macro_auroc} \\
 \operatorname{Precision}_c,\,\operatorname{Recall}_c & Độ chính xác và độ thu hồi của lớp $c$. & \pageref{eq:ch4_precision_def} \\
-\operatorname{AP}_c & Average Precision (AP) của lớp $c$. & \pageref{eq:ch4_ap_class} \\
+\operatorname{AUPRC}_c & Average Precision (AP) của lớp $c$. & \pageref{eq:ch4_auprc_class} \\
 M,\,B_m & Số khoảng hiệu chuẩn và tập mẫu thuộc khoảng $m$. & \pageref{eq:ch4_ece} \\
 \operatorname{Acc}(B_m),\,\operatorname{Conf}(B_m) & Độ chính xác và độ tin cậy trung bình trong khoảng $B_m$. & \pageref{eq:ch4_ece} \\
 

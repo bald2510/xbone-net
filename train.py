@@ -1,18 +1,8 @@
-"""
-XBone-Net Training Pipeline.
-===============================================================================
-Executes the staged training workflow for bone X-ray classification and OOD:
+"""Huấn luyện XBone-Net theo quy trình thích nghi và phân lớp nhiều giai đoạn.
 
-  - Phase 1 (Contrastive Alignment): Fine-tunes VLM backbones (e.g., BiomedCLIP)
-    using soft-target semantic matching loss to align image and text embeddings.
-  - Phase 2 (Classification): Attaches cross-attention fusion and an empirical
-    centroid head trained with class-weighted cross-entropy.
-  - Phase 3 (Dual Representation): Freezes the classifier and trains a
-    complementary distribution-discriminative branch using ID data only.
-  - OOD Calibration: Fits a Mahalanobis-based OOD detector on validation set
-    embeddings to calibrate the decision threshold at a target FPR (e.g., 5%).
-
-Configuration is managed via Hydra (configs in configs/). Logging to TensorBoard and CSV.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import os
@@ -26,7 +16,7 @@ from typing import Optional
 warnings.filterwarnings("ignore", category=FutureWarning, module="timm.*")
 warnings.filterwarnings("ignore", message="triton not found")
 
-# Safely force UTF-8 stdout/stderr on Windows environments
+# Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -65,14 +55,16 @@ from src.utils.centroids import (
 
 
 # ============================================================
-# Reproducibility Setup
+# Thiết lập khả năng tái lập
 # ============================================================
 
 def seed_everything(seed: int = 42) -> None:
-    """Set random seeds across Python, NumPy, and PyTorch for deterministic training.
+    """Cố định các nguồn ngẫu nhiên để bảo đảm khả năng tái lập.
 
-    Args:
-        seed (int): Integer seed value (default: 42).
+    Parameters
+    ----------
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
     """
     import random
     random.seed(seed)
@@ -91,7 +83,29 @@ def load_state_dict_checked(
     context: str,
     critical_substrings=("lora_A", "lora_B", "visual_resampler"),
 ):
-    """Load a checkpoint and fail when critical trainable modules are missing."""
+    """Tải trọng số mô hình và kiểm tra mức độ tương thích.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    state_dict : dict
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    context : str
+        Giá trị ``context`` được sử dụng trong phép xử lý.
+    critical_substrings : object, optional
+        Giá trị ``critical_substrings`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result = model.load_state_dict(state_dict, strict=False)
     missing = list(result.missing_keys)
     unexpected = list(result.unexpected_keys)
@@ -116,7 +130,23 @@ def load_state_dict_checked(
 
 
 def extract_class_ids(dataset) -> np.ndarray:
-    """Extract integer class IDs from datasets and torch Subset wrappers."""
+    """Thực hiện bước extract class ids trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    dataset : object
+        Dữ liệu đầu vào của bước xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    AttributeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if hasattr(dataset, "df") and "class_id" in dataset.df.columns:
         return np.asarray(dataset.df["class_id"].values, dtype=np.int64)
 
@@ -149,11 +179,30 @@ def compute_class_weights(
     effective_num_beta: float = 0.999,
     max_class_weight: float = 10.0,
 ) -> tuple[np.ndarray, np.ndarray, list[int]]:
-    """Compute finite weights while preserving absent configured classes.
+    """Tính class weights cho bước xử lý hiện tại.
 
-    Absent classes receive weight zero. Present-class weights are normalized to
-    mean one; weighted cross-entropy only indexes the target class, so zero
-    weights for classes with no training targets are safe and explicit.
+    Parameters
+    ----------
+    class_ids : np.ndarray
+        Nhãn hoặc chỉ số lớp liên quan.
+    num_classes : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    weight_type : str, optional
+        Phương pháp hoặc chế độ xử lý được chọn.
+    effective_num_beta : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_class_weight : float, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, list[int]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     class_ids = np.asarray(class_ids, dtype=np.int64).reshape(-1)
     if num_classes < 2:
@@ -204,9 +253,9 @@ def compute_class_weights(
             "Class-weight computation produced invalid present-class weights."
         )
     raw_weights[present_mask] *= present_mask.sum() / present_weight_sum
-    # Cap final relative weights after mean-one normalization. PyTorch's
-    # weighted cross-entropy is invariant to a common scale, so re-normalizing
-    # after clipping is unnecessary and could violate the requested cap again.
+    # Bước hỗ trợ để tính class weights cho bước xử lý hiện tại.
+    # Tính và giới hạn trọng số lớp cho hàm mất mát có trọng số.
+    # Bước hỗ trợ để tính class weights cho bước xử lý hiện tại.
     raw_weights[present_mask] = np.minimum(
         raw_weights[present_mask], float(max_class_weight)
     )
@@ -218,7 +267,22 @@ def phase_training_stats(
     wall_clock_seconds: float,
     device: torch.device,
 ) -> dict:
-    """Normalize Trainer runtime metrics and capture peak CUDA memory."""
+    """Thực hiện bước phase training stats trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    trainer_metrics : dict
+        Giá trị ``trainer_metrics`` được sử dụng trong phép xử lý.
+    wall_clock_seconds : float
+        Giá trị ``wall_clock_seconds`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     stats = {
         key: float(value) if isinstance(value, (int, float, np.number)) else value
         for key, value in trainer_metrics.items()
@@ -237,7 +301,7 @@ def phase_training_stats(
 
 
 # ============================================================
-# Phase 1: Multimodal Contrastive Alignment
+# Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
 # ============================================================
 
 def run_phase1(
@@ -252,22 +316,42 @@ def run_phase1(
     use_bf16: bool,
     use_fp16: bool,
 ) -> tuple[nn.Module, dict]:
-    """Execute Phase 1 contrastive image-text alignment training.
+    """Thực hiện phase1 cho bước xử lý hiện tại.
 
-    Args:
-        cfg (DictConfig): Complete Hydra configuration.
-        model (nn.Module): Assembled XBone-Net foundation model.
-        train_loader: Training DataLoader instance.
-        val_loader: Validation DataLoader instance.
-        device (torch.device): Computing device.
-        cp_p1 (str): Filepath to save Phase 1 best model checkpoint.
-        log_dir (str): Logging directory.
-        experiment_name (str): Experiment identifier.
-        use_bf16 (bool): Flag to enable BF16 precision.
-        use_fp16 (bool): Flag to enable FP16 precision.
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    train_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    val_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    cp_p1 : str
+        Giá trị ``cp_p1`` được sử dụng trong phép xử lý.
+    log_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    use_bf16 : bool
+        Giá trị ``use_bf16`` được sử dụng trong phép xử lý.
+    use_fp16 : bool
+        Giá trị ``use_fp16`` được sử dụng trong phép xử lý.
 
-    Returns:
-        tuple: Updated model and serializable Phase-1 runtime statistics.
+    Returns
+    -------
+    tuple[nn.Module, dict]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     p1_cfg = cfg.params.phase1
     epochs_p1 = p1_cfg.get("epochs", 50)
@@ -298,7 +382,7 @@ def run_phase1(
     print("PHASE 1: MULTIMODAL CONTRASTIVE ALIGNMENT (backbone only)")
     print("=" * 60)
 
-    # --- Phase 1 parameter breakdown ---
+    # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
     n_backbone = sum(p.numel() for p in model.backbone.parameters() if p.requires_grad)
     n_fusion = sum(p.numel() for p in model.fusion.parameters() if p.requires_grad)
     n_head = sum(p.numel() for p in model.head.parameters() if p.requires_grad)
@@ -333,8 +417,8 @@ def run_phase1(
     })
     logger_p1.log_model_summary(model)
 
-    # Build the loss before collecting optimizer parameters. Some non-OpenCLIP
-    # backbones receive a logit_scale parameter during loss construction.
+    # Thiết lập hàm mất mát cho bước tối ưu hiện tại.
+    # Thiết lập hàm mất mát cho bước tối ưu hiện tại.
     loss_fn_p1 = build_loss(
         loss_type_p1,
         clip_model=model.backbone.model,
@@ -451,7 +535,7 @@ def run_phase1(
 
 
 # ============================================================
-# Phase 2: Classification & Empirical Centroid Learning
+# Thiết lập và thực thi pha 2 phân lớp đa phương thức.
 # ============================================================
 
 def run_phase2(
@@ -467,23 +551,44 @@ def run_phase2(
     use_fp16: bool,
     classifier_type: str = "empirical_centroid",
 ) -> tuple[nn.Module, dict]:
-    """Execute Phase 2 supervised classification training.
+    """Thực hiện phase2 cho bước xử lý hiện tại.
 
-    Args:
-        cfg (DictConfig): Complete Hydra configuration.
-        model (nn.Module): XBone-Net model with Phase 2 fusion and head attached.
-        train_loader: Training DataLoader instance.
-        val_loader: Validation DataLoader instance.
-        device (torch.device): Computing device.
-        cp_p2 (str): Filepath to save Phase 2 best model checkpoint.
-        log_dir (str): Logging directory.
-        experiment_name (str): Experiment identifier.
-        use_bf16 (bool): Flag to enable BF16 precision.
-        use_fp16 (bool): Flag to enable FP16 precision.
-        classifier_type (str): Resolved classifier head type.
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    train_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    val_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    cp_p2 : str
+        Giá trị ``cp_p2`` được sử dụng trong phép xử lý.
+    log_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    use_bf16 : bool
+        Giá trị ``use_bf16`` được sử dụng trong phép xử lý.
+    use_fp16 : bool
+        Giá trị ``use_fp16`` được sử dụng trong phép xử lý.
+    classifier_type : str, optional
+        Phương pháp hoặc chế độ xử lý được chọn.
 
-    Returns:
-        tuple: Updated model and serializable Phase-2 runtime statistics.
+    Returns
+    -------
+    tuple[nn.Module, dict]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     p2_cfg = cfg.params.phase2
     epochs_p2 = p2_cfg.get("epochs", 50)
@@ -509,7 +614,7 @@ def run_phase2(
     print("PHASE 2: CLASSIFIER AND FUSION TRAINING")
     print("=" * 60)
 
-    # --- Phase 2 parameter breakdown ---
+    # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
     n_backbone = sum(p.numel() for p in model.backbone.parameters() if p.requires_grad)
     n_fusion = sum(p.numel() for p in model.fusion.parameters() if p.requires_grad)
     n_head = sum(p.numel() for p in model.head.parameters() if p.requires_grad)
@@ -554,8 +659,8 @@ def run_phase2(
     })
     logger_p2.log_model_summary(model)
 
-    # The head has no trainable class vectors. Initialize it from embeddings of
-    # the exact training subset before the first optimization/evaluation step.
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
+    # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
     if uses_empirical_centroids:
         initial_counts = compute_empirical_centroids(
             model,
@@ -569,11 +674,11 @@ def run_phase2(
             f"class counts={initial_counts.tolist()}"
         )
 
-    # --- Loss Criterion ---
+    # --- Hàm mất mát ---
     loss_cfg = p2_cfg.get("loss", {}) or {}
     use_class_weights = loss_cfg.get("use_class_weights", False)
 
-    # Compute class weights from the exact training subset.
+    # Tính và giới hạn trọng số lớp cho hàm mất mát có trọng số.
     class_weights_tensor = None
     if use_class_weights:
         class_ids = extract_class_ids(train_loader.dataset)
@@ -669,16 +774,19 @@ def run_phase2(
     pad_id = resolve_pad_token_id(tokenizer) if tokenizer is not None else 0
     os.environ["TENSORBOARD_LOGGING_DIR"] = logger_p2.tb_dir
 
-    # def compute_metrics_eval(eval_pred):
-    #     preds, labels = eval_pred
-    #     if isinstance(preds, tuple):
-    #         preds = preds[0]
-    #     preds_cls = np.argmax(preds, axis=1) if preds.ndim > 1 else (preds > 0).astype(int)
-    #     acc = accuracy_score(labels, preds_cls)
-    #     f1_mac = f1_score(labels, preds_cls, average="macro", zero_division=0)
-    #     return {"accuracy": acc, "f1_macro": f1_mac}
-
     def compute_metrics_eval(eval_pred):
+        """Tính các độ đo cho bước đánh giá mô hình.
+
+        Parameters
+        ----------
+        eval_pred : object
+            Giá trị ``eval_pred`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         preds, labels = eval_pred
 
         if isinstance(preds, tuple):
@@ -789,8 +897,8 @@ def run_phase2(
     os.makedirs(os.path.dirname(cp_p2) or ".", exist_ok=True)
     best_model_p2 = trainer_p2.model
     if uses_empirical_centroids:
-        # load_best_model_at_end restores the best encoder checkpoint. Recompute
-        # its centroids so the exported checkpoint is internally consistent.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
         final_counts = compute_empirical_centroids(
             best_model_p2,
             train_loader,
@@ -811,10 +919,31 @@ def run_phase2(
 
 
 # ============================================================
-# Phase 3: Complementary Distribution Representation Learning
+# Thiết lập và thực thi pha 3 học biểu diễn bổ sung.
 # ============================================================
 
 def _phase_text_inputs(batch: dict, report_type: str, device: torch.device):
+    """Thực hiện bước phase văn bản inputs trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    batch : dict
+        Batch dữ liệu đầu vào.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if report_type not in {"xray", "clinical"}:
         raise ValueError("Phase 3 supports report_type='xray' or 'clinical'.")
     prefix = "xray" if report_type == "xray" else "clinical"
@@ -832,7 +961,31 @@ def estimate_drl_label_covariance(
     device: torch.device,
     report_type: str,
 ) -> dict:
-    """Estimate the native Phase-2 representation covariance on CTCH train."""
+    """Ước lượng drl nhãn covariance cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    train_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if model.drl_auxiliary is None:
         raise RuntimeError("Cannot estimate DRL covariance without an auxiliary branch.")
     model.eval()
@@ -880,7 +1033,43 @@ def run_phase3(
     use_bf16: bool,
     use_fp16: bool,
 ) -> tuple[nn.Module, dict]:
-    """Train only the DRL auxiliary branch on frozen Phase-2 features."""
+    """Thực hiện phase3 cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    train_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    val_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    cp_p3 : str
+        Giá trị ``cp_p3`` được sử dụng trong phép xử lý.
+    log_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    use_bf16 : bool
+        Giá trị ``use_bf16`` được sử dụng trong phép xử lý.
+    use_fp16 : bool
+        Giá trị ``use_fp16`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[nn.Module, dict]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     p3_cfg = cfg.params.phase3
     epochs = int(p3_cfg.get("epochs", 20))
     learning_rate = float(p3_cfg.get("lr", 1e-4))
@@ -1005,6 +1194,18 @@ def run_phase3(
     logger.log_model_summary(model)
 
     def compute_metrics_eval(eval_pred):
+        """Tính các độ đo cho bước đánh giá mô hình.
+
+        Parameters
+        ----------
+        eval_pred : object
+            Giá trị ``eval_pred`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         predictions, labels = eval_pred
         if isinstance(predictions, tuple):
             predictions = predictions[0]
@@ -1093,7 +1294,7 @@ def run_phase3(
 
 
 # ============================================================
-# Validation OOD Calibration
+# Hiệu chỉnh OOD trên tập xác thực
 # ============================================================
 
 def run_ood_calibration(
@@ -1104,10 +1305,31 @@ def run_ood_calibration(
     p2_report_type: str = "clinical",
     fpr_threshold: float = 0.05,
 ) -> None:
-    """Fit Mahalanobis OOD statistics using the trained model path.
+    """Thực hiện ood calibration cho bước xử lý hiện tại.
 
-    Uses the same backbone, padding masks, high-resolution tiles,
-    cross-attention fusion, and fused representation as Phase 2.
+    Parameters
+    ----------
+    model : nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    val_loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    output_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    p2_report_type : str, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    fpr_threshold : float, optional
+        Ngưỡng quyết định của phép đánh giá.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     import torch.nn.functional as F
 
@@ -1285,21 +1507,30 @@ def run_ood_calibration(
     )
 
 # ============================================================
-# Main Orchestrator Entry Point
+# Điểm vào chính của bộ điều phối
 # ============================================================
 
 @hydra.main(config_path="configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
-    """Main execution orchestrator for XBone-Net training pipeline.
+    """Thực thi điểm vào chính của mô-đun.
 
-    Args:
-        cfg (DictConfig): Complete Hydra configuration object.
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     seed_everything(int(cfg.seed))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}\n")
 
-    # Resolve phase control flags
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     do_phase1 = resolve_phase_enabled(cfg.params, "phase1", default=True)
     do_phase2 = resolve_phase_enabled(cfg.params, "phase2", default=True)
     do_phase3 = resolve_phase_enabled(cfg.params, "phase3", default=False)
@@ -1312,11 +1543,11 @@ def main(cfg: DictConfig) -> None:
         print(" -> [Config] Khởi tạo từ checkpoint đã gộp (Merged Phase 1). Tắt khởi tạo PEFT.")
         cfg.model.peft.type = 'none'
 
-    # --- Initialize Model ---
+    # --- Khởi tạo mô hình ---
     print("Building model...")
     model = build_model(cfg.model).to(device)
 
-    # Enable Mixed Precision flags
+    # Chọn thiết bị và độ chính xác tính toán phù hợp.
     use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     use_fp16 = torch.cuda.is_available() and not use_bf16
 
@@ -1345,7 +1576,7 @@ def main(cfg: DictConfig) -> None:
             f"{cfg.model.backbone_type} does not expose a compatible model interface."
         )
 
-    # --- Initialize DataLoaders ---
+    # --- Khởi tạo các bộ nạp dữ liệu ---
     print("\nInitializing DataLoaders...")
     tokenizer_func = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))
     preprocess_func = getattr(model.backbone, "preprocess", None)
@@ -1357,12 +1588,12 @@ def main(cfg: DictConfig) -> None:
     train_loader.collate_fn = collator
     val_loader.collate_fn = collator
 
-    # --- Resolve Checkpoint Paths ---
+    # --- Xác định đường dẫn checkpoint ---
     log_dir = os.path.join(hydra.utils.get_original_cwd(), cfg.params.model_dir)
     experiment_name = cfg.get("experiment_name", "default_experiment")
     seed_val = cfg.get("seed", 42)
 
-    # Use dict.get to support old format gracefully but prioritize new format
+    # Duy trì khả năng tương thích với cấu hình hoặc dữ liệu phiên bản cũ.
     p1_cfg = cfg.params.get("phase1", {})
     p2_cfg = cfg.params.get("phase2", {})
     p3_cfg = cfg.params.get("phase3", {})
@@ -1376,10 +1607,10 @@ def main(cfg: DictConfig) -> None:
     phase_runtime: dict[str, dict] = {}
     training_window_started = time.perf_counter()
 
-    # --- Phase 1 Execution ---
+    # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
     if do_phase1:
-        # Freeze fusion and head — Phase 1 only trains backbone
-        # (fusion/head will be reinitialized by setup_phase2_modules before Phase 2)
+        # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
+        # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
         for param in model.fusion.parameters():
             param.requires_grad = False
         for param in model.head.parameters():
@@ -1401,6 +1632,13 @@ def main(cfg: DictConfig) -> None:
         if merge_after_p1:
             from peft import PeftModel
             def merge_peft_adapters(module):
+                """Kết hợp peft adapters cho bước xử lý hiện tại.
+
+                Parameters
+                ----------
+                module : object
+                    Giá trị ``module`` được sử dụng trong phép xử lý.
+                """
                 for name, child in list(module.named_children()):
                     if isinstance(child, PeftModel):
                         print(f"[*] Hợp nhất (Merging) PEFT adapters tại: {name}...")
@@ -1415,7 +1653,7 @@ def main(cfg: DictConfig) -> None:
                 torch.save(model.state_dict(), cp_merged)
                 print(f" [*] Đã lưu Merged Phase 1 Checkpoint tại: {cp_merged}")
 
-    # Checkpoint loading for Phase 2 if Phase 1 was skipped
+    # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
     if not do_phase1 and do_phase2:
         if init_from_merged and cp_merged and os.path.exists(cp_merged):
             print(f"Loading merged Phase 1 checkpoint from: {cp_merged}")
@@ -1434,10 +1672,17 @@ def main(cfg: DictConfig) -> None:
             )
             print(" -> Phase 1 weights loaded successfully!")
             
-            # Since we loaded unmerged LoRA weights, merge them now if requested
+            # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
             if merge_after_p1:
                 from peft import PeftModel
                 def merge_peft_adapters(module):
+                    """Kết hợp peft adapters cho bước xử lý hiện tại.
+
+                    Parameters
+                    ----------
+                    module : object
+                        Giá trị ``module`` được sử dụng trong phép xử lý.
+                    """
                     for name, child in list(module.named_children()):
                         if isinstance(child, PeftModel):
                             print(f"[*] Hợp nhất (Merging) PEFT adapters tại: {name}...")
@@ -1465,16 +1710,16 @@ def main(cfg: DictConfig) -> None:
                 "initialization was requested; using configured foundation weights."
             )
 
-    # Reconstruct the exact primary classification path for Phase 2 training or
-    # for Phase 3 initialization from an already trained v3 checkpoint.
+    # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
+    # hoặc khởi tạo pha 3 từ checkpoint của mô hình đã huấn luyện.
     classifier_type = "none"
     if do_phase2 or do_phase3:
         model, classifier_type, _, _ = setup_phase2_modules(model, cfg, device)
 
-    # --- Phase 2 Execution ---
+    # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
     if do_phase2:
 
-        # --- Configure parameter trainability for Phase 2 ---
+        # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
         is_merged = (do_phase1 and merge_after_p1) or init_from_merged
         peft_type = str(cfg.model.get("peft", {}).get("type", "none")).lower()
         has_adapters = peft_type == "lora" and not is_merged
@@ -1488,8 +1733,8 @@ def main(cfg: DictConfig) -> None:
                 param.requires_grad = True
             print("\n[Phase 2 Setup] Backbone FROZEN (Merged) | Fusion + Head UNFROZEN")
         elif has_adapters:
-            # Do NOT freeze model.backbone.parameters() because that would freeze the LoRA adapters.
-            # PEFT already froze the base weights and kept LoRA trainable during initialization.
+            # Thiết lập trạng thái và thống kê các tham số mô hình.
+            # Thiết lập trạng thái và thống kê các tham số mô hình.
             for param in model.fusion.parameters():
                 param.requires_grad = True
             for param in model.head.parameters():
@@ -1539,7 +1784,7 @@ def main(cfg: DictConfig) -> None:
             classifier_type=classifier_type,
         )
 
-    # --- Phase 3 Execution ---
+    # Thiết lập và thực thi pha 3 học biểu diễn bổ sung.
     if do_phase3:
         if not do_phase2:
             init_checkpoint = str(

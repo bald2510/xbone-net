@@ -1,11 +1,8 @@
-"""
-Concatenation-Based Fusion Module for XBone-Net.
-===============================================================================
-Concatenates visual and textual feature representations along the channel dimension,
-followed by a non-linear bottleneck projection layer to map back to target dimension:
-  - Input: img_feats [B, D], txt_feats [B, D]
-  - Bottleneck Layer: Linear(2D -> D) + LayerNorm + GELU
-  - Output: fused_feats [B, D]
+"""Cung cấp cơ chế dung hợp đa phương thức concat cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch
@@ -13,33 +10,31 @@ import torch.nn as nn
 
 
 # ============================================================
-# Concatenation Fusion Strategy
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 class ConcatFusion(nn.Module):
-    """Concatenation-based multimodal feature fusion module with projection bottleneck.
+    """Dung hợp biểu diễn đa phương thức bằng lớp ``ConcatFusion``.
 
-    Combines image and text feature vectors by concatenating them along feature space
-    and projecting back to original dimension via Linear + LayerNorm + GELU layers.
-
-    Attributes:
-        projection (nn.Sequential): Sequential bottleneck projection network.
-
-    Example:
-        >>> fusion = ConcatFusion(text_dim=512, img_dim=512)
-        >>> fused = fusion(img_feats, txt_feats)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, text_dim: int = 512, img_dim: int = 512, **kwargs):
-        """Initialize concatenation fusion bottleneck layers.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            text_dim (int): Dimension of input text features. Defaults to 512.
-            img_dim (int): Dimension of input image features. Defaults to 512.
-            **kwargs: Unused extra keyword arguments.
+        Parameters
+        ----------
+        text_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        img_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
         """
         super().__init__()
-        # --- Bottleneck projection: Linear(2D -> D) + LayerNorm + GELU ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         self.projection = nn.Sequential(
             nn.Linear(img_dim + text_dim, img_dim),
             nn.LayerNorm(img_dim),
@@ -47,22 +42,23 @@ class ConcatFusion(nn.Module):
         )
 
     def forward(self, img_feats: torch.Tensor, txt_feats: torch.Tensor) -> torch.Tensor:
-        """Forward pass merging image and text features via concatenation and projection.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Mathematical Formulation:
-            f_concat = [x_img ; x_txt]
-            f_fused = GELU(LayerNorm(W * f_concat + b))
+        Parameters
+        ----------
+        img_feats : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_feats : torch.Tensor
+            Giá trị ``txt_feats`` được sử dụng trong phép xử lý.
 
-        Args:
-            img_feats (torch.Tensor): Image feature embeddings, shape [B, D].
-            txt_feats (torch.Tensor): Text feature embeddings, shape [B, D].
-
-        Returns:
-            torch.Tensor: Merged fused feature representation, shape [B, D].
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
-        # Step 1: Concatenate along feature dimension [B, 2D]
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
         combined = torch.cat([img_feats, txt_feats], dim=-1)
 
-        # Step 2: Pass through bottleneck projection [B, D]
+        # Bước hỗ trợ để thực hiện lượt lan truyền xuôi của mô hình.
         return self.projection(combined)
 

@@ -4,9 +4,9 @@
 \section{Tổng quan phương pháp đề xuất}
 \label{sec:final-pipeline}
 
-Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân lớp đa lớp ảnh X-quang xương có kết hợp thông tin lâm sàng. Hệ thống được xây dựng theo kiến trúc hai nhánh. Nhánh ảnh khai thác đồng thời cấu trúc giải phẫu toàn cục và các vùng cục bộ giàu chi tiết, trong khi nhánh văn bản biểu diễn bệnh sử và lý do vào viện. Hai nguồn thông tin được ánh xạ vào cùng một không gian đặc trưng, trao đổi ngữ cảnh bằng cơ chế chú ý chéo hai chiều, sau đó được phân lớp bằng tâm cụm thực nghiệm.
+Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân loại đa lớp ảnh X-quang xương có kết hợp thông tin lâm sàng. Hệ thống được xây dựng theo kiến trúc hai nhánh. Nhánh ảnh khai thác đồng thời cấu trúc giải phẫu toàn cục và các vùng cục bộ giàu chi tiết, trong khi nhánh văn bản biểu diễn bệnh sử và lý do vào viện. Hai nguồn thông tin được ánh xạ vào cùng một không gian đặc trưng, trao đổi ngữ cảnh bằng cơ chế chú ý chéo hai chiều, sau đó được phân lớp bằng tâm cụm thực nghiệm.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/tongquat.png}
     \caption{Sơ đồ tổng quan phương pháp XBone-Net đề xuất}
@@ -38,12 +38,13 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
 \label{sec:ch3_image_branch}
 
 \subsection{Tiền xử lý ảnh X-quang và xử lý độ phân giải cao}
-\label{subsec:ch3_image_preprocessing}
 \label{subsec:ch3_high_resolution}
 
-Ảnh X-quang đầu vào $x_i^{img}$ có kích thước và tỷ lệ khung hình khác nhau, trong khi bộ mã hóa thị giác của BiomedCLIP nhận ảnh vuông $224\times224$. Để giữ đồng thời bố cục chung và chi tiết cục bộ, mỗi ảnh được chuyển thành một ảnh toàn cục $x_i^{img,g}$ và bốn ảnh cục bộ $\{x_{i,m}^{img,\ell}\}_{m=1}^{4}$. Việc chọn vùng chỉ sử dụng giá trị điểm ảnh, không sử dụng nhãn, bệnh sử hoặc chú thích tổn thương.
+Ảnh X-quang đầu vào $x_i^{\mathrm{img}}$ có kích thước và tỷ lệ khung hình khác nhau, trong khi bộ mã hóa thị giác của BiomedCLIP nhận ảnh vuông $224\times224$. Để giữ đồng thời bố cục chung và chi tiết cục bộ, mỗi ảnh được chuyển thành một ảnh toàn cục $x_i^{\mathrm{img},g}$ và bốn ảnh cục bộ $\{x_{i,m}^{\mathrm{img},\ell}\}_{m=1}^{4}$. Việc chọn vùng chỉ sử dụng giá trị điểm ảnh, không sử dụng nhãn, bệnh sử hoặc chú thích tổn thương.
 
-\begin{figure}[H]
+Hình~\ref{fig:ch3_high_resolution_preprocessing} minh họa quy trình tạo ảnh toàn cục và bốn ảnh cục bộ từ ảnh X-quang đầu vào.
+
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/ImagePreprocess.png}
     \caption{Quy trình tạo ảnh toàn cục và bốn ảnh cục bộ từ ảnh X-quang}
@@ -54,7 +55,7 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
 
 Ảnh được chuyển sang thang xám, chuẩn hóa cường độ về $[0,1]$ và thu nhỏ tạm thời sao cho cạnh dài không vượt quá $512$ điểm ảnh. Mức nền được ước lượng bằng trung vị của dải biên, còn độ phân tán được ước lượng bằng độ lệch tuyệt đối trung vị với hệ số hiệu chỉnh $1{,}4826$. Điểm ảnh có độ lệch so với nền không nhỏ hơn giá trị lớn hơn giữa $0{,}035$ và bốn lần độ phân tán được xem là tiền cảnh.
 
-Hộp nội dung được xác định từ các hàng và cột có ít nhất $1\%$ điểm ảnh tiền cảnh. Các đoạn liên tục ngắn hơn $3\%$ chiều tương ứng bị loại và hộp được mở rộng thêm $4\%$. Nếu chiều rộng hoặc chiều cao của hộp dưới $35\%$ kích thước ảnh, diện tích dưới $20\%$ hoặc năng lượng tương phản được giữ lại dưới $95\%$, toàn bộ ảnh được sử dụng để hạn chế cắt mất cấu trúc giải phẫu. Vùng nội dung sau đó được đổi kích thước đồng nhất trên hai trục bằng nội suy hai chiều bậc ba, đệm bằng trung vị màu biên thành ảnh vuông $224\times224$ và chuẩn hóa theo đầu vào của BiomedCLIP để tạo ảnh toàn cục $x_i^{img,g}$.
+Hộp nội dung được xác định từ các hàng và cột có ít nhất $1\%$ điểm ảnh tiền cảnh. Các đoạn liên tục ngắn hơn $3\%$ chiều tương ứng bị loại và hộp được mở rộng thêm $4\%$. Nếu chiều rộng hoặc chiều cao của hộp dưới $35\%$ kích thước ảnh, diện tích dưới $20\%$ hoặc năng lượng tương phản được giữ lại dưới $95\%$, toàn bộ ảnh được sử dụng để hạn chế cắt mất cấu trúc giải phẫu. Vùng nội dung sau đó được đổi kích thước đồng nhất trên hai trục bằng nội suy hai chiều bậc ba, đệm bằng trung vị màu biên thành ảnh vuông $224\times224$ và chuẩn hóa theo đầu vào của BiomedCLIP để tạo ảnh toàn cục $x_i^{\mathrm{img},g}$.
 
 \subsubsection{Sinh và lựa chọn vùng cục bộ}
 
@@ -64,13 +65,13 @@ Mỗi cửa sổ $b$ được đánh giá bằng lượng biến thiên cục b�
 
 \begin{equation}
 \begin{aligned}
-\Delta x_i^{gray}(u,v)
-&=4x_i^{gray}(u,v)
--x_i^{gray}(u-1,v)-x_i^{gray}(u+1,v)\\
-&\quad-x_i^{gray}(u,v-1)-x_i^{gray}(u,v+1),\\
+\Delta x_i^{\mathrm{gray}}(u,v)
+&=4x_i^{\mathrm{gray}}(u,v)
+-x_i^{\mathrm{gray}}(u-1,v)-x_i^{\mathrm{gray}}(u+1,v)\\
+&\quad-x_i^{\mathrm{gray}}(u,v-1)-x_i^{\mathrm{gray}}(u,v+1),\\
 E_i(b)
 &=\frac{1}{|b|}\sum_{(u,v)\in b}
-\left|\Delta x_i^{gray}(u,v)\right|.
+\left|\Delta x_i^{\mathrm{gray}}(u,v)\right|.
 \end{aligned}
 \label{eq:ch3_laplacian_energy}
 \end{equation}
@@ -98,7 +99,7 @@ Bốn cửa sổ được chia thành hai vai trò. Hai cửa sổ bao phủ đ�
 
 Toàn bộ các giá trị trọng số và ngưỡng trên được chọn theo nguyên tắc thiết kế và giữ cố định cho mọi thí nghiệm. Chúng không được tối ưu trên tập xác thực, còn việc khảo sát có hệ thống được xác định là hướng phát triển tương lai.
 
-Các cửa sổ được ánh xạ ngược về ảnh gốc trước khi cắt để không lấy chi tiết từ ảnh trung gian đã thu nhỏ. Mỗi vùng được giữ tỷ lệ, đệm bằng màu biên, chuyển thành ảnh vuông $224\times224$ và chuẩn hóa giống ảnh toàn cục. Kết quả tiền xử lý gồm ảnh toàn cục $x_i^{img,g}$, bốn ảnh cục bộ $\{x_{i,m}^{img,\ell}\}_{m=1}^{4}$ và tọa độ hộp tương ứng được chuẩn hóa theo kích thước ảnh gốc.
+Các cửa sổ được ánh xạ ngược về ảnh gốc trước khi cắt để không lấy chi tiết từ ảnh trung gian đã thu nhỏ. Mỗi vùng được giữ tỷ lệ, đệm bằng màu biên, chuyển thành ảnh vuông $224\times224$ và chuẩn hóa giống ảnh toàn cục. Kết quả tiền xử lý gồm ảnh toàn cục $x_i^{\mathrm{img},g}$, bốn ảnh cục bộ $\{x_{i,m}^{\mathrm{img},\ell}\}_{m=1}^{4}$ và tọa độ hộp tương ứng được chuẩn hóa theo kích thước ảnh gốc.
 
 \subsection{Bộ mã hóa thị giác BiomedCLIP}
 \label{subsec:ch3_visual_encoder}
@@ -379,9 +380,11 @@ Kết quả của quá trình trên là vectơ đa phương thức $\boldsymbol{
 \section{Bộ phân lớp bằng tâm lớp thực nghiệm}
 \label{sec:ch3_prototype}
 
+Hình~\ref{fig:ch3_prototype} minh họa cách phân lớp vectơ đặc trưng trong không gian nguyên mẫu.
+
 Trên không gian đặc trưng đa phương thức được tạo bởi mô-đun dung hợp, XBone-Net thực hiện phân lớp theo nguyên lý của mạng nguyên mẫu \cite{Snell2017ProtoNet}. Thay vì sử dụng một lớp tuyến tính với trọng số lớp được học trực tiếp, mỗi lớp được biểu diễn bằng tâm của các vectơ $\boldsymbol{z}_{i}$ thuộc lớp tương ứng. Cách xây dựng này cho phép diễn giải dự đoán thông qua mức độ gần giữa mẫu và từng tâm lớp, đồng thời tạo ra một không gian khoảng cách có thể tiếp tục được khai thác trong bước phát hiện OOD.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.92\textwidth]{images/protonet.png}
     \caption{Phân lớp vectơ đặc trưng tổng hợp trong không gian nguyên mẫu}
@@ -463,10 +466,10 @@ Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa với phân ph
 &=\sum_{n\in\mathcal{P}_{i}}\alpha_{i,n}
 \widetilde{\boldsymbol{\ell}}_{i,n},\\
 \overline{\boldsymbol{v}}_{i}
-&=\operatorname{Norm}_{2}\!\left(
+&=\operatorname{Norm}\!\left(
 \boldsymbol{g}_{i}
 {}+0{,}25
-\operatorname{Norm}_{2}\!\left(\boldsymbol{v}_{i}^{\mathrm{local}}\right)
+\operatorname{Norm}\!\left(\boldsymbol{v}_{i}^{\mathrm{local}}\right)
 \right).
 \end{aligned}
 \label{eq:ch3_phase1_visual_pooling}
@@ -531,6 +534,8 @@ Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để t�
 \subsection{Giai đoạn 2: học dung hợp và phân lớp}
 \label{subsec:ch3_phase2}
 
+Hình~\ref{fig:ch3_phase2} minh họa quy trình học dung hợp và phân lớp bằng tâm cụm thực nghiệm trong giai đoạn này.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.90\textwidth]{images/classification.png}
@@ -580,14 +585,16 @@ Kết quả của quá trình ngoại tuyến là tập tham số LoRA, mô-đun
 \section{Suy luận trong quá trình trực tuyến}
 \label{sec:ch3_online_inference}
 
-\begin{figure}[H]
+Hình~\ref{fig:ch3_online} minh họa quy trình suy luận trực tuyến và phát hiện mẫu ngoài phân phối.
+
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/online.png}
     \caption{Quy trình suy luận trực tuyến và phát hiện mẫu ngoài phân phối}
     \label{fig:ch3_online}
 \end{figure}
 
-Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó tâm cụm thực nghiệm tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Quá trình này không tính đạo hàm và không cập nhật tâm lớp từ mẫu mới. Kết quả trên cho biết lớp nào gần mẫu nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự phù hợp với phân bố huấn luyện hay không. 
+Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó tâm cụm thực nghiệm tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Bước phân lớp và tính điểm ngoài phân phối không tính đạo hàm, đồng thời không cập nhật tâm lớp từ mẫu mới. Kết quả trên cho biết lớp nào gần mẫu nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự phù hợp với phân bố huấn luyện hay không.
 
 Vì vậy, ngoài kết quả phân lớp, hệ thống sử dụng khoảng cách Mahalanobis đến lớp gần nhất làm điểm phát hiện ngoài phân phối \cite{Lee2018MahalanobisOOD}. Gọi $\boldsymbol{\mu}_{k}$ là trung bình đặc trưng của lớp $k$ và $\boldsymbol{\Sigma}$ là ma trận hiệp phương sai chung được ước lượng từ tập huấn luyện ID. Ma trận hiệp phương sai được điều chuẩn bằng phương pháp Ledoit--Wolf để tăng tính ổn định trong không gian nhiều chiều \cite{LedoitWolf2004}. Khoảng cách Mahalanobis và điểm OOD được xác định bởi:
 
@@ -608,7 +615,24 @@ d_M\!\left(\boldsymbol{z},\boldsymbol{\mu}_{k}\right).
 \label{eq:ch3_ood_score}
 \end{equation}
 
-Điểm $s_{\mathrm{OOD}}(\boldsymbol{z})$ là khoảng cách nhỏ nhất từ biểu diễn của mẫu mới đến các lớp đã biết. Giá trị càng lớn cho thấy mẫu càng xa toàn bộ phân bố lớp ID. Ngưỡng cảnh báo $\tau_{\mathrm{alert}}$ được hiệu chỉnh chỉ bằng dữ liệu ID huấn luyện và kiểm định. Quy tắc đầu ra dự đoán của hệ thống bao gồm hai thành phần độc lập:
+Điểm $s_{\mathrm{OOD}}(\boldsymbol{z})$ là khoảng cách nhỏ nhất từ biểu diễn của mẫu mới đến các lớp đã biết. Giá trị càng lớn cho thấy mẫu càng xa toàn bộ phân bố lớp ID. Sau khi các tâm lớp và ma trận hiệp phương sai được ước lượng trên tập huấn luyện, các đại lượng này được cố định để tính điểm cho tập xác thực ID. Gọi $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ là tập xác thực và $\boldsymbol{z}_{i}$ là biểu diễn của mẫu $\boldsymbol{x}_{i}$, ngưỡng cảnh báo được xác định bởi:
+
+\begin{equation}
+\tau_{\mathrm{alert}}
+=
+Q_{1-\alpha}^{+}
+\!\left(
+\left\{
+s_{\mathrm{OOD}}(\boldsymbol{z}_{i})
+\mid
+\boldsymbol{x}_{i}\in\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}
+\right\}
+\right),
+\qquad \alpha=0{,}05,
+\label{eq:ch3_ood_threshold}
+\end{equation}
+
+trong đó $Q_{q}^{+}$ là phân vị thực nghiệm phía trên ở mức $q$. Cách chọn này nhằm giới hạn tỷ lệ mẫu ID bị cảnh báo trên tập xác thực ở khoảng $5\%$, tương ứng với việc giữ lại ít nhất khoảng $95\%$ mẫu ID. Tập kiểm thử ID và các tập OOD không tham gia ước lượng thống kê tham chiếu hoặc xác định ngưỡng. Ngưỡng vận hành $\tau_{\mathrm{alert}}$ cũng được tách biệt với ngưỡng suy ra từ đường ROC của tập kiểm thử khi báo cáo độ đo FPR@95\%TPR. Quy tắc đầu ra dự đoán của hệ thống bao gồm hai thành phần độc lập:
 
 \begin{equation}
 \begin{aligned}
@@ -631,4 +655,22 @@ p\left(y=k\mid\boldsymbol{z}\right),
 
 Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net. Nó cung cấp thêm một tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ về mức độ phù hợp của mẫu với phân bố đã quan sát. Vì vậy, đầu ra phân lớp $\widehat{y}$ và cảnh báo ngoài phân phối $\omega_{\mathrm{OOD}}$ có hai vai trò khác nhau: đầu ra thứ nhất chọn lớp gần nhất trong tập lớp đã biết, còn đầu ra thứ hai đánh giá liệu quyết định đó có được thực hiện trên một mẫu đủ quen thuộc hay không.
 
-Bên cạnh hai thành phần dự đoán trên, để đáp ứng yêu cầu của bài toán, quá trình suy luận trực tuyến còn cung cấp đầu ra thứ ba là thông tin hỗ trợ giải thích. Hệ thống áp dụng các kỹ thuật tính toán gradient để trích xuất bản đồ nhiệt đóng góp cho ảnh toàn cục, các đơn vị ảnh cục bộ và từng từ ngữ trong bệnh sử. Đầu ra này giúp làm rõ những vùng giải phẫu hay triệu chứng lâm sàng nào đã chi phối quyết định phân lớp $\widehat{y}$ của mô hình.
+Bên cạnh hai thành phần dự đoán trên, đối với mẫu không bị cảnh báo ngoài phân phối, quá trình suy luận còn có thể cung cấp thông tin hỗ trợ giải thích bằng phương pháp tích phân gradient \cite{Sundararajan2017IntegratedGradients}. Thành phần này được thực hiện như một lượt tính riêng khi cần giải thích. Các tham số mô hình vẫn được cố định, còn đạo hàm chỉ được tính đối với đầu vào hoặc biểu diễn cần khảo sát và không được dùng để cập nhật mô hình.
+
+Với mỗi mẫu, lớp đích được chọn là lớp do mô hình dự đoán $\widehat{y}$, kể cả khi dự đoán này khác nhãn tham chiếu. Gọi $F_{\widehat{y}}(\boldsymbol{u})$ là giá trị logit của lớp đích tại đầu vào hoặc biểu diễn $\boldsymbol{u}$, và $\boldsymbol{u}^{0}$ là mốc tham chiếu tương ứng. Quy đóng của thành phần thứ $j$ được xác định bởi:
+
+\begin{equation}
+\operatorname{IG}_{j}(\boldsymbol{u})
+=
+\left(u_{j}-u_{j}^{0}\right)
+\int_{0}^{1}
+\frac{\partial F_{\widehat{y}}
+\!\left(\boldsymbol{u}^{0}+\beta(\boldsymbol{u}-\boldsymbol{u}^{0})\right)}
+{\partial u_{j}}
+\,\mathrm{d}\beta,
+\label{eq:ch3_integrated_gradients}
+\end{equation}
+
+trong đó $\beta\in[0,1]$ xác định một điểm trên đường thẳng từ mốc tham chiếu đến đầu vào. Trong phần đánh giá thực nghiệm, tích phân được xấp xỉ bằng quy tắc hình thang tại 24 điểm cách đều. Đối với ảnh toàn cục, mốc tham chiếu là tenxơ bằng không trong không gian đầu vào đã chuẩn hóa. Đối với các đơn vị ảnh cục bộ, mốc tham chiếu là biểu diễn ảnh toàn cục được lặp lại theo số đơn vị. Đối với bệnh sử, các từ nội dung được nội suy từ biểu diễn của ký hiệu đệm, trong khi các ký hiệu đặc biệt được giữ nguyên.
+
+Để thu được mức liên quan của từng điểm ảnh, đơn vị ảnh cục bộ hoặc từ, các quy đóng theo chiều biểu diễn được cộng lại và chỉ giữ phần dương. Nếu tổng phần dương gần bằng không, tổng trị tuyệt đối được sử dụng làm phương án dự phòng. Bản đồ và điểm liên quan thu được phản ánh mức đóng góp của từng thành phần đối với logit của lớp dự đoán trong lân cận đường nội suy, do đó được sử dụng như thông tin hỗ trợ diễn giải thay vì một kết luận nhân quả.

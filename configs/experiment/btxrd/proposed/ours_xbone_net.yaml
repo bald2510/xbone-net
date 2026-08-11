@@ -126,5 +126,5 @@ params:
       use_class_weights: true
       weight_type: effective_num
       # Moderate the rare-class correction and cap extreme relative weights.
-      effective_num_beta: 0.99
+      effective_num_beta: 0.999
       max_class_weight: 5.0

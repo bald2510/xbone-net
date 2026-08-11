@@ -1,11 +1,8 @@
-"""
-MedCLIP Foundation Backbone Module for XBone-Net.
-===============================================================================
-Wraps the MedCLIP foundation model (Swin-Tiny image encoder + BioClinicalBERT text
-encoder) pre-trained on medical image-text pairs.
+"""Cung cấp bộ mã hóa nền tảng medclip foundation cho XBone-Net.
 
-Provides normalized 512-dimensional multimodal feature embeddings and compatibility wrappers
-for open_clip tokenization and builder PEFT integration.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import sys
@@ -16,7 +13,7 @@ import transformers
 from transformers import CLIPImageProcessor
 import transformers.processing_utils
 
-# --- Patch HuggingFace transformers compatibility for MedCLIP ---
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 if 'feature_extractor' in transformers.processing_utils.MODALITY_TO_BASE_CLASS_MAPPING:
     transformers.processing_utils.MODALITY_TO_BASE_CLASS_MAPPING['feature_extractor'] = (
         'FeatureExtractionMixin', 'ImageProcessingMixin'
@@ -24,6 +21,20 @@ if 'feature_extractor' in transformers.processing_utils.MODALITY_TO_BASE_CLASS_M
 
 original_clip_init = CLIPImageProcessor.__init__
 def wrapped_clip_init(self, *args, **kwargs):
+    """Thực hiện bước wrapped clip init trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    *args : tuple
+        Các đối số vị trí bổ sung.
+    **kwargs : dict
+        Các đối số từ khóa bổ sung.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     arg_names = [
         "do_resize", "size", "resample", "do_center_crop", 
         "crop_size", "do_normalize", "image_mean", "image_std", 
@@ -45,32 +56,41 @@ except ImportError:
 
 
 # ============================================================
-# MedCLIP Auxiliary Wrappers
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 # ============================================================
 
 class MedCLIPTokenizerWrapper:
-    """Tokenizer wrapper matching open_clip tokenizer interface.
+    """Đóng gói hành vi của thành phần ``MedCLIPTokenizerWrapper``.
 
-    Attributes:
-        processor (MedCLIPProcessor): Underlying HuggingFace processor.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, processor: MedCLIPProcessor):
-        """Initialize MedCLIP tokenizer wrapper.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            processor (MedCLIPProcessor): MedCLIP processor instance.
+        Parameters
+        ----------
+        processor : MedCLIPProcessor
+            Giá trị ``processor`` được sử dụng trong phép xử lý.
         """
         self.processor = processor
 
     def __call__(self, texts, **kwargs):
-        """Tokenize text input strings into PyTorch token ID tensors.
+        """Thực hiện bước call trong quy trình hiện tại.
 
-        Args:
-            texts (str or list of str): Input text string or list of strings.
+        Parameters
+        ----------
+        texts : object
+            Giá trị ``texts`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            torch.Tensor: Encoded token IDs tensor of shape [B, 256].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if isinstance(texts, str):
             texts = [texts]
@@ -85,56 +105,67 @@ class MedCLIPTokenizerWrapper:
 
 
 class MedCLIPTextModule(nn.Module):
-    """Wrapper exposing MedCLIP text encoder transformer for builder compatibility.
+    """Đóng gói hành vi của thành phần ``MedCLIPTextModule``.
 
-    Attributes:
-        transformer (nn.Module): Underlying BERT transformer module.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, medclip_model: "MedCLIPModel"):
-        """Initialize text module wrapper.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            medclip_model (MedCLIPModel): Instantiated MedCLIP model.
+        Parameters
+        ----------
+        medclip_model : 'MedCLIPModel'
+            Mô hình hoặc thành phần mô hình cần xử lý.
         """
         super().__init__()
         self.transformer = getattr(medclip_model, "bert_model", nn.Identity())
 
     def forward(self, x):
-        """Pass-through forward method.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            x (torch.Tensor): Input tensor.
+        Parameters
+        ----------
+        x : object
+            Giá trị ``x`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Unmodified input tensor.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return x
 
 
 class MedCLIPModelWrapper:
-    """Wrapper providing .visual and .text attributes for builder compatibility.
+    """Đóng gói hành vi của thành phần ``MedCLIPModelWrapper``.
 
-    Attributes:
-        visual (nn.Module): Visual encoder module (Swin Transformer).
-        text (MedCLIPTextModule): Text encoder wrapper module.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, medclip_model: "MedCLIPModel"):
-        """Initialize model wrapper.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            medclip_model (MedCLIPModel): Pre-trained MedCLIP model instance.
+        Parameters
+        ----------
+        medclip_model : 'MedCLIPModel'
+            Mô hình hoặc thành phần mô hình cần xử lý.
         """
         self._medclip = medclip_model
         self.visual: nn.Module = medclip_model.vision_model
         self.text = MedCLIPTextModule(medclip_model)
 
     def set_grad_checkpointing(self, enable: bool = True):
-        """Enable or disable gradient checkpointing on vision encoder.
+        """Thiết lập grad checkpointing cho bước xử lý hiện tại.
 
-        Args:
-            enable (bool): Whether to enable gradient checkpointing. Defaults to True.
+        Parameters
+        ----------
+        enable : bool, optional
+            Giá trị ``enable`` được sử dụng trong phép xử lý.
         """
         if hasattr(self.visual, "set_grad_checkpointing"):
             self.visual.set_grad_checkpointing(enable)
@@ -145,72 +176,93 @@ class MedCLIPModelWrapper:
                 self.visual.gradient_checkpointing_disable()
 
     def encode_image(self, pixel_values):
-        """Encode image batch through MedCLIP vision encoder.
+        """Mã hóa ảnh cho bước xử lý hiện tại.
 
-        Args:
-            pixel_values (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
+        Parameters
+        ----------
+        pixel_values : object
+            Giá trị ``pixel_values`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Visual feature embeddings, shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self._medclip.encode_image(pixel_values)
 
     def encode_text(self, input_ids, attention_mask=None):
-        """Encode text batch through MedCLIP text encoder.
+        """Mã hóa văn bản cho bước xử lý hiện tại.
 
-        Args:
-            input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
-            attention_mask (torch.Tensor, optional): Binary attention mask. Auto-constructed if None.
+        Parameters
+        ----------
+        input_ids : object
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Text feature embeddings, shape [B, 512].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if attention_mask is None:
             attention_mask = (input_ids != 0).long()
         return self._medclip.encode_text(input_ids, attention_mask)
 
     def parameters(self):
-        """Get model parameters generator.
+        """Thực hiện bước parameters trong quy trình hiện tại.
 
-        Returns:
-            generator: Underlying MedCLIP model parameters.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self._medclip.parameters()
 
 
 # ============================================================
-# MedCLIP Foundation Backbone
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
 # ============================================================
 
 class MedCLIPFoundation(nn.Module):
-    """MedCLIP foundation model combining Swin-Tiny and BioClinicalBERT.
+    """Bao bọc mô hình nền tảng bằng lớp ``MedCLIPFoundation``.
 
-    Attributes:
-        EMBED_DIM (int): Default feature dimension (512).
-        model (MedCLIPModelWrapper): Model wrapper exposing .visual and .text attributes.
-        preprocess (callable): torchvision image preprocessing transform pipeline.
-        tokenizer (MedCLIPTokenizerWrapper): Tokenizer wrapper for string tokenization.
-
-    Example:
-        >>> backbone = MedCLIPFoundation(freeze_base=True)
-        >>> img_feats, txt_feats = backbone(images, input_ids)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     EMBED_DIM = 512
 
     def __init__(self, freeze_base: bool = True):
-        """Initialize MedCLIP model, patch state dict loading, and set freeze settings.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            freeze_base (bool): If True, freeze base model parameters. Defaults to True.
+        Parameters
+        ----------
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
         """
         super().__init__()
 
         medclip_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
         
-        # --- Custom state dict load patch to strip non-persistent position_ids ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         original_load_state_dict = medclip_model.load_state_dict
         def custom_load_state_dict(state_dict, strict=True):
+            """Thực hiện bước custom load state dict trong quy trình hiện tại.
+
+            Parameters
+            ----------
+            state_dict : object
+                Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+            strict : object, optional
+                Giá trị ``strict`` được sử dụng trong phép xử lý.
+
+            Returns
+            -------
+            object
+                Kết quả được tạo bởi bước xử lý của hàm.
+            """
             keys_to_remove = ["text_model.model.embeddings.position_ids"]
             for key in keys_to_remove:
                 if key in state_dict:
@@ -220,7 +272,7 @@ class MedCLIPFoundation(nn.Module):
         medclip_model.load_state_dict = custom_load_state_dict
         medclip_model.from_pretrained()
 
-        # Ensure contiguity of model parameters
+        # Thiết lập trạng thái và thống kê các tham số mô hình.
         for param in medclip_model.parameters():
             if param.data is not None:
                 param.data = param.data.contiguous()
@@ -228,7 +280,7 @@ class MedCLIPFoundation(nn.Module):
         self._medclip = medclip_model
         self.model = MedCLIPModelWrapper(medclip_model)
 
-        # --- Preprocessing and tokenizer ---
+        # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
         self.preprocess = transforms.Compose([
             transforms.Resize(224),
             transforms.CenterCrop(224),
@@ -242,31 +294,37 @@ class MedCLIPFoundation(nn.Module):
         processor = MedCLIPProcessor()
         self.tokenizer = MedCLIPTokenizerWrapper(processor)
 
-        # --- Freeze base model parameters if requested ---
+        # Thiết lập trạng thái và thống kê các tham số mô hình.
         if freeze_base:
             for param in self._medclip.parameters():
                 param.requires_grad = False
 
     def forward(self, images, input_ids, attention_mask=None, **kwargs):
-        """Extract and L2-normalize image and text embeddings.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Supports dynamic local feature extraction if self.return_local is True.
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Args:
-            images (torch.Tensor): Preprocessed image batch, shape [B, 3, 224, 224].
-            input_ids (torch.Tensor): Tokenized text IDs batch, shape [B, L].
-            attention_mask (torch.Tensor, optional): Text attention mask (1 for real, 0 for pad).
-
-        Returns:
-            tuple: (image_features, text_features) with shape [B, 512], L2-normalized.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
-        # --- Feature extraction ---
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
         image_features = self._medclip.encode_image(images)
         if attention_mask is None:
             attention_mask = (input_ids != 0).long()
         text_features = self._medclip.encode_text(input_ids, attention_mask)
 
-        # --- L2 normalization ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 

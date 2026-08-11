@@ -1,4 +1,9 @@
-"""Non-parametric classifier based on empirical class centroids."""
+"""Cung cấp đầu phân lớp empirical centroid cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -8,11 +13,11 @@ import torch.nn.functional as F
 
 
 class EmpiricalCentroidHead(nn.Module):
-    """Classify embeddings by cosine similarity to train-set class means.
+    """Cung cấp đầu phân lớp bằng lớp ``EmpiricalCentroidHead``.
 
-    The centroids are train-set buffers rather than optimizer parameters.  An
-    optional learnable class bias can calibrate argmax boundaries without
-    discarding the centroid geometry or changing within-class score rankings.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -23,6 +28,26 @@ class EmpiricalCentroidHead(nn.Module):
         use_class_bias: bool = False,
         eps: float = 1e-8,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        feature_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_classes : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        scale : float, optional
+            Giá trị ``scale`` được sử dụng trong phép xử lý.
+        use_class_bias : bool, optional
+            Nhãn hoặc chỉ số lớp liên quan.
+        eps : float, optional
+            Giá trị ``eps`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         if feature_dim < 1 or num_classes < 2:
             raise ValueError("feature_dim must be positive and num_classes must be >= 2.")
@@ -54,7 +79,13 @@ class EmpiricalCentroidHead(nn.Module):
 
     @property
     def prototypes(self) -> torch.Tensor:
-        """Backward-compatible alias used by the existing OOD pipeline."""
+        """Thực hiện bước prototypes trong quy trình hiện tại.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return self.centroids
 
     @torch.no_grad()
@@ -63,7 +94,20 @@ class EmpiricalCentroidHead(nn.Module):
         centroids: torch.Tensor,
         counts: torch.Tensor,
     ) -> None:
-        """Install empirical centroids computed from a labelled training set."""
+        """Thiết lập các tâm lớp cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        centroids : torch.Tensor
+            Giá trị ``centroids`` được sử dụng trong phép xử lý.
+        counts : torch.Tensor
+            Giá trị ``counts`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         expected_shape = (self.num_classes, self.feature_dim)
         if tuple(centroids.shape) != expected_shape:
             raise ValueError(
@@ -94,6 +138,27 @@ class EmpiricalCentroidHead(nn.Module):
         self.centroids_initialized.fill_(True)
 
     def forward(self, features: torch.Tensor, return_features: bool = False):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        features : torch.Tensor
+            Giá trị ``features`` được sử dụng trong phép xử lý.
+        return_features : bool, optional
+            Giá trị ``return_features`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if features.ndim != 2:
             raise ValueError(
                 "EmpiricalCentroidHead expects [B,D] features, "

@@ -1,15 +1,29 @@
-\begin{table}[H]
-\centering
+\begingroup
 \footnotesize
+\setlength{\LTpre}{0pt}
+\setlength{\LTpost}{0pt}
+\setlength{\LTcapwidth}{\textwidth}
+\setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.08}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}}
+\begin{longtable}{@{}L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}@{}}
+\caption{Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên BTXRD}\label{tab:appendix-full-shot-seeds-btxrd}\\
 \toprule
-\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
-BioMedCLIP & 42 & 0{,}8320 & 0{,}5769 & 0{,}5870 & 0{,}8679 & 0{,}6395 \\
-BioMedCLIP & 123 & 0{,}8280 & 0{,}6197 & 0{,}5993 & 0{,}8918 & 0{,}6542 \\
-BioMedCLIP & 456 & 0{,}8333 & 0{,}6219 & 0{,}6118 & 0{,}8996 & 0{,}6595 \\
+\endfirsthead
+\multicolumn{7}{l}{\textit{Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} (tiếp theo)}}\\
+\toprule
+\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r}{\textit{Còn tiếp ở trang sau}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+BiomedCLIP & 42 & 0{,}8320 & 0{,}5769 & 0{,}5870 & 0{,}8679 & 0{,}6395 \\
+BiomedCLIP & 123 & 0{,}8280 & 0{,}6197 & 0{,}5993 & 0{,}8918 & 0{,}6542 \\
+BiomedCLIP & 456 & 0{,}8333 & 0{,}6219 & 0{,}6118 & 0{,}8996 & 0{,}6595 \\
 CLIP & 42 & 0{,}8200 & 0{,}5949 & 0{,}5722 & 0{,}9114 & 0{,}6342 \\
 CLIP & 123 & 0{,}7720 & 0{,}5802 & 0{,}5574 & 0{,}8706 & 0{,}6192 \\
 CLIP & 456 & 0{,}8187 & 0{,}6121 & 0{,}6064 & 0{,}9099 & 0{,}6219 \\
@@ -34,25 +48,35 @@ LoRA-PubMedCLIP & 456 & 0{,}8387 & 0{,}6287 & 0{,}6237 & 0{,}9043 & 0{,}6460 \\
 \rowcolor{gray!12}XBone-Net & 42 & 0{,}8227 & 0{,}6029 & 0{,}6037 & 0{,}9391 & 0{,}6520 \\
 \rowcolor{gray!12}XBone-Net & 123 & 0{,}8253 & 0{,}5797 & 0{,}5972 & 0{,}8899 & 0{,}6099 \\
 \rowcolor{gray!12}XBone-Net & 456 & 0{,}8293 & 0{,}5922 & 0{,}6023 & 0{,}9438 & 0{,}6285 \\
-\bottomrule
-\end{tabular}%
-}
-\caption{Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên BTXRD; hàng XBone-Net được tô xám để dễ đối chiếu.}
-\label{tab:appendix-full-shot-seeds-btxrd}
-\end{table}
+\end{longtable}
+\endgroup
 
-\begin{table}[H]
-\centering
+\begingroup
 \footnotesize
+\setlength{\LTpre}{0pt}
+\setlength{\LTpost}{0pt}
+\setlength{\LTcapwidth}{\textwidth}
+\setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.08}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}}
+\begin{longtable}{@{}L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}@{}}
+\caption{Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên CTCH}\label{tab:appendix-full-shot-seeds-ctch}\\
 \toprule
-\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
-BioMedCLIP & 42 & 0{,}5904 & 0{,}6203 & 0{,}5520 & 0{,}9559 & 0{,}6248 \\
-BioMedCLIP & 123 & 0{,}5755 & 0{,}6107 & 0{,}5472 & 0{,}9555 & 0{,}6188 \\
-BioMedCLIP & 456 & 0{,}6248 & 0{,}5758 & 0{,}5628 & 0{,}9057 & 0{,}6071 \\
+\endfirsthead
+\multicolumn{7}{l}{\textit{Bảng~\ref{tab:appendix-full-shot-seeds-ctch} (tiếp theo)}}\\
+\toprule
+\textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r}{\textit{Còn tiếp ở trang sau}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+BiomedCLIP & 42 & 0{,}5904 & 0{,}6203 & 0{,}5520 & 0{,}9559 & 0{,}6248 \\
+BiomedCLIP & 123 & 0{,}5755 & 0{,}6107 & 0{,}5472 & 0{,}9555 & 0{,}6188 \\
+BiomedCLIP & 456 & 0{,}6248 & 0{,}5758 & 0{,}5628 & 0{,}9057 & 0{,}6071 \\
 CLIP & 42 & 0{,}5725 & 0{,}6579 & 0{,}5727 & 0{,}9547 & 0{,}6270 \\
 CLIP & 123 & 0{,}5785 & 0{,}6209 & 0{,}5547 & 0{,}9478 & 0{,}6196 \\
 CLIP & 456 & 0{,}6114 & 0{,}5862 & 0{,}5624 & 0{,}8845 & 0{,}5542 \\
@@ -77,9 +101,6 @@ LoRA-PubMedCLIP & 456 & 0{,}6248 & 0{,}5610 & 0{,}5671 & 0{,}9246 & 0{,}6062 \\
 \rowcolor{gray!12}XBone-Net & 42 & 0{,}5590 & 0{,}5995 & 0{,}5485 & 0{,}9601 & 0{,}6260 \\
 \rowcolor{gray!12}XBone-Net & 123 & 0{,}6054 & 0{,}5334 & 0{,}5629 & 0{,}9190 & 0{,}6022 \\
 \rowcolor{gray!12}XBone-Net & 456 & 0{,}5531 & 0{,}6203 & 0{,}5559 & 0{,}9628 & 0{,}6284 \\
-\bottomrule
-\end{tabular}%
-}
-\caption{Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên CTCH; hàng XBone-Net được tô xám để dễ đối chiếu.}
-\label{tab:appendix-full-shot-seeds-ctch}
-\end{table}
+\end{longtable}
+\endgroup
+

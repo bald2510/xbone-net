@@ -1,11 +1,11 @@
-\chapter{Cấu hình chi tiết và quy trình tái lập XBone-Net}
+\chapter{Cấu hình chi tiết của XBone-Net}
 \label{AppendixModelDetails}
 
-Phụ lục này bổ sung các thông tin triển khai cần thiết để tái lập phương pháp được trình bày trong Chương~\ref{Chapter3}. Nội dung tập trung vào định danh mô hình nền tảng, kích thước các biểu diễn, vị trí thích nghi hạng thấp, cấu hình dung hợp, đầu phân lớp và thứ tự huấn luyện. Các quy tắc tiền xử lý ảnh và công thức tối ưu vẫn được giữ tại Chương~\ref{Chapter3} để tránh lặp lại phần mô tả phương pháp.
+Phụ lục này trình bày cấu hình chi tiết của phương pháp được mô tả trong Chương~\ref{Chapter3}. Nội dung tập trung vào mô hình nền tảng, kích thước các biểu diễn, vị trí thích nghi hạng thấp, cấu hình dung hợp, đầu phân lớp và các tham số huấn luyện. Các quy tắc tiền xử lý ảnh và công thức tối ưu được giữ tại Chương~\ref{Chapter3} để tránh lặp lại phần mô tả phương pháp.
 
 \section{Mô hình nền tảng và chuẩn hóa đầu vào}
 
-XBone-Net sử dụng trọng số công bố của BiomedCLIP trên trang web hugging face có tên là BiomedCLIP-PubMedBERT-256-vit-base-patch16-224 \cite{BiomedCLIP}. Bộ trọng số này này xác định đồng thời bộ mã hóa thị giác ViT-B/16, bộ mã hóa văn bản PubMedBERT, hai lớp chiếu về không gian 512 chiều, bộ biến đổi ảnh và bộ tách đơn vị biểu diễn tương ứng. Trọng số nền của hai bộ mã hóa được nạp trước khi chèn LoRA và được giữ cố định trong cả hai giai đoạn huấn luyện.
+XBone-Net sử dụng trọng số công bố của BiomedCLIP với định danh \texttt{hf-hub:microsoft/BiomedCLIP-PubMedBERT\_256-vit\_base\_patch16\\\_224} \cite{BiomedCLIP}. Định danh này xác định đồng thời bộ mã hóa thị giác ViT-B/16, bộ mã hóa văn bản PubMedBERT, hai lớp chiếu về không gian 512 chiều, bộ biến đổi ảnh và bộ tách đơn vị biểu diễn tương ứng. Trọng số nền của hai bộ mã hóa được nạp trước khi chèn LoRA và được giữ cố định trong cả hai giai đoạn huấn luyện.
 
 \begin{table}[H]
 \centering
@@ -20,7 +20,7 @@ XBone-Net sử dụng trọng số công bố của BiomedCLIP trên trang web h
 Ảnh cục bộ & Bốn vùng $224\times224$ được cắt từ ảnh gốc & Giữ chi tiết tại các vùng được quy trình toàn cục--cục bộ lựa chọn. \\ \hline
 Mảnh ảnh & Lưới $14\times14$, mỗi mảnh $16\times16$ & Tạo 196 đơn vị biểu diễn không gian và một đơn vị đại diện cho mỗi ảnh. \\ \hline
 Văn bản & Tối đa 256 đơn vị biểu diễn & Chuỗi dài hơn bị cắt, chuỗi ngắn hơn được đệm và mặt nạ chú ý loại các vị trí đệm. \\ \hline
-Văn bản khuyết & no clinical information available. & Là chuỗi thay thế cố định khi trường văn bản rỗng. \\ \hline
+Văn bản khuyết & \texttt{no clinical information available.} & Là chuỗi thay thế cố định khi trường văn bản rỗng. \\ \hline
 Chiều biểu diễn & $D=512$ & Là chiều chung của ảnh, văn bản, dung hợp và tâm lớp. \\ \hline
 \end{tabular}%
 }
@@ -90,29 +90,42 @@ Các tham số học được ngoài LoRA gồm phép chiếu tọa độ của 
 
 Mô-đun dung hợp sử dụng chú ý chéo hai chiều với tám đầu chú ý, chiều ẩn 512 và tỷ lệ bỏ học $0{,}1$. Ở chiều thứ nhất, biểu diễn ảnh toàn cục truy vấn các đơn vị văn bản không đệm. Ở chiều còn lại, biểu diễn văn bản toàn cục truy vấn 20 đơn vị ảnh cục bộ. Hai kết quả được cộng thặng dư với biểu diễn toàn cục tương ứng, chuẩn hóa lớp, nối với nhau và đưa qua mạng hai lớp để tạo biểu diễn dung hợp 512 chiều.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
-\small
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|L{4.0cm}|L{4.0cm}|L{6.5cm}|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|l|}
 \hline
-\multicolumn{1}{|C{4.0cm}|}{\textbf{Thành phần}} &
-\multicolumn{1}{C{4.0cm}|}{\textbf{Giá trị}} &
-\multicolumn{1}{C{6.5cm}|}{\textbf{Ghi chú}} \\ \hline
-Hướng chú ý & Hai chiều & Ảnh truy vấn văn bản và văn bản truy vấn ảnh dùng hai mô-đun độc lập. \\ \hline
-Số đầu chú ý & 8 & Mỗi đầu có chiều $512/8=64$. \\ \hline
-Tỷ lệ bỏ học & $0{,}1$ & Áp dụng trong chú ý, nhánh thặng dư và mạng dung hợp. \\ \hline
-Mạng dung hợp & $1024\rightarrow512\rightarrow512$ & Sử dụng GELU giữa hai lớp tuyến tính và chuẩn hóa đầu ra. \\ \hline
-Hệ số logit của đầu tâm lớp & $15{,}0$ & Nhân với độ tương đồng cosine trước khi cộng độ lệch lớp. \\ \hline
-Độ lệch theo lớp & Có, khởi tạo bằng 0 & Được tối ưu trong pha 2 để hiệu chỉnh ranh giới quyết định theo lớp. \\ \hline
-Cập nhật tâm lớp & Mỗi vòng huấn luyện & Tính lại từ toàn bộ tập huấn luyện trước khi đánh giá trên tập xác thực. \\ \hline
+\multicolumn{1}{|c|}{\textbf{Thành phần}} &
+  \multicolumn{1}{c|}{\textbf{Giá trị}} &
+  \multicolumn{1}{c|}{\textbf{Ghi chú}} \\ \hline
+Hướng chú ý &
+  Hai chiều &
+  \begin{tabular}[c]{@{}l@{}}Ảnh truy vấn văn bản và văn bản \\ truy vấn ảnh dùng hai mô-đun độc lập.\end{tabular} \\ \hline
+Số đầu chú ý &
+  8 &
+  Mỗi đầu có chiều $512/8=64$. \\ \hline
+Tỷ lệ bỏ học &
+  $0{,}1$ &
+  \begin{tabular}[c]{@{}l@{}}Áp dụng trong chú ý, nhánh \\ thặng dư và mạng dung hợp.\end{tabular} \\ \hline
+Mạng dung hợp &
+  $1024\rightarrow512\rightarrow512$ &
+  \begin{tabular}[c]{@{}l@{}}Sử dụng GELU giữa hai lớp \\ tuyến tính và chuẩn hóa đầu ra.\end{tabular} \\ \hline
+Hệ số logit của đầu tâm lớp &
+  $15{,}0$ &
+  \begin{tabular}[c]{@{}l@{}}Nhân với độ tương đồng cosine \\ trước khi cộng độ lệch lớp.\end{tabular} \\ \hline
+Độ lệch theo lớp &
+  Có, khởi tạo bằng 0 &
+  \begin{tabular}[c]{@{}l@{}}Được tối ưu trong pha 2 để hiệu \\ chỉnh ranh giới quyết định theo lớp.\end{tabular} \\ \hline
+Cập nhật tâm lớp &
+  Mỗi vòng huấn luyện &
+  \begin{tabular}[c]{@{}l@{}}Tính lại từ toàn bộ tập huấn luyện \\ trước khi đánh giá trên tập xác thực.\end{tabular} \\ \hline
 \end{tabular}%
 }
 \caption{Cấu hình mô-đun dung hợp và đầu phân lớp}
 \label{tab:appendix-model-fusion-classifier}
 \end{table}
 
-\section{Cấu hình huấn luyện và lựa chọn trạng thái mô hình}
+\section{Cấu hình huấn luyện}
 
 Hai pha sử dụng AdamW, lịch tốc độ học cosine, tỷ lệ khởi động $0{,}1$, hệ số suy giảm trọng số $10^{-4}$ và kích thước lô 16. Huấn luyện sử dụng bfloat16 trên ba hạt giống 42, 123 và 456. Pha 1 lựa chọn trạng thái có mất mát xác thực thấp nhất, còn pha 2 lựa chọn trạng thái có Macro-F1 xác thực cao nhất. Tập kiểm thử không tham gia dừng sớm, lựa chọn trạng thái hoặc cập nhật tâm lớp.
 

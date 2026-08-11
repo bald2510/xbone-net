@@ -1,12 +1,8 @@
-"""
-Dual-Backend Training Logger for XBone-Net Experiments.
-===============================================================================
-Provides two complementary logging sinks during XBone-Net model training:
-  - TensorBoard: Real-time scalar, text, and GPU-memory tracking.
-  - CSV: Archival per-epoch metrics written alongside event files.
+"""Cung cấp tiện ích logging cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-The XBoneTrainerCallback bridges HuggingFace Trainer callbacks to TrainingLogger
-so training, evaluation, and hardware metrics are automatically recorded.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import csv
@@ -19,35 +15,32 @@ from transformers import TrainerCallback
 
 
 # ============================================================
-# Centralized Training Logger
+# Bộ ghi nhật ký huấn luyện tập trung
 # ============================================================
 
 class TrainingLogger:
-    """Centralized training logger writing to TensorBoard and CSV.
+    """Ghi nhận thông tin huấn luyện bằng lớp ``TrainingLogger``.
 
-    Creates a timestamped run directory under log_dir with TensorBoard
-    event files, a per-epoch CSV metrics archive, and a hyperparameters snapshot.
-
-    Attributes:
-        tb_dir (str): Directory path where TensorBoard logs and outputs are stored.
-        writer (SummaryWriter): PyTorch TensorBoard SummaryWriter instance.
-        csv_path (str): File path for saving CSV metric records.
-
-    Example:
-        logger = TrainingLogger(log_dir="runs", experiment_name="biomedclip_phase1")
-        logger.log_hyperparams({"lr": 1e-4, "batch_size": 32})
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, log_dir: str, experiment_name: str, phase: str = "", use_timestamp: bool = False):
-        """Initialize the logger and create the run directory structure.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            log_dir: Root directory for all experiment logs.
-            experiment_name: Name of the current experiment / model configuration.
-            phase: Training phase identifier (e.g., 'phase1', 'phase2').
-            use_timestamp: If True, appends timestamp. If False, logs directly into log_dir/logs/phase.
+        Parameters
+        ----------
+        log_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        experiment_name : str
+            Tên hoặc khóa định danh của giá trị.
+        phase : str, optional
+            Giá trị ``phase`` được sử dụng trong phép xử lý.
+        use_timestamp : bool, optional
+            Giá trị ``use_timestamp`` được sử dụng trong phép xử lý.
         """
-        # --- Create directory ---
+        # --- Tạo thư mục đầu ra ---
         self.log_dir = log_dir
         self._trainable_params = None
 
@@ -63,7 +56,7 @@ class TrainingLogger:
         from torch.utils.tensorboard import SummaryWriter
         self.writer = SummaryWriter(log_dir=self.tb_dir)
 
-        # --- Setup CSV output file ---
+        # --- Thiết lập tệp CSV đầu ra ---
         self.csv_path = os.path.join(self.tb_dir, "metrics.csv")
         self._csv_file = None
         self._csv_writer = None
@@ -77,20 +70,19 @@ class TrainingLogger:
         print(f"[Logger] CSV metrics:      {self.csv_path}")
 
     def log_hyperparams(self, hparams: dict):
-        """Log hyperparameters to TensorBoard and a local text file.
+        """Thực hiện bước log hyperparams trong quy trình hiện tại.
 
-        Writes a Markdown table to the TensorBoard Text tab for interactive
-        inspection, and persists a plain-text hparams.txt file for archival.
-
-        Args:
-            hparams: Dictionary mapping hyperparameter names to values.
+        Parameters
+        ----------
+        hparams : dict
+            Giá trị ``hparams`` được sử dụng trong phép xử lý.
         """
-        # --- Write Markdown table to TensorBoard ---
+        # Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
         lines = [f"| {k} | {v} |" for k, v in hparams.items()]
         table = "| Parameter | Value |\n|---|---|\n" + "\n".join(lines)
         self.writer.add_text("hyperparameters", table, global_step=0)
 
-        # --- Write plain-text hparams.txt ---
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         hparams_path = os.path.join(self.tb_dir, "hparams.txt")
         with open(hparams_path, "w", encoding="utf-8") as f:
             f.write(f"Experiment started: {datetime.now().isoformat()}\n")
@@ -101,30 +93,40 @@ class TrainingLogger:
         print(f"[Logger] Hyperparameters saved to {hparams_path}")
 
     def log_scalar(self, tag: str, value: float, step: int):
-        """Log a single scalar value to TensorBoard.
+        """Thực hiện bước log scalar trong quy trình hiện tại.
 
-        Args:
-            tag: Metric tag / name.
-            value: Scalar metric value.
-            step: Training step or epoch index.
+        Parameters
+        ----------
+        tag : str
+            Giá trị ``tag`` được sử dụng trong phép xử lý.
+        value : float
+            Giá trị ``value`` được sử dụng trong phép xử lý.
+        step : int
+            Giá trị ``step`` được sử dụng trong phép xử lý.
         """
         self.writer.add_scalar(tag, value, step)
 
     def log_scalars(self, main_tag: str, tag_scalar_dict: dict, step: int):
-        """Log multiple scalar values under a main tag to TensorBoard.
+        """Thực hiện bước log scalars trong quy trình hiện tại.
 
-        Args:
-            main_tag: Main group name for scalars.
-            tag_scalar_dict: Dictionary mapping sub-tags to scalar values.
-            step: Training step or epoch index.
+        Parameters
+        ----------
+        main_tag : str
+            Giá trị ``main_tag`` được sử dụng trong phép xử lý.
+        tag_scalar_dict : dict
+            Giá trị ``tag_scalar_dict`` được sử dụng trong phép xử lý.
+        step : int
+            Giá trị ``step`` được sử dụng trong phép xử lý.
         """
         self.writer.add_scalars(main_tag, tag_scalar_dict, step)
 
     def log_gpu_memory(self, step: int):
-        """Log CUDA GPU memory allocation statistics to TensorBoard.
+        """Thực hiện bước log gpu memory trong quy trình hiện tại.
 
-        Args:
-            step: Current training step index.
+        Parameters
+        ----------
+        step : int
+            Giá trị ``step`` được sử dụng trong phép xử lý.
         """
         if torch.cuda.is_available():
             allocated_mb = torch.cuda.memory_allocated() / 1024 ** 2
@@ -135,7 +137,13 @@ class TrainingLogger:
             self.writer.add_scalar("gpu/memory_peak_mb", max_allocated_mb, step)
 
     def _get_latest_checkpoint_size(self) -> float:
-        """Find the latest checkpoint directory or file and return its size in MB."""
+        """Lấy latest checkpoint size cho bước xử lý hiện tại.
+
+        Returns
+        -------
+        float
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         if not hasattr(self, "log_dir") or not self.log_dir or not os.path.exists(self.log_dir):
             return 0.0
         
@@ -149,7 +157,7 @@ class TrainingLogger:
             return 0.0
             
         if not checkpoint_dirs:
-            # Look for direct .pth or .safetensors files in log_dir
+            # Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
             try:
                 pth_files = [os.path.join(self.log_dir, f) for f in os.listdir(self.log_dir) if f.endswith(".pth") or f.endswith(".safetensors")]
                 if not pth_files:
@@ -172,19 +180,20 @@ class TrainingLogger:
             return 0.0
 
     def start_epoch(self):
-        """Record the start timestamp for the current epoch."""
+        """Thực hiện bước start epoch trong quy trình hiện tại."""
         self._epoch_start_time = time.time()
 
     def log_epoch_metrics(self, metrics: dict, epoch: int):
-        """Log epoch summary metrics to TensorBoard and CSV.
+        """Thực hiện bước log epoch các độ đo trong quy trình hiện tại.
 
-        Enriches raw metrics with timing info, GPU stats, checkpoint size, and trainable parameters before recording.
-
-        Args:
-            metrics: Dictionary of metric names to values.
-            epoch: Current epoch number (0-indexed).
+        Parameters
+        ----------
+        metrics : dict
+            Giá trị ``metrics`` được sử dụng trong phép xử lý.
+        epoch : int
+            Giá trị ``epoch`` được sử dụng trong phép xử lý.
         """
-        # --- Compute elapsed timing ---
+        # --- Tính thời gian đã sử dụng ---
         elapsed = time.time() - self._start_time
         epoch_time = time.time() - self._epoch_start_time if self._epoch_start_time else 0
 
@@ -195,11 +204,11 @@ class TrainingLogger:
             **metrics,
         }
 
-        # Add trainable parameters if available
+        # Thiết lập trạng thái và thống kê các tham số mô hình.
         if hasattr(self, "_trainable_params") and self._trainable_params is not None:
             enriched["trainable_params"] = self._trainable_params
 
-        # Compute and add checkpoint size
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
         checkpoint_size_mb = self._get_latest_checkpoint_size()
         if checkpoint_size_mb > 0:
             enriched["checkpoint_size_mb"] = round(checkpoint_size_mb, 1)
@@ -208,17 +217,17 @@ class TrainingLogger:
             enriched["gpu_allocated_mb"] = round(torch.cuda.memory_allocated() / 1024 ** 2, 1)
             enriched["gpu_peak_mb"] = round(torch.cuda.max_memory_allocated() / 1024 ** 2, 1)
 
-        # --- Write scalars to TensorBoard ---
+        # --- Ghi các giá trị vô hướng vào TensorBoard ---
         for key, value in enriched.items():
             if key == "epoch":
                 continue
             if isinstance(value, (int, float)):
                 self.writer.add_scalar(f"epoch/{key}", value, epoch)
 
-        # --- Append row to CSV file ---
+        # --- Thêm một dòng vào tệp CSV ---
         self._write_csv_row(enriched)
 
-        # --- Console output ---
+        # --- Xuất thông tin ra dòng lệnh ---
         parts = [f"Epoch {epoch}"]
         for key in ("train_loss", "eval_loss", "eval_f1_macro", "f1_macro", "learning_rate"):
             if key in metrics and metrics[key] is not None:
@@ -236,10 +245,12 @@ class TrainingLogger:
         self.writer.flush()
 
     def _write_csv_row(self, row: dict):
-        """Append a row and expand the CSV schema when new metrics appear.
+        """Ghi csv row cho bước xử lý hiện tại.
 
-        Args:
-            row: Column-name to value mapping for one epoch.
+        Parameters
+        ----------
+        row : dict
+            Giá trị ``row`` được sử dụng trong phép xử lý.
         """
         if self._csv_file is None:
             self._csv_file = open(self.csv_path, "w", newline="", encoding="utf-8")
@@ -257,9 +268,9 @@ class TrainingLogger:
             field for field in row.keys() if field not in self._csv_fieldnames
         ]
         if new_fields:
-            # DictWriter has a fixed schema. Preserve prior epochs by reading
-            # them back, extending the header, and rebuilding the small
-            # per-epoch CSV before appending the current row.
+            # Bước hỗ trợ để ghi csv row cho bước xử lý hiện tại.
+            # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
+            # Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
             self._csv_file.flush()
             self._csv_file.close()
             with open(self.csv_path, "r", newline="", encoding="utf-8") as handle:
@@ -283,10 +294,12 @@ class TrainingLogger:
         self._csv_file.flush()
 
     def log_model_summary(self, model):
-        """Log model parameter statistics to TensorBoard.
+        """Thực hiện bước log mô hình summary trong quy trình hiện tại.
 
-        Args:
-            model: PyTorch model instance to summarize.
+        Parameters
+        ----------
+        model : object
+            Mô hình hoặc thành phần mô hình cần xử lý.
         """
         total = sum(p.numel() for p in model.parameters())
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -299,7 +312,7 @@ class TrainingLogger:
         self.writer.add_scalar("model/frozen_params", frozen, 0)
         self.writer.add_scalar("model/trainable_ratio_pct", (trainable / total) * 100 if total > 0 else 0, 0)
         
-        # --- Save full model architecture to text file ---
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         arch_path = os.path.join(self.tb_dir, "model_architecture.txt")
         try:
             with open(arch_path, "w", encoding="utf-8") as f:
@@ -308,7 +321,7 @@ class TrainingLogger:
             print(f"[Logger] Warning: Could not save model architecture: {e}")
 
     def close(self):
-        """Close TensorBoard writer and CSV file handles."""
+        """Thực hiện bước close trong quy trình hiện tại."""
         self.writer.flush()
         self.writer.close()
         if self._csv_file:
@@ -318,41 +331,81 @@ class TrainingLogger:
 
 
 # ============================================================
-# HuggingFace Trainer Callback Integration
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 class XBoneTrainerCallback(TrainerCallback):
-    """HuggingFace Trainer callback that routes events to TrainingLogger.
+    """Điều phối quá trình huấn luyện bằng lớp ``XBoneTrainerCallback``.
 
-    Maps Trainer lifecycle callbacks (on_train_begin, on_epoch_begin,
-    on_log, on_evaluate, on_train_end) to logger calls.
-
-    Attributes:
-        logger (TrainingLogger): Active TrainingLogger instance.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, logger: TrainingLogger):
-        """Initialize the callback.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            logger: The TrainingLogger instance to delegate event handling to.
+        Parameters
+        ----------
+        logger : TrainingLogger
+            Giá trị ``logger`` được sử dụng trong phép xử lý.
         """
         super().__init__()
         self.logger = logger
         self._current_epoch = 0
 
     def on_train_begin(self, args, state, control, model=None, **kwargs):
-        """Callback triggered at start of training."""
+        """Thực hiện bước on train begin trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        model : object, optional
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         if model is not None:
             self.logger.log_model_summary(model)
 
     def on_epoch_begin(self, args, state, control, **kwargs):
-        """Callback triggered at start of each epoch."""
+        """Thực hiện bước on epoch begin trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         self._current_epoch = int(state.epoch) if state.epoch else 0
         self.logger.start_epoch()
 
     def on_log(self, args, state, control, logs=None, **kwargs):
-        """Callback triggered when Trainer logs metrics."""
+        """Thực hiện bước on log trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        logs : object, optional
+            Giá trị ``logs`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         if logs is None:
             return
 
@@ -364,7 +417,21 @@ class XBoneTrainerCallback(TrainerCallback):
         self.logger.log_gpu_memory(step)
 
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-        """Callback triggered when evaluation completes."""
+        """Thực hiện bước on evaluate trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        metrics : object, optional
+            Giá trị ``metrics`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         if metrics is None:
             return
 
@@ -390,5 +457,17 @@ class XBoneTrainerCallback(TrainerCallback):
         self.logger.log_epoch_metrics(epoch_metrics, epoch)
 
     def on_train_end(self, args, state, control, **kwargs):
-        """Callback triggered at end of training."""
+        """Thực hiện bước on train end trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         self.logger.writer.flush()

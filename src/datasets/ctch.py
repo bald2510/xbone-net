@@ -1,14 +1,8 @@
-"""
-CTCH bone pathology dataset loader for XBone-Net architecture.
-============================================================
-Provides a PyTorch Dataset for X-ray images paired with text reports.
-Used in XBone-Net's dual-stage learning framework:
-  - Stage 1: Contrastive image-text alignment using X-ray findings reports
-  - Stage 2: Cross-attention multimodal fusion combining X-ray findings + clinical history
-  - Supports both multi-class (single integer label) and multi-label classification
+"""Cung cấp thành phần dữ liệu ctch cho XBone-Net.
 
-Supports dual-report loading (xray_report_dir and clinical_report_dir) with fallback
-to a single report directory for backward compatibility.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import os
@@ -22,41 +16,15 @@ from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
 # ============================================================
-# CTCH Dataset Loader
+# Bộ nạp dữ liệu CTCH
 # ============================================================
 
 class CTCHDataset(Dataset):
-    """Dataset loader for the CTCH bone pathology dataset.
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``CTCHDataset``.
 
-    Always operates in dual-report mode, returning separate imaging findings
-    and clinical history texts per sample for multimodal fusion in XBone-Net.
-
-    Supports both multi-class (via class_id or one-hot → argmax) and
-    multi-label classification (binary vector), matching BTXRD format.
-
-    Attributes:
-        img_dir: Root directory containing X-ray image files.
-        classes: List of target class / pathology names.
-        task_type: Classification mode ('multiclass' or 'multilabel').
-        xray_report_dir: Directory containing X-ray findings reports (.txt).
-        clinical_report_dir: Directory containing clinical history reports (.txt).
-        transform: torchvision.transforms pipeline applied to images.
-        tokenizer: Text tokenizer callable returning token-ID tensors.
-        max_text_len: Maximum token sequence length.
-        df: Filtered pandas.DataFrame for the active data split.
-
-    Example:
-        ds = CTCHDataset(
-            img_dir="data/CTCH/images",
-            csv_split_path="data/CTCH/ctch-split.csv",
-            csv_labels_path="data/CTCH/ctch-labels.csv",
-            classes=["Bình thường", "Gãy xương quay", ...],
-            task_type="multiclass",
-            xray_report_dir="data/CTCH/reports/xray",
-            clinical_report_dir="data/CTCH/reports/clinical",
-            split="train",
-        )
-        image, xray_ids, clinical_ids, labels = ds[0]
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -75,38 +43,64 @@ class CTCHDataset(Dataset):
         transform=None,
         tokenizer=None,
         max_text_len=256,
-        # Dual report support
+        # Hỗ trợ đồng thời hai loại báo cáo
         xray_report_dir: str = None,
         clinical_report_dir: str = None,
-        # Backward compatibility: single report_dir
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         report_dir: str = None,
         high_res: dict = None,
         preprocess: dict = None,
         **kwargs,
     ):
-        """Initialize the CTCH dataset.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            img_dir: Path to directory containing image files.
-            csv_split_path: Path to CSV with image_id and split columns.
-            csv_labels_path: Path to CSV with image_id and class/pathology label columns.
-            pathologies: List of pathology column names (alias for classes).
-            classes: List of target class / pathology names (takes precedence).
-            task_type: 'multiclass' (single integer label) or 'multilabel' (binary vector).
-            num_classes: Optional explicit class count for external reference.
-            split: Data split ('train', 'val', or 'test').
-            train_ratio: Fraction of training samples to keep (0.0 to 1.0).
-            k_shot: Maximum number of training samples retained per class.
-            seed: Random seed used for deterministic per-class sampling.
-            transform: torchvision.transforms pipeline for image preprocessing.
-            tokenizer: Text tokenizer callable returning token-ID tensors.
-            max_text_len: Maximum token sequence length.
-            xray_report_dir: Path to directory containing X-ray findings reports.
-            clinical_report_dir: Path to directory containing clinical history reports.
-            report_dir: Single report directory for both report types (backward compatibility).
-            high_res: Fixed-budget sparse focal preprocessing configuration.
-            preprocess: Global-image preprocessing used when high-resolution mode is disabled.
-            **kwargs: Extra unused arguments for backward compatibility.
+        Parameters
+        ----------
+        img_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_split_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_labels_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        pathologies : list, optional
+            Danh sách tên bệnh lý hoặc lớp đích.
+        classes : list, optional
+            Giá trị ``classes`` được sử dụng trong phép xử lý.
+        task_type : str, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+        num_classes : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        split : str, optional
+            Giá trị ``split`` được sử dụng trong phép xử lý.
+        train_ratio : float, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        k_shot : int, optional
+            Giá trị ``k_shot`` được sử dụng trong phép xử lý.
+        seed : int, optional
+            Hạt giống phục vụ khả năng tái lập.
+        transform : object, optional
+            Giá trị ``transform`` được sử dụng trong phép xử lý.
+        tokenizer : object, optional
+            Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+        max_text_len : object, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        xray_report_dir : str, optional
+            Đường dẫn tài nguyên được sử dụng.
+        clinical_report_dir : str, optional
+            Đường dẫn tài nguyên được sử dụng.
+        report_dir : str, optional
+            Đường dẫn tài nguyên được sử dụng.
+        high_res : dict, optional
+            Giá trị ``high_res`` được sử dụng trong phép xử lý.
+        preprocess : dict, optional
+            Giá trị ``preprocess`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         self.img_dir = img_dir
         self.classes = classes or pathologies or []
@@ -132,21 +126,21 @@ class CTCHDataset(Dataset):
             for name in configured_shuffle_splits
         }
 
-        # --- Resolve report directories ---
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         if report_dir and not xray_report_dir and not clinical_report_dir:
-            # Backward compatible: single report_dir -> use for both
+            # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
             self.xray_report_dir = report_dir
             self.clinical_report_dir = report_dir
         else:
             self.xray_report_dir = xray_report_dir
             self.clinical_report_dir = clinical_report_dir
 
-        # --- Load and merge metadata ---
+        # --- Tải và kết hợp siêu dữ liệu ---
         df_split = pd.read_csv(csv_split_path)
         df_labels = pd.read_csv(csv_labels_path)
         df_merged = pd.merge(df_split, df_labels, on=["image_id"], how="inner")
 
-        # --- Pre-compute class_id for multi-class indexing if missing ---
+        # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if task_type == "multiclass" and "class_id" not in df_merged.columns and self.classes:
             missing_class_columns = [
                 class_name
@@ -162,6 +156,23 @@ class CTCHDataset(Dataset):
                 )
 
             def _get_class_id(row):
+                """Lấy class id cho bước xử lý hiện tại.
+
+                Parameters
+                ----------
+                row : object
+                    Giá trị ``row`` được sử dụng trong phép xử lý.
+
+                Returns
+                -------
+                object
+                    Kết quả được tạo bởi bước xử lý của hàm.
+
+                Raises
+                ------
+                ValueError
+                    Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+                """
                 for idx_cls, cls_name in enumerate(self.classes):
                     if row.get(cls_name, 0) == 1:
                         return idx_cls
@@ -180,7 +191,7 @@ class CTCHDataset(Dataset):
                 )
             df_merged["class_id"] = class_ids.astype(int)
 
-        # --- Filter split and apply subsampling ---
+        # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
         current_split = "validate" if split == "val" else split
         filtered_df = df_merged[df_merged["split"] == current_split].reset_index(drop=True)
 
@@ -236,7 +247,7 @@ class CTCHDataset(Dataset):
         else:
             self.shuffled_report_indices = None
 
-        # --- Detect dual report availability ---
+        # --- Kiểm tra khả năng sử dụng hai loại báo cáo ---
         has_dual = bool(self.xray_report_dir and self.clinical_report_dir)
         print(
             f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
@@ -246,18 +257,29 @@ class CTCHDataset(Dataset):
         )
 
     def __len__(self):
-        """Return the total number of samples in the current split."""
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.df)
 
     def _load_report(self, report_dir: str, image_id: str) -> str:
-        """Load a text report file, clean it, and return normalized content.
+        """Tải báo cáo cho bước xử lý hiện tại.
 
-        Args:
-            report_dir: Directory containing .txt report files.
-            image_id: Image filename (with extension) to locate report file.
+        Parameters
+        ----------
+        report_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        image_id : str
+            Ảnh hoặc biểu diễn ảnh đầu vào.
 
-        Returns:
-            Cleaned lowercased report text, or empty string if file missing.
+        Returns
+        -------
+        str
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if report_dir is None:
             return ""
@@ -269,13 +291,17 @@ class CTCHDataset(Dataset):
         return ""
 
     def _tokenize(self, text: str):
-        """Tokenize text string with default fallback for missing content.
+        """Thực hiện bước tokenize trong quy trình hiện tại.
 
-        Args:
-            text: Cleaned report string.
+        Parameters
+        ----------
+        text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
 
-        Returns:
-            torch.Tensor of token IDs if tokenizer is present, else text string.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if not text:
             text = "no clinical information available."
@@ -284,21 +310,22 @@ class CTCHDataset(Dataset):
         return text
 
     def __getitem__(self, idx: int):
-        """Retrieve a sample by index.
+        """Thực hiện bước getitem trong quy trình hiện tại.
 
-        Args:
-            idx: Integer index into dataset.
+        Parameters
+        ----------
+        idx : int
+            Chỉ mục của phần tử cần xử lý.
 
-        Returns:
-            A dictionary with global image, local tiles, normalized tile boxes,
-            dual-report token IDs, and labels when high-resolution mode is
-            enabled. Otherwise returns the backward-compatible tuple
-            ``(image, xray_ids, clinical_ids, labels)``.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         row = self.df.iloc[idx]
         image_id = str(row["image_id"])
 
-        # --- Load image ---
+        # --- Tải ảnh đầu vào ---
         img_path = os.path.join(self.img_dir, image_id)
         if self.text_only:
             image = Image.new("RGB", (224, 224), color="black")
@@ -328,7 +355,7 @@ class CTCHDataset(Dataset):
                 self.preprocess_cfg,
             )
 
-        # --- Load and tokenize dual text reports ---
+        # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
         report_image_id = image_id
         if self.shuffled_report_indices is not None:
             report_image_id = str(
@@ -343,7 +370,7 @@ class CTCHDataset(Dataset):
         xray_ids = self._tokenize(xray_text)
         clinical_ids = self._tokenize(clinical_text)
 
-        # --- Encode labels ---
+        # --- Mã hóa nhãn ---
         if self.task_type == "multiclass":
             if "class_id" in row:
                 labels = torch.tensor(int(row["class_id"]), dtype=torch.long)
@@ -352,7 +379,7 @@ class CTCHDataset(Dataset):
                 class_id = class_vals.index(1) if 1 in class_vals else 0
                 labels = torch.tensor(class_id, dtype=torch.long)
         else:
-            # Multi-label: binary vector
+            # Đa nhãn được biểu diễn bằng vectơ nhị phân
             label_vals = []
             for path in self.classes:
                 val = row.get(path, 0)

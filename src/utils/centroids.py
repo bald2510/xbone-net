@@ -1,4 +1,9 @@
-"""Utilities for estimating non-parametric class centroids."""
+"""Cung cấp tiện ích centroids cho huấn luyện, đánh giá và phân tích XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,29 @@ from transformers import TrainerCallback
 
 
 def _select_phase2_text(batch: dict, use_text: bool, report_type: str):
+    """Chọn phase2 văn bản cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    batch : dict
+        Batch dữ liệu đầu vào.
+    use_text : bool
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    NotImplementedError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not use_text:
         return None, None
     if report_type in ("both", "xray_clinical"):
@@ -32,11 +60,32 @@ def compute_empirical_centroids(
     use_text: bool = True,
     report_type: str = "clinical",
 ) -> torch.Tensor:
-    """Compute per-class means from the current train-set embeddings.
+    """Tính empirical các tâm lớp cho bước xử lý hiện tại.
 
-    The classifier head is not called, so this function can initialize a newly
-    constructed empirical-centroid head. The model is evaluated without dropout
-    while estimating means and its previous train/eval mode is restored.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    data_loader : object
+        Dữ liệu đầu vào của bước xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    use_text : bool, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    report_type : str, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     head = getattr(model, "head", None)
     if head is None or not hasattr(head, "set_centroids"):
@@ -115,7 +164,12 @@ def compute_empirical_centroids(
 
 
 class EmpiricalCentroidUpdateCallback(TrainerCallback):
-    """Refresh train-set centroids before validation/checkpointing each epoch."""
+    """Xử lý sự kiện trong quá trình huấn luyện bằng lớp ``EmpiricalCentroidUpdateCallback``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(
         self,
@@ -126,6 +180,28 @@ class EmpiricalCentroidUpdateCallback(TrainerCallback):
         report_type: str = "clinical",
         interval_epochs: int = 1,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        model : object
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        data_loader : object
+            Dữ liệu đầu vào của bước xử lý.
+        device : torch.device
+            Thiết bị thực thi phép tính.
+        use_text : bool, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        report_type : str, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        interval_epochs : int, optional
+            Giá trị ``interval_epochs`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if interval_epochs < 1:
             raise ValueError("interval_epochs must be >= 1.")
         self.model = model
@@ -136,6 +212,24 @@ class EmpiricalCentroidUpdateCallback(TrainerCallback):
         self.interval_epochs = int(interval_epochs)
 
     def on_epoch_end(self, args, state, control, **kwargs):
+        """Thực hiện bước on epoch end trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        args : object
+            Các đối số vị trí bổ sung.
+        state : object
+            Giá trị ``state`` được sử dụng trong phép xử lý.
+        control : object
+            Giá trị ``control`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         epoch = int(round(float(state.epoch or 0.0)))
         if epoch > 0 and epoch % self.interval_epochs == 0:
             counts = compute_empirical_centroids(

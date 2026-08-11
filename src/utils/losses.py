@@ -1,13 +1,8 @@
-"""
-Loss Functions for XBone-Net Two-Phase Pipeline.
-===============================================================================
-Implements streamlined objective functions used across both training phases of XBone-Net:
+"""Cung cấp tiện ích losses cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-Phase 1 (Multimodal Contrastive Alignment):
-  - SoftTargetSemanticMatchingLoss: Soft-target cross-entropy encoding same-class similarity
-
-Phase 2 (Supervised Classification):
-  - Validated class-weighted cross-entropy for empirical-centroid or linear logits
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch
@@ -16,28 +11,27 @@ import torch.nn.functional as F
 
 
 # ============================================================
-# Phase 1 Helper Functions
+# Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
 # ============================================================
 
 def get_clip_logit_params(clip_model, require_bias: bool = False):
-    """Retrieve learnable temperature and bias parameters from an OpenCLIP model.
+    """Lấy clip logit params cho bước xử lý hiện tại.
 
-    The logit_scale parameter represents log(1/tau) where tau is temperature:
-        logits = exp(logit_scale) * sim(image, text)
+    Parameters
+    ----------
+    clip_model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    require_bias : bool, optional
+        Giá trị ``require_bias`` được sử dụng trong phép xử lý.
 
-    Args:
-        clip_model: OpenCLIP model instance with logit_scale parameter.
-        require_bias: If True and model lacks logit_bias, registers a bias parameter.
-
-    Returns:
-        Tuple of (logit_scale, logit_bias) nn.Parameter objects.
-
-    Raises:
-        AttributeError: If clip_model does not have a logit_scale parameter.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     if not hasattr(clip_model, "logit_scale"):
-        # Fallback for non-OpenCLIP backbones (e.g., MedCLIP): create a learnable logit_scale
-        # initialized to ln(1/0.07) ≈ 2.66, matching standard CLIP temperature
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+        # Bước hỗ trợ để lấy clip logit params cho bước xử lý hiện tại.
         import math
         logit_scale = nn.Parameter(torch.tensor(math.log(1.0 / 0.07)))
         setattr(clip_model, "logit_scale", logit_scale)
@@ -57,19 +51,23 @@ def get_clip_logit_params(clip_model, require_bias: bool = False):
 
 
 def _pairwise_logits(image_features, text_features, logit_scale, logit_bias=None):
-    """Compute scaled pairwise cosine similarity logits between image and text.
+    """Thực hiện bước pairwise logits trong quy trình hiện tại.
 
-    Formula:
-        logits = exp(scale) * (I_norm @ T_norm^T) + bias
+    Parameters
+    ----------
+    image_features : object
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    text_features : object
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    logit_scale : object
+        Giá trị ``logit_scale`` được sử dụng trong phép xử lý.
+    logit_bias : object, optional
+        Giá trị ``logit_bias`` được sử dụng trong phép xử lý.
 
-    Args:
-        image_features: Image embeddings of shape (B, D).
-        text_features: Text embeddings of shape (B, D).
-        logit_scale: Learnable log-temperature parameter (scalar nn.Parameter).
-        logit_bias: Optional learnable bias parameter (scalar nn.Parameter).
-
-    Returns:
-        Logits tensor of shape (B, B) with pairwise similarity scores.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     image_features = F.normalize(image_features, dim=-1, p=2)
     text_features = F.normalize(text_features, dim=-1, p=2)
@@ -80,31 +78,31 @@ def _pairwise_logits(image_features, text_features, logit_scale, logit_bias=None
 
 
 # ============================================================
-# Phase 1: Contrastive Loss Function
+# Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
 # ============================================================
 
 class SoftTargetSemanticMatchingLoss(nn.Module):
-    """Soft-target semantic matching contrastive loss for Phase 1.
+    """Đóng gói hành vi của thành phần ``SoftTargetSemanticMatchingLoss``.
 
-    Constructs soft target matrices encoding intra-class similarity rather than
-    one-hot matching. Pairs sharing disease labels receive target 0.95, while
-    exact diagonal pairs receive 1.0.
-
-    Formula:
-        L = -0.5 * (mean_i sum_j y_v2t[i,j] * log_softmax(logits_v2t)[i,j]
-                  + mean_j sum_i y_t2v[i,j] * log_softmax(logits_t2i)[i,j])
-
-    Attributes:
-        logit_scale (nn.Parameter): Learnable log-temperature parameter.
-        target_similarity (float): Soft target probability assigned to same-class pairs.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, clip_model, target_similarity: float = 0.95):
-        """Initialize SoftTargetSemanticMatchingLoss.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            clip_model: OpenCLIP model providing logit scale.
-            target_similarity: Soft target value for same-class non-diagonal pairs.
+        Parameters
+        ----------
+        clip_model : object
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        target_similarity : float, optional
+            Nhãn hoặc chỉ số lớp liên quan.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         super().__init__()
         if not 0.0 <= float(target_similarity) <= 1.0:
@@ -113,15 +111,26 @@ class SoftTargetSemanticMatchingLoss(nn.Module):
         self.target_similarity = float(target_similarity)
 
     def forward(self, image_features, text_features, disease_labels=None):
-        """Compute soft-target symmetric contrastive loss.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            image_features: Image embeddings of shape (B, D).
-            text_features: Text embeddings of shape (B, D).
-            disease_labels: Ground-truth class labels of shape (B,).
+        Parameters
+        ----------
+        image_features : object
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        text_features : object
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        disease_labels : object, optional
+            Giá trị ``disease_labels`` được sử dụng trong phép xử lý.
 
-        Returns:
-            Scalar loss tensor.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         if image_features.ndim != 2 or text_features.ndim != 2:
             raise ValueError(
@@ -135,7 +144,7 @@ class SoftTargetSemanticMatchingLoss(nn.Module):
         logits_v2t = _pairwise_logits(image_features, text_features, self.logit_scale)
         logits_t2v = logits_v2t.T
 
-        # --- Construct soft target matrix ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         targets_v2t = torch.eye(batch_size, device=device)
         if disease_labels is not None:
             labels_col = disease_labels.view(-1, 1)
@@ -160,15 +169,26 @@ LOSS_REGISTRY = {
 
 
 def build_loss(loss_type: str, clip_model=None, **kwargs):
-    """Build Phase 1 contrastive loss module.
+    """Xây dựng loss cho bước xử lý hiện tại.
 
-    Args:
-        loss_type: Loss identifier ('semantic_matching').
-        clip_model: OpenCLIP model providing logit scale/bias parameters.
-        **kwargs: Additional arguments passed to loss constructor.
+    Parameters
+    ----------
+    loss_type : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    clip_model : object, optional
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    **kwargs : dict
+        Các đối số từ khóa bổ sung.
 
-    Returns:
-        nn.Module loss instance.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if loss_type not in LOSS_REGISTRY:
         raise ValueError(f"Loss type '{loss_type}' not supported. Choose from {list(LOSS_REGISTRY.keys())}")
@@ -179,13 +199,24 @@ def build_loss(loss_type: str, clip_model=None, **kwargs):
 
 
 def resolve_phase2_loss_type(loss_type: str | None, classifier_type: str) -> str:
-    """Resolve and validate the supervised Phase-2 objective.
+    """Xác định phase2 loss type cho bước xử lý hiện tại.
 
-    Empirical centroids are fixed train-set statistics, so their classifier is
-    optimized through cross-entropy over scaled cosine-similarity logits. A
-    distinct name is retained in configuration to make that coupling explicit
-    and to reject accidentally pairing an empirical-centroid objective with a
-    trainable linear head (or vice versa).
+    Parameters
+    ----------
+    loss_type : str | None
+        Phương pháp hoặc chế độ xử lý được chọn.
+    classifier_type : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     classifier_type = str(classifier_type).strip().lower()
     supported_classifiers = {"empirical_centroid", "linear"}
@@ -220,7 +251,24 @@ def build_phase2_loss(
     class_weights: torch.Tensor | None = None,
     label_smoothing: float = 0.0,
 ) -> nn.Module:
-    """Build the validated Phase-2 classification loss."""
+    """Xây dựng phase2 loss cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    loss_type : str | None
+        Phương pháp hoặc chế độ xử lý được chọn.
+    classifier_type : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    class_weights : torch.Tensor | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    label_smoothing : float, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    nn.Module
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     resolve_phase2_loss_type(loss_type, classifier_type)
     return nn.CrossEntropyLoss(
         weight=class_weights,

@@ -1,44 +1,46 @@
-"""
-Identity Pass-Through Classifier Head for XBone-Net.
-===============================================================================
-Returns input features directly without applying classification projection.
-Used during Phase 1 contrastive pre-training to yield raw feature vectors.
+"""Cung cấp đầu phân lớp identity cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch.nn as nn
 
 
 # ============================================================
-# Identity Classifier Head
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 class IdentityHead(nn.Module):
-    """Pass-through classifier head returning input features unmodified.
+    """Cung cấp đầu phân lớp bằng lớp ``IdentityHead``.
 
-    Used when raw embedding representations are required (e.g., Phase 1 contrastive
-    learning or feature extraction pipelines).
-
-    Example:
-        >>> head = IdentityHead()
-        >>> feats = head(features)  # Returns features unchanged
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, **kwargs):
-        """Initialize IdentityHead instance.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            **kwargs: Unused extra keyword arguments.
+        Parameters
+        ----------
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
         """
         super().__init__()
-        
+
     def forward(self, features):
-        """Pass through input feature embeddings.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Args:
-            features (torch.Tensor): Feature embedding tensor, shape [B, D].
+        Parameters
+        ----------
+        features : object
+            Giá trị ``features`` được sử dụng trong phép xử lý.
 
-        Returns:
-            torch.Tensor: Unmodified input feature tensor, shape [B, D].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return features
-

@@ -1,4 +1,9 @@
-"""Visualize every sparse-focal preprocessing step and its combined audit."""
+"""Tạo bảng hoặc hình trực quan bằng công cụ preprocessing.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -38,7 +43,25 @@ ROLE_COLORS = {
 
 
 def load_high_resolution_config(path: Path) -> dict[str, Any]:
-    """Load the canonical high-resolution block from an experiment YAML file."""
+    """Tải high resolution cấu hình cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not path.is_file():
         raise FileNotFoundError(f"Experiment config not found: {path}")
 
@@ -71,7 +94,20 @@ def apply_config_overrides(
     config: Mapping[str, Any],
     args: argparse.Namespace,
 ) -> dict[str, Any]:
-    """Apply only explicitly supplied CLI values to the loaded config."""
+    """Thực hiện bước apply cấu hình overrides trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    config : Mapping[str, Any]
+        Cấu hình điều khiển bước xử lý.
+    args : argparse.Namespace
+        Các đối số vị trí bổ sung.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     resolved = copy.deepcopy(dict(config))
     top_level_overrides = {
         "global_size": "global_size",
@@ -101,6 +137,18 @@ def apply_config_overrides(
 
 
 def load_ground_truth_annotations(path: Path | None) -> list[dict[str, Any]]:
+    """Tải ground truth annotations cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path | None
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if path is None or not path.is_file():
         return []
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -108,6 +156,18 @@ def load_ground_truth_annotations(path: Path | None) -> list[dict[str, Any]]:
 
 
 def _shape_points(shape: Mapping[str, Any]) -> list[tuple[float, float]]:
+    """Thực hiện bước shape points trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    shape : Mapping[str, Any]
+        Giá trị ``shape`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[tuple[float, float]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     points = []
     for point in shape.get("points", []):
         if isinstance(point, Sequence) and len(point) >= 2:
@@ -116,6 +176,18 @@ def _shape_points(shape: Mapping[str, Any]) -> list[tuple[float, float]]:
 
 
 def annotation_bounds(shapes: Sequence[Mapping[str, Any]]):
+    """Thực hiện bước annotation bounds trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    shapes : Sequence[Mapping[str, Any]]
+        Giá trị ``shapes`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     boxes = []
     for shape in shapes:
         points = _shape_points(shape)
@@ -135,6 +207,17 @@ def annotation_bounds(shapes: Sequence[Mapping[str, Any]]):
 
 
 def draw_ground_truth(axis, annotations, offset: tuple[float, float] = (0.0, 0.0)):
+    """Vẽ ground truth cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    annotations : object
+        Giá trị ``annotations`` được sử dụng trong phép xử lý.
+    offset : tuple[float, float], optional
+        Giá trị ``offset`` được sử dụng trong phép xử lý.
+    """
     offset_x, offset_y = offset
     for left, top, right, bottom, label in annotation_bounds(annotations):
         left += offset_x
@@ -154,6 +237,17 @@ def draw_ground_truth(axis, annotations, offset: tuple[float, float] = (0.0, 0.0
 
 
 def _draw_annotation_mask(draw, shape: Mapping[str, Any], image_size: tuple[int, int]):
+    """Vẽ annotation mask cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    draw : object
+        Giá trị ``draw`` được sử dụng trong phép xử lý.
+    shape : Mapping[str, Any]
+        Giá trị ``shape`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    """
     points = _shape_points(shape)
     if not points:
         return
@@ -199,6 +293,20 @@ def _annotation_mask(
     annotations: Sequence[Mapping[str, Any]],
     image_size: tuple[int, int],
 ) -> np.ndarray:
+    """Thực hiện bước annotation mask trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    annotations : Sequence[Mapping[str, Any]]
+        Giá trị ``annotations`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     mask = Image.new("1", image_size, color=0)
     draw = ImageDraw.Draw(mask)
     for shape in annotations:
@@ -210,6 +318,20 @@ def _boxes_mask(
     boxes: Sequence[Sequence[int | float]],
     image_size: tuple[int, int],
 ) -> np.ndarray:
+    """Thực hiện bước boxes mask trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    boxes : Sequence[Sequence[int | float]]
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     image_width, image_height = image_size
     mask = Image.new("1", image_size, color=0)
     draw = ImageDraw.Draw(mask)
@@ -219,7 +341,7 @@ def _boxes_mask(
         right = max(0, min(image_width, math.ceil(right)))
         bottom = max(0, min(image_height, math.ceil(bottom)))
         if right > left and bottom > top:
-            # SparseFocal boxes use half-open XYXY coordinates.
+            # Bước hỗ trợ để thực hiện xử lý ``boxes_mask`` trong quy trình hiện tại.
             draw.rectangle((left, top, right - 1, bottom - 1), fill=1)
     return np.asarray(mask, dtype=bool)
 
@@ -230,7 +352,24 @@ def compute_annotation_coverage(
     foreground_box: Sequence[int | float],
     tile_boxes: Sequence[Sequence[int | float]],
 ) -> dict[str, Any]:
-    """Measure GT retention for auditing; annotations never affect selection."""
+    """Tính annotation coverage cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    annotations : Sequence[Mapping[str, Any]]
+        Giá trị ``annotations`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    foreground_box : Sequence[int | float]
+        Giá trị ``foreground_box`` được sử dụng trong phép xử lý.
+    tile_boxes : Sequence[Sequence[int | float]]
+        Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metrics: dict[str, Any] = {
         "available": False,
         "annotation_count": len(annotations),
@@ -278,6 +417,21 @@ def compute_annotation_coverage(
 
 
 def _draw_box(axis, box, color, linewidth=1.0, alpha=1.0):
+    """Vẽ box cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    box : object
+        Giá trị ``box`` được sử dụng trong phép xử lý.
+    color : object
+        Giá trị ``color`` được sử dụng trong phép xử lý.
+    linewidth : object, optional
+        Giá trị ``linewidth`` được sử dụng trong phép xử lý.
+    alpha : object, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    """
     left, top, right, bottom = box
     axis.add_patch(
         Rectangle(
@@ -291,6 +445,18 @@ def _draw_box(axis, box, color, linewidth=1.0, alpha=1.0):
         )
     )
 def _selected_candidates(views: SparseFocalViews):
+    """Thực hiện bước selected candidates trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    views : SparseFocalViews
+        Giá trị ``views`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     selected: dict[int, list[tuple[int, str]]] = {}
     for tile_index, (candidate_index, role) in enumerate(
         zip(views.selected_candidate_indices, views.tile_roles),
@@ -301,6 +467,18 @@ def _selected_candidates(views: SparseFocalViews):
 
 
 def _config_label(path: Path) -> str:
+    """Thực hiện bước cấu hình nhãn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -316,6 +494,25 @@ def render_preprocessing(
     metrics: Mapping[str, Any] | None = None,
     config_label: str | None = None,
 ):
+    """Kết xuất preprocessing cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    source : Image.Image
+        Dữ liệu nguồn của phép xử lý.
+    views : SparseFocalViews
+        Giá trị ``views`` được sử dụng trong phép xử lý.
+    annotations : object
+        Giá trị ``annotations`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+    metrics : Mapping[str, Any] | None, optional
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    config_label : str | None, optional
+        Cấu hình điều khiển bước xử lý.
+    """
     del metrics, config_label
     tile_count = len(views.tiles)
     maximum_columns = min(4, max(1, tile_count))
@@ -401,12 +598,40 @@ def render_preprocessing_steps(
     output_dir: Path,
     dpi: int,
 ) -> list[Path]:
-    """Save every stage at its native pixel dimensions without plot padding."""
+    """Kết xuất preprocessing steps cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    source : Image.Image
+        Dữ liệu nguồn của phép xử lý.
+    views : SparseFocalViews
+        Giá trị ``views`` được sử dụng trong phép xử lý.
+    annotations : object
+        Giá trị ``annotations`` được sử dụng trong phép xử lý.
+    output_dir : Path
+        Đường dẫn tài nguyên được sử dụng.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     selected_lookup = _selected_candidates(views)
     outputs: list[Path] = []
 
     def save(image: Image.Image, filename: str) -> None:
+        """Lưu kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        image : Image.Image
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        filename : str
+            Giá trị ``filename`` được sử dụng trong phép xử lý.
+        """
         path = output_dir / filename
         image.convert("RGB").save(path, dpi=(dpi, dpi))
         outputs.append(path)
@@ -418,6 +643,21 @@ def render_preprocessing_steps(
         width: int,
         image_size: tuple[int, int],
     ) -> None:
+        """Vẽ box cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        draw : ImageDraw.ImageDraw
+            Giá trị ``draw`` được sử dụng trong phép xử lý.
+        box : Sequence[int | float]
+            Giá trị ``box`` được sử dụng trong phép xử lý.
+        color : str
+            Giá trị ``color`` được sử dụng trong phép xử lý.
+        width : int
+            Giá trị ``width`` được sử dụng trong phép xử lý.
+        image_size : tuple[int, int]
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        """
         del image_size
         left, top, right, bottom = (round(float(value)) for value in box)
         draw.rectangle(
@@ -430,6 +670,15 @@ def render_preprocessing_steps(
         image: Image.Image,
         offset: tuple[float, float] = (0.0, 0.0),
     ) -> None:
+        """Vẽ annotations cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        image : Image.Image
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        offset : tuple[float, float], optional
+            Giá trị ``offset`` được sử dụng trong phép xử lý.
+        """
         draw = ImageDraw.Draw(image)
         offset_x, offset_y = offset
         width = max(1, round(min(image.size) * 0.006))
@@ -490,12 +739,31 @@ def render_preprocessing_steps(
 
 
 def _default_annotation_path(image_path: Path) -> Path:
+    """Thực hiện bước default annotation đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if image_path.parent.name.casefold() == "images":
         return image_path.parent.parent / "Annotations" / f"{image_path.stem}.json"
     return PROJECT_ROOT / "data" / "BTXRD" / "Annotations" / f"{image_path.stem}.json"
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
+    """Xây dựng bộ phân tích tham số dòng lệnh.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Visualize the exact sparse-focal preprocessing used by an experiment "
@@ -542,6 +810,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 
 def main():
+    """Thực thi điểm vào chính của mô-đun."""
     args = build_argument_parser().parse_args()
 
     image_path = Path(args.image).expanduser().resolve()

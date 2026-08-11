@@ -1,10 +1,8 @@
-"""Dual-representation auxiliary branch for XBone-Net.
+"""Cung cấp thành phần mô hình drl trong kiến trúc XBone-Net.
 
-This module adapts the complementary-representation construction from
-Zhao and Cao (TMLR 2023) to the multimodal token streams already produced by
-XBone-Net.  The primary classifier remains responsible for label prediction;
-this branch is trained after it has been frozen and is used to expose
-distribution-sensitive information for post-hoc OOD scoring.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -17,13 +15,11 @@ import torch.nn.functional as F
 
 
 class DRLAuxiliaryBranch(nn.Module):
-    """Learn a representation complementary to the primary fused embedding.
+    """Đóng gói hành vi của thành phần ``DRLAuxiliaryBranch``.
 
-    Four finite multimodal component representations are constructed from the
-    global image token, pooled local image tokens, global text token, and their
-    direct multimodal combination.  Components that are less similar to the
-    frozen label-discriminative representation receive more weight, following
-    the finite-component approximation of the DRL construction.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -36,6 +32,30 @@ class DRLAuxiliaryBranch(nn.Module):
         minimum_component_weight: float = 1e-4,
         covariance_shrinkage: float = 1e-4,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        feature_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_classes : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        hidden_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        dropout : float, optional
+            Giá trị ``dropout`` được sử dụng trong phép xử lý.
+        epsilon : float, optional
+            Giá trị ``epsilon`` được sử dụng trong phép xử lý.
+        minimum_component_weight : float, optional
+            Giá trị ``minimum_component_weight`` được sử dụng trong phép xử lý.
+        covariance_shrinkage : float, optional
+            Giá trị ``covariance_shrinkage`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         if feature_dim < 1 or hidden_dim < 1:
             raise ValueError("feature_dim and hidden_dim must be positive.")
@@ -55,6 +75,18 @@ class DRLAuxiliaryBranch(nn.Module):
         self.covariance_shrinkage = float(covariance_shrinkage)
 
         def projector(input_dim: int) -> nn.Sequential:
+            """Thực hiện bước projector trong quy trình hiện tại.
+
+            Parameters
+            ----------
+            input_dim : int
+                Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+            Returns
+            -------
+            nn.Sequential
+                Kết quả được tạo bởi bước xử lý của hàm.
+            """
             return nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
                 nn.LayerNorm(hidden_dim),
@@ -85,6 +117,25 @@ class DRLAuxiliaryBranch(nn.Module):
         image_features: torch.Tensor,
         image_local_padding_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
+        """Thực hiện bước masked local mean trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        image_features : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        image_local_padding_mask : Optional[torch.Tensor]
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if image_features.ndim == 2:
             return image_features
         if image_features.ndim != 3:
@@ -107,6 +158,18 @@ class DRLAuxiliaryBranch(nn.Module):
 
     @torch.no_grad()
     def set_label_covariance(self, covariance: torch.Tensor) -> None:
+        """Thiết lập nhãn covariance cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        covariance : torch.Tensor
+            Giá trị ``covariance`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         expected = (self.feature_dim, self.feature_dim)
         if tuple(covariance.shape) != expected:
             raise ValueError(
@@ -136,6 +199,31 @@ class DRLAuxiliaryBranch(nn.Module):
         image_local_padding_mask: Optional[torch.Tensor] = None,
         return_details: bool = False,
     ):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        image_features : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        text_features : torch.Tensor
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        label_representation : torch.Tensor
+            Nhãn hoặc chỉ số lớp liên quan.
+        image_local_padding_mask : Optional[torch.Tensor]
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        return_details : bool, optional
+            Giá trị ``return_details`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if label_representation.ndim != 2:
             raise ValueError("label_representation must have shape [B,D].")
         if label_representation.size(-1) != self.feature_dim:
@@ -173,8 +261,8 @@ class DRLAuxiliaryBranch(nn.Module):
             dim=1,
         )
 
-        # The primary representation is explicitly detached.  Phase 3 must not
-        # alter the v3 classification geometry through this conditioning path.
+        # Thiết lập và thực thi pha 3 học biểu diễn bổ sung.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         label_detached = label_representation.detach()
         similarity = torch.einsum("bmd,bd->bm", components, label_detached)
         component_weights = (
@@ -212,7 +300,25 @@ def drl_ood_score(
     primary_logits: torch.Tensor,
     auxiliary_logits: torch.Tensor,
 ) -> torch.Tensor:
-    """Return the DRL score using the repository's larger-is-more-OOD convention."""
+    """Thực hiện bước drl ood điểm trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    primary_logits : torch.Tensor
+        Giá trị ``primary_logits`` được sử dụng trong phép xử lý.
+    auxiliary_logits : torch.Tensor
+        Giá trị ``auxiliary_logits`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if primary_logits.shape != auxiliary_logits.shape:
         raise ValueError(
             "Primary and auxiliary logits must have identical shapes, got "

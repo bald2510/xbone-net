@@ -1,9 +1,8 @@
-"""Benchmark XBone-Net parameters, supported FLOPs, latency and CUDA memory.
+"""Thực hiện benchmark efficiency cho quy trình nghiên cứu XBone-Net.
 
-The script uses the same Hydra experiment config, model builder, checkpoint
-loader, dataset preprocessing and Phase-2 forward path as ``evaluate.py``.
-Host-to-device transfer, dataloader time and zero-shot prompt precomputation are
-excluded from model latency.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -20,11 +19,18 @@ import torch
 import torch.nn.functional as F
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
 def _parse_args() -> argparse.Namespace:
+    """Phân tích các tham số dòng lệnh.
+
+    Returns
+    -------
+    argparse.Namespace
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(
         description="Measure inference efficiency for one Hydra experiment."
     )
@@ -63,8 +69,8 @@ def _parse_args() -> argparse.Namespace:
 
 ARGS = _parse_args()
 
-# Import after consuming benchmark-only arguments. Importing evaluate.py reuses
-# its validated checkpoint loading helpers and preserves Hydra overrides.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Kiểm tra và xử lý checkpoint tương ứng của mô hình.
 import hydra  # noqa: E402
 from omegaconf import DictConfig, OmegaConf  # noqa: E402
 
@@ -88,6 +94,23 @@ from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id  # no
 
 
 def _resolve_device(name: str) -> torch.device:
+    """Xác định thiết bị cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    torch.device
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if name == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("--device cuda was requested but CUDA is unavailable.")
     if name == "auto":
@@ -96,6 +119,20 @@ def _resolve_device(name: str) -> torch.device:
 
 
 def _move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
+    """Thực hiện bước move batch trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return {
         key: value.to(device, non_blocking=True)
         if isinstance(value, torch.Tensor)
@@ -105,6 +142,22 @@ def _move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
 
 
 def _tokenize_prompts(tokenizer, texts: list[str], device: torch.device):
+    """Thực hiện bước tokenize prompts trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    texts : list[str]
+        Giá trị ``texts`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     encoded = tokenizer(texts)
     attention_mask = None
     if isinstance(encoded, dict):
@@ -121,6 +174,29 @@ def _encode_zero_shot_prompts(
     class_names: list[str],
     device: torch.device,
 ) -> torch.Tensor:
+    """Mã hóa zero shot prompts cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    AttributeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     tokenizer = getattr(model.backbone, "tokenizer", None)
     if tokenizer is None:
         raise ValueError("Zero-shot efficiency benchmarking requires a tokenizer.")
@@ -150,6 +226,29 @@ def _select_report_inputs(
     use_text: bool,
     report_type: str,
 ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+    """Chọn báo cáo inputs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+    is_classifier : bool
+        Giá trị ``is_classifier`` được sử dụng trong phép xử lý.
+    use_text : bool
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    tuple[torch.Tensor | None, torch.Tensor | None]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    NotImplementedError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not is_classifier or not use_text:
         return None, None
     if report_type in ("both", "xray_clinical"):
@@ -170,11 +269,47 @@ def _build_forward(
     zero_shot_features: torch.Tensor | None,
     temperature: float,
 ):
+    """Xây dựng forward cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+    is_classifier : bool
+        Giá trị ``is_classifier`` được sử dụng trong phép xử lý.
+    use_text : bool
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    zero_shot_features : torch.Tensor | None
+        Giá trị ``zero_shot_features`` được sử dụng trong phép xử lý.
+    temperature : float
+        Giá trị ``temperature`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    AttributeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     input_ids, attention_mask = _select_report_inputs(
         batch, is_classifier, use_text, report_type
     )
     if is_classifier:
         def forward():
+            """Thực hiện lượt lan truyền xuôi của mô hình.
+
+            Returns
+            -------
+            object
+                Kết quả được tạo bởi bước xử lý của hàm.
+            """
             return model(
                 images=batch["pixel_values"],
                 input_ids=input_ids,
@@ -191,6 +326,13 @@ def _build_forward(
         raise AttributeError("Zero-shot benchmarking requires image and text encoders.")
 
     def forward():
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         image_features = F.normalize(image_encoder(batch["pixel_values"]), dim=-1)
         class_logits = image_features @ zero_shot_features.T
         return torch.softmax(class_logits / temperature, dim=-1)
@@ -199,6 +341,27 @@ def _build_forward(
 
 
 def _with_precision(forward_fn, device: torch.device, precision: str):
+    """Thực hiện bước with precision trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    forward_fn : object
+        Giá trị ``forward_fn`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    precision : str
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if precision == "fp32":
         return forward_fn
     if device.type == "cpu" and precision == "fp16":
@@ -206,6 +369,13 @@ def _with_precision(forward_fn, device: torch.device, precision: str):
     dtype = torch.float16 if precision == "fp16" else torch.bfloat16
 
     def autocast_forward():
+        """Thực hiện bước autocast forward trong quy trình hiện tại.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         with torch.autocast(device_type=device.type, dtype=dtype):
             return forward_fn()
 
@@ -213,6 +383,18 @@ def _with_precision(forward_fn, device: torch.device, precision: str):
 
 
 def _aggregate_input_profile(batch_profiles: list[dict[str, Any]]) -> dict[str, Any]:
+    """Tổng hợp đầu vào profile cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    batch_profiles : list[dict[str, Any]]
+        Batch dữ liệu đầu vào.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     valid_tiles = [
         value
         for profile in batch_profiles
@@ -236,6 +418,18 @@ def _aggregate_input_profile(batch_profiles: list[dict[str, Any]]) -> dict[str, 
 
 
 def _output_path(cfg: DictConfig) -> Path:
+    """Thực hiện bước đầu ra đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     experiment_name = str(cfg.get("experiment_name", "default"))
     params_cfg = cfg.get("params", {}) or {}
     seed = int(params_cfg.get("seed", cfg.get("seed", 42)))
@@ -250,6 +444,18 @@ def _output_path(cfg: DictConfig) -> Path:
 
 
 def _report_row(result: dict[str, Any]) -> dict[str, Any]:
+    """Thực hiện bước báo cáo row trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    result : dict[str, Any]
+        Giá trị ``result`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     flops = result["supported_gflops_per_sample"]
     memory = result["cuda_memory"]
     return {
@@ -271,6 +477,15 @@ def _report_row(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _write_csv_report(path: Path, row: dict[str, Any]) -> None:
+    """Ghi csv báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    row : dict[str, Any]
+        Giá trị ``row`` được sử dụng trong phép xử lý.
+    """
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(row))
         writer.writeheader()
@@ -278,6 +493,18 @@ def _write_csv_report(path: Path, row: dict[str, Any]) -> None:
 
 
 def _latex_escape(value: Any) -> str:
+    """Thực hiện bước latex escape trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     text = str(value)
     for source, replacement in (
         ("\\", r"\textbackslash{}"),
@@ -291,7 +518,30 @@ def _latex_escape(value: Any) -> str:
 
 
 def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
+    """Ghi latex báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    row : dict[str, Any]
+        Giá trị ``row`` được sử dụng trong phép xử lý.
+    """
     def number(key: str, digits: int = 2) -> str:
+        """Thực hiện bước number trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        key : str
+            Tên hoặc khóa định danh của giá trị.
+        digits : int, optional
+            Giá trị ``digits`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        str
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         value = row[key]
         return "--" if value is None else f"{float(value):.{digits}f}"
 
@@ -328,6 +578,24 @@ def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
 
 @hydra.main(config_path="../../configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     OmegaConf.set_struct(cfg, False)
     cfg.dataset.batch_size = ARGS.batch_size
 

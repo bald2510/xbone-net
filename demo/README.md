@@ -2,18 +2,27 @@
 
 Demo nhận một ảnh X-quang và một đoạn bệnh sử, sau đó:
 
-1. tạo global view và bốn sparse-focal local tile theo cấu hình checkpoint;
-2. suy luận phân loại CTCH 22 lớp từ fused embedding;
+1. tạo và cho phép xem global view, vùng tiền cảnh cùng bốn sparse-focal local
+   tile theo cấu hình checkpoint;
+2. suy luận phân loại CTCH 22 lớp từ fused embedding, hiển thị toàn bộ xác suất
+   lớp và confidence (max softmax);
 3. tính OOD score với detector khớp trên CTCH train và ngưỡng phân vị 95% được
    khóa từ CTCH validation-ID;
-4. tạo Integrated Gradients cho local visual tokens và ánh xạ chúng về ảnh nguồn.
-5. tạo Integrated Gradients có dấu cho từng token bệnh sử qua text encoder,
+4. truy xuất các ảnh CTCH-train gần nhất bằng cosine similarity trong không gian
+   global visual embedding;
+5. tạo Integrated Gradients cho cả global view và local visual tokens, sau đó
+   ánh xạ đồng thời hai kết quả về ảnh nguồn;
+6. tạo Integrated Gradients có dấu cho từng token bệnh sử qua text encoder,
    cross-attention, fusion MLP và classifier.
+
+Giao diện dùng theme sáng, logo Trường Đại học Khoa học Tự nhiên, bảng xác suất
+nền trắng và hiển thị đồng thời global IG, local IG cùng text IG sau một lần
+chạy mô hình.
 
 Tạo hình minh họa ảnh–văn bản bằng checkpoint `proposed_v3`, seed 42:
 
 ```powershell
-C:\Users\lebat\miniconda3\envs\Thesis\python.exe tools\demo\render_multimodal_ig.py --image-id 3021_img-84263-00001.jpg --experiment ctch/proposed/ours_xbone_net_v3 --seed 42 --device cuda --ig-steps 24 --output results\visualization\3021_img-84263-00001_proposed_v3_multimodal_ig.png
+python tools\visualize\render_multimodal_ig.py --image-id 3021_img-84263-00001.jpg --experiment ctch/proposed/ours_xbone_net_v3 --seed 42 --device cuda --ig-steps 24 --output results\visualization\3021_img-84263-00001_proposed_v3_multimodal_ig.png
 ```
 
 Lệnh tạo một ảnh tổng hợp, một tệp CSV chứa attribution có dấu của từng từ và
@@ -27,8 +36,8 @@ archive và ngưỡng OOD của đúng checkpoint đã sẵn sàng.
 Chạy từ thư mục gốc của repository:
 
 ```powershell
-C:\Users\lebat\miniconda3\envs\Thesis\python.exe -m pip install -r tools\demo\requirements.txt
-C:\Users\lebat\miniconda3\envs\Thesis\python.exe -m streamlit run tools\demo\streamlit_app.py
+python -m pip install -r demo\requirements.txt
+python -m streamlit run demo\streamlit_app.py
 ```
 
 Mặc định demo dùng checkpoint canonical tại

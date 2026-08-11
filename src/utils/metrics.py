@@ -1,12 +1,8 @@
-"""
-Evaluation Metrics & Bootstrap Resampling for XBone-Net.
-===============================================================================
-Computes standard classification metrics for XBone-Net evaluation:
-  - Multi-class (single-label) diagnosis: AUROC, F1, precision, recall, specificity
-  - Multi-label pathology detection: Macro AUROC, F1, Hamming loss, per-class metrics
-  - Paired bootstrap resampling: 95% confidence interval estimation (10,000 resamples)
+"""Cung cấp tiện ích metrics cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-Per-class metrics use scikit-learn for both per-class and aggregate values.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import numpy as np
@@ -18,18 +14,23 @@ from sklearn.metrics import (
 )
 
 # ============================================================
-# Robust Safe Helper Functions
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def _safe_auroc(labels: np.ndarray, scores: np.ndarray) -> float:
-    """Compute AUROC safely, returning NaN when only one class is present.
+    """Thực hiện bước safe auroc trong quy trình hiện tại.
 
-    Args:
-        labels: Binary ground-truth labels of shape (N,).
-        scores: Predicted probabilities of shape (N,).
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
 
-    Returns:
-        AUROC value in [0, 1], or NaN if degenerate single-class batch.
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     if len(np.unique(labels)) < 2:
         return float("nan")
@@ -37,24 +38,39 @@ def _safe_auroc(labels: np.ndarray, scores: np.ndarray) -> float:
 
 
 def _safe_auprc(labels: np.ndarray, scores: np.ndarray) -> float:
-    """Compute binary AUPRC safely for bootstrap samples."""
+    """Thực hiện bước safe auprc trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if len(np.unique(labels)) < 2:
         return float("nan")
     return float(average_precision_score(labels, scores))
 
 
 def _safe_f1(labels: np.ndarray, scores: np.ndarray) -> float:
-    """Compute binary F1 from probabilities with a 0.5 decision threshold.
+    """Thực hiện bước safe f1 trong quy trình hiện tại.
 
-    Formula:
-        F1 = 2 * (Precision * Recall) / (Precision + Recall)
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
 
-    Args:
-        labels: Binary ground-truth labels of shape (N,).
-        scores: Predicted probabilities of shape (N,).
-
-    Returns:
-        F1 score in [0, 1]. Returns 0.0 when denominator is zero.
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     preds = (scores >= 0.5).astype(int)
     return float(f1_score(labels, preds, zero_division=0))
@@ -65,7 +81,27 @@ def multiclass_calibration_metrics(
     labels: np.ndarray,
     n_bins: int = 15,
 ) -> dict[str, float]:
-    """Compute top-label ECE, adaptive ECE, NLL, and multiclass Brier score."""
+    """Thực hiện bước multiclass calibration các độ đo trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    n_bins : int, optional
+        Giá trị ``n_bins`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     probabilities = np.asarray(probabilities, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     if probabilities.ndim != 2 or len(probabilities) != len(labels):
@@ -115,7 +151,7 @@ def multiclass_calibration_metrics(
 
 
 # ============================================================
-# Classification Evaluation Functions
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def compute_metrics_multiclass(
@@ -123,7 +159,27 @@ def compute_metrics_multiclass(
     all_gt: np.ndarray,
     class_names: list[str],
 ) -> dict:
-    """Compute robust single-label multiclass metrics with fixed class order."""
+    """Tính các độ đo multiclass cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    all_probs : np.ndarray
+        Giá trị ``all_probs`` được sử dụng trong phép xử lý.
+    all_gt : np.ndarray
+        Giá trị ``all_gt`` được sử dụng trong phép xử lý.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     all_probs = np.asarray(all_probs, dtype=np.float64)
     all_gt = np.asarray(all_gt)
     if all_gt.ndim > 1:
@@ -267,25 +323,29 @@ def compute_metrics(
     pathologies: list[str],
     is_multilabel: bool,
 ) -> dict:
-    """Compute evaluation metrics for multi-label or binary classification.
+    """Tính các độ đo đánh giá từ dự đoán của mô hình.
 
-    Args:
-        all_probs: Predicted probabilities of shape (N, C).
-        all_ground_truths: Ground-truth labels of shape (N, C) for multi-label
-            or (N, 1) for binary.
-        pathologies: Ordered list of pathology names.
-        is_multilabel: If True, aggregate using multi-label macro averaging;
-            otherwise report single-label metrics.
+    Parameters
+    ----------
+    all_probs : np.ndarray
+        Giá trị ``all_probs`` được sử dụng trong phép xử lý.
+    all_ground_truths : np.ndarray
+        Giá trị ``all_ground_truths`` được sử dụng trong phép xử lý.
+    pathologies : list[str]
+        Danh sách tên bệnh lý hoặc lớp đích.
+    is_multilabel : bool
+        Giá trị ``is_multilabel`` được sử dụng trong phép xử lý.
 
-    Returns:
-        Dictionary of aggregated metrics including auroc_macro, f1_macro,
-        accuracy, sensitivity, specificity, and precision.
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     auroc_per_class: dict[str, float] = {}
     f1_per_class: dict[str, float] = {}
     per_class_results: list[dict] = []
 
-    # --- Per-pathology evaluation loop ---
+    # Bước hỗ trợ để tính các độ đo đánh giá từ dự đoán của mô hình.
     print("\n=== DETAILED METRICS EVALUATION ===")
     for idx, path in enumerate(pathologies):
         gt_labels = all_ground_truths[:, idx]
@@ -328,7 +388,7 @@ def compute_metrics(
 
     metrics: dict = {}
 
-    # --- Aggregation logic ---
+    # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
     if is_multilabel:
         print("\n=== OVERALL MULTI-LABEL METRICS ===")
         all_preds = (all_probs >= 0.5).astype(int)
@@ -397,7 +457,7 @@ def compute_metrics(
 
 
 # ============================================================
-# Bootstrap Resampling & Confidence Intervals
+# Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
 # ============================================================
 
 def bootstrap_confidence_intervals(
@@ -409,10 +469,34 @@ def bootstrap_confidence_intervals(
     seed: int = 42,
     alpha: float = 0.05,
 ) -> dict:
-    """Compute paired percentile bootstrap confidence intervals.
+    """Ước lượng bootstrap cho confidence intervals cho bước xử lý hiện tại.
 
-    For multiclass tasks, predictions are always obtained with ``argmax`` so the
-    bootstrap statistic matches the reported point estimate.
+    Parameters
+    ----------
+    all_probs : np.ndarray
+        Giá trị ``all_probs`` được sử dụng trong phép xử lý.
+    all_ground_truths : np.ndarray
+        Giá trị ``all_ground_truths`` được sử dụng trong phép xử lý.
+    pathologies : list[str]
+        Danh sách tên bệnh lý hoặc lớp đích.
+    is_multilabel : bool
+        Giá trị ``is_multilabel`` được sử dụng trong phép xử lý.
+    n_bootstrap : int, optional
+        Giá trị ``n_bootstrap`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     all_probs = np.asarray(all_probs)
     all_ground_truths = np.asarray(all_ground_truths)
@@ -517,6 +601,18 @@ def bootstrap_confidence_intervals(
     hi = (1.0 - alpha / 2.0) * 100.0
 
     def _ci(values):
+        """Thực hiện bước ci trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        values : object
+            Giá trị ``values`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         array = np.asarray(values, dtype=float)
         array = array[~np.isnan(array)]
         if array.size == 0:

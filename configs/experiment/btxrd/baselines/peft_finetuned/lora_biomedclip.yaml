@@ -35,8 +35,13 @@ params:
     warmup_ratio: 0.1
     early_stopping_patience: 3
     loss_type: semantic_matching
+    # Shared optimization protocol with the canonical XBone-Net configuration.
     target_similarity: 0.50
     p1_report_type: clinical
+    class_aware_sampling:
+      enabled: true
+      samples_per_class: 2
+      seed: ${seed}
     merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
     merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
@@ -49,7 +54,7 @@ params:
     lr: 0.0001
     weight_decay: 0.0001
     warmup_ratio: 0.1
-    early_stopping_patience: 5
+    early_stopping_patience: 3
     use_text: true
     p2_report_type: clinical
     init_from_phase1_merged: false
@@ -58,7 +63,8 @@ params:
     optimizer: adamw
     scheduler: cosine
     loss:
-      label_smoothing: 0.1
+      label_smoothing: 0.05
       use_class_weights: true
       weight_type: effective_num
       effective_num_beta: 0.999
+      max_class_weight: 5.0

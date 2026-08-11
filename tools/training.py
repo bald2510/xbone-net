@@ -1,11 +1,8 @@
-"""
-XBone-Net Full Experiment Suite Orchestrator.
-===============================================================================
-Orchestrates multi-seed training, evaluation, and result review:
-  - Config Discovery: Finds every Hydra experiment YAML automatically.
-  - Training Switches: Enables/disables configs through tools/experiments.txt.
-  - Subprocess Management: Spawns sequential train.py and evaluate.py jobs per seed.
-  - Result Review: Groups existing results by dataset/config and reports mean ± std.
+"""Cung cấp công cụ nghiên cứu training cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import argparse
@@ -21,7 +18,7 @@ import numpy as np
 
 
 # ============================================================
-# Experiment Registry & Path Resolvers
+# Sổ đăng ký thí nghiệm và bộ xác định đường dẫn
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +27,18 @@ RESULTS_ROOT = PROJECT_ROOT / "results"
 
 
 def discover_experiment_configs(config_root: Path = CONFIG_ROOT) -> list[str]:
-    """Return every Hydra experiment config path without its YAML suffix."""
+    """Thực hiện bước discover experiment configs trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    config_root : Path, optional
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return sorted(
         path.relative_to(config_root).with_suffix("").as_posix()
         for path in config_root.rglob("*.yaml")
@@ -38,6 +46,18 @@ def discover_experiment_configs(config_root: Path = CONFIG_ROOT) -> list[str]:
 
 
 def _experiment_group(experiment: str) -> str:
+    """Thực hiện bước experiment group trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parts = experiment.split("/")
     dataset = parts[0]
     if len(parts) >= 4 and parts[1:3] == ["baselines", "zeroshot"]:
@@ -56,6 +76,18 @@ def _experiment_group(experiment: str) -> str:
 
 
 def _build_experiment_groups(experiments: list[str]) -> OrderedDict:
+    """Xây dựng experiment groups cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiments : list[str]
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    OrderedDict
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     groups: dict[str, list[str]] = defaultdict(list)
     for experiment in experiments:
         groups[_experiment_group(experiment)].append(experiment)
@@ -70,7 +102,23 @@ EXPERIMENTS = _build_experiment_groups(_ALL_REGISTERED_EXPERIMENTS)
 
 
 def _registered_group(*experiments: str) -> list[str]:
-    """Build a named research group and fail early if a config is missing."""
+    """Thực hiện bước registered group trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    *experiments : str
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     known = set(_ALL_REGISTERED_EXPERIMENTS)
     missing = sorted(set(experiments) - known)
     if missing:
@@ -81,9 +129,9 @@ def _registered_group(*experiments: str) -> list[str]:
     return list(dict.fromkeys(experiments))
 
 
-# Research-question groups organize controlled comparisons without moving or
-# renaming existing configs. In particular, the original CTCH leave-one-out
-# experiments and their result paths remain unchanged.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 RESEARCH_GROUPS = OrderedDict({
     "rq1_btxrd_modality": _registered_group(
         "btxrd/proposed/ours_xbone_net",
@@ -139,7 +187,7 @@ RESEARCH_GROUPS["rq2_all_components"] = list(dict.fromkeys(
     for experiment in RESEARCH_GROUPS[group_name]
 ))
 
-# Priority is derived instead of being maintained through commented code.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 PRIORITY_GROUPS = OrderedDict({
     "important": [
         experiment
@@ -157,9 +205,9 @@ PRIORITY_GROUPS = OrderedDict({
 DEFAULT_SEEDS = [42, 123, 456]
 DEFAULT_EXPERIMENT_FILE = Path(__file__).with_name("experiments.txt")
 
-# Test-time interventions must reuse the exact canonical checkpoint; otherwise
-# differences could be caused by independent retraining rather than the input
-# perturbation itself.
+# Kiểm tra và xử lý checkpoint tương ứng của mô hình.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 CHECKPOINT_SOURCE_EXPERIMENTS = {
     "btxrd/ablation_study/modality/shuffled_report":
         "btxrd/proposed/ours_xbone_net",
@@ -167,10 +215,10 @@ CHECKPOINT_SOURCE_EXPERIMENTS = {
         "ctch/proposed/ours_xbone_net",
 }
 
-# RQ3 already has complete three-seed classification results. With
-# --skip-completed, reuse those files directly instead of re-running expensive
-# training/evaluation. Runtime fields are included only for seeds whose
-# training_summary.json is still available, and the result table reports n.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
 RQ3_EXISTING_RESULT_EXPERIMENTS = {
     "ctch/ablation_study/finetune/xbone_highres_no_ft",
     "ctch/proposed/ours_xbone_net",
@@ -197,13 +245,17 @@ METRIC_KEYS = [
 
 
 def get_experiments(groups: list[str] | None) -> list[str]:
-    """Return flat list of experiment config paths for requested groups.
+    """Lấy experiments cho bước xử lý hiện tại.
 
-    Args:
-        groups: List of group names, category keywords, or experiment paths.
+    Parameters
+    ----------
+    groups : list[str] | None
+        Giá trị ``groups`` được sử dụng trong phép xử lý.
 
-    Returns:
-        list[str]: Deduplicated list of experiment config path strings.
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     if not groups:
         return list(_ALL_REGISTERED_EXPERIMENTS)
@@ -253,11 +305,22 @@ def get_experiments(groups: list[str] | None) -> list[str]:
 
 
 def load_experiment_switches(path: Path) -> tuple[list[str], list[str]]:
-    """Read enabled/disabled experiment selectors from a plain-text file.
+    """Tải experiment switches cho bước xử lý hiện tại.
 
-    Preferred syntax is one selector per line prefixed by ``+`` or ``-``.
-    Legacy ``[enabled]``/``[disabled]`` sections remain supported. A selector
-    can be an experiment path or ``group:<name>``.
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     enabled: list[str] = []
     disabled: list[str] = []
@@ -308,7 +371,20 @@ def select_experiments(
     groups: list[str] | None,
     experiment_file: Path | None,
 ) -> list[str]:
-    """Resolve CLI selectors and then apply switches from ``experiment_file``."""
+    """Chọn experiments cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    groups : list[str] | None
+        Giá trị ``groups`` được sử dụng trong phép xử lý.
+    experiment_file : Path | None
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if experiment_file is None:
         return get_experiments(groups)
 
@@ -323,7 +399,18 @@ def select_experiments(
 
 
 def validate_experiment_configs(experiments: list[str]) -> None:
-    """Reject misspelled selectors before launching expensive jobs."""
+    """Kiểm tra tính hợp lệ của experiment configs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiments : list[str]
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     known = set(_ALL_REGISTERED_EXPERIMENTS)
     unknown = sorted(set(experiments) - known)
     if unknown:
@@ -335,14 +422,19 @@ def validate_experiment_configs(experiments: list[str]) -> None:
 
 
 def seed_dir(experiment: str, seed: int) -> str:
-    """Generate absolute checkpoint directory path for experiment and seed.
+    """Thực hiện bước seed dir trong quy trình hiện tại.
 
-    Args:
-        experiment: Experiment configuration name.
-        seed: Integer seed value.
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
 
-    Returns:
-        str: Absolute checkpoint path rooted at PROJECT_ROOT.
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     checkpoint_experiment = CHECKPOINT_SOURCE_EXPERIMENTS.get(
         experiment,
@@ -357,20 +449,27 @@ def seed_dir(experiment: str, seed: int) -> str:
 
 
 # ============================================================
-# Execution & Metric Collection
+# Thực thi và thu thập độ đo
 # ============================================================
 
 def run_one(script: str, experiment: str, seed: int, extra_args: list | None = None) -> bool:
-    """Execute train.py or evaluate.py subprocess for given experiment and seed.
+    """Thực hiện one cho bước xử lý hiện tại.
 
-    Args:
-        script: Python script filename ('train.py' or 'evaluate.py').
-        experiment: Experiment configuration identifier.
-        seed: Integer seed value.
-        extra_args: Optional list of extra CLI argument strings.
+    Parameters
+    ----------
+    script : str
+        Giá trị ``script`` được sử dụng trong phép xử lý.
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    extra_args : list | None, optional
+        Các đối số vị trí bổ sung.
 
-    Returns:
-        bool: True if process executed with exit code 0; False otherwise.
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     sd = seed_dir(experiment, seed)
     output_dir = os.path.join(PROJECT_ROOT, "results", experiment, f"seed_{seed}")
@@ -402,14 +501,19 @@ def run_one(script: str, experiment: str, seed: int, extra_args: list | None = N
 
 
 def load_metrics(experiment: str, seed: int) -> dict | None:
-    """Load and normalize metric keys from result JSON file.
+    """Tải các độ đo cho bước xử lý hiện tại.
 
-    Args:
-        experiment: Experiment identifier.
-        seed: Random seed integer.
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
 
-    Returns:
-        dict | None: Loaded metric dictionary if found; None otherwise.
+    Returns
+    -------
+    dict | None
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     sd = seed_dir(experiment, seed)
     candidates = [  
@@ -428,7 +532,7 @@ def load_metrics(experiment: str, seed: int) -> dict | None:
                 else:
                     metrics_dict = {}
 
-                # Legacy alias mapping (kept for backward compatibility)
+                # Duy trì khả năng tương thích với cấu hình hoặc dữ liệu phiên bản cũ.
                 for key, macro_key in [("sensitivity", "sensitivity_macro"), 
                                         ("specificity", "specificity_macro"), 
                                         ("precision", "precision_macro")]:
@@ -483,13 +587,17 @@ def load_metrics(experiment: str, seed: int) -> dict | None:
 
 
 def aggregate(all_metrics: dict[int, dict]) -> dict:
-    """Compute metric mean and standard deviation across seeds.
+    """Tổng hợp kết quả cho bước xử lý hiện tại.
 
-    Args:
-        all_metrics: Dict mapping seed integer to metrics dict.
+    Parameters
+    ----------
+    all_metrics : dict[int, dict]
+        Giá trị ``all_metrics`` được sử dụng trong phép xử lý.
 
-    Returns:
-        dict: Aggregated dictionary containing mean, std, and sample count per metric.
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     agg = {}
     for key in METRIC_KEYS:
@@ -507,15 +615,21 @@ def aggregate(all_metrics: dict[int, dict]) -> dict:
 
 
 def save_results(experiment: str, seeds_metrics: dict, agg: dict) -> str:
-    """Save per-seed and aggregated metrics to JSON.
+    """Lưu các kết quả cho bước xử lý hiện tại.
 
-    Args:
-        experiment: Experiment identifier.
-        seeds_metrics: Dict mapping seed to metrics dict.
-        agg: Aggregated metrics dictionary.
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seeds_metrics : dict
+        Giá trị ``seeds_metrics`` được sử dụng trong phép xử lý.
+    agg : dict
+        Giá trị ``agg`` được sử dụng trong phép xử lý.
 
-    Returns:
-        str: File path to saved aggregated_results.json.
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     out_dir = os.path.join(PROJECT_ROOT, "results", experiment)
     os.makedirs(out_dir, exist_ok=True)
@@ -533,7 +647,18 @@ def save_results(experiment: str, seeds_metrics: dict, agg: dict) -> str:
 
 
 def discover_result_experiments(results_root: Path = RESULTS_ROOT) -> list[str]:
-    """Return known configs that have per-seed or aggregated result files."""
+    """Thực hiện bước discover kết quả experiments trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path, optional
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     experiments: set[str] = set()
     if not results_root.is_dir():
         return []
@@ -548,7 +673,18 @@ def discover_result_experiments(results_root: Path = RESULTS_ROOT) -> list[str]:
 
 
 def discover_result_seeds(experiment: str) -> list[int]:
-    """Discover every seed with a readable metrics file for one experiment."""
+    """Thực hiện bước discover kết quả seeds trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     directory = RESULTS_ROOT / experiment
     seeds = []
     if directory.is_dir():
@@ -566,7 +702,20 @@ def load_table_results(
     experiments: list[str],
     requested_seeds: list[int] | None = None,
 ) -> tuple[OrderedDict, dict[str, list[int]]]:
-    """Load all available review metrics without launching evaluation."""
+    """Tải table các kết quả cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiments : list[str]
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+    requested_seeds : list[int] | None, optional
+        Giá trị ``requested_seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[OrderedDict, dict[str, list[int]]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     results: OrderedDict[str, dict] = OrderedDict()
     used_seeds: dict[str, list[int]] = {}
     for experiment in sorted(experiments):
@@ -597,7 +746,18 @@ def load_table_results(
 
 
 def experiment_metadata(experiment: str) -> tuple[str, str, str]:
-    """Return dataset, report category, and concise config name."""
+    """Thực hiện bước experiment metadata trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[str, str, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parts = experiment.split("/")
     dataset = parts[0].upper()
     if len(parts) >= 4 and parts[1] == "baselines":
@@ -619,6 +779,22 @@ def experiment_metadata(experiment: str) -> tuple[str, str, str]:
 
 
 def _format_metric(aggregated: dict, key: str, digits: int = 3) -> str:
+    """Định dạng độ đo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+    digits : int, optional
+        Giá trị ``digits`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metric = aggregated.get(key)
     if not metric or metric.get("n", 0) < 1:
         return "—"
@@ -626,6 +802,20 @@ def _format_metric(aggregated: dict, key: str, digits: int = 3) -> str:
 
 
 def _format_parameter(aggregated: dict, key: str) -> str:
+    """Định dạng parameter cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metric = aggregated.get(key)
     if not metric:
         return "—"
@@ -636,6 +826,20 @@ def _format_parameter(aggregated: dict, key: str) -> str:
 
 
 def _format_duration(aggregated: dict, key: str) -> str:
+    """Định dạng duration cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metric = aggregated.get(key)
     if not metric or metric.get("n", 0) < 1:
         return "—"
@@ -645,6 +849,20 @@ def _format_duration(aggregated: dict, key: str) -> str:
 
 
 def _format_memory(aggregated: dict, key: str) -> str:
+    """Định dạng memory cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metric = aggregated.get(key)
     if not metric or metric.get("n", 0) < 1:
         return "—"
@@ -658,6 +876,22 @@ def _format_metric_with_n(
     key: str,
     digits: int = 2,
 ) -> str:
+    """Định dạng độ đo with n cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+    digits : int, optional
+        Giá trị ``digits`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     metric = aggregated.get(key)
     if not metric or metric.get("n", 0) < 1:
         return "—"
@@ -668,6 +902,18 @@ def _format_metric_with_n(
 
 
 def _result_seed_count(aggregated: dict) -> int:
+    """Thực hiện bước kết quả seed count trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    aggregated : dict
+        Giá trị ``aggregated`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    int
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return max(
         (
             int(metric.get("n", 0))
@@ -683,7 +929,17 @@ def export_results_csv(
     used_seeds: dict[str, list[int]],
     output: Path,
 ) -> None:
-    """Export the same grouped review data in a machine-readable format."""
+    """Xuất các kết quả csv cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results : dict[str, dict]
+        Giá trị ``results`` được sử dụng trong phép xử lý.
+    used_seeds : dict[str, list[int]]
+        Giá trị ``used_seeds`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    """
     rows = []
     for experiment, aggregated in sorted(results.items()):
         dataset, category, config = experiment_metadata(experiment)
@@ -713,7 +969,15 @@ def print_results_table(
     results: dict[str, dict],
     used_seeds: dict[str, list[int]] | None = None,
 ) -> None:
-    """Print results grouped by dataset and configuration family."""
+    """In các kết quả table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results : dict[str, dict]
+        Giá trị ``results`` được sử dụng trong phép xử lý.
+    used_seeds : dict[str, list[int]] | None, optional
+        Giá trị ``used_seeds`` được sử dụng trong phép xử lý.
+    """
     if not results:
         print("\nNo result metrics were found for the requested scope.")
         return
@@ -804,11 +1068,11 @@ def print_results_table(
 
 
 # ============================================================
-# Main Entry Point & CLI Parsing
+# Điểm vào chính và phân tích tham số dòng lệnh
 # ============================================================
 
 def main():
-    """CLI entry-point: parse CLI flags and run full experiment suite."""
+    """Thực thi điểm vào chính của mô-đun."""
     parser = argparse.ArgumentParser(
         description="Run all experiments (baselines + ablations) with multi-seed.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1061,7 +1325,7 @@ def main():
             ckpt_p2 = os.path.join(sd, "best_phase2.pth")
             ckpt_p1 = os.path.join(sd, "best_phase1.pth")
 
-            # --- STEP 1: Train model ---
+            # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
             if checkpoint_source is not None and not args.eval_only:
                 print(
                     "\n  [CHECKPOINT REUSE] Test-time intervention uses "
@@ -1104,12 +1368,12 @@ def main():
                         "train.py", experiment, seed, extra_args=train_extra or None
                     )
 
-                    # Strictly verify train.py process exited cleanly with code 0
+                    # Kiểm tra điều kiện và dữ liệu trước khi tiếp tục xử lý.
                     if not train_success:
                         print(f"    [ERROR] train.py failed for seed={seed}. ABORTING evaluation for this seed.")
                         continue
 
-                    # Strictly verify trained checkpoint file actually exists on disk before evaluate.py
+                    # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
                     if not os.path.exists(ckpt_p2) and not os.path.exists(ckpt_p1):
                         print(f"    [ERROR] train.py completed but no trained checkpoint (.pth) was found in '{sd}'.")
                         print("            ABORTING evaluation to prevent evaluating untrained random weights.")
@@ -1135,7 +1399,7 @@ def main():
                 print(f"    [OK] Mode is --train-only. Training complete for seed={seed}. Skipping evaluation.")
                 continue
 
-            # --- STEP 2: Evaluate model (Only after train.py is 100% finished & verified) ---
+            # Bước hỗ trợ để thực thi điểm vào chính của mô-đun.
             print(f"\n  [STEP 2/2: EVALUATION] Launching evaluate.py for {experiment} (seed={seed})...")
             sys.stdout.flush()
             eval_extra = []

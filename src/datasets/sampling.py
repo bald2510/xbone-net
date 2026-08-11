@@ -1,4 +1,9 @@
-"""Deterministic sampling helpers shared by dataset robustness controls."""
+"""Cung cấp thành phần dữ liệu sampling cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,27 @@ import numpy as np
 
 
 def deranged_donor_indices(size: int, seed: int) -> np.ndarray:
-    """Return a one-to-one donor map with no fixed points (Sattolo cycle)."""
+    """Thực hiện bước deranged donor indices trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    size : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if size < 2:
         raise ValueError("A report derangement requires at least two samples.")
     rng = np.random.default_rng(seed)
@@ -20,7 +45,27 @@ def deranged_donor_indices(size: int, seed: int) -> np.ndarray:
 
 
 def cross_class_donor_indices(labels: np.ndarray, seed: int) -> np.ndarray:
-    """Return a one-to-one donor map with no same-class report assignments."""
+    """Thực hiện bước cross class donor indices trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     labels = np.asarray(labels).reshape(-1)
     if labels.size < 2:
         raise ValueError("Cross-class mismatch requires at least two samples.")

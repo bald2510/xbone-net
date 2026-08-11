@@ -1,8 +1,8 @@
-"""Visualize class-specific bidirectional cross-attention on image and text.
+"""Tạo bảng hoặc hình trực quan bằng công cụ attention.
 
-The image panel projects text-to-visual attention through the spatial resampler
-to source-image coordinates. The report panel highlights clinical WordPiece
-tokens using image-to-text attention weighted by the target-class gradient.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -40,6 +40,18 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_config(path: Path):
+    """Tải cấu hình cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     OmegaConf.register_new_resolver(
         "hydra",
         lambda key: str(ROOT) if key == "runtime.cwd" else "",
@@ -51,6 +63,27 @@ def load_config(path: Path):
 
 
 def load_model(cfg, checkpoint: Path, device: torch.device):
+    """Tải mô hình cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    cfg : object
+        Cấu hình điều khiển bước xử lý.
+    checkpoint : Path
+        Giá trị ``checkpoint`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     model = build_model(checkpoint_model_config(cfg)).to(device)
     model, _, fusion_type, _ = setup_phase2_modules(model, cfg, device)
     if fusion_type != "cross_attention":
@@ -65,6 +98,22 @@ def load_model(cfg, checkpoint: Path, device: torch.device):
 
 
 def one_sample_batch(sample: dict, tokenizer, device: torch.device) -> dict:
+    """Thực hiện bước one sample batch trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    sample : dict
+        Giá trị ``sample`` được sử dụng trong phép xử lý.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    dict
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     collator = BioMedCLIPDataCollator(resolve_pad_token_id(tokenizer))
     batch = collator([sample])
     return {
@@ -74,11 +123,35 @@ def one_sample_batch(sample: dict, tokenizer, device: torch.device) -> dict:
 
 
 def find_annotation(image_id: str) -> Path | None:
+    """Tìm annotation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_id : str
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+
+    Returns
+    -------
+    Path | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     path = ROOT / "data" / "BTXRD" / "Annotations" / f"{Path(image_id).stem}.json"
     return path if path.exists() else None
 
 
 def load_annotation(path: Path | None):
+    """Tải annotation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path | None
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if path is None or not path.exists():
         return []
     with path.open("r", encoding="utf-8") as handle:
@@ -86,6 +159,25 @@ def load_annotation(path: Path | None):
 
 
 def infer_dataset_index(dataset, image_id: str) -> int:
+    """Thực hiện bước infer dữ liệu index trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    dataset : object
+        Dữ liệu đầu vào của bước xử lý.
+    image_id : str
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+
+    Returns
+    -------
+    int
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     indices = dataset.df.index[
         dataset.df["image_id"].astype(str) == str(image_id)
     ].tolist()
@@ -95,6 +187,19 @@ def infer_dataset_index(dataset, image_id: str) -> int:
 
 
 def draw_ground_truth(ax, shapes, sx: float = 1.0, sy: float = 1.0):
+    """Vẽ ground truth cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    ax : object
+        Giá trị ``ax`` được sử dụng trong phép xử lý.
+    shapes : object
+        Giá trị ``shapes`` được sử dụng trong phép xử lý.
+    sx : float, optional
+        Giá trị ``sx`` được sử dụng trong phép xử lý.
+    sy : float, optional
+        Giá trị ``sy`` được sử dụng trong phép xử lý.
+    """
     for shape in shapes:
         points = np.asarray(shape.get("points", []), dtype=np.float32)
         if points.size == 0:
@@ -126,6 +231,22 @@ def draw_ground_truth(ax, shapes, sx: float = 1.0, sy: float = 1.0):
 
 
 def annotation_mask(shapes, image_size: tuple[int, int], heat_shape: tuple[int, int]):
+    """Thực hiện bước annotation mask trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    shapes : object
+        Giá trị ``shapes`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    heat_shape : tuple[int, int]
+        Giá trị ``heat_shape`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     width, height = image_size
     heat_h, heat_w = heat_shape
     mask = Image.new("L", (heat_w, heat_h), 0)
@@ -144,6 +265,20 @@ def annotation_mask(shapes, image_size: tuple[int, int], heat_shape: tuple[int, 
 
 
 def _normalize_scores(values: torch.Tensor, mask: torch.Tensor | None = None):
+    """Chuẩn hóa các điểm cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    values : torch.Tensor
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    mask : torch.Tensor | None, optional
+        Giá trị ``mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = values.float()
     if mask is not None:
         values = values * mask.to(values.dtype)
@@ -153,12 +288,39 @@ def _normalize_scores(values: torch.Tensor, mask: torch.Tensor | None = None):
 
 
 def _entropy(values: torch.Tensor):
+    """Thực hiện bước entropy trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : torch.Tensor
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     distribution = values.detach() / values.detach().sum().clamp_min(1e-8)
     return float(-(distribution * torch.log(distribution + 1e-8)).sum())
 
 
 def cross_modal_attribution(model, batch: dict, target_class: int):
-    """Return class-weighted image and clinical-token cross-attention scores."""
+    """Thực hiện bước cross modal attribution trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    batch : dict
+        Batch dữ liệu đầu vào.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     model.backbone.explain_mode = True
     for parameter in model.parameters():
         parameter.requires_grad_(False)
@@ -273,6 +435,24 @@ def rasterize_scores(
     image_size: tuple[int, int],
     max_side: int = 840,
 ):
+    """Thực hiện bước rasterize các điểm trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_side : int, optional
+        Giá trị ``max_side`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     width, height = image_size
     scale = min(1.0, max_side / max(width, height))
     out_w = max(1, round(width * scale))
@@ -294,6 +474,24 @@ def rasterize_scores(
 
 
 def merge_wordpieces(tokenizer, token_ids, scores, valid_mask):
+    """Kết hợp wordpieces cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    token_ids : object
+        Token hoặc chuỗi token đầu vào.
+    scores : object
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    valid_mask : object
+        Giá trị ``valid_mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     hf_tokenizer = getattr(tokenizer, "tokenizer", tokenizer)
     pieces = hf_tokenizer.convert_ids_to_tokens(token_ids.tolist())
     special_tokens = set(getattr(hf_tokenizer, "all_special_tokens", []))
@@ -312,6 +510,20 @@ def merge_wordpieces(tokenizer, token_ids, scores, valid_mask):
 
 
 def _wrap_words(words: list[str], max_characters: int = 64):
+    """Thực hiện bước wrap words trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    words : list[str]
+        Giá trị ``words`` được sử dụng trong phép xử lý.
+    max_characters : int, optional
+        Giá trị ``max_characters`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     lines: list[list[int]] = [[]]
     used = 0
     for index, word in enumerate(words):
@@ -325,6 +537,24 @@ def _wrap_words(words: list[str], max_characters: int = 64):
 
 
 def draw_highlighted_report(ax, words, scores, top_count: int = 8):
+    """Vẽ highlighted báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    ax : object
+        Giá trị ``ax`` được sử dụng trong phép xử lý.
+    words : object
+        Giá trị ``words`` được sử dụng trong phép xử lý.
+    scores : object
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    top_count : int, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
@@ -374,6 +604,22 @@ def draw_highlighted_report(ax, words, scores, top_count: int = 8):
 
 
 def localization_metrics(heatmap, shapes, image_size):
+    """Thực hiện bước localization các độ đo trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    heatmap : object
+        Giá trị ``heatmap`` được sử dụng trong phép xử lý.
+    shapes : object
+        Giá trị ``shapes`` được sử dụng trong phép xử lý.
+    image_size : object
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     mask = annotation_mask(shapes, image_size, heatmap.shape)
     if not mask.any():
         return None, None, None
@@ -396,6 +642,40 @@ def render_cross_modal(
     text_entropy: float,
     output: Path,
 ):
+    """Kết xuất cross modal cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    raw_image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    image_id : str
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    gt_name : str
+        Tên hoặc khóa định danh của giá trị.
+    pred_name : str
+        Tên hoặc khóa định danh của giá trị.
+    confidence : float
+        Giá trị ``confidence`` được sử dụng trong phép xử lý.
+    heatmap : np.ndarray
+        Giá trị ``heatmap`` được sử dụng trong phép xử lý.
+    shapes : object
+        Giá trị ``shapes`` được sử dụng trong phép xử lý.
+    words : object
+        Giá trị ``words`` được sử dụng trong phép xử lý.
+    word_scores : object
+        Giá trị ``word_scores`` được sử dụng trong phép xử lý.
+    visual_entropy : float
+        Giá trị ``visual_entropy`` được sử dụng trong phép xử lý.
+    text_entropy : float
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     heat_h, heat_w = heatmap.shape
     resized = raw_image.resize((heat_w, heat_h), Image.Resampling.LANCZOS)
     sx, sy = heat_w / raw_image.width, heat_h / raw_image.height
@@ -475,6 +755,7 @@ def render_cross_modal(
 
 
 def main():
+    """Thực thi điểm vào chính của mô-đun."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--config",

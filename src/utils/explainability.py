@@ -1,4 +1,9 @@
-"""Quantitative explainability and representation diagnostics for XBone-Net."""
+"""Cung cấp tiện ích explainability cho huấn luyện, đánh giá và phân tích XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -33,7 +38,26 @@ def fusion_from_tokens(
     text_attention_mask: torch.Tensor,
     component_mask: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Run the exact trained fusion while exposing its two branch vectors."""
+    """Thực hiện bước fusion from các token trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    image_tokens : torch.Tensor
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    text_tokens : torch.Tensor
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    text_attention_mask : torch.Tensor
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    component_mask : Optional[torch.Tensor]
+        Giá trị ``component_mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     fusion = model.fusion
     image_features = fusion.img_proj(fusion.img_input_norm(image_tokens))
     text_features = fusion.txt_proj(fusion.txt_input_norm(text_tokens))
@@ -103,6 +127,28 @@ def forward_from_local(
     component_mask: Optional[torch.Tensor] = None,
     global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Thực hiện bước forward from local trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    local_tokens : Optional[torch.Tensor]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    text_tokens : Optional[torch.Tensor]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    component_mask : Optional[torch.Tensor]
+        Giá trị ``component_mask`` được sử dụng trong phép xử lý.
+    global_feature : Optional[torch.Tensor]
+        Biểu diễn đặc trưng cần xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     local = cached["local_tokens"] if local_tokens is None else local_tokens
     text = cached["text_tokens"] if text_tokens is None else text_tokens
     global_image = (
@@ -127,7 +173,20 @@ def forward_from_local(
 
 
 def encode_global_image(model, pixel_values: torch.Tensor) -> torch.Tensor:
-    """Encode the global input view with the trained visual backbone."""
+    """Mã hóa global ảnh cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    pixel_values : torch.Tensor
+        Giá trị ``pixel_values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
 
     feature = model.backbone.model.encode_image(pixel_values)
     return F.normalize(feature, dim=-1)
@@ -141,11 +200,32 @@ def integrated_gradients_global_image(
     steps: int = 24,
     baseline: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Pixel-level IG for the global view while local and text inputs stay fixed.
+    """Thực hiện bước integrated gradients global ảnh trong quy trình hiện tại.
 
-    The default zero tensor is the per-channel preprocessing mean in normalized
-    model space. Gradients pass through the visual encoder, visual resampler,
-    fusion module, and classifier.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    pixel_values : torch.Tensor
+        Giá trị ``pixel_values`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    steps : int, optional
+        Giá trị ``steps`` được sử dụng trong phép xử lý.
+    baseline : Optional[torch.Tensor]
+        Giá trị ``baseline`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
 
     if steps < 2:
@@ -192,6 +272,22 @@ def branch_ablation(
     cached: dict[str, torch.Tensor],
     target_class: int,
 ) -> dict[str, Any]:
+    """Thực hiện bước branch ablation trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     with torch.no_grad():
         full_logits, _, _ = forward_from_local(model, cached)
         full_probability = torch.softmax(full_logits, dim=-1)[0, target_class]
@@ -222,6 +318,31 @@ def integrated_gradients(
     steps: int = 24,
     baseline: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Thực hiện bước integrated gradients trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    steps : int, optional
+        Giá trị ``steps`` được sử dụng trong phép xử lý.
+    baseline : Optional[torch.Tensor]
+        Giá trị ``baseline`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if steps < 2:
         raise ValueError("Integrated gradients requires at least two steps.")
     local = cached["local_tokens"].detach()
@@ -263,13 +384,30 @@ def integrated_gradients_text(
     steps: int = 24,
     baseline: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Integrated Gradients from word embeddings through the full text branch.
+    """Thực hiện bước integrated gradients văn bản trong quy trình hiện tại.
 
-    Content tokens are interpolated from the tokenizer's padding embedding.
-    Special tokens remain fixed, while position and token-type embeddings are
-    added normally by the underlying BERT encoder. The visual representation
-    remains fixed, but gradients pass through the text encoder, cross-attention,
-    fusion MLP and classifier.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    steps : int, optional
+        Giá trị ``steps`` được sử dụng trong phép xử lý.
+    baseline : Optional[torch.Tensor]
+        Giá trị ``baseline`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
 
     if steps < 2:
@@ -329,7 +467,29 @@ def _text_embedding_path(
     torch.nn.Module,
     torch.nn.Module,
 ]:
-    """Resolve BiomedCLIP's word-embedding baseline and encoder modules."""
+    """Thực hiện bước văn bản biểu diễn đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    baseline : Optional[torch.Tensor]
+        Giá trị ``baseline`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor, torch.nn.Module, torch.nn.Module]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     input_ids = cached.get("text_input_ids")
     if input_ids is None:
@@ -375,6 +535,24 @@ def _encode_text_embeddings(
     word_embeddings: torch.Tensor,
     attention_mask: torch.Tensor,
 ) -> torch.Tensor:
+    """Mã hóa văn bản các biểu diễn cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    transformer : object
+        Giá trị ``transformer`` được sử dụng trong phép xử lý.
+    projection : object
+        Giá trị ``projection`` được sử dụng trong phép xử lý.
+    word_embeddings : torch.Tensor
+        Giá trị ``word_embeddings`` được sử dụng trong phép xử lý.
+    attention_mask : torch.Tensor
+        Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output = transformer(
         inputs_embeds=word_embeddings,
         attention_mask=attention_mask,
@@ -393,7 +571,22 @@ def gradient_visual_relevance(
     cached: dict[str, torch.Tensor],
     target_class: int,
 ) -> torch.Tensor:
-    """Gradient×input relevance for each passthrough visual token."""
+    """Thực hiện bước gradient visual relevance trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     local = cached["local_tokens"].detach().requires_grad_(True)
     logits, _, _ = forward_from_local(model, cached, local_tokens=local)
     gradient = torch.autograd.grad(
@@ -410,7 +603,22 @@ def gradient_text_relevance(
     cached: dict[str, torch.Tensor],
     target_class: int,
 ) -> torch.Tensor:
-    """Gradient×input relevance for non-CLS clinical-report tokens."""
+    """Thực hiện bước gradient văn bản relevance trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     text = cached["text_tokens"].detach().requires_grad_(True)
     local_cache = {**cached, "text_tokens": text}
     logits, _, _ = forward_from_local(model, local_cache)
@@ -433,6 +641,28 @@ def _target_outputs(
     text_tokens: Optional[torch.Tensor] = None,
     global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[float, float, float]:
+    """Thực hiện bước target outputs trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    local_tokens : Optional[torch.Tensor]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    text_tokens : Optional[torch.Tensor]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    global_feature : Optional[torch.Tensor]
+        Biểu diễn đặc trưng cần xử lý.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     with torch.no_grad():
         logits, _, _ = forward_from_local(
             model,
@@ -464,7 +694,39 @@ def global_image_perturbation_curves(
     random_trials: int = 16,
     seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Patch deletion/insertion for the global view with a random control."""
+    """Thực hiện bước global ảnh perturbation curves trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    pixel_values : torch.Tensor
+        Giá trị ``pixel_values`` được sử dụng trong phép xử lý.
+    relevance : torch.Tensor
+        Giá trị ``relevance`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    fractions : Optional[np.ndarray]
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    baseline : Optional[torch.Tensor]
+        Giá trị ``baseline`` được sử dụng trong phép xử lý.
+    random_trials : int, optional
+        Giá trị ``random_trials`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
 
     if random_trials < 1:
         raise ValueError("random_trials must be positive.")
@@ -509,9 +771,9 @@ def global_image_perturbation_curves(
     ranking = torch.argsort(torch.stack(patch_scores), descending=True)
     patch_count = len(patch_slices)
     generator = torch.Generator(device=pixels.device).manual_seed(int(seed))
-    # A random-control curve must be generated from one fixed ordering per
-    # trial.  Re-sampling a subset at every fraction would not form a
-    # coherent deletion curve and would make its AUC harder to interpret.
+    # Cố định trạng thái ngẫu nhiên để bảo đảm khả năng tái lập.
+    # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     random_orders = [
         torch.randperm(
             patch_count,
@@ -525,6 +787,18 @@ def global_image_perturbation_curves(
     deletion_margins, random_deletion_margins, insertion_margins = [], [], []
 
     def evaluate(current_pixels: torch.Tensor) -> tuple[float, float, float]:
+        """Đánh giá kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        current_pixels : torch.Tensor
+            Giá trị ``current_pixels`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        tuple[float, float, float]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         with torch.no_grad():
             global_feature = encode_global_image(model, current_pixels)
         return _target_outputs(
@@ -556,9 +830,9 @@ def global_image_perturbation_curves(
         insertion_logits.append(insertion_output[1])
         insertion_margins.append(insertion_output[2])
 
-        # At both endpoints every ordering produces the same perturbed image.
-        # Reuse the targeted result there; intermediate points use prefixes of
-        # the fixed random orders generated above.
+        # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+        # Bước hỗ trợ để thực hiện xử lý ``global_image_perturbation_curves`` trong quy trình hiện tại.
+        # Cố định trạng thái ngẫu nhiên để bảo đảm khả năng tái lập.
         if count in {0, patch_count}:
             random_output = np.asarray(deletion_output, dtype=np.float64)
         else:
@@ -602,7 +876,35 @@ def perturbation_curves(
     random_trials: int = 16,
     seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Deletion/insertion curves against random and least-relevant controls."""
+    """Thực hiện bước perturbation curves trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    relevance : torch.Tensor
+        Giá trị ``relevance`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    fractions : Optional[np.ndarray]
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    random_trials : int, optional
+        Giá trị ``random_trials`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if random_trials < 1:
         raise ValueError("random_trials must be positive.")
     fractions = (
@@ -611,9 +913,9 @@ def perturbation_curves(
         else np.asarray(fractions, dtype=np.float64)
     )
     local = cached["local_tokens"].detach()
-    # Replacing a local token with the pretrained global image embedding removes
-    # region-specific evidence while avoiding the singular zero vector before
-    # the resampler's L2 normalization.
+    # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
+    # Bước hỗ trợ để thực hiện xử lý ``perturbation_curves`` trong quy trình hiện tại.
+    # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
     baseline = cached["global_feature"].unsqueeze(1).expand_as(local).detach()
     token_count = local.size(1)
     descending = torch.argsort(relevance, descending=True)
@@ -691,7 +993,35 @@ def text_perturbation_curves(
     random_trials: int = 16,
     seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Delete/insert clinical tokens using the report CLS embedding as baseline."""
+    """Thực hiện bước văn bản perturbation curves trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    relevance : torch.Tensor
+        Giá trị ``relevance`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    fractions : Optional[np.ndarray]
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    random_trials : int, optional
+        Giá trị ``random_trials`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if random_trials < 1:
         raise ValueError("random_trials must be positive.")
     text = cached["text_tokens"].detach()
@@ -786,12 +1116,34 @@ def text_input_perturbation_curves(
     random_trials: int = 16,
     seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Deletion/insertion over word embeddings with a random control.
+    """Thực hiện bước văn bản đầu vào perturbation curves trong quy trình hiện tại.
 
-    The image branch is held fixed. Content-token embeddings are replaced by
-    the padding embedding while special tokens, positions and the original
-    attention mask remain unchanged. Ranking is based on positive attribution
-    to the target class, matching the evidence used by deletion/insertion.
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+    relevance : torch.Tensor
+        Giá trị ``relevance`` được sử dụng trong phép xử lý.
+    target_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    fractions : Optional[np.ndarray]
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    random_trials : int, optional
+        Giá trị ``random_trials`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
 
     if random_trials < 1:
@@ -834,6 +1186,18 @@ def text_input_perturbation_curves(
     deletion_margins, random_deletion_margins, insertion_margins = [], [], []
 
     def evaluate(word_embeddings: torch.Tensor) -> tuple[float, float, float]:
+        """Đánh giá kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        word_embeddings : torch.Tensor
+            Giá trị ``word_embeddings`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        tuple[float, float, float]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         with torch.no_grad():
             text_tokens = _encode_text_embeddings(
                 transformer,
@@ -897,6 +1261,25 @@ def text_input_perturbation_curves(
 
 
 def curve_auc(fractions: np.ndarray, values: np.ndarray) -> float:
+    """Thực hiện bước curve auc trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    fractions : np.ndarray
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     fractions = np.asarray(fractions, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
     if fractions.shape != values.shape or fractions.size < 2:
@@ -905,12 +1288,26 @@ def curve_auc(fractions: np.ndarray, values: np.ndarray) -> float:
     if width <= 0:
         raise ValueError("Curve fractions must span a positive interval.")
     integrate = getattr(np, "trapezoid", None)
-    if integrate is None:  # NumPy < 2.0
+    if integrate is None:  # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         integrate = np.trapz
     return float(integrate(values, fractions) / width)
 
 
 def rank_correlation(first: np.ndarray, second: np.ndarray) -> float:
+    """Xếp hạng correlation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    first : np.ndarray
+        Giá trị ``first`` được sử dụng trong phép xử lý.
+    second : np.ndarray
+        Giá trị ``second`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     first = np.asarray(first).reshape(-1)
     second = np.asarray(second).reshape(-1)
     if first.shape != second.shape or first.size < 2:
@@ -927,6 +1324,29 @@ def stratified_sample_indices(
     seed: int,
     max_samples: Optional[int] = None,
 ) -> np.ndarray:
+    """Thực hiện bước stratified sample indices trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    per_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    max_samples : Optional[int]
+        Giá trị ``max_samples`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     labels = np.asarray(labels).reshape(-1)
     if per_class < 1:
         raise ValueError("per_class must be positive.")
@@ -952,7 +1372,33 @@ def representation_quality_metrics(
     seed: int,
     knn_k: int = 5,
 ) -> dict[str, float]:
-    """Quantify class geometry without refitting the proposed classifier."""
+    """Thực hiện bước representation quality các độ đo trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    train_embeddings : np.ndarray
+        Giá trị ``train_embeddings`` được sử dụng trong phép xử lý.
+    train_labels : np.ndarray
+        Giá trị ``train_labels`` được sử dụng trong phép xử lý.
+    test_embeddings : np.ndarray
+        Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+    test_labels : np.ndarray
+        Giá trị ``test_labels`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    knn_k : int, optional
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     train_embeddings = np.asarray(train_embeddings, dtype=np.float64)
     test_embeddings = np.asarray(test_embeddings, dtype=np.float64)
     train_embeddings /= np.maximum(

@@ -1,0 +1,15 @@
+{
+  "cited_entries": 49,
+  "paper_entries": 47,
+  "downloaded_pdfs": 46,
+  "missing_pdfs": 1,
+  "classification": {
+    "Selected/Direct_Method": 12,
+    "ByCitation/Scratch": 5,
+    "ByCitation/Med-VLMs": 11,
+    "ByCitation/Med-MLLLM": 5,
+    "ByCitation/OOD Detection": 4,
+    "ByCitation/Explainable AI": 2,
+    "ByCitation/Metrics": 7
+  }
+}

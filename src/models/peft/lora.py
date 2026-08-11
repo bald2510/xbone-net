@@ -1,8 +1,8 @@
-"""
-Parameter-Efficient Fine-Tuning Adapters (LoRA) for XBone-Net.
-===============================================================================
-Implements LoRA (Low-Rank Adaptation; Hu et al., 2021) adapter injection for 
-VLM vision and text backbones.
+"""Cung cấp cơ chế tinh chỉnh hiệu quả tham số lora cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch
@@ -10,11 +10,19 @@ import torch.nn as nn
 from peft import LoraConfig, get_peft_model
 
 def resolve_target_modules(module: nn.Module, requested_targets: list | None = None) -> list:
-    """Resolve valid target module names for PEFT injection on the base module.
+    """Xác định target modules cho bước xử lý hiện tại.
 
-    If requested_targets are provided and at least one target exists inside module,
-    returns the matching targets. Otherwise, automatically inspects module structure
-    and selects valid linear layer suffixes compatible with the model architecture.
+    Parameters
+    ----------
+    module : nn.Module
+        Giá trị ``module`` được sử dụng trong phép xử lý.
+    requested_targets : list | None, optional
+        Giá trị ``requested_targets`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     all_module_names = [name for name, _ in module.named_modules()]
 
@@ -61,25 +69,31 @@ def inject_lora(
     target_modules: list = None, 
     **kwargs
 ) -> nn.Module:
-    """Apply standard unquantized LoRA adapters to an encoder module.
+    """Thực hiện bước inject lora trong quy trình hiện tại.
 
-    Freezes base parameters of module and attaches trainable low-rank adapter matrices
-    to specified target layers.
+    Parameters
+    ----------
+    module : nn.Module
+        Giá trị ``module`` được sử dụng trong phép xử lý.
+    r : int, optional
+        Giá trị ``r`` được sử dụng trong phép xử lý.
+    alpha : int, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    dropout : float, optional
+        Giá trị ``dropout`` được sử dụng trong phép xử lý.
+    target_modules : list, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    **kwargs : dict
+        Các đối số từ khóa bổ sung.
 
-    Args:
-        module (nn.Module): PyTorch module to adapt.
-        r (int): Rank r of LoRA decomposition. Defaults to 16.
-        alpha (int): Scaling factor alpha for LoRA updates. Defaults to 32.
-        dropout (float): Dropout probability applied to LoRA inputs. Defaults to 0.1.
-        target_modules (list, optional): Target sub-module names. Defaults to ["qkv", "proj"].
-        **kwargs: Unused extra keyword arguments.
-
-    Returns:
-        nn.Module: Wrapped HuggingFace PeftModel ready for fine-tuning.
+    Returns
+    -------
+    nn.Module
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     target_modules = resolve_target_modules(module, target_modules)
 
-    # Freeze base parameters
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
     for param in module.parameters():
         param.requires_grad = False
 

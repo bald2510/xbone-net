@@ -1,9 +1,8 @@
-"""Locked post-hoc analysis helpers for the canonical CTCH proposed model.
+"""Cung cấp tiện ích analysis cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-The OOD and explainability pipelines use this module instead of the training
-entry point.  It deliberately fixes the source experiment, checkpoint layout,
-and Phase-2 architecture so an analysis run cannot silently evaluate an
-ablation, a baseline, or freshly initialized weights.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -44,7 +43,13 @@ ANALYSIS_METADATA_KEYS = (
 
 
 def seed_everything(seed: int) -> None:
-    """Seed post-hoc analysis without enabling any training behavior."""
+    """Cố định các nguồn ngẫu nhiên để bảo đảm khả năng tái lập.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    """
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
@@ -56,6 +61,23 @@ def seed_everything(seed: int) -> None:
 
 
 def locked_checkpoint_path(seed: int) -> Path:
+    """Thực hiện bước locked checkpoint đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if int(seed) not in SOURCE_SEEDS:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
@@ -72,6 +94,18 @@ def locked_checkpoint_path(seed: int) -> Path:
 
 
 def analysis_root(seed: Optional[int] = None) -> Path:
+    """Thực hiện bước analysis root trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : Optional[int]
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     root = PROJECT_ROOT / "results" / SOURCE_EXPERIMENT
     if seed is not None:
         root = root / f"seed_{int(seed)}"
@@ -79,7 +113,13 @@ def analysis_root(seed: Optional[int] = None) -> Path:
 
 
 def _absolute_dataset_paths(cfg: DictConfig) -> None:
-    """Replace Hydra runtime interpolations for standalone analysis scripts."""
+    """Thực hiện bước absolute dữ liệu các đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    """
     params = cfg.dataset.params
     dataset_name = str(cfg.dataset.name)
     if dataset_name == "ctch":
@@ -95,7 +135,25 @@ def _absolute_dataset_paths(cfg: DictConfig) -> None:
 
 
 def compose_source_config(seed: int) -> DictConfig:
-    """Load the immutable evaluated config for the canonical CTCH checkpoint."""
+    """Thực hiện bước compose source cấu hình trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    DictConfig
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if int(seed) not in SOURCE_SEEDS:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
@@ -136,6 +194,20 @@ def compose_source_config(seed: int) -> DictConfig:
 
 
 def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    """Thực hiện bước sha256 file trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    chunk_size : int, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(chunk_size), b""):
@@ -144,6 +216,13 @@ def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
 
 
 def _git_revision() -> Optional[str]:
+    """Thực hiện bước git revision trong quy trình hiện tại.
+
+    Returns
+    -------
+    Optional[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -161,7 +240,20 @@ def adapt_state_dict_keys(
     state_dict: dict[str, torch.Tensor],
     model_keys: Iterable[str],
 ) -> dict[str, torch.Tensor]:
-    """Align raw OpenCLIP checkpoint prefixes with the XBone wrapper."""
+    """Thực hiện bước adapt state dict keys trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    state_dict : dict[str, torch.Tensor]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    model_keys : Iterable[str]
+        Mô hình hoặc thành phần mô hình cần xử lý.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     model_keys = list(model_keys)
     checkpoint_keys = list(state_dict)
     if not checkpoint_keys:
@@ -180,6 +272,25 @@ def adapt_state_dict_keys(
 
 
 def _load_checkpoint_payload(path: Path, device: torch.device) -> dict[str, Any]:
+    """Tải checkpoint payload cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     try:
         payload = torch.load(path, map_location=device, weights_only=True)
     except TypeError:
@@ -190,6 +301,18 @@ def _load_checkpoint_payload(path: Path, device: torch.device) -> dict[str, Any]
 
 
 def _validate_checkpoint_state(state_dict: dict[str, torch.Tensor]) -> None:
+    """Kiểm tra tính hợp lệ của checkpoint state cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    state_dict : dict[str, torch.Tensor]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     centroid_items = [
         (key, value)
         for key, value in state_dict.items()
@@ -216,6 +339,12 @@ def _validate_checkpoint_state(state_dict: dict[str, torch.Tensor]) -> None:
 
 @dataclass(frozen=True)
 class LoadedAnalysisModel:
+    """Đóng gói hành vi của thành phần ``LoadedAnalysisModel``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
     model: torch.nn.Module
     cfg: DictConfig
     checkpoint: Path
@@ -229,7 +358,31 @@ def load_locked_proposed_model(
     device: Optional[torch.device] = None,
     strict_fingerprint: bool = True,
 ) -> LoadedAnalysisModel:
-    """Build and load the exact CTCH proposed Phase-2 model."""
+    """Tải locked proposed mô hình cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    device : Optional[torch.device]
+        Thiết bị thực thi phép tính.
+    strict_fingerprint : bool, optional
+        Giá trị ``strict_fingerprint`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    LoadedAnalysisModel
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     seed = int(seed)
     from src.models.builder import build_model, setup_phase2_modules
 
@@ -344,12 +497,32 @@ def load_proposed_experiment_model(
     seed: int,
     device: Optional[torch.device] = None,
 ) -> LoadedAnalysisModel:
-    """Load a proposed checkpoint from its immutable evaluated configuration.
+    """Tải proposed experiment mô hình cho bước xử lý hiện tại.
 
-    Unlike :func:`load_locked_proposed_model`, this helper is intended only for
-    explicitly named cross-version audits.  It rebuilds the architecture from
-    the resolved configuration stored beside the model's evaluation metrics,
-    so later YAML edits cannot silently change the evaluated network.
+    Parameters
+    ----------
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    device : Optional[torch.device]
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    LoadedAnalysisModel
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     experiment_name = str(experiment_name).strip("/")
     if not (
@@ -368,10 +541,10 @@ def load_proposed_experiment_model(
         config_reference = json.loads(metrics_path.read_text(encoding="utf-8"))
         resolved = config_reference.get("config")
     else:
-        # Older cross-version exports retained the complete immutable config in
-        # each feature-archive sidecar even when the original metrics.json was
-        # later moved. Accept only a sidecar tied to this exact experiment and
-        # seed; the checkpoint hash is verified below before the model is used.
+        # Bước hỗ trợ để tải proposed experiment model cho bước xử lý hiện tại.
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
+        # Bước hỗ trợ để tải proposed experiment model cho bước xử lý hiện tại.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
         config_reference = None
         for candidate in sorted(PROJECT_ROOT.glob("results/**/ctch_train.json")):
             try:
@@ -551,7 +724,31 @@ def load_evaluated_ctch_zeroshot_model(
     seed: int,
     device: Optional[torch.device] = None,
 ) -> LoadedAnalysisModel:
-    """Rebuild the evaluated deterministic BioMedCLIP foundation baseline."""
+    """Tải evaluated ctch zeroshot mô hình cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    device : Optional[torch.device]
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    LoadedAnalysisModel
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     experiment_name = str(experiment_name).strip("/")
     seed = int(seed)
     if experiment_name != ZEROSHOT_BIOMEDCLIP_EXPERIMENT:
@@ -575,9 +772,9 @@ def load_evaluated_ctch_zeroshot_model(
     if str(cfg.dataset.name) != "ctch":
         raise ValueError("Zero-shot OOD baseline must use the CTCH dataset config.")
     _absolute_dataset_paths(cfg)
-    # The original foundation baseline consumes one global 224x224 image only.
-    # Supplying this field also lets shared CTCH/OOD dataset builders avoid
-    # creating high-resolution tiles.
+    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
     cfg.dataset.params.high_res = {"enabled": False}
 
     from src.models.builder import build_model, setup_phase2_modules
@@ -621,9 +818,9 @@ def load_evaluated_ctch_zeroshot_model(
         "analysis_scope": "ctch_zeroshot_ood",
         "seed": seed,
         "checkpoint": None,
-        # Shared OOD validation historically calls this field a checkpoint hash.
-        # For a checkpoint-free baseline it is a deterministic fingerprint of
-        # the official foundation source and the evaluated resolved config.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
+        # Bước hỗ trợ để tải evaluated ctch zeroshot model cho bước xử lý hiện tại.
         "checkpoint_sha256": foundation_fingerprint,
         "weight_source": "official_pretrained_foundation",
         "metrics_path": str(metrics_path.resolve()),
@@ -653,13 +850,32 @@ def load_evaluated_ctch_model(
     seed: int,
     device: Optional[torch.device] = None,
 ) -> LoadedAnalysisModel:
-    """Load a canonical, zero-shot, or ablation CTCH evaluated model.
+    """Tải evaluated ctch mô hình cho bước xử lý hiện tại.
 
-    This entry point is intentionally narrower than the training CLI.  It only
-    accepts the canonical proposed model and experiments below
-    ``ctch/ablation_study``.  The architecture is reconstructed from the
-    resolved config embedded in ``metrics.json`` and checked against the saved
-    parameter fingerprint before features are exported.
+    Parameters
+    ----------
+    experiment_name : str
+        Tên hoặc khóa định danh của giá trị.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    device : Optional[torch.device]
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    LoadedAnalysisModel
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     experiment_name = str(experiment_name).strip("/")
     seed = int(seed)
@@ -825,15 +1041,39 @@ def load_evaluated_ctch_model(
 
 
 class AnalysisDataCollator:
-    """Use the training collator while preserving sample provenance fields."""
+    """Đóng gói hành vi của thành phần ``AnalysisDataCollator``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, tokenizer) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        tokenizer : object
+            Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+        """
         from src.utils.trainer import BioMedCLIPDataCollator, resolve_pad_token_id
 
         pad_id = resolve_pad_token_id(tokenizer) if tokenizer is not None else 0
         self.base = BioMedCLIPDataCollator(pad_token_id=pad_id)
 
     def __call__(self, features: list[dict[str, Any]]) -> dict[str, Any]:
+        """Thực hiện bước call trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        features : list[dict[str, Any]]
+            Giá trị ``features`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        dict[str, Any]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         metadata = {
             key: [feature.get(key, "") for feature in features]
             for key in ANALYSIS_METADATA_KEYS
@@ -845,18 +1085,56 @@ class AnalysisDataCollator:
 
 
 class MetadataDataset(Dataset):
-    """Add stable IDs/groups to a standard repository dataset."""
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``MetadataDataset``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, dataset: Dataset, scenario: str) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Dữ liệu đầu vào của bước xử lý.
+        scenario : str
+            Giá trị ``scenario`` được sử dụng trong phép xử lý.
+        """
         self.dataset = dataset
         self.scenario = str(scenario)
         self.df = getattr(dataset, "df", None)
 
     def __len__(self) -> int:
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.dataset)
 
     @staticmethod
     def _as_dict(sample: Any) -> dict[str, Any]:
+        """Thực hiện bước as dict trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        sample : Any
+            Giá trị ``sample`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        dict[str, Any]
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        TypeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if isinstance(sample, dict):
             return dict(sample)
         if isinstance(sample, tuple) and len(sample) == 4:
@@ -875,6 +1153,18 @@ class MetadataDataset(Dataset):
         raise TypeError(f"Unsupported dataset sample type: {type(sample).__name__}")
 
     def __getitem__(self, index: int) -> dict[str, Any]:
+        """Thực hiện bước getitem trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        index : int
+            Chỉ mục của phần tử cần xử lý.
+
+        Returns
+        -------
+        dict[str, Any]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         sample = self._as_dict(self.dataset[index])
         row = self.df.iloc[index] if self.df is not None else {}
         image_id = str(row.get("image_id", index))
@@ -907,6 +1197,24 @@ def build_analysis_loader(
     batch_size: int,
     num_workers: int = 0,
 ) -> DataLoader:
+    """Xây dựng analysis bộ nạp dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    dataset : Dataset
+        Dữ liệu đầu vào của bước xử lý.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    batch_size : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    num_workers : int, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    DataLoader
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return DataLoader(
         dataset,
         batch_size=int(batch_size),
@@ -918,6 +1226,20 @@ def build_analysis_loader(
 
 
 def _to_device(value: Any, device: torch.device) -> Any:
+    """Thực hiện bước to thiết bị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return value.to(device) if isinstance(value, torch.Tensor) else value
 
 
@@ -925,7 +1247,20 @@ def _attention_distribution_statistics(
     attention: Optional[torch.Tensor],
     key_padding_mask: Optional[torch.Tensor],
 ) -> dict[str, torch.Tensor]:
-    """Summarize per-sample attention concentration without retaining maps."""
+    """Thực hiện bước attention distribution statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    attention : Optional[torch.Tensor]
+        Giá trị ``attention`` được sử dụng trong phép xử lý.
+    key_padding_mask : Optional[torch.Tensor]
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if attention is None:
         return {}
     from src.models.fusion.cross_attention import reduce_attention_to_keys
@@ -964,7 +1299,29 @@ def forward_analysis_batch(
     device: torch.device,
     report_type: str = "clinical",
 ) -> dict[str, torch.Tensor]:
-    """Export modality and fusion representations through the trained path."""
+    """Thực hiện bước forward analysis batch trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    report_type : str, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     images = _to_device(batch["pixel_values"], device)
     tile_values = _to_device(batch.get("tile_values"), device)
     tile_mask = _to_device(batch.get("tile_mask"), device)
@@ -1077,6 +1434,22 @@ def save_feature_archive(
     arrays: dict[str, np.ndarray],
     provenance: dict[str, Any],
 ) -> Path:
+    """Lưu đặc trưng archive cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    arrays : dict[str, np.ndarray]
+        Giá trị ``arrays`` được sử dụng trong phép xử lý.
+    provenance : dict[str, Any]
+        Giá trị ``provenance`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(arrays)
@@ -1094,6 +1467,27 @@ def load_feature_archive(
     path: Path,
     expected_source_experiment: str = SOURCE_EXPERIMENT,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+    """Tải đặc trưng archive cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    expected_source_experiment : str, optional
+        Dữ liệu nguồn của phép xử lý.
+
+    Returns
+    -------
+    tuple[dict[str, np.ndarray], dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     path = path.resolve()
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -1120,6 +1514,29 @@ def collect_feature_batches(
     device: torch.device,
     report_type: str = "clinical",
 ) -> dict[str, np.ndarray]:
+    """Thu thập đặc trưng batches cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    loader : DataLoader
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    report_type : str, optional
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     tensor_parts: dict[str, list[np.ndarray]] = {}
     metadata_parts: dict[str, list[str]] = {
         key: [] for key in ANALYSIS_METADATA_KEYS

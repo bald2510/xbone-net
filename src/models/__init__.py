@@ -1,13 +1,8 @@
-"""
-XBone-Net Model Architectures & Module Factory.
-===============================================================================
-Exposes the core model composer, builder factory, and sub-package registries:
-  - Composer: Composite multi-modal architecture (XBoneMultiModalModel)
-  - Builder: Factory functions (build_model, setup_phase2_modules)
-  - Backbones: BiomedCLIP, OpenCLIP, ResNet-50, DenseNet-121, MedCLIP
-  - Fusion: CrossAttentionFusion, ConcatFusion, IdentityFusion
-  - Classifier Heads: EmpiricalCentroidHead, LinearHead, IdentityHead
-  - PEFT: LoRA, QLoRA, Full FT
+"""Cung cấp thành phần mô hình   init   trong kiến trúc XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from .composer import XBoneMultiModalModel

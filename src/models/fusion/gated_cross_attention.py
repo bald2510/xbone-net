@@ -1,4 +1,9 @@
-"""Sample-adaptive gated cross-attention fusion for XBone-Net."""
+"""Cung cấp cơ chế dung hợp đa phương thức gated cross attention cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -11,17 +16,11 @@ from .cross_attention import CrossAttentionFusion
 
 
 class GatedCrossAttentionFusion(CrossAttentionFusion):
-    """Interpolate a direct concat path with cross-attention per sample.
+    """Dung hợp biểu diễn đa phương thức bằng lớp ``GatedCrossAttentionFusion``.
 
-    The direct path provides a conservative multimodal representation, while
-    the cross-attention path is allowed to modify it only to the extent selected
-    by a learned scalar gate:
-
-        z = z_concat + sigmoid(g(x)) * (z_cross - z_concat)
-
-    The final gate layer is initialized with zero weights and a negative bias,
-    so Phase 2 starts close to concat instead of immediately depending on a
-    randomly initialized cross-attention branch.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     supports_padding_mask = True
@@ -38,6 +37,34 @@ class GatedCrossAttentionFusion(CrossAttentionFusion):
         gate_bias_init: float = -2.0,
         **kwargs,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        img_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        text_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        embed_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_heads : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        dropout : float, optional
+            Giá trị ``dropout`` được sử dụng trong phép xử lý.
+        attention_direction : str, optional
+            Giá trị ``attention_direction`` được sử dụng trong phép xử lý.
+        gate_hidden_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        gate_bias_init : float, optional
+            Giá trị ``gate_bias_init`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if gate_hidden_dim < 1:
             raise ValueError("gate_hidden_dim must be positive.")
         super().__init__(
@@ -51,8 +78,8 @@ class GatedCrossAttentionFusion(CrossAttentionFusion):
         )
         self.gate_bias_init = float(gate_bias_init)
 
-        # Match the existing concat baseline: pool the original visual token
-        # sequence, retain the global text token, then project [image; text].
+        # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
+        # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
         self.concat_projection = nn.Sequential(
             nn.Linear(img_dim + text_dim, embed_dim),
             nn.LayerNorm(embed_dim),
@@ -72,7 +99,25 @@ class GatedCrossAttentionFusion(CrossAttentionFusion):
         image_tokens: torch.Tensor,
         local_padding_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
-        """Pool global and valid local image tokens for the concat branch."""
+        """Thực hiện bước pool ảnh các token trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        image_tokens : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        local_padding_mask : Optional[torch.Tensor]
+            Giá trị ``local_padding_mask`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if image_tokens.ndim == 2:
             return image_tokens
         if image_tokens.ndim != 3:
@@ -109,6 +154,31 @@ class GatedCrossAttentionFusion(CrossAttentionFusion):
         txt_key_padding_mask: Optional[torch.Tensor] = None,
         return_attn: bool = False,
     ):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        img_feats : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_feats : torch.Tensor
+            Giá trị ``txt_feats`` được sử dụng trong phép xử lý.
+        img_key_padding_mask : Optional[torch.Tensor]
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_key_padding_mask : Optional[torch.Tensor]
+            Tên hoặc khóa định danh của giá trị.
+        return_attn : bool, optional
+            Giá trị ``return_attn`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         image_vector = self._pool_image_tokens(
             img_feats,
             img_key_padding_mask,
@@ -142,8 +212,8 @@ class GatedCrossAttentionFusion(CrossAttentionFusion):
         gate = torch.sigmoid(
             self.gate_network(torch.cat([concat_fused, cross_fused], dim=-1))
         )
-        # Non-persistent diagnostic used by evaluation/inference. Keeping only
-        # the latest detached batch does not alter checkpoints or autograd.
+        # Bước hỗ trợ để thực hiện lượt lan truyền xuôi của mô hình.
+        # Kiểm tra và xử lý checkpoint tương ứng của mô hình.
         self.last_gate = gate.detach()
         fused = concat_fused + gate * (cross_fused - concat_fused)
 

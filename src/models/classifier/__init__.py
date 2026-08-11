@@ -1,10 +1,8 @@
-"""
-Classifier Head Module Registry & Factory for XBone-Net.
-===============================================================================
-Defines the registry and factory function for instantiating classification heads:
-  - IdentityHead: Pass-through features (Phase 1 contrastive pre-training)
-  - LinearHead: Standard linear layer mapping features to class logits
-  - EmpiricalCentroidHead: Non-parametric cosine classifier from train-set means
+"""Cung cấp đầu phân lớp   init   cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from .identity import IdentityHead
@@ -12,7 +10,7 @@ from .linear import LinearHead
 from .empirical_centroid import EmpiricalCentroidHead
 
 # ============================================================
-# Classifier Head Registry Mapping
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 HEAD_REGISTRY = {
@@ -23,23 +21,26 @@ HEAD_REGISTRY = {
 
 
 # ============================================================
-# Classifier Head Factory
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 def build_head_module(cfg: dict):
-    """Build classifier head module from configuration dictionary.
+    """Xây dựng head module cho bước xử lý hiện tại.
 
-    Args:
-        cfg (dict): Classifier head configuration containing 'type' and optional 'params'.
+    Parameters
+    ----------
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
 
-    Returns:
-        nn.Module: Instantiated classifier head module.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Raises:
-        ValueError: If specified classifier head type is not supported in HEAD_REGISTRY.
-
-    Example:
-        >>> head = build_head_module({'type': 'empirical_centroid', 'params': {'feature_dim': 512, 'num_classes': 4}})
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     head_type = cfg.get('type', 'none')
     if head_type not in HEAD_REGISTRY:

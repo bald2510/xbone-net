@@ -26,7 +26,7 @@ Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-qu
 \begin{figure}[H]
 \centering
     \includegraphics[width=1\linewidth]{images/procedure.png}
-    \caption{Sơ đồ quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam).}
+    \caption{Sơ đồ quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam)}
     \label{fig:procedure}
 \end{figure}
 
@@ -35,7 +35,7 @@ Hệ thống được đề xuất trong khóa luận được thiết kế nh�
 \begin{figure}[H]
 \centering
     \includegraphics[width=1\linewidth]{images/procedureXbone.png}
-    \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam).}
+    \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam)}
     \label{fig:procedureXbone}
 \end{figure}
 
@@ -61,7 +61,7 @@ Ngoài ra, quá trình nghiên cứu góp phần xây dựng và chuẩn hóa m�
 \label{sec:ch1_problem_def}
 
 Bài toán được nghiên cứu trong đề tài là bài toán phân lớp đa lớp ảnh X-quang sử dụng học sâu đa phương thức. Mục tiêu của hệ thống là dự đoán các loại bệnh hoặc tổn thương dựa đồng thời vào ảnh X-quang và văn bản đi kèm.
-\subsubsection{Đầu vào}
+\subsection{Đầu vào}
 Hệ thống nhận vào các nguồn dữ liệu sau:
 \begin{itemize}
     \item \textbf{Ảnh X-quang của bệnh nhân:}
@@ -77,7 +77,7 @@ Hệ thống nhận vào các nguồn dữ liệu sau:
     \item \textbf{Tập nhãn được định nghĩa trước:}
     \[ \mathcal{Y} = \{y_1, y_2, \ldots, y_K\} \] với $K$ là số lớp bệnh cần phân lớp.
 \end{itemize}
-\subsubsection{Đầu ra}
+\subsection{Đầu ra}
 
 Hệ thống sinh ra ba đầu ra chính:
 
@@ -168,7 +168,7 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Đề tài tập trung vào bài toán phân lớp đa lớp bệnh lý xương trên ảnh X-quang, kết hợp với bệnh sử lâm sàng. Phạm vi cụ thể bao gồm:
 
 \begin{itemize}
-  \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương, và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
+  \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
   \item \textbf{Dữ liệu văn bản:} Bộ dữ liệu CTCH sử dụng bệnh sử có sẵn trong bệnh án, gồm lý do vào viện, diễn tiến bệnh và tiền sử. Bộ dữ liệu BTXRD không có bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Vì mẫu câu tổng hợp có phụ thuộc vào các cờ nhóm bệnh, kết quả BTXRD chỉ phản ánh thiết lập văn bản tổng hợp và không được xem là bằng chứng tương đương với bệnh sử lâm sàng tự nhiên.
   \item \textbf{Vai trò hệ thống:} Hệ thống được thiết kế làm công cụ hỗ trợ phân tích ảnh, không thay thế vai trò của bác sĩ trong quá trình ra quyết định.
 % ===== BẮT ĐẦU BỔ SUNG GIỚI HẠN HIỆN THỰC HÓA =====

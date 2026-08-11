@@ -20,19 +20,19 @@ Bảng~\ref{tab:appendix-btxrd-storage} mô tả các thành phần liên quan �
 \begin{tabular}{|l|l|l|}
 \hline
 \textbf{Thành phần}                    & \textbf{Số tệp} & \textbf{Vai trò}                          \\ \hline
-\texttt{images/}          & 3,746           & Lưu ảnh X-quang đầu vào.                  \\ \hline
+\texttt{images/}          & 3.746           & Lưu ảnh X-quang đầu vào.                  \\ \hline
 \texttt{Annotations/} &
-  1,867 &
+  1.867 &
   \begin{tabular}[c]{@{}l@{}}Lưu chú thích JSON cho các ảnh có u; \\ không được sử dụng trong huấn luyện phân loại.\end{tabular} \\ \hline
 \texttt{reports/} &
-  3,746 &
+  3.746 &
   \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một văn bản dạng lâm sàng được \\ sinh ngoại tuyến từ siêu dữ liệu.\end{tabular} \\ \hline
 \texttt{dataset.csv} &
-  3,746 &
+  3.746 &
   \begin{tabular}[c]{@{}l@{}}Siêu dữ liệu gốc, gồm định danh ảnh,\\  nguồn thu thập, tuổi, giới tính, vị trí giải phẫu, \\ tư thế chụp và các cờ nhóm bệnh.\end{tabular} \\ \hline
-\texttt{btxrd-labels.csv} & 3,746           & Chứa định danh ảnh và 10 cột chỉ báo lớp. \\ \hline
+\texttt{btxrd-labels.csv} & 3.746           & Chứa định danh ảnh và 10 cột chỉ báo lớp. \\ \hline
 \texttt{btxrd-split.csv} &
-  3,746 &
+  3.746 &
   \begin{tabular}[c]{@{}l@{}}Ánh xạ mỗi ảnh vào \texttt{train}, \\ \texttt{validate} hoặc \texttt{test}.\end{tabular} \\ \hline
 \end{tabular}%
 }
@@ -40,7 +40,7 @@ Bảng~\ref{tab:appendix-btxrd-storage} mô tả các thành phần liên quan �
 \label{tab:appendix-btxrd-storage}
 \end{table}
 
-Bảng~\ref{tab:appendix-btxrd-image-properties} cho thấy dữ liệu ảnh có định dạng không hoàn toàn đồng nhất. Mặc dù tất cả tên tệp đều mang định dạng JPEG, kiểm tra nội dung tệp xác định 3,744 ảnh được mã hóa JPEG, một ảnh được mã hóa BMP và một ảnh được nhận diện là MPO; toàn bộ 3,746 ảnh vẫn giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, do đó ảnh thang xám và ảnh ba kênh đều tạo đầu vào ba kênh cho mô hình.
+Bảng~\ref{tab:appendix-btxrd-image-properties} cho thấy dữ liệu ảnh có định dạng không hoàn toàn đồng nhất. Mặc dù tất cả tên tệp đều mang định dạng JPEG, kiểm tra nội dung tệp xác định 3.744 ảnh được mã hóa JPEG, một ảnh được mã hóa BMP và một ảnh được nhận diện là MPO; toàn bộ 3.746 ảnh vẫn giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, do đó ảnh thang xám và ảnh ba kênh đều tạo đầu vào ba kênh cho mô hình.
 
 \begin{table}[H]
 \centering
@@ -51,12 +51,12 @@ Bảng~\ref{tab:appendix-btxrd-image-properties} cho thấy dữ liệu ảnh c�
 \begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
 \hline
 \textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
-Phần mở rộng & 3,719 tệp \texttt{.jpeg} và 27 tệp \texttt{.jpg}. \\ \hline
-Chế độ màu khi giải mã & 2,895 ảnh thang xám \texttt{L} và 851 ảnh \texttt{RGB}. \\ \hline
-Định dạng mã hóa & 3,744 JPEG, 1 BMP và 1 MPO. \\ \hline
-Chiều rộng & Nhỏ nhất 153 px, trung vị 1,612 px, lớn nhất 3,594 px. \\ \hline
-Chiều cao & Nhỏ nhất 311 px, trung vị 2,256 px, lớn nhất 4,881 px. \\ \hline
-Khả năng giải mã & 3,746/3,746 tệp được đọc thành công. \\ \hline
+Phần mở rộng & 3.719 tệp \texttt{.jpeg} và 27 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 2.895 ảnh thang xám \texttt{L} và 851 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3.744 JPEG, 1 BMP và 1 MPO. \\ \hline
+Chiều rộng & Nhỏ nhất 153 px, trung vị 1.612 px, lớn nhất 3.594 px. \\ \hline
+Chiều cao & Nhỏ nhất 311 px, trung vị 2.256 px, lớn nhất 4.881 px. \\ \hline
+Khả năng giải mã & 3.746/3.746 tệp được đọc thành công. \\ \hline
 \end{tabularx}%
 }
 \end{table}
@@ -77,7 +77,7 @@ Các lựa chọn ngẫu nhiên sử dụng phân phối đều trên từng ng�
 
 Với thứ tự hàng siêu dữ liệu được giữ cố định, mỗi lần chạy quy trình tạo ra cùng một lựa chọn mẫu câu. Văn bản được ghép theo thứ tự: thông tin người bệnh, lý do vào viện, diễn tiến bệnh, khám thực thể, tiền sử bản thân và thông tin thu nhận ảnh.
 
-Bảng~\ref{tab:appendix-btxrd-template-examples} liệt kê các mẫu câu đại diện cho từng ngân hàng. Các mẫu được giữ nguyên bằng tiếng Anh vì đây là ngôn ngữ của đầu vào văn bản BTXRD trong thí nghiệm với các ký hiệu "location", "duration" và "joint" lần lượt được thay bằng vị trí chính, khoảng thời gian được chọn và khớp liên quan
+Bảng~\ref{tab:appendix-btxrd-template-examples} liệt kê các mẫu câu đại diện cho từng ngân hàng. Các mẫu được giữ nguyên bằng tiếng Anh vì đây là ngôn ngữ của đầu vào văn bản BTXRD trong thí nghiệm với các ký hiệu "location", "duration" và "joint" lần lượt được thay bằng vị trí chính, khoảng thời gian được chọn và khớp liên quan.
 
 \begin{table}[H]
 \centering
@@ -153,14 +153,14 @@ Bảng~\ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \begin{tabular}{|l|l|l|}
 \hline
 \textbf{Thành phần}                    & \textbf{Số lượng} & \textbf{Vai trò}                          \\ \hline
-\texttt{images/}          & 3,293            & Lưu ảnh X-quang đầu vào.                  \\ \hline
+\texttt{images/}          & 3.293            & Lưu ảnh X-quang đầu vào.                  \\ \hline
 \texttt{reports/} &
-  3,293  &
+  3.293  &
   \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một bệnh sử lâm sàng \\ tương ứng của bệnh nhân.\end{tabular} \\ \hline
-\texttt{ctch-labels.csv} & 3,249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
+\texttt{ctch-labels.csv} & 3.249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
 \texttt{ctch-ood.csv} & 44           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
 \texttt{ctch-split.csv} &
-  3,249  &
+  3.249  &
   \begin{tabular}[c]{@{}l@{}}Ánh xạ mỗi ảnh vào \texttt{train}, \\ \texttt{validate} hoặc \texttt{test}.\end{tabular} \\ \hline
 \end{tabular}%
 }
@@ -168,7 +168,7 @@ Bảng~\ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \label{tab:appendix-ctch-storage}
 \end{table}
 
-Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3,293 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3,293 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
+Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3.293 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3.293 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
 
 \begin{table}[H]
 \centering
@@ -179,19 +179,19 @@ Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có
 \begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
 \hline
 \textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
-Phần mở rộng & 3,293 tệp \texttt{.jpg}. \\ \hline
-Chế độ màu khi giải mã & 3,293 ảnh \texttt{RGB}. \\ \hline
-Định dạng mã hóa & 3,293 JPEG. \\ \hline
-Chiều rộng & Nhỏ nhất 1,186 px, trung vị 1,213 px, lớn nhất 2,836 px. \\ \hline
-Chiều cao & Nhỏ nhất 1,213 px, trung vị 1,713 px, lớn nhất 2,880 px. \\ \hline
-Khả năng giải mã & 3,293/3,293 tệp được đọc thành công. \\ \hline
+Phần mở rộng & 3.293 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 3.293 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3.293 JPEG. \\ \hline
+Chiều rộng & Nhỏ nhất 1.186 px, trung vị 1.213 px, lớn nhất 2.836 px. \\ \hline
+Chiều cao & Nhỏ nhất 1.213 px, trung vị 1.713 px, lớn nhất 2.880 px. \\ \hline
+Khả năng giải mã & 3.293/3.293 tệp được đọc thành công. \\ \hline
 \end{tabularx}%
 }
 \end{table}
 
-Dữ liệu nguồn gồm 3,641 hồ sơ đã được lựa chọn sơ bộ từ các ca khám tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Mỗi hồ sơ liên kết thông tin bệnh án với một ảnh đại diện cho vị trí cần khảo sát. Quá trình sàng lọc tiếp tục loại những ca có nẹp, đinh hoặc phương tiện kết hợp xương vì các cấu trúc này có thể che khuất tổn thương và tạo dấu hiệu thị giác ngoài mục tiêu phân loại.
+Dữ liệu nguồn gồm 3.641 hồ sơ đã được lựa chọn sơ bộ từ các ca khám tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Mỗi hồ sơ liên kết thông tin bệnh án với một ảnh đại diện cho vị trí cần khảo sát. Quá trình sàng lọc tiếp tục loại những ca có nẹp, đinh hoặc phương tiện kết hợp xương vì các cấu trúc này có thể che khuất tổn thương và tạo dấu hiệu thị giác ngoài mục tiêu phân loại.
 
-Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo phạm vi nghiên cứu, đồng thời giúp đảm bảo chất lượng dữ liệu đầu vào là đồng nhất. Phần còn lại gồm 3,293 mẫu, được tách thành 3,249 mẫu trong phân phối phục vụ phân loại và 44 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
+Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo phạm vi nghiên cứu, đồng thời giúp đảm bảo chất lượng dữ liệu đầu vào là đồng nhất. Phần còn lại gồm 3.293 mẫu, được tách thành 3.249 mẫu trong phân phối phục vụ phân loại và 44 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
 
 \begin{table}[H]
 \centering
@@ -201,10 +201,10 @@ Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo
 \begin{tabular}{|l|r|}
 \hline
 \textbf{Giai đoạn} & \textbf{Số hồ sơ} \\ \hline
-Hồ sơ nguồn & 3,641 \\ \hline
+Hồ sơ nguồn & 3.641 \\ \hline
 Loại do có dụng cụ y tế & 348 \\ \hline
-Còn lại sau sàng lọc & 3,293 \\ \hline
-Quần thể trong phân phối & 3,249 \\ \hline
+Còn lại sau sàng lọc & 3.293 \\ \hline
+Quần thể trong phân phối & 3.249 \\ \hline
 Quần thể ngoài phân phối & 44 \\ \hline
 \end{tabular}%
 \end{table}
@@ -241,7 +241,7 @@ Trong bước tạo thư mục \texttt{reports/}, ba trường được giữ l�
 
 Quần thể đích của bộ dữ liệu CTCH gồm các bệnh nhân được chụp X-quang xương khớp nhằm hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương. Quần thể tiếp cận bao gồm các bệnh nhân có bệnh án và dữ liệu hình ảnh được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
 
-Dữ liệu ban đầu gồm 12,949 bệnh án. Tuy nhiên, các hồ sơ này chưa thể được sử dụng trực tiếp vì có sự khác biệt về loại dữ liệu cận lâm sàng, thời điểm thăm khám, tình trạng điều trị và mức độ phù hợp của nhãn. Quy trình sàng lọc được thực hiện tuần tự nhằm hình thành quần thể có ảnh X-quang, bệnh sử và nhãn phù hợp với phạm vi phân loại của nghiên cứu. Số lượng hồ sơ còn lại sau từng bước được trình bày trong Hình~\ref{fig:appendix-ctch-screening-flow}.
+Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này chưa thể được sử dụng trực tiếp vì có sự khác biệt về loại dữ liệu cận lâm sàng, thời điểm thăm khám, tình trạng điều trị và mức độ phù hợp của nhãn. Quy trình sàng lọc được thực hiện tuần tự nhằm hình thành quần thể có ảnh X-quang, bệnh sử và nhãn phù hợp với phạm vi phân loại của nghiên cứu. Số lượng hồ sơ còn lại sau từng bước được trình bày trong Hình~\ref{fig:appendix-ctch-screening-flow}.
 
 \begin{figure}[H]
 \centering
@@ -250,13 +250,13 @@ Dữ liệu ban đầu gồm 12,949 bệnh án. Tuy nhiên, các hồ sơ này c
     flowbox/.style={draw, rounded corners, align=left, text width=0.85\textwidth, inner sep=5pt, fill=gray!7},
     flowarrow/.style={-{Latex[length=2.4mm]}, semithick}
 ]
-\node[flowbox] (step1) {\textbf{1. Dữ liệu bệnh án ban đầu}\quad Tổng số: 12,949 hồ sơ};
-\node[flowbox, below=of step1] (step2) {\textbf{2. Các mẫu không có ảnh X-quang}\quad Còn lại: 9,142 hồ sơ};
-\node[flowbox, below=of step2] (step3) {\textbf{3. Loại các trường hợp đã mổ}\quad Còn lại: 7,900 hồ sơ};
-\node[flowbox, below=of step3] (step4) {\textbf{4. Loại các ca tái khám}\quad Còn lại: 7,070 hồ sơ};
-\node[flowbox, below=of step4] (step5) {\textbf{5. Chỉ giữ lần khám đầu tiên}\quad Còn lại: 6,575 hồ sơ};
-\node[flowbox, below=of step5] (step6) {\textbf{6. Lọc và gán nhãn thủ công}\quad Còn lại: 3,641 hồ sơ};
-\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3,293 hồ sơ};
+\node[flowbox] (step1) {\textbf{1. Dữ liệu bệnh án ban đầu}\quad Tổng số: 12.949 hồ sơ};
+\node[flowbox, below=of step1] (step2) {\textbf{2. Các mẫu không có ảnh X-quang}\quad Còn lại: 9.142 hồ sơ};
+\node[flowbox, below=of step2] (step3) {\textbf{3. Loại các trường hợp đã mổ}\quad Còn lại: 7.900 hồ sơ};
+\node[flowbox, below=of step3] (step4) {\textbf{4. Loại các ca tái khám}\quad Còn lại: 7.070 hồ sơ};
+\node[flowbox, below=of step4] (step5) {\textbf{5. Chỉ giữ lần khám đầu tiên}\quad Còn lại: 6.575 hồ sơ};
+\node[flowbox, below=of step5] (step6) {\textbf{6. Lọc và gán nhãn thủ công}\quad Còn lại: 3.641 hồ sơ};
+\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3.293 hồ sơ};
 \draw[flowarrow] (step1) -- (step2);
 \draw[flowarrow] (step2) -- (step3);
 \draw[flowarrow] (step3) -- (step4);
@@ -281,7 +281,7 @@ Các kết quả gồm phân loại khi sử dụng toàn bộ dữ liệu, phâ
 
 \section{Phân loại khi sử dụng toàn bộ dữ liệu huấn luyện}
 
-Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-full-shot-seeds-ctch} trình bày năm độ đo phân loại của từng mô hình tại từng hạt giống. Việc giữ đồng thời Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC và Macro-AP cho phép kiểm tra liệu thứ hạng trung bình trong Chương~\ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo cụ thể.
+Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-full-shot-seeds-ctch} trình bày năm độ đo phân loại của từng mô hình tại từng hạt giống. Việc giữ đồng thời Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC và Macro-AUPRC cho phép kiểm tra liệu thứ hạng trung bình trong Chương~\ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo cụ thể.
 
 \input{generated/appendix_seed_results/table_full_shot_per_seed}
 
@@ -294,7 +294,7 @@ Hình~\ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai m
 \label{fig:appendix-full-shot-f1-seeds}
 \end{figure}
 
-Hình~\ref{fig:full_shot_paired_f1_forest} trình bày trung bình chênh lệch Macro-F1 giữa XBone-Net và từng mô hình đối sánh tại cùng hạt giống; khoảng tin cậy được tính theo phân phối $t$ hai phía với hai bậc tự do. Trên BTXRD, khoảng ước lượng khi so với LoRA-BiomedCLIP nằm dưới mốc 0, còn khoảng khi so với các mô hình chỉ dùng ảnh nằm trên mốc 0. Trên CTCH, các khoảng khi so với hai mô hình chỉ dùng ảnh nằm trên mốc 0, trong khi các khoảng của nhóm mô hình ngôn ngữ trực quan và nhóm tinh chỉnh hiệu quả tham số cắt mốc 0. Vì chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên giữa các lần huấn luyện hiện có.
+Hình~\ref{fig:appendix-full-shot-f1-seeds} trình bày trung bình chênh lệch Macro-F1 giữa XBone-Net và từng mô hình đối sánh tại cùng hạt giống; khoảng tin cậy được tính theo phân phối $t$ hai phía với hai bậc tự do. Trên BTXRD, khoảng ước lượng khi so với LoRA-BiomedCLIP nằm dưới mốc 0, còn khoảng khi so với các mô hình chỉ dùng ảnh nằm trên mốc 0. Trên CTCH, các khoảng khi so với hai mô hình chỉ dùng ảnh nằm trên mốc 0, trong khi các khoảng của nhóm mô hình ngôn ngữ trực quan và nhóm tinh chỉnh hiệu quả tham số cắt mốc 0. Vì chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên giữa các lần huấn luyện hiện có.
 
 \section{Phân loại trong trường hợp mẫu học hạn chế}
 
@@ -310,38 +310,38 @@ Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net
 
 Các khoảng trong Hình~\ref{fig:ablation_forest_accuracy}--\ref{fig:ablation_forest_auprc_macro} được tính bằng 10.000 lần tái lấy mẫu bắt cặp; hai cận là phân vị $2{,}5\%$ và $97{,}5\%$ của phân bố chênh lệch. Trong mỗi lần, người bệnh được tái lấy mẫu theo cụm và phân tầng theo lớp, đồng thời ba hạt giống huấn luyện được tái lấy mẫu có hoàn lại. Cùng một mẫu tái lập được áp dụng cho cấu hình tham chiếu và biến thể. Thành phần biến thiên theo hạt giống chỉ dựa trên ba giá trị quan sát, vì vậy các khoảng được diễn giải theo hướng mô tả và thăm dò.
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_accuracy.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
 \label{fig:ablation_forest_accuracy}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_balanced_accuracy.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Balanced Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
 \label{fig:ablation_forest_balanced_accuracy}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_f1_macro.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Macro-F1 giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
 \label{fig:ablation_forest_f1_macro}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auroc_macro.png}
 \caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUROC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
 \label{fig:ablation_forest_auroc_macro}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auprc_macro.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AP giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
+\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUPRC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
 \label{fig:ablation_forest_auprc_macro}
 \end{figure}
 

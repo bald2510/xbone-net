@@ -1,15 +1,8 @@
-"""Generate requirements.txt from direct imports in the XBone-Net repository.
+"""Cung cấp công cụ nghiên cứu generate requirement cho XBone-Net.
 
-Unlike ``pip freeze``, this script excludes transitive packages that the project
-does not import.  It scans Python files with the AST, maps import names to their
-installed distributions, adds documented runtime-only dependencies, and pins
-versions from the active Python environment.
-
-Run this script with the same environment used to train XBone-Net::
-
-    python tools/generate_requirement.py
-
-Use ``--check`` in CI to fail when requirements.txt is out of date.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -39,9 +32,9 @@ DEFAULT_EXCLUDED_DIRS = {
     "tmp_trainer",
 }
 
-# Import names and PyPI distribution names are not always identical.  The
-# evaluate override is also intentional: evaluate.py is a local entry point,
-# while src/utils/metrics.py explicitly imports Hugging Face's evaluate package.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# trong khi src/utils/metrics.py nhập trực tiếp gói evaluate của Hugging Face.
 MODULE_TO_DISTRIBUTION = {
     "PIL": "Pillow",
     "evaluate": "evaluate",
@@ -52,8 +45,8 @@ MODULE_TO_DISTRIBUTION = {
     "yaml": "PyYAML",
 }
 
-# Some libraries are loaded indirectly at runtime, so an AST-only scan cannot
-# reliably map them to their independently distributed packages.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 RUNTIME_DISTRIBUTIONS = {
     "accelerate": "required by transformers.Trainer at runtime",
     "deep-translator": (
@@ -64,10 +57,10 @@ RUNTIME_DISTRIBUTIONS = {
     ),
 }
 
-# MedCLIP's package initializer and pretrained-weight loader use these modules,
-# although XBone-Net does not import them directly. They must be installed when
-# MedCLIP is discovered, because MedCLIP itself is installed with --no-deps (see
-# MANUAL_DISTRIBUTIONS below).
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 CONDITIONAL_RUNTIME_DISTRIBUTIONS = {
     "medclip": {
         "nltk": "imported by MedCLIPProcessor",
@@ -77,11 +70,11 @@ CONDITIONAL_RUNTIME_DISTRIBUTIONS = {
     }
 }
 
-# Upstream MedCLIP 0.0.3 declares transformers<=4.24.0, while XBone-Net uses a
-# modern Transformers release and applies its compatibility shim in
-# src/models/backbone/medclip_foundation.py. Listing both packages normally
-# makes pip's resolver fail, so keep MedCLIP visible in the generated file but
-# install it separately without its stale dependency metadata.
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+# Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+# Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
 MANUAL_DISTRIBUTIONS = {
     "medclip": "upstream metadata conflicts with the project's Transformers version",
 }
@@ -93,12 +86,36 @@ HEADER = (
 
 
 def normalize_distribution_name(name: str) -> str:
-    """Return the PEP 503 comparison form of a distribution name."""
+    """Chuẩn hóa distribution name cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def iter_python_files(root: Path, excluded_dirs: set[str]) -> Iterable[Path]:
-    """Yield repository Python files without traversing data/output trees."""
+    """Thực hiện bước iter python files trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    root : Path
+        Đường dẫn tài nguyên được sử dụng.
+    excluded_dirs : set[str]
+        Giá trị ``excluded_dirs`` được sử dụng trong phép xử lý.
+
+    Yields
+    ------
+    Iterable[Path]
+        Phần tử tiếp theo do bộ sinh cung cấp.
+    """
     for current_dir, dir_names, file_names in os.walk(root):
         dir_names[:] = sorted(name for name in dir_names if name not in excluded_dirs)
         current_path = Path(current_dir)
@@ -108,7 +125,20 @@ def iter_python_files(root: Path, excluded_dirs: set[str]) -> Iterable[Path]:
 
 
 def discover_local_modules(root: Path, excluded_dirs: set[str]) -> set[str]:
-    """Find top-level modules and namespace-package directories in the project."""
+    """Thực hiện bước discover local modules trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    root : Path
+        Đường dẫn tài nguyên được sử dụng.
+    excluded_dirs : set[str]
+        Giá trị ``excluded_dirs`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    set[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     local_modules = {path.stem for path in root.glob("*.py")}
     for child in root.iterdir():
         if child.is_dir() and child.name not in excluded_dirs:
@@ -118,7 +148,25 @@ def discover_local_modules(root: Path, excluded_dirs: set[str]) -> set[str]:
 
 
 def scan_imports(root: Path, excluded_dirs: set[str]) -> dict[str, set[Path]]:
-    """Collect absolute top-level import names and the files using each one."""
+    """Thực hiện bước scan imports trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    root : Path
+        Đường dẫn tài nguyên được sử dụng.
+    excluded_dirs : set[str]
+        Giá trị ``excluded_dirs`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, set[Path]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     imports: dict[str, set[Path]] = {}
     syntax_errors: list[str] = []
 
@@ -146,7 +194,18 @@ def scan_imports(root: Path, excluded_dirs: set[str]) -> dict[str, set[Path]]:
 
 
 def canonical_distribution_name(name: str) -> str:
-    """Use the installed package metadata's canonical display name when possible."""
+    """Thực hiện bước canonical distribution name trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     try:
         return metadata.metadata(name).get("Name", name)
     except metadata.PackageNotFoundError:
@@ -157,7 +216,20 @@ def resolve_distributions(
     imports: dict[str, set[Path]],
     local_modules: set[str],
 ) -> tuple[dict[str, set[str]], list[str]]:
-    """Map imported modules to distributions and return unresolved import names."""
+    """Xác định distributions cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    imports : dict[str, set[Path]]
+        Giá trị ``imports`` được sử dụng trong phép xử lý.
+    local_modules : set[str]
+        Giá trị ``local_modules`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[dict[str, set[str]], list[str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     package_map = metadata.packages_distributions()
     resolved: dict[str, set[str]] = {}
     unresolved: list[str] = []
@@ -174,9 +246,9 @@ def resolve_distributions(
             unresolved.append(module)
             continue
 
-        # Multiple distributions can expose the same import namespace. Select
-        # an installed candidate deterministically and require an override when
-        # the ambiguity cannot be resolved.
+        # Bước hỗ trợ để xác định distributions cho bước xử lý hiện tại.
+        # Bước hỗ trợ để xác định distributions cho bước xử lý hiện tại.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         installed = []
         for candidate in candidates:
             try:
@@ -214,7 +286,20 @@ def resolve_distributions(
 
 
 def render_requirements(distributions: Iterable[str], pin_versions: bool) -> str:
-    """Render deterministic requirements.txt content."""
+    """Kết xuất requirements cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    distributions : Iterable[str]
+        Giá trị ``distributions`` được sử dụng trong phép xử lý.
+    pin_versions : bool
+        Giá trị ``pin_versions`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     distributions = sorted(distributions, key=normalize_distribution_name)
     manual = [
         name
@@ -226,9 +311,9 @@ def render_requirements(distributions: Iterable[str], pin_versions: bool) -> str
     lines = []
     for distribution in installable:
         if pin_versions:
-            # CUDA/CPU wheel variants use local labels such as ``+cu128``.
-            # Pin the public version and let the selected package index decide
-            # the platform build, so the file also works with another CUDA ABI.
+            # Chọn thiết bị và độ chính xác tính toán phù hợp.
+            # Bước hỗ trợ để kết xuất requirements cho bước xử lý hiện tại.
+            # Chuẩn bị và ghi tài nguyên đầu ra theo định dạng yêu cầu.
             version = metadata.version(distribution).split("+", 1)[0]
             lines.append(f"{distribution}=={version}")
         else:
@@ -256,7 +341,18 @@ def render_requirements(distributions: Iterable[str], pin_versions: bool) -> str
 
 
 def existing_requirement_names(path: Path) -> set[str]:
-    """Read distribution names from an existing simple requirements file."""
+    """Thực hiện bước existing requirement names trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    set[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not path.exists():
         return set()
     names = set()
@@ -271,6 +367,13 @@ def existing_requirement_names(path: Path) -> set[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Xây dựng parser cho bước xử lý hiện tại.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     default_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
         description="Generate requirements.txt from direct repository imports."
@@ -286,6 +389,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Returns
+    -------
+    int
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     args = build_parser().parse_args()
     root = args.root.resolve()
     output = (args.output or root / "requirements.txt").resolve()

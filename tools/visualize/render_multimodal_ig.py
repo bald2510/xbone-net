@@ -1,4 +1,9 @@
-"""Render image- and text-token Integrated Gradients for one CTCH sample."""
+"""Tạo bảng hoặc hình trực quan bằng công cụ render multimodal ig.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -35,6 +40,13 @@ TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
 
 
 def parse_args() -> argparse.Namespace:
+    """Phân tích các tham số dòng lệnh.
+
+    Returns
+    -------
+    argparse.Namespace
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-id", required=True)
     parser.add_argument("--seed", type=int, default=42)
@@ -60,6 +72,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None:
+    """Vẽ token attribution cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    tokens : list[str]
+        Giá trị ``tokens`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    """
     axis.set_axis_off()
     axis.set_title(
         "(d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử\n"
@@ -129,6 +152,19 @@ def _draw_faithfulness_curve(
     *,
     unit: str,
 ) -> None:
+    """Vẽ faithfulness curve cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    title : str
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    values : dict
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    unit : str
+        Giá trị ``unit`` được sử dụng trong phép xử lý.
+    """
     fractions = 100.0 * np.asarray(values["fractions"])
     axis.plot(
         fractions,
@@ -156,6 +192,15 @@ def _draw_faithfulness_curve(
 
 
 def _draw_contribution(axis, values: dict[str, float]) -> None:
+    """Vẽ contribution cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    values : dict[str, float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    """
     labels = ["Ảnh toàn cục", "Ảnh cục bộ", "Bệnh sử lâm sàng"]
     keys = ["global_visual", "local_visual", "clinical_text"]
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
@@ -182,6 +227,15 @@ def _draw_contribution(axis, values: dict[str, float]) -> None:
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     args = parse_args()
     split = pd.read_csv(PROJECT_ROOT / "data" / "CTCH" / "ctch-split.csv")
     if args.image_id not in set(split["image_id"].astype(str)):
@@ -236,9 +290,9 @@ def main() -> None:
 
     global_overlay = render_global_ig_overlay(image, result)
     local_overlay = render_local_ig_overlay(image, result)
-    # A two-by-two layout keeps every panel legible when the figure is placed on
-    # an A4 page.  In particular, the clinical-text panel receives half of the
-    # page width instead of one quarter as in the former horizontal layout.
+    # Tạo thành phần trực quan cho kết quả phân tích.
+    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     figure = plt.figure(figsize=(12.5, 10.0), facecolor="white")
     grid = figure.add_gridspec(
         2,

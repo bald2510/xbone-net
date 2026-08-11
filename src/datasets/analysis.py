@@ -1,4 +1,9 @@
-"""Datasets used only by the locked CTCH post-hoc analysis pipeline."""
+"""Cung cấp thành phần dữ liệu analysis cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +23,18 @@ from .high_resolution import prepare_global_image, prepare_high_resolution_input
 
 
 def _file_issue(path: Path) -> Optional[str]:
-    """Return why a required file cannot be read, or ``None`` when usable."""
+    """Thực hiện bước file issue trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Optional[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not path.is_file():
         return "missing"
     try:
@@ -30,12 +46,11 @@ def _file_issue(path: Path) -> Optional[str]:
 
 
 class CTCHOODDataset(Dataset):
-    """CTCH semantic-OOD manifest with strict file-coverage validation.
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``CTCHOODDataset``.
 
-    OOD labels are intentionally ``-1`` because the 22-way ID classifier has no
-    valid target class for these samples.  By default every manifest row must
-    have an image plus both report files.  ``allow_missing`` is an explicit
-    exploratory mode that filters incomplete rows and exposes coverage metadata.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -52,6 +67,42 @@ class CTCHOODDataset(Dataset):
         allow_missing: bool = False,
         **_: Any,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        img_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        xray_report_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        clinical_report_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_manifest_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        split : str, optional
+            Giá trị ``split`` được sử dụng trong phép xử lý.
+        transform : object, optional
+            Giá trị ``transform`` được sử dụng trong phép xử lý.
+        tokenizer : object, optional
+            Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+        high_res : Optional[dict]
+            Giá trị ``high_res`` được sử dụng trong phép xử lý.
+        preprocess : Optional[dict]
+            Giá trị ``preprocess`` được sử dụng trong phép xử lý.
+        allow_missing : bool, optional
+            Giá trị ``allow_missing`` được sử dụng trong phép xử lý.
+        **_ : Any
+            Giá trị ``_`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        FileNotFoundError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if split not in {"test", "ood"}:
             raise ValueError("CTCHOODDataset supports only split='test' or 'ood'.")
         self.img_dir = str(img_dir)
@@ -115,15 +166,48 @@ class CTCHOODDataset(Dataset):
             raise RuntimeError("No complete CTCH OOD samples are available.")
 
     def __len__(self) -> int:
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.df)
 
     def _report(self, directory: str, image_id: str) -> torch.Tensor | str:
+        """Thực hiện bước báo cáo trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        directory : str
+            Giá trị ``directory`` được sử dụng trong phép xử lý.
+        image_id : str
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+
+        Returns
+        -------
+        torch.Tensor | str
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         path = Path(directory) / f"{Path(image_id).stem}.txt"
         text = path.read_text(encoding="utf-8").strip().lower()
         text = text or "no clinical information available."
         return self.tokenizer([text]).squeeze(0) if self.tokenizer else text
 
     def __getitem__(self, index: int) -> dict[str, Any]:
+        """Thực hiện bước getitem trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        index : int
+            Chỉ mục của phần tử cần xử lý.
+
+        Returns
+        -------
+        dict[str, Any]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         row = self.df.iloc[index]
         image_id = str(row["image_id"])
         image = Image.open(Path(self.img_dir) / image_id).convert("RGB")
@@ -165,7 +249,27 @@ def cross_class_derangement(
     labels: np.ndarray,
     seed: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return a deterministic one-to-one report permutation across classes."""
+    """Thực hiện bước cross class derangement trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     labels = np.asarray(labels).reshape(-1)
     if labels.size < 2:
         raise ValueError("Cross-class mismatch requires at least two samples.")
@@ -193,7 +297,27 @@ def same_class_derangement(
     labels: np.ndarray,
     seed: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Derange reports within class, excluding mathematically impossible singletons."""
+    """Thực hiện bước same class derangement trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     labels = np.asarray(labels).reshape(-1)
     rng = np.random.default_rng(seed)
     recipients, donors = [], []
@@ -216,7 +340,12 @@ def same_class_derangement(
 
 
 class ReportMismatchDataset(Dataset):
-    """Pair each CTCH test image with a deterministic donor report."""
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``ReportMismatchDataset``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(
         self,
@@ -224,6 +353,24 @@ class ReportMismatchDataset(Dataset):
         mode: str,
         seed: int,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Dữ liệu đầu vào của bước xử lý.
+        mode : str
+            Phương pháp hoặc chế độ xử lý được chọn.
+        seed : int
+            Hạt giống phục vụ khả năng tái lập.
+
+        Raises
+        ------
+        TypeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if not hasattr(dataset, "df"):
             raise TypeError("ReportMismatchDataset requires a dataset with a DataFrame.")
         self.dataset = dataset
@@ -242,9 +389,28 @@ class ReportMismatchDataset(Dataset):
         self.mode = mode
 
     def __len__(self) -> int:
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.recipient_indices)
 
     def __getitem__(self, index: int) -> dict[str, Any]:
+        """Thực hiện bước getitem trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        index : int
+            Chỉ mục của phần tử cần xử lý.
+
+        Returns
+        -------
+        dict[str, Any]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         recipient = int(self.recipient_indices[index])
         donor = int(self.donor_indices[index])
         sample = MetadataDataset._as_dict(self.dataset[recipient])

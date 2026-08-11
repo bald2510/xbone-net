@@ -1,4 +1,9 @@
-"""BiomedCLIP backbone with global and high-resolution local patch tokens."""
+"""Cung cấp bộ mã hóa nền tảng biomedclip cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,24 @@ from open_clip import create_model_and_transforms, get_tokenizer
 
 
 class _ResamplerLayer(nn.Module):
+    """Đóng gói hành vi của thành phần ``_ResamplerLayer``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
     def __init__(self, dim: int, num_heads: int, dropout: float):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dim : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_heads : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        dropout : float
+            Giá trị ``dropout`` được sử dụng trong phép xử lý.
+        """
         super().__init__()
         self.cross_attention = nn.MultiheadAttention(
             dim,
@@ -36,6 +58,22 @@ class _ResamplerLayer(nn.Module):
         local_tokens: torch.Tensor,
         key_padding_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        queries : torch.Tensor
+            Giá trị ``queries`` được sử dụng trong phép xử lý.
+        local_tokens : torch.Tensor
+            Chuỗi token hoặc biểu diễn token đầu vào.
+        key_padding_mask : torch.Tensor
+            Tên hoặc khóa định danh của giá trị.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor]
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         attended, weights = self.cross_attention(
             queries,
             local_tokens,
@@ -50,14 +88,28 @@ class _ResamplerLayer(nn.Module):
 
 
 class GlobalGuidedAttentionPool(nn.Module):
-    """Pool local visual tokens with a global-conditioned attention gate.
+    """Đóng gói hành vi của thành phần ``GlobalGuidedAttentionPool``.
 
-    The final scorer is initialized to zero so the module starts as an exact
-    masked mean.  Training can then learn to emphasize informative local tokens
-    without introducing an abrupt change at initialization.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, dim: int = 512, hidden_dim: int = 128) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        hidden_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         if dim < 1 or hidden_dim < 1:
             raise ValueError("dim and hidden_dim must be positive.")
@@ -73,6 +125,27 @@ class GlobalGuidedAttentionPool(nn.Module):
         local_features: torch.Tensor,
         valid_mask: torch.Tensor,
     ) -> torch.Tensor:
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        global_feature : torch.Tensor
+            Biểu diễn đặc trưng cần xử lý.
+        local_features : torch.Tensor
+            Giá trị ``local_features`` được sử dụng trong phép xử lý.
+        valid_mask : torch.Tensor
+            Giá trị ``valid_mask`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if global_feature.ndim != 2 or local_features.ndim != 3:
             raise ValueError(
                 "Attention pooling expects global [B,D] and local [B,N,D] features."
@@ -98,14 +171,11 @@ class GlobalGuidedAttentionPool(nn.Module):
 
 
 class SpatialTokenResampler(nn.Module):
-    """Adapt local patch tokens to a bounded coordinate-aware visual sequence.
+    """Đóng gói hành vi của thành phần ``SpatialTokenResampler``.
 
-    ``passthrough`` is the parameter-efficient path used with fixed-budget
-    sparse-focal views. It preserves every selected local token and therefore
-    avoids relearning an information bottleneck from a few labelled examples.
-    ``learned_queries`` remains available for experiments with larger or
-    variable token sets. The final token-to-source mapping is retained so fused
-    attention can later be projected back to source-image coordinates.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -119,6 +189,32 @@ class SpatialTokenResampler(nn.Module):
         aggregation: str = "learned_queries",
         spatial_coordinate_scale_init: float = 0.1,
     ):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_tokens : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_heads : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        depth : int, optional
+            Giá trị ``depth`` được sử dụng trong phép xử lý.
+        dropout : float, optional
+            Giá trị ``dropout`` được sử dụng trong phép xử lý.
+        use_spatial_coordinates : bool, optional
+            Giá trị ``use_spatial_coordinates`` được sử dụng trong phép xử lý.
+        aggregation : str, optional
+            Giá trị ``aggregation`` được sử dụng trong phép xử lý.
+        spatial_coordinate_scale_init : float, optional
+            Giá trị ``spatial_coordinate_scale_init`` được sử dụng trong phép xử lý.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         if num_tokens < 1 or depth < 1:
             raise ValueError("num_tokens and depth must be positive.")
@@ -143,10 +239,10 @@ class SpatialTokenResampler(nn.Module):
             nn.GELU(),
             nn.Linear(spatial_dim, dim),
         )
-        # A normalized spatial embedding previously had an initial norm several
-        # times larger than a unit-normalized BiomedCLIP token. A scalar tanh
-        # gate keeps coordinates bounded while still allowing training to tune
-        # their contribution.
+        # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
+        # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+        # Bước hỗ trợ để khởi tạo trạng thái.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         self.spatial_gate = nn.Parameter(
             torch.tensor(float(spatial_coordinate_scale_init))
         )
@@ -168,6 +264,29 @@ class SpatialTokenResampler(nn.Module):
         local_mask: torch.Tensor,
         local_boxes: torch.Tensor,
     ) -> torch.Tensor:
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        global_feature : torch.Tensor
+            Biểu diễn đặc trưng cần xử lý.
+        local_tokens : torch.Tensor
+            Chuỗi token hoặc biểu diễn token đầu vào.
+        local_mask : torch.Tensor
+            Giá trị ``local_mask`` được sử dụng trong phép xử lý.
+        local_boxes : torch.Tensor
+            Giá trị ``local_boxes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if local_tokens.ndim != 3:
             raise ValueError("local_tokens must have shape [B,N,D].")
         if local_mask.shape != local_tokens.shape[:2]:
@@ -254,9 +373,28 @@ class SpatialTokenResampler(nn.Module):
 
 
 class BiomedCLIPFoundation(nn.Module):
-    """BiomedCLIP global encoder plus a configurable local-tile encoder."""
+    """Bao bọc mô hình nền tảng bằng lớp ``BiomedCLIPFoundation``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, freeze_base: bool = True, **kwargs):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        freeze_base : bool, optional
+            Giá trị ``freeze_base`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         super().__init__()
         model_name = "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
         self.model, _, self.preprocess = create_model_and_transforms(model_name)
@@ -340,6 +478,13 @@ class BiomedCLIPFoundation(nn.Module):
 
     @property
     def tokenizer_obj(self):
+        """Thực hiện bước tokenizer obj trong quy trình hiện tại.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return self.tokenizer
 
     def _encode_local_text(
@@ -347,6 +492,25 @@ class BiomedCLIPFoundation(nn.Module):
         input_ids: torch.Tensor,
         attention_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
+        """Mã hóa local văn bản cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        input_ids : torch.Tensor
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : Optional[torch.Tensor]
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         text_module = getattr(self.model, "text", getattr(self.model, "text_model", None))
         if text_module is None:
             raise RuntimeError("BiomedCLIP text module was not found.")
@@ -367,7 +531,27 @@ class BiomedCLIPFoundation(nn.Module):
         patch_tokens: torch.Tensor,
         pool_shape: tuple[int, int],
     ) -> torch.Tensor:
-        """Deterministically pool a square ViT patch grid to rows x columns."""
+        """Thực hiện bước pool spatial patch các token trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        patch_tokens : torch.Tensor
+            Giá trị ``patch_tokens`` được sử dụng trong phép xử lý.
+        pool_shape : tuple[int, int]
+            Giá trị ``pool_shape`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if patch_tokens.ndim != 3 or patch_tokens.size(1) < 2:
             raise ValueError(
                 "BiomedCLIP visual tokens must have shape [B,1+P,D]."
@@ -385,7 +569,18 @@ class BiomedCLIPFoundation(nn.Module):
         return pooled
 
     def _pool_patch_tokens(self, patch_tokens: torch.Tensor) -> torch.Tensor:
-        """Keep the semantic tile CLS and pool its 14x14 patch grid to GxG."""
+        """Thực hiện bước pool patch các token trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        patch_tokens : torch.Tensor
+            Giá trị ``patch_tokens`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         cls_token = patch_tokens[:, :1, :]
         pooled = self._pool_spatial_patch_tokens(
             patch_tokens,
@@ -396,7 +591,18 @@ class BiomedCLIPFoundation(nn.Module):
         return pooled
 
     def _encode_local_tile_chunk(self, tile_chunk: torch.Tensor) -> torch.Tensor:
-        """Encode one tile chunk while preserving gradients when requested."""
+        """Mã hóa local tile chunk cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        tile_chunk : torch.Tensor
+            Giá trị ``tile_chunk`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         patch_features = self.model.visual.trunk.forward_features(tile_chunk)
         projected = self.model.visual.head(patch_features)
         return self._pool_patch_tokens(projected)
@@ -406,7 +612,25 @@ class BiomedCLIPFoundation(nn.Module):
         valid_tiles: torch.Tensor,
         track_gradients: bool,
     ) -> torch.Tensor:
-        """Encode valid tiles in bounded chunks with optional recomputation."""
+        """Mã hóa valid local tiles cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        valid_tiles : torch.Tensor
+            Giá trị ``valid_tiles`` được sử dụng trong phép xử lý.
+        track_gradients : bool
+            Giá trị ``track_gradients`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if valid_tiles.size(0) == 0:
             raise ValueError("At least one valid high-resolution tile is required.")
 
@@ -429,7 +653,13 @@ class BiomedCLIPFoundation(nn.Module):
         return torch.cat(encoded_chunks, dim=0)
 
     def _should_track_local_tile_gradients(self) -> bool:
-        """Enable local gradients only when training and visual weights can update."""
+        """Thực hiện bước should track local tile gradients trong quy trình hiện tại.
+
+        Returns
+        -------
+        bool
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         if not self.local_tile_grad_enabled or not self.training:
             return False
         if not torch.is_grad_enabled():
@@ -440,7 +670,18 @@ class BiomedCLIPFoundation(nn.Module):
         )
 
     def _expand_local_boxes(self, tile_boxes: torch.Tensor) -> torch.Tensor:
-        """Match tile boxes to the optional CLS plus GxG pooled-token layout."""
+        """Thực hiện bước expand local boxes trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        tile_boxes : torch.Tensor
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         grid = self.local_pool_grid
         left, top, right, bottom = tile_boxes.unbind(dim=-1)
         width = right - left
@@ -470,7 +711,24 @@ class BiomedCLIPFoundation(nn.Module):
         device: torch.device,
         dtype: torch.dtype,
     ) -> torch.Tensor:
-        """Create normalized boxes for a deterministic pooled token grid."""
+        """Thực hiện bước grid boxes trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        batch_size : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        pool_shape : tuple[int, int]
+            Giá trị ``pool_shape`` được sử dụng trong phép xử lý.
+        device : torch.device
+            Thiết bị thực thi phép tính.
+        dtype : torch.dtype
+            Giá trị ``dtype`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         rows, columns = pool_shape
         boxes = []
         for row in range(rows):
@@ -488,13 +746,22 @@ class BiomedCLIPFoundation(nn.Module):
         )
 
     def _encode_single_view_image(self, images: torch.Tensor) -> torch.Tensor:
-        """Encode one global view into the same fixed visual-token budget as XBone.
+        """Mã hóa single view ảnh cho bước xử lý hiện tại.
 
-        The no-high-resolution and letterbox ablations use one encoder pass and
-        deterministic 2-D average pooling over the pretrained ViT patch grid.
-        They therefore expose exactly ``1 + num_visual_tokens`` tokens to the
-        fusion module, matching the proposed model without inventing local tile
-        views or a second visual encoder path.
+        Parameters
+        ----------
+        images : torch.Tensor
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         if self.single_view_pool_shape is None:
             raise RuntimeError("single_view_pool_shape is not configured.")
@@ -560,6 +827,29 @@ class BiomedCLIPFoundation(nn.Module):
         tile_mask: Optional[torch.Tensor],
         tile_boxes: Optional[torch.Tensor],
     ) -> torch.Tensor:
+        """Mã hóa high res ảnh cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        images : torch.Tensor
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        tile_values : torch.Tensor
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : Optional[torch.Tensor]
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : Optional[torch.Tensor]
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if not hasattr(self, "visual_resampler"):
             raise RuntimeError("High-resolution tiles require num_visual_tokens > 0.")
 
@@ -601,9 +891,9 @@ class BiomedCLIPFoundation(nn.Module):
         local_tokens = F.normalize(local_tokens, dim=-1)
 
         if self.explain_mode:
-            # Explanation methods operate on the exact frozen local embeddings
-            # consumed during inference. Gradients start at these embeddings, so
-            # the large frozen tile encoder does not need to retain its graph.
+            # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
+            # Thu thập và xử lý biểu diễn đặc trưng của mô hình.
+            # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
             local_tokens = local_tokens.detach().requires_grad_(True)
         self.last_global_feature = global_feature.detach()
         self.last_local_tokens = (
@@ -647,12 +937,22 @@ class BiomedCLIPFoundation(nn.Module):
         self,
         image_features: torch.Tensor,
     ) -> torch.Tensor:
-        """Build one Phase-1 image vector without diluting the global token.
+        """Thực hiện bước pool contrastive ảnh các đặc trưng trong quy trình hiện tại.
 
-        A uniform mean gives the pretrained global feature weight ``1/T`` and
-        lets newly initialized local modules dominate few-shot alignment. This
-        residual summary keeps the global embedding as the anchor and adds a
-        bounded amount of local evidence.
+        Parameters
+        ----------
+        image_features : torch.Tensor
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         if image_features.ndim == 2:
             return F.normalize(image_features, dim=-1)
@@ -709,6 +1009,30 @@ class BiomedCLIPFoundation(nn.Module):
         tile_boxes: Optional[torch.Tensor] = None,
         **kwargs,
     ):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        images : torch.Tensor
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : Optional[torch.Tensor]
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : Optional[torch.Tensor]
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        tile_values : Optional[torch.Tensor]
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : Optional[torch.Tensor]
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : Optional[torch.Tensor]
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         del kwargs
         return_local = bool(self.return_local)
         self.last_image_key_padding_mask = None

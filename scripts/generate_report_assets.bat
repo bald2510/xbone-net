@@ -4,13 +4,13 @@ chcp 65001 >nul
 
 rem Rebuild the report-ready Chapter 4 tables and figures from current results.
 rem Usage:
-rem   tools\visualize\generate_report_assets.bat
-rem   tools\visualize\generate_report_assets.bat --refresh-statistics
+rem   scripts\generate_report_assets.bat
+rem   scripts\generate_report_assets.bat --refresh-statistics
 
-cd /d "%~dp0\..\.."
+cd /d "%~dp0\.."
 
-set "PYTHON=C:\Users\lebat\miniconda3\envs\Thesis\python.exe"
-if not exist "%PYTHON%" set "PYTHON=python"
+set "PYTHON=%XBONE_PYTHON%"
+if not defined PYTHON set "PYTHON=python"
 
 set "VIS=tools\visualize\results.py"
 set "SUMMARY=results\summary"
@@ -264,14 +264,14 @@ echo [4/6] Tao hinh Integrated Gradients...
   --output-dir "%ATTN%" ^
   --dpi 300
 
-"%PYTHON%" tools\demo\render_multimodal_ig.py ^
+"%PYTHON%" tools\visualize\render_multimodal_ig.py ^
   --image-id 2842_img-33484-00001.jpg ^
   --experiment ctch/proposed/ours_xbone_net ^
   --seed 42 ^
   --ig-steps 24 ^
   --output "%ATTN%\attention_case_2842_img-33484-00001.png"
 
-"%PYTHON%" tools\demo\render_multimodal_ig.py ^
+"%PYTHON%" tools\visualize\render_multimodal_ig.py ^
   --image-id 3021_img-84263-00001.jpg ^
   --experiment ctch/proposed/ours_xbone_net ^
   --seed 42 ^
@@ -440,7 +440,7 @@ exit /b 0
 
 :missing_statistics
 echo [ERROR] Chua co ket qua kiem dinh thong ke.
-echo Chay lai: tools\visualize\generate_report_assets.bat --refresh-statistics
+echo Chay lai: scripts\generate_report_assets.bat --refresh-statistics
 exit /b 1
 
 :error

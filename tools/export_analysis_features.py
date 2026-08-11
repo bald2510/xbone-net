@@ -1,4 +1,9 @@
-"""Export locked CTCH-proposed features for OOD and explainability analysis."""
+"""Cung cấp công cụ nghiên cứu export analysis features cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -41,10 +46,36 @@ SCENARIOS = (
 
 
 def _plain(value: Any) -> Any:
+    """Thực hiện bước plain trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return OmegaConf.to_container(value, resolve=True) if OmegaConf.is_config(value) else value
 
 
 def _ctch_dataset(loaded, split: str) -> CTCHDataset:
+    """Thực hiện bước ctch dữ liệu trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    CTCHDataset
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     params = dict(_plain(loaded.cfg.dataset.params))
     return CTCHDataset(
         split=split,
@@ -55,7 +86,23 @@ def _ctch_dataset(loaded, split: str) -> CTCHDataset:
 
 
 def _btxrd_coverage(dataset: BTXRDDataset) -> dict[str, Any]:
-    """Validate BTXRD test inputs before domain-OOD feature extraction."""
+    """Thực hiện bước btxrd coverage trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    dataset : BTXRDDataset
+        Dữ liệu đầu vào của bước xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     image_root = Path(dataset.img_dir)
     xray_root = Path(dataset.xray_dir)
     clinical_root = Path(dataset.clinical_dir)
@@ -101,6 +148,29 @@ def build_scenario_dataset(
     allow_incomplete_ood: bool,
     mismatch_seed: int,
 ):
+    """Xây dựng scenario dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    allow_incomplete_ood : bool
+        Giá trị ``allow_incomplete_ood`` được sử dụng trong phép xử lý.
+    mismatch_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if scenario in {"ctch_train", "ctch_val", "ctch_test"}:
         split = scenario.removeprefix("ctch_")
         return MetadataDataset(_ctch_dataset(loaded, split), scenario), {}
@@ -173,6 +243,22 @@ def build_scenario_dataset(
 
 
 def _can_resume(path: Path, loaded, scenario: str) -> bool:
+    """Thực hiện bước can resume trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not path.is_file():
         return False
     try:
@@ -207,6 +293,13 @@ def _can_resume(path: Path, loaded, scenario: str) -> bool:
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument(

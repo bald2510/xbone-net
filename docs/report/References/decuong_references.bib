@@ -25,20 +25,17 @@ url={https://openreview.net/forum?id=w-x7U26GM7j}
 }
 
 #ConVIRT
-@InProceedings{ConVIRT,
-  title = 	 {Contrastive Learning of Medical Visual Representations from Paired Images and Text},
-  author =       {Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D. and Langlotz, Curtis P.},
-  booktitle = 	 {Proceedings of the 7th Machine Learning for Healthcare Conference},
-  pages = 	 {2--25},
-  year = 	 {2022},
-  editor = 	 {Lipton, Zachary and Ranganath, Rajesh and Sendak, Mark and Sjoding, Michael and Yeung, Serena},
-  volume = 	 {182},
-  series = 	 {Proceedings of Machine Learning Research},
-  month = 	 {05--06 Aug},
-  publisher =    {PMLR},
-  pdf = 	 {https://proceedings.mlr.press/v182/zhang22a/zhang22a.pdf},
-  url = 	 {https://proceedings.mlr.press/v182/zhang22a.html},
-  abstract = 	 {Learning visual representations of medical images (e.g., X-rays) is core to medical image understanding but its progress has been held back by the scarcity of human annotations. Existing work commonly relies on fine-tuning weights transferred from ImageNet pretraining, which is suboptimal due to drastically different image characteristics, or rule-based label extraction from the textual report data paired with medical images, which is inaccurate and hard to generalize. Meanwhile, several recent studies show exciting results from unsupervised contrastive learning from natural images, but we find these methods help little on medical images because of their high inter-class similarity. We propose ConVIRT, an alternative unsupervised strategy to learn medical visual representations by exploiting naturally occurring paired descriptive text. Our new method of pretraining medical image encoders with the paired text data via a bidirectional contrastive objective between the two modalities is domain-agnostic, and requires no additional expert input. We test ConVIRT by transferring our pretrained weights to 4 medical image classification tasks and 2 zero-shot retrieval tasks, and show that it leads to image representations that considerably outperform strong baselines in most settings. Notably, in all 4 classification tasks, our method requires only 10% as much labeled training data as an ImageNet initialized counterpart to achieve better or comparable performance, demonstrating superior data efficiency.}
+@inproceedings{ConVIRT,
+  title={Contrastive Learning of Medical Visual Representations from Paired Images and Text},
+  author={Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D and Langlotz, Curtis P},
+  booktitle={Proceedings of the 38th International Conference on Machine Learning},
+  pages={12133--12145},
+  year={2021},
+  editor={Meila, Marina and Zhang, Tong},
+  volume={139},
+  series={Proceedings of Machine Learning Research},
+  publisher={PMLR},
+  url={https://proceedings.mlr.press/v182/zhang22a.html}
 }
 
 #GLoRIA
@@ -87,13 +84,12 @@ url={https://openreview.net/forum?id=w-x7U26GM7j}
 }
 
 #MedKLIP
-@InProceedings{MedKLIP,
-    author    = {Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi},
-    title     = {MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis},
-    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
-    month     = {October},
-    year      = {2023},
-    pages     = {21372-21383}
+@inproceedings{MedKLIP,
+  title={MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis},
+  author={Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Feng and Xie, Weidi},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages={21372--21383},
+  year={2023}
 }
 
 #MedViLL
@@ -192,39 +188,37 @@ isbn="978-3-031-43904-9"
   doi={10.1109/TMM.2024.3397191}}
 
 #ViP
-@InProceedings{ViP,
-        author = { Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao},
-        title = { { Aligning Medical Images with General Knowledge from Large Language Models } },
-        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-        year = {2024},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 15010},
-        month = {October},
-        page = {57 -- 67}
+@inproceedings{ViP,
+  title={Aligning Medical Images with General Knowledge from Large Language Models},
+  author={Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+  year={2024},
+  url={https://papers.miccai.org/miccai-2024/062-Paper1358.html}
 }
 
+
 #PLIP
-@InProceedings{PLIP,
-        author = { Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},
-        title = { { Disease-informed Adaptation of Vision-Language Models } },
-        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-        year = {2024},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 15011},
-        month = {October},
-        page = {232 -- 242}
+@article{PLIP,
+  author={Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},
+  journal={IEEE Transactions on Medical Imaging}, 
+  title={Disease-Informed Adaptation of Vision-Language Models}, 
+  year={2025},
+  volume={44},
+  number={10},
+  pages={3984-3996},
+  doi={10.1109/TMI.2024.3475877}
 }
 
 #FPT
-@InProceedings{FPT,
-        author = { Huang, Yijin and Cheng, Pujin and Tam, Roger and Tang, Xiaoying},
-        title = { { Fine-grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-resolution Medical Image Classification } },
-        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-        year = {2024},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 15012},
-        month = {October},
-        page = {120 -- 130}
+@inproceedings{FPT,
+  title={Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification},
+  author={Huang, Yijin and Liu, Yang and Zhou, Liansheng and Yuan, Chun and Bai, Xiang},
+  booktitle={Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
+  pages={124--134},
+  year={2024},
+  publisher={Springer Nature Switzerland},
+  address={Cham},
+  isbn={978-3-031-72390-2}
 }
 
 #MedPrompt
@@ -255,13 +249,11 @@ abstract = {Most advances in medical image recognition supporting clinical auxil
   doi={10.1109/TMI.2025.3584841}}
 
 #BiomedCoOp
-@InProceedings{BiomedCoOp,
-    author    = {Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming},
-    title     = {BiomedCoOp: Learning to Prompt for Biomedical Vision-Language Models},
-    booktitle = {Proceedings of the Computer Vision and Pattern Recognition Conference (CVPR)},
-    month     = {June},
-    year      = {2025},
-    pages     = {14766-14776}
+@inproceedings{BiomedCoOp,
+  title={BiomedCoOp: Learning to Prompt for Biomedical Vision-Language Models},
+  author={Koleilat, Tarek and Asgariandehkordi, Hesam and Rivaz, Hassan and Xiao, Yiming},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2025}
 }
 
 #CLIPath
@@ -269,7 +261,6 @@ abstract = {Most advances in medical image recognition supporting clinical auxil
     author    = {Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee},
     title     = {CLIPath: Fine-Tune CLIP with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts},
     booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops},
-    month     = {October},
     year      = {2023},
     pages     = {2374-2380}
 }
@@ -305,15 +296,20 @@ abstract = {Most advances in medical image recognition supporting clinical auxil
 }
 
 #SH-PEFT
-@InProceedings{SH-PEFT,
-        author = { Liu, Mingyuan and Xu, Lu and Liu, Shengnan and Zhang, Jicong},
-        title = { { Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis } },
-        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-        year = {2024},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 15005},
-        month = {October},
-        page = {627 -- 637}
+@inproceedings{SH-PEFT,
+  author       = {Mingyuan Liu and
+                  Lu Xu and
+                  Shengnan Liu and
+                  Jicong Zhang},
+  title        = {Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis},
+  booktitle    = {{MICCAI} (5)},
+  series       = {Lecture Notes in Computer Science},
+  volume       = {15005},
+  pages        = {627--637},
+  publisher    = {Springer},
+  year         = {2024},
+  url          = {https://doi.org\_59},
+  doi          = {10.1007/978-3-031-72086-4\_59}
 }
 
 #LCBB

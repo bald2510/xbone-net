@@ -1,14 +1,8 @@
-"""Leakage-free OOD evaluation for CTCH feature archives.
+"""Đánh giá khả năng phát hiện dữ liệu ngoài phân phối trên các kịch bản đã cấu hình.
 
-Protocol:
-  * fit density scores on CTCH train only;
-  * calibrate deployment thresholds on CTCH validation ID only;
-  * evaluate once on CTCH test versus the requested OOD scenario.
-
-Every feature archive is provenance-checked and must come from the same source
-experiment, checkpoint, resolved configuration, and seed.  The canonical
-proposed model remains the default source; ablation runners must pass their
-source explicitly.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -66,6 +60,18 @@ METHOD_CHOICES = SUPPORTED_METHODS
 
 
 def _labels(values: np.ndarray) -> np.ndarray:
+    """Trích xuất danh sách nhãn theo đúng thứ tự lớp.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = np.asarray(values)
     if values.ndim == 2:
         values = values.argmax(axis=1)
@@ -79,6 +85,26 @@ def _validate_archive(
     expected_scenario: str,
     expected_source_experiment: str = SOURCE_EXPERIMENT,
 ) -> None:
+    """Kiểm tra tính hợp lệ của archive cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    arrays : dict[str, np.ndarray]
+        Giá trị ``arrays`` được sử dụng trong phép xử lý.
+    provenance : dict[str, Any]
+        Giá trị ``provenance`` được sử dụng trong phép xử lý.
+    expected_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    expected_scenario : str
+        Giá trị ``expected_scenario`` được sử dụng trong phép xử lý.
+    expected_source_experiment : str, optional
+        Dữ liệu nguồn của phép xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if provenance.get("source_experiment") != expected_source_experiment:
         raise ValueError(
             "OOD archive source mismatch: expected "
@@ -142,6 +168,23 @@ def _validate_archive(
 
 
 def _check_shared_checkpoint(provenances: list[dict[str, Any]]) -> str:
+    """Kiểm tra shared checkpoint cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    provenances : list[dict[str, Any]]
+        Giá trị ``provenances`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     checksums = {item.get("checkpoint_sha256") for item in provenances}
     if None in checksums or len(checksums) != 1:
         raise ValueError("All feature archives must share one checkpoint SHA-256.")
@@ -152,6 +195,20 @@ def _check_shared_checkpoint(provenances: list[dict[str, Any]]) -> str:
 
 
 def _subset_rows(arrays: dict[str, np.ndarray], indices: np.ndarray) -> dict[str, np.ndarray]:
+    """Thực hiện bước subset rows trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    arrays : dict[str, np.ndarray]
+        Giá trị ``arrays`` được sử dụng trong phép xử lý.
+    indices : np.ndarray
+        Chỉ mục của phần tử cần xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     count = len(arrays["labels"])
     return {
         key: value[indices] if value.ndim > 0 and len(value) == count else value
@@ -163,7 +220,27 @@ def align_paired_id(
     id_arrays: dict[str, np.ndarray],
     ood_arrays: dict[str, np.ndarray],
 ) -> dict[str, np.ndarray]:
-    """Align native ID rows to report-mismatch recipient IDs."""
+    """Thực hiện bước align paired id trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    id_arrays : dict[str, np.ndarray]
+        Giá trị ``id_arrays`` được sử dụng trong phép xử lý.
+    ood_arrays : dict[str, np.ndarray]
+        Giá trị ``ood_arrays`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     native_ids = id_arrays["image_id"].astype(str)
     if len(np.unique(native_ids)) != len(native_ids):
         raise ValueError("CTCH ID test archive contains duplicate image_id values.")
@@ -194,6 +271,31 @@ def _score_method(
     arrays: dict[str, np.ndarray],
     knn_k: int,
 ) -> np.ndarray:
+    """Tính điểm OOD bằng phương pháp được lựa chọn.
+
+    Parameters
+    ----------
+    method : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+    normalized_detector : OODDetector
+        Giá trị ``normalized_detector`` được sử dụng trong phép xử lý.
+    raw_detector : OODDetector
+        Giá trị ``raw_detector`` được sử dụng trong phép xử lý.
+    arrays : dict[str, np.ndarray]
+        Giá trị ``arrays`` được sử dụng trong phép xử lý.
+    knn_k : int
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if method == "cosine_centroids":
         return normalized_detector.score_cosine_centroids(
             arrays[FUSED_FEATURE_KEY]
@@ -223,6 +325,41 @@ def run_protocol(
     bootstrap_seed: int,
     paired: bool,
 ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+    """Thực hiện protocol cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    train : dict[str, np.ndarray]
+        Giá trị ``train`` được sử dụng trong phép xử lý.
+    calibration : dict[str, np.ndarray]
+        Giá trị ``calibration`` được sử dụng trong phép xử lý.
+    id_test : dict[str, np.ndarray]
+        Giá trị ``id_test`` được sử dụng trong phép xử lý.
+    ood : dict[str, np.ndarray]
+        Giá trị ``ood`` được sử dụng trong phép xử lý.
+    methods : list[str]
+        Giá trị ``methods`` được sử dụng trong phép xử lý.
+    target_id_fpr : float
+        Nhãn hoặc chỉ số lớp liên quan.
+    knn_k : int
+        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
+    n_bootstrap : int
+        Giá trị ``n_bootstrap`` được sử dụng trong phép xử lý.
+    bootstrap_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    paired : bool
+        Giá trị ``paired`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[dict[str, Any], dict[str, np.ndarray]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     for name, arrays in {
         "train": train,
         "calibration": calibration,
@@ -329,6 +466,15 @@ def run_protocol(
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--source-experiment",

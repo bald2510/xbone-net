@@ -1,4 +1,9 @@
-"""Composite multi-modal architecture for XBone-Net."""
+"""Cung cấp thành phần mô hình composer trong kiến trúc XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +14,25 @@ import torch.nn as nn
 
 
 class XBoneMultiModalModel(nn.Module):
-    """Compose backbone, fusion module, and classification head."""
+    """Đóng gói hành vi của thành phần ``XBoneMultiModalModel``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(self, backbone: nn.Module, fusion_module: nn.Module, head_module: nn.Module):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        backbone : nn.Module
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        fusion_module : nn.Module
+            Giá trị ``fusion_module`` được sử dụng trong phép xử lý.
+        head_module : nn.Module
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        """
         super().__init__()
         self.backbone = backbone
         self.fusion = fusion_module
@@ -21,7 +42,18 @@ class XBoneMultiModalModel(nn.Module):
         self.use_image_in_fusion = True
 
     def train(self, mode: bool = True):
-        """Keep the frozen primary path deterministic during DRL Phase 3."""
+        """Huấn luyện kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        mode : bool, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         super().train(mode)
         if mode and self.phase3_mode:
             self.backbone.eval()
@@ -40,7 +72,33 @@ class XBoneMultiModalModel(nn.Module):
         tile_mask=None,
         tile_boxes=None,
     ):
-        """Encode modalities once and construct fusion-compatible masks."""
+        """Mã hóa modalities cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        tile_values : object, optional
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : object, optional
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : object, optional
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         use_image = bool(getattr(self, "use_image_in_fusion", True))
         img_feats, txt_feats = self.backbone(
             images if use_image else None,
@@ -83,7 +141,31 @@ class XBoneMultiModalModel(nn.Module):
         img_key_padding_mask=None,
         txt_key_padding_mask=None,
     ) -> torch.Tensor:
-        """Fuse already encoded modality features without repeating the backbone."""
+        """Thực hiện bước fuse modalities trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        img_feats : object
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_feats : object
+            Giá trị ``txt_feats`` được sử dụng trong phép xử lý.
+        full_img_padding_mask : object, optional
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        img_key_padding_mask : object, optional
+            Ảnh hoặc biểu diễn ảnh đầu vào.
+        txt_key_padding_mask : object, optional
+            Tên hoặc khóa định danh của giá trị.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if img_feats is None:
             if txt_feats is None:
                 raise ValueError("Text-only mode requires text input features.")
@@ -125,6 +207,25 @@ class XBoneMultiModalModel(nn.Module):
         features: torch.Tensor,
         key_padding_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
+        """Thực hiện bước masked token mean trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        features : torch.Tensor
+            Giá trị ``features`` được sử dụng trong phép xử lý.
+        key_padding_mask : Optional[torch.Tensor]
+            Tên hoặc khóa định danh của giá trị.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if features.ndim != 3:
             raise ValueError(f"Expected [B,T,D] features, got {tuple(features.shape)}")
         if key_padding_mask is None:
@@ -147,7 +248,28 @@ class XBoneMultiModalModel(nn.Module):
         tile_mask=None,
         tile_boxes=None,
     ) -> torch.Tensor:
-        """Encode a batch into the fused representation before classification."""
+        """Mã hóa fused cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        tile_values : object, optional
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : object, optional
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : object, optional
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         encoded = self._encode_modalities(
             images,
             input_ids=input_ids,
@@ -168,7 +290,35 @@ class XBoneMultiModalModel(nn.Module):
         tile_boxes=None,
         return_details: bool = False,
     ):
-        """Return primary and complementary outputs for DRL training/OOD."""
+        """Thực hiện bước forward drl trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        tile_values : object, optional
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : object, optional
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : object, optional
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+        return_details : bool, optional
+            Giá trị ``return_details`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        RuntimeError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if self.drl_auxiliary is None:
             raise RuntimeError("DRL auxiliary branch is not configured.")
         encoded = self._encode_modalities(
@@ -229,6 +379,30 @@ class XBoneMultiModalModel(nn.Module):
         tile_boxes=None,
         return_features: bool = False,
     ):
+        """Thực hiện lượt lan truyền xuôi của mô hình.
+
+        Parameters
+        ----------
+        images : object
+            Giá trị ``images`` được sử dụng trong phép xử lý.
+        input_ids : object, optional
+            Dữ liệu nguồn của phép xử lý.
+        attention_mask : object, optional
+            Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
+        tile_values : object, optional
+            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
+        tile_mask : object, optional
+            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
+        tile_boxes : object, optional
+            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
+        return_features : bool, optional
+            Giá trị ``return_features`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         fused_feats = self.encode_fused(
             images,
             input_ids=input_ids,
@@ -245,6 +419,7 @@ class XBoneMultiModalModel(nn.Module):
         return logits
 
     def print_parameter_summary(self):
+        """In parameter summary cho bước xử lý hiện tại."""
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         frozen_params = total_params - trainable_params
@@ -267,6 +442,7 @@ class XBoneMultiModalModel(nn.Module):
         print("=" * 50 + "\n")
 
     def print_encoder_layers(self):
+        """In encoder layers cho bước xử lý hiện tại."""
         print("\n" + "=" * 50)
         print("IMAGE ENCODER STRUCTURE")
         print("=" * 50)
@@ -285,13 +461,26 @@ class XBoneMultiModalModel(nn.Module):
         print("=" * 50 + "\n")
 
     def print_architecture(self, verbose: bool = False):
+        """In architecture cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Giá trị ``verbose`` được sử dụng trong phép xử lý.
+        """
         self.print_parameter_summary()
         if verbose:
             print("[Debug Mode] Printing verbose model encoder architecture...")
             self.print_encoder_layers()
 
     def gradient_checkpointing_enable(self, **kwargs):
-        """Enable checkpointing when the underlying backbone supports it."""
+        """Thực hiện bước gradient checkpointing enable trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+        """
         backbone_model = getattr(self.backbone, "model", None)
         if backbone_model is None:
             print("[XBone Model] Gradient checkpointing is not supported by this backbone.")

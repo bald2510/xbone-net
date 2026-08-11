@@ -1,5 +1,5 @@
 # @package _global_
-# RQ1 pairing control: reuse the canonical trained checkpoint, then mismatch
+# Modality robustness: reuse the canonical checkpoint and mismatch synthetic
 # clinical text across different classes on the BTXRD test split only.
 
 defaults:

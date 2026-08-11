@@ -1,52 +1,50 @@
-"""
-Linear Classification Head Module for XBone-Net.
-===============================================================================
-Maps input feature representations to class logits using a standard linear projection:
-  - Input: fused_feats [B, D]
-  - Transformation: Linear(D -> K)
-  - Output: logits [B, K]
+"""Cung cấp đầu phân lớp linear cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch.nn as nn
 
 
 # ============================================================
-# Linear Classifier Head
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 class LinearHead(nn.Module):
-    """Linear classification head mapping fused feature vectors to class logits.
+    """Cung cấp đầu phân lớp bằng lớp ``LinearHead``.
 
-    Attributes:
-        classifier (nn.Linear): Fully connected linear layer projecting from feature_dim to num_classes.
-
-    Example:
-        >>> head = LinearHead(feature_dim=512, num_classes=5)
-        >>> logits = head(fused_features)
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, feature_dim: int = 512, num_classes: int = 10):
-        """Initialize linear classifier head.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            feature_dim (int): Dimensionality of input feature vectors. Defaults to 512.
-            num_classes (int): Number of target output classes. Defaults to 10.
+        Parameters
+        ----------
+        feature_dim : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        num_classes : int, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
         """
         super().__init__()
-        # --- Linear transformation layer: y = W * x + b ---
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         self.classifier = nn.Linear(feature_dim, num_classes)
-        
+
     def forward(self, x):
-        """Map feature embeddings to class logits.
+        """Thực hiện lượt lan truyền xuôi của mô hình.
 
-        Mathematical Formulation:
-            logits = W * x + b
+        Parameters
+        ----------
+        x : object
+            Giá trị ``x`` được sử dụng trong phép xử lý.
 
-        Args:
-            x (torch.Tensor): Fused feature tensor of shape [B, D].
-
-        Returns:
-            torch.Tensor: Unnormalized class logits tensor of shape [B, K].
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         return self.classifier(x)
-

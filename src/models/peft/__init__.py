@@ -1,10 +1,8 @@
-"""
-Parameter-Efficient Fine-Tuning (PEFT) Registry & Factory for XBone-Net.
-===============================================================================
-Defines the registry and factory functions for applying parameter-efficient fine-tuning:
-  - none: Pass-through without modification
-  - full_ft: Unfreezes all module parameters for full fine-tuning
-  - lora: Low-Rank Adaptation (LoRA) via HuggingFace peft library
+"""Cung cấp cơ chế tinh chỉnh hiệu quả tham số   init   cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import torch.nn as nn
@@ -12,31 +10,41 @@ from .lora import inject_lora
 
 
 # ============================================================
-# Basic PEFT Handlers
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def apply_none(module: nn.Module, **kwargs) -> nn.Module:
-    """Pass-through helper leaving module parameters unmodified.
+    """Thực hiện bước apply none trong quy trình hiện tại.
 
-    Args:
-        module (nn.Module): Target PyTorch module.
-        **kwargs: Unused extra keyword arguments.
+    Parameters
+    ----------
+    module : nn.Module
+        Giá trị ``module`` được sử dụng trong phép xử lý.
+    **kwargs : dict
+        Các đối số từ khóa bổ sung.
 
-    Returns:
-        nn.Module: Unmodified target module.
+    Returns
+    -------
+    nn.Module
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     return module
 
 
 def apply_full_ft(module: nn.Module, **kwargs) -> nn.Module:
-    """Unfreeze all module parameters for full fine-tuning.
+    """Thực hiện bước apply full ft trong quy trình hiện tại.
 
-    Args:
-        module (nn.Module): Target PyTorch module.
-        **kwargs: Unused extra keyword arguments.
+    Parameters
+    ----------
+    module : nn.Module
+        Giá trị ``module`` được sử dụng trong phép xử lý.
+    **kwargs : dict
+        Các đối số từ khóa bổ sung.
 
-    Returns:
-        nn.Module: Target module with all requires_grad set to True.
+    Returns
+    -------
+    nn.Module
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     for param in module.parameters():
         param.requires_grad = True
@@ -44,7 +52,7 @@ def apply_full_ft(module: nn.Module, **kwargs) -> nn.Module:
 
 
 # ============================================================
-# PEFT Registry Mapping
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 PEFT_REGISTRY = {
@@ -55,24 +63,28 @@ PEFT_REGISTRY = {
 
 
 # ============================================================
-# PEFT Injection Factory
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def apply_peft(module: nn.Module, cfg: dict) -> nn.Module:
-    """Apply specified PEFT strategy to a target PyTorch module.
+    """Thực hiện bước apply peft trong quy trình hiện tại.
 
-    Args:
-        module (nn.Module): Target module (e.g., visual or text encoder).
-        cfg (dict): PEFT configuration dictionary containing 'type' and 'params'.
+    Parameters
+    ----------
+    module : nn.Module
+        Giá trị ``module`` được sử dụng trong phép xử lý.
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
 
-    Returns:
-        nn.Module: Modified PyTorch module with PEFT adapters injected.
+    Returns
+    -------
+    nn.Module
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Raises:
-        ValueError: If specified peft_type is not supported in PEFT_REGISTRY.
-
-    Example:
-        >>> module = apply_peft(backbone.model.visual, {'type': 'lora', 'params': {'r': 16}})
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     peft_type = cfg.get('type', 'none')
     if peft_type not in PEFT_REGISTRY:

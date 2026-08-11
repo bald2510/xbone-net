@@ -1,12 +1,8 @@
-"""
-Custom HuggingFace Trainer Adapter for XBone-Net Two-Phase Pipeline.
-===============================================================================
-Extends transformers.Trainer with phase-aware loss computation for XBone-Net:
-  - Phase 1 (Contrastive): Contrastive image-text alignment via dual report inputs
-  - Phase 2 (Classification): Prototypical network classification & fusion
-  - BioMedCLIPDataCollator: Handles dynamic padding for dual-report text fields
+"""Cung cấp tiện ích trainer cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-Supports xray, clinical, or dual-report text embedding configurations.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from dataclasses import dataclass
@@ -18,32 +14,49 @@ import torchvision.transforms.functional as F_t
 
 
 # ============================================================
-# Tokenizer Padding Utilities
+# Tiện ích đệm chuỗi cho bộ tách từ
 # ============================================================
 
 def resolve_pad_token_id(tokenizer) -> int:
-    """Resolve the padding token ID from an OpenCLIP or HuggingFace tokenizer.
+    """Xác định pad token id cho bước xử lý hiện tại.
 
-    Unwraps OpenCLIP tokenizers if necessary. Uses pad_token_id if available,
-    falling back to eos_token_id or default value 0.
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
 
-    Args:
-        tokenizer: HuggingFace PreTrainedTokenizer or OpenCLIP wrapper.
-
-    Returns:
-        Integer token ID to use for sequence padding.
+    Returns
+    -------
+    int
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
-    # --- Unwrap OpenCLIP's tokenizer wrapper if present ---
+    # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
     hf_tokenizer = getattr(tokenizer, "tokenizer", tokenizer)
     pad_token_id = getattr(hf_tokenizer, "pad_token_id", None)
     if pad_token_id is not None:
         return pad_token_id
-    # --- Fallback: use EOS token for GPT-style tokenizers ---
+    # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
     return getattr(hf_tokenizer, "eos_token_id", 0) or 0
 
 
 def _sampler_class_ids(dataset) -> torch.Tensor:
-    """Extract integer class IDs without loading images or reports."""
+    """Thực hiện bước sampler class ids trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    dataset : object
+        Dữ liệu đầu vào của bước xử lý.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    AttributeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if isinstance(dataset, Subset):
         parent = _sampler_class_ids(dataset.dataset)
         indices = torch.as_tensor(dataset.indices, dtype=torch.long)
@@ -64,12 +77,11 @@ def _sampler_class_ids(dataset) -> torch.Tensor:
 
 
 class ClassAwareSampler(Sampler[int]):
-    """Arrange indices so each full physical batch contains same-class pairs.
+    """Lấy mẫu dữ liệu bằng lớp ``ClassAwareSampler``.
 
-    This sampler is intended for Phase-1 in-batch semantic matching.  It keeps
-    the epoch length unchanged while sampling classes approximately uniformly.
-    Samples may repeat across batches, but are drawn without replacement within
-    a pair whenever a class contains at least two examples.
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(
@@ -79,6 +91,24 @@ class ClassAwareSampler(Sampler[int]):
         samples_per_class: int = 2,
         seed: int = 42,
     ) -> None:
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        dataset : object
+            Dữ liệu đầu vào của bước xử lý.
+        batch_size : int
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        samples_per_class : int, optional
+            Nhãn hoặc chỉ số lớp liên quan.
+        seed : int, optional
+            Hạt giống phục vụ khả năng tái lập.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if batch_size < 2:
             raise ValueError("Class-aware sampling requires batch_size >= 2.")
         if samples_per_class < 2 or samples_per_class > batch_size:
@@ -106,12 +136,33 @@ class ClassAwareSampler(Sampler[int]):
         )
 
     def __len__(self) -> int:
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.dataset)
 
     def set_epoch(self, epoch: int) -> None:
+        """Thiết lập epoch cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        epoch : int
+            Giá trị ``epoch`` được sử dụng trong phép xử lý.
+        """
         self.epoch = int(epoch)
 
     def __iter__(self):
+        """Thực hiện bước iter trong quy trình hiện tại.
+
+        Returns
+        -------
+        iterator
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         generator = torch.Generator()
         generator.manual_seed(self.seed + self.epoch)
         sequence: list[int] = []
@@ -166,35 +217,37 @@ class ClassAwareSampler(Sampler[int]):
 
 
 # ============================================================
-# Dual-Report Data Collator
+# Bộ gộp dữ liệu cho hai loại báo cáo
 # ============================================================
 
 @dataclass
 class BioMedCLIPDataCollator:
-    """Data collator for XBone-Net datasets with dual-report text fields.
+    """Đóng gói hành vi của thành phần ``BioMedCLIPDataCollator``.
 
-    Dynamically right-pads xray_input_ids and clinical_input_ids to batch maximum length.
-
-    Attributes:
-        pad_token_id (int): Token ID used for padding text sequences.
-
-    Example:
-        collator = BioMedCLIPDataCollator(pad_token_id=0)
-        batch = collator([sample1, sample2])
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     pad_token_id: int = 0
 
     def _pad_ids_with_mask(self, ids_list):
-        """Right-pad token IDs and build a correct attention mask.
+        """Thực hiện bước pad ids with mask trong quy trình hiện tại.
 
-        Args:
-            ids_list: List of 1-D token-ID tensors.
+        Parameters
+        ----------
+        ids_list : object
+            Giá trị ``ids_list`` được sử dụng trong phép xử lý.
 
-        Returns:
-            padded_ids: Tensor [B, L].
-            attention_mask: Tensor [B, L], with 1 for valid tokens
-                and 0 for padding tokens.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         import torch
 
@@ -228,7 +281,7 @@ class BioMedCLIPDataCollator:
 
         padded_ids = torch.stack(padded_list, dim=0)
 
-        # Padding token = 0 trong attention mask.
+        # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
         attention_mask = (
             padded_ids != self.pad_token_id
         ).to(dtype=torch.long)
@@ -237,7 +290,23 @@ class BioMedCLIPDataCollator:
 
 
     def _pad_optional_ids_with_mask(self, ids_list):
-        """Pad optional text fields; all-missing fields become a masked dummy token."""
+        """Thực hiện bước pad optional ids with mask trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        ids_list : object
+            Giá trị ``ids_list`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         if all(ids is None for ids in ids_list):
             batch_size = len(ids_list)
             ids = torch.full(
@@ -253,15 +322,17 @@ class BioMedCLIPDataCollator:
         return self._pad_ids_with_mask(ids_list)
 
     def _pad_tiles_with_mask(self, tiles_list):
-        """Pad tile tensors to have the same number of tiles (N) per image in a batch.
-        
-        Args:
-            tiles_list: List of tensors of shape (N_i, C, H, W).
-            
-        Returns:
-            Tuple of (padded_tiles, tile_masks).
-            padded_tiles has shape (B, N_max, C, H, W).
-            tile_masks has shape (B, N_max) with 1 for real tiles and 0 for padding.
+        """Thực hiện bước pad tiles with mask trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        tiles_list : object
+            Giá trị ``tiles_list`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         import torch
         max_tiles = max(tiles.shape[0] for tiles in tiles_list)
@@ -288,7 +359,25 @@ class BioMedCLIPDataCollator:
         return torch.stack(padded_tiles), torch.stack(tile_masks)
 
     def _pad_tile_metadata(self, features: list, max_tiles: int):
-        """Pad normalized source-image boxes for high-resolution tiles."""
+        """Thực hiện bước pad tile metadata trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        features : list
+            Giá trị ``features`` được sử dụng trong phép xử lý.
+        max_tiles : int
+            Giá trị ``max_tiles`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         padded_boxes = []
         for feature in features:
             tile_count = feature["tile_values"].shape[0]
@@ -308,14 +397,17 @@ class BioMedCLIPDataCollator:
         return torch.stack(padded_boxes)
 
     def __call__(self, features: list) -> dict:
-        """Collate tuple or dictionary features into batched tensors.
+        """Thực hiện bước call trong quy trình hiện tại.
 
-        Args:
-            features: List of sample tuples or dictionary features.
+        Parameters
+        ----------
+        features : list
+            Giá trị ``features`` được sử dụng trong phép xử lý.
 
-        Returns:
-            Dictionary containing pixel_values, xray_input_ids,
-            clinical_input_ids, and labels.
+        Returns
+        -------
+        dict
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         if not features:
             return {}
@@ -348,7 +440,7 @@ class BioMedCLIPDataCollator:
                     "labels": labels,
                 }
 
-        # Dictionary format fallback
+        # Xử lý dự phòng cho dữ liệu dạng từ điển
         pixel_values = torch.stack([f["pixel_values"] for f in features])
         labels = torch.stack([f["labels"] if isinstance(f["labels"], torch.Tensor) else torch.tensor(f["labels"]) for f in features])
         
@@ -368,7 +460,7 @@ class BioMedCLIPDataCollator:
             "labels": labels,
         }
         
-        # High-Res Tiling Support
+        # Hỗ trợ chia vùng ảnh độ phân giải cao
         if "tile_values" in features[0]:
             tile_values_list = [f["tile_values"] for f in features]
             padded_tiles, tile_masks = self._pad_tiles_with_mask(tile_values_list)
@@ -383,37 +475,41 @@ class BioMedCLIPDataCollator:
 
 
 # ============================================================
-# Phase-Aware HuggingFace Trainer Adapter
+# Bộ điều hợp Trainer theo từng pha
 # ============================================================
 
 class SFTrainer(Trainer):
-    """Phase-aware HuggingFace Trainer for XBone-Net training.
+    """Điều phối quá trình huấn luyện bằng lớp ``SFTrainer``.
 
-    Overrides compute_loss and prediction_step to handle Phase 1 (contrastive)
-    Phase 2 (classification), and Phase 3 (DRL auxiliary) execution modes.
-
-    Attributes:
-        phase (str): Training phase ('phase1', 'phase2', or 'phase3').
-        loss_fn (nn.Module): Active loss function instance.
-        use_text_in_p2 (bool): Whether text features are fed into Phase 2 head.
-        p1_report_type (str): Report type for Phase 1 ('xray', 'clinical', 'both').
-        p2_report_type (str): Report type for Phase 2 ('xray', 'clinical', 'both').
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
     def __init__(self, phase, loss_fn, use_text_in_p2=True,
                  p1_report_type="xray", p2_report_type="clinical",
                  class_aware_sampling=None,
                  *args, **kwargs):
-        """Initialize the SFTrainer adapter.
+        """Thực hiện bước init trong quy trình hiện tại.
 
-        Args:
-            phase: 'phase1', 'phase2', or 'phase3'.
-            loss_fn: Loss module instance.
-            use_text_in_p2: Include text input in Phase 2.
-            p1_report_type: Phase 1 report selection ('xray', 'clinical', or 'both').
-            p2_report_type: Phase 2 report selection ('xray', 'clinical', or 'both').
-            *args: Positional arguments forwarded to Trainer.
-            **kwargs: Keyword arguments forwarded to Trainer.
+        Parameters
+        ----------
+        phase : object
+            Giá trị ``phase`` được sử dụng trong phép xử lý.
+        loss_fn : object
+            Giá trị ``loss_fn`` được sử dụng trong phép xử lý.
+        use_text_in_p2 : object, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        p1_report_type : object, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        p2_report_type : object, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        class_aware_sampling : object, optional
+            Nhãn hoặc chỉ số lớp liên quan.
+        *args : tuple
+            Các đối số vị trí bổ sung.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
         """
         self.phase = phase
         self.class_aware_sampling = dict(class_aware_sampling or {})
@@ -424,6 +520,18 @@ class SFTrainer(Trainer):
         self.p2_report_type = p2_report_type
 
     def _get_train_sampler(self, train_dataset=None):
+        """Lấy train sampler cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        train_dataset : object, optional
+            Dữ liệu đầu vào của bước xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         dataset = train_dataset if train_dataset is not None else self.train_dataset
         enabled = bool(self.class_aware_sampling.get("enabled", False))
         if self.phase == "phase1" and enabled and dataset is not None:
@@ -438,16 +546,28 @@ class SFTrainer(Trainer):
         return super()._get_train_sampler(train_dataset)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        """Compute training loss for the active training phase.
+        """Tính loss cho bước xử lý hiện tại.
 
-        Args:
-            model: The XBoneNet model instance.
-            inputs: Batch dictionary with pixel_values, xray_input_ids, etc.
-            return_outputs: If True, return (loss, outputs) tuple.
-            **kwargs: Unused extra arguments.
+        Parameters
+        ----------
+        model : object
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        inputs : object
+            Giá trị ``inputs`` được sử dụng trong phép xử lý.
+        return_outputs : object, optional
+            Giá trị ``return_outputs`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
 
-        Returns:
-            Scalar loss tensor or (loss, outputs) tuple.
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+
+        Raises
+        ------
+        NotImplementedError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         images = inputs["pixel_values"]
         labels = inputs["labels"]
@@ -458,7 +578,7 @@ class SFTrainer(Trainer):
         tile_boxes = inputs.get("tile_boxes")
 
         if self.phase == "phase1":
-            # --- Phase 1: Contrastive image-text alignment ---
+            # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
             if self.p1_report_type in ("both", "xray_clinical"):
                 raise NotImplementedError(
                     "Simultaneous token-level X-ray and clinical report alignment is "
@@ -479,9 +599,9 @@ class SFTrainer(Trainer):
                 tile_boxes=tile_boxes,
             )
 
-            # Semantic matching requires one vector per image. High-resolution
-            # backbones may provide a global-anchored local residual pooler;
-            # generic backbones retain the masked-mean fallback.
+            # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+            # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
+            # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
             if image_features.dim() == 3:
                 contrastive_pooler = getattr(
                     model.backbone,
@@ -507,7 +627,7 @@ class SFTrainer(Trainer):
             loss = self.loss_fn(image_features, text_features, labels_for_loss)
             outputs = {"image_features": image_features, "text_features": text_features}
         else:
-            # --- Phase 2/3: Primary or complementary classification ---
+            # Thiết lập và thực thi pha 2 phân lớp đa phương thức.
             if self.use_text_in_p2 and self.p2_report_type in ("both", "xray_clinical"):
                 raise NotImplementedError(
                     "Simultaneous token-level X-ray and clinical report fusion is "
@@ -518,7 +638,7 @@ class SFTrainer(Trainer):
                 text_ids = inputs["xray_input_ids"] if is_xray else inputs["clinical_input_ids"]
                 text_mask = inputs.get("xray_attention_mask" if is_xray else "clinical_attention_mask")
             else:
-                # True image-only mode: do not pass any text to the backbone.
+                # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
                 text_ids = None
                 text_mask = None
 
@@ -553,16 +673,23 @@ class SFTrainer(Trainer):
         prediction_loss_only: bool,
         ignore_keys: list | None = None,
     ):
-        """Run a single evaluation or prediction step.
+        """Thực hiện bước prediction step trong quy trình hiện tại.
 
-        Args:
-            model: Model being evaluated.
-            inputs: Batch dictionary.
-            prediction_loss_only: If True, only loss is returned.
-            ignore_keys: Optional list of keys to ignore.
+        Parameters
+        ----------
+        model : nn.Module
+            Mô hình hoặc thành phần mô hình cần xử lý.
+        inputs : dict
+            Giá trị ``inputs`` được sử dụng trong phép xử lý.
+        prediction_loss_only : bool
+            Giá trị ``prediction_loss_only`` được sử dụng trong phép xử lý.
+        ignore_keys : list | None, optional
+            Giá trị ``ignore_keys`` được sử dụng trong phép xử lý.
 
-        Returns:
-            Tuple of (loss, logits, labels).
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
         """
         inputs = self._prepare_inputs(inputs)
         with torch.no_grad():

@@ -1,89 +1,8 @@
-"""Generate report-ready LaTeX tables and result visualizations.
+"""Tạo bảng hoặc hình trực quan bằng công cụ results.
 
-The module can be imported as a small plotting library or executed as a CLI.
-Supported outputs are:
-
-* LaTeX tables with configurable columns, grouped maxima/minima, proposed-row
-  highlighting, multirow cells, and optional text-width resizing.
-* Grouped bar charts with optional error bars.
-* Grouped line charts with optional error bars.
-* Annotated scatter plots for efficiency or Pareto trade-offs.
-* Annotated heatmaps built from long-form result tables.
-* Normalized confusion matrices with readable class labels.
-* Confusion matrices aggregated across multiple random seeds.
-* Multiclass reliability diagrams with ECE annotation.
-* One-vs-rest ROC and precision--recall curves for multiclass or multilabel
-  predictions, including macro and micro summaries.
-* Three-seed explanation, fusion, and representation summaries.
-
-Examples
---------
-Generate a grouped LaTeX table from the consolidated experiment summary::
-
-    python tools/visualize/results.py latex \
-        --input results/summary/run_all_table.csv \
-        --columns dataset config f1_macro_mean accuracy_mean \
-        --std-map f1_macro_mean=f1_macro_std accuracy_mean=accuracy_std \
-        --bold-within dataset \
-        --column-label dataset=Dataset config=Model \
-        --column-label "f1_macro_mean=Macro-F1 $\\uparrow$" \
-        --output results/summary/classification_table.tex
-
-Generate a bar chart and a metric heatmap::
-
-    python tools/visualize/results.py bar \
-        --input results/summary/run_all_table.csv \
-        --x config --y f1_macro_mean --hue dataset \
-        --error f1_macro_std --output results/summary/f1_bar.png
-
-    python tools/visualize/results.py heatmap \
-        --input results/summary/run_all_table.csv \
-        --rows config --cols dataset --value f1_macro_mean \
-        --output results/summary/f1_heatmap.png
-
-Generate the CTCH leave-one-component-out classification table::
-
-    python tools/visualize/results.py ablation-leave-one-out \
-        --input results/summary/run_all_table.csv \
-        --output docs/report/generated/chapter4_draft/table_ablation_leave_one_out_classification.tex
-
-Run paired statistical tests for XBone-Net and the leave-one-out variants,
-then redraw the primary forest plot from the generated CSV::
-
-    python tools/visualize/results.py ablation-statistics \
-        --metrics f1_macro balanced_accuracy accuracy \
-        --n-bootstrap 10000 --n-permutations 10000 \
-        --seeds 42 123 456 \
-        --output-dir results/summary/ablation/statistics
-
-    python tools/visualize/results.py ablation-forest \
-        --input results/summary/ablation/statistics/paired_bootstrap_results.csv \
-        --metric f1_macro \
-        --output results/summary/ablation/statistics/forest_f1_macro.png
-
-Generate separate Macro-AUROC and Macro-AUPRC statistical tables::
-
-    python tools/visualize/results.py ablation-statistics \
-        --metrics auroc_macro auprc_macro --test-method bootstrap \
-        --n-bootstrap 10000 --seeds 42 123 456 \
-        --output-dir results/summary/ablation/statistics_auc
-
-Export embeddings from the canonical proposed model, then generate its
-reliability diagram::
-
-    python evaluate.py --save-embeddings \
-        +experiment=ctch/proposed/ours_xbone_net seed=42
-
-    python tools/visualize/results.py calibration \
-        --output results/ctch/proposed/ours_xbone_net/seed_42/calibration.png
-
-    python tools/visualize/results.py roc \
-        --input results/ctch/proposed/ours_xbone_net/seed_42/embeddings.npz \
-        --output results/ctch/proposed/ours_xbone_net/seed_42/roc_curve.png
-
-    python tools/visualize/results.py pr \
-        --input results/ctch/proposed/ours_xbone_net/seed_42/embeddings.npz \
-        --output results/ctch/proposed/ours_xbone_net/seed_42/pr_curve.png
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -135,13 +54,13 @@ CONFIG_DISPLAY_NAMES = {
     "fft_clip": "CLIP",
     "fft_medclip": "MedCLIP",
     "fft_pubmedclip": "PubMedCLIP",
-    "fft_biomedclip": "BioMedCLIP",
+    "fft_biomedclip": "BiomedCLIP",
     "lora_pubmedclip": "LoRA-PubMedCLIP",
     "lora_biomedclip": "LoRA-BiomedCLIP",
     "clip_zeroshot": "CLIP",
     "medclip_zeroshot": "MedCLIP",
     "pubmedclip_zeroshot": "PubMedCLIP",
-    "biomedclip_zeroshot": "BioMedCLIP",
+    "biomedclip_zeroshot": "BiomedCLIP",
     "ours_xbone_net": "XBone-Net",
     "ours_xbone_net_v2": "XBone-Net v2",
     "ours_xbone_net_v3": "XBone-Net v3",
@@ -150,12 +69,42 @@ CONFIG_DISPLAY_NAMES = {
 
 
 def resolve_path(path: str | Path) -> Path:
-    """Resolve a path relative to the repository root."""
+    """Xác định đường dẫn tuyệt đối của tài nguyên.
+
+    Parameters
+    ----------
+    path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     value = Path(path)
     return (value if value.is_absolute() else ROOT / value).resolve()
 
 
 def _nested_json_value(payload: Any, record_path: str | None) -> Any:
+    """Thực hiện bước nested json giá trị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    payload : Any
+        Giá trị ``payload`` được sử dụng trong phép xử lý.
+    record_path : str | None
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not record_path:
         return payload
     current = payload
@@ -167,7 +116,27 @@ def _nested_json_value(payload: Any, record_path: str | None) -> Any:
 
 
 def load_frame(path: str | Path, json_record_path: str | None = None) -> pd.DataFrame:
-    """Load CSV, TSV, JSON, or JSON Lines data into a DataFrame."""
+    """Tải bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    json_record_path : str | None, optional
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = resolve_path(path)
     if not source.is_file():
         raise FileNotFoundError(f"Result file does not exist: {source}")
@@ -199,6 +168,20 @@ def load_frame(path: str | Path, json_record_path: str | None = None) -> pd.Data
 
 
 def _require_columns(frame: pd.DataFrame, columns: Sequence[str]) -> None:
+    """Thực hiện bước require columns trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    columns : Sequence[str]
+        Giá trị ``columns`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     missing = [column for column in columns if column not in frame.columns]
     if missing:
         raise KeyError(
@@ -214,6 +197,25 @@ def _parse_assignments(
     *,
     option: str,
 ) -> dict[str, str]:
+    """Phân tích assignments cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    values : Sequence[str] | None
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    option : str
+        Giá trị ``option`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result: dict[str, str] = {}
     for item in values or ():
         if "=" not in item:
@@ -232,7 +234,27 @@ def filter_frame(
     where: Sequence[str] | None = None,
     where_in: Sequence[str] | None = None,
 ) -> pd.DataFrame:
-    """Filter rows using exact ``COLUMN=VALUE`` and ``COLUMN=V1|V2`` rules."""
+    """Lọc bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    where : Sequence[str] | None, optional
+        Giá trị ``where`` được sử dụng trong phép xử lý.
+    where_in : Sequence[str] | None, optional
+        Giá trị ``where_in`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     filtered = frame.copy()
     for item in where or ():
         assignment = _parse_assignments([item], option="--where")
@@ -251,6 +273,18 @@ def filter_frame(
 
 
 def _numeric_value(value: Any) -> float:
+    """Thực hiện bước numeric giá trị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if value is None or pd.isna(value):
         return math.nan
     if isinstance(value, (int, float, np.number)):
@@ -260,17 +294,53 @@ def _numeric_value(value: Any) -> float:
 
 
 def numeric_series(series: pd.Series) -> pd.Series:
-    """Convert numeric values or leading ``mean +/- std`` strings to floats."""
+    """Thực hiện bước numeric series trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    series : pd.Series
+        Giá trị ``series`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.Series
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return series.map(_numeric_value).astype(float)
 
 
 def _latex_escape(value: Any) -> str:
+    """Thực hiện bước latex escape trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     text = str(value)
     return "".join(_LATEX_ESCAPE.get(character, character) for character in text)
 
 
 def display_value(column: str, value: Any) -> Any:
-    """Return report-ready labels for known experiment identifiers."""
+    """Thực hiện bước display giá trị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    column : str
+        Giá trị ``column`` được sử dụng trong phép xử lý.
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if column == "config" and not pd.isna(value):
         return CONFIG_DISPLAY_NAMES.get(str(value).casefold(), value)
     if column == "category" and not pd.isna(value):
@@ -282,6 +352,20 @@ def display_value(column: str, value: Any) -> Any:
 
 
 def _format_number(value: float, precision: int) -> str:
+    """Định dạng number cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    value : float
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    precision : int
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not np.isfinite(value):
         return "--"
     return f"{value:.{precision}f}"
@@ -294,6 +378,24 @@ def _format_latex_numeric(
     precision: int,
     bold: bool,
 ) -> str:
+    """Định dạng latex numeric cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    mean : float
+        Giá trị ``mean`` được sử dụng trong phép xử lý.
+    std : float | None
+        Giá trị ``std`` được sử dụng trong phép xử lý.
+    precision : int
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    bold : bool
+        Giá trị ``bold`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not np.isfinite(mean):
         return "--"
     body = _format_number(mean, precision)
@@ -309,6 +411,22 @@ def _maxima_masks(
     value_columns: Sequence[str],
     bold_within: Sequence[str] | None,
 ) -> dict[str, pd.Series]:
+    """Thực hiện bước maxima masks trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    value_columns : Sequence[str]
+        Giá trị ``value_columns`` được sử dụng trong phép xử lý.
+    bold_within : Sequence[str] | None
+        Giá trị ``bold_within`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, pd.Series]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     groups = list(bold_within or ())
     _require_columns(frame, [*value_columns, *groups])
     masks: dict[str, pd.Series] = {}
@@ -347,6 +465,22 @@ def _minima_masks(
     value_columns: Sequence[str],
     bold_within: Sequence[str] | None,
 ) -> dict[str, pd.Series]:
+    """Thực hiện bước minima masks trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    value_columns : Sequence[str]
+        Giá trị ``value_columns`` được sử dụng trong phép xử lý.
+    bold_within : Sequence[str] | None
+        Giá trị ``bold_within`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, pd.Series]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     groups = list(bold_within or ())
     _require_columns(frame, [*value_columns, *groups])
     masks: dict[str, pd.Series] = {}
@@ -400,17 +534,54 @@ def generate_latex_table(
     bold_best: bool = True,
     column_widths: Mapping[str, str] | None = None,
 ) -> str:
-    """Return a LaTeX table with bold, centered column headers.
+    """Sinh latex table cho bước xử lý hiện tại.
 
-    ``value_columns`` identifies columns whose numeric values participate in
-    maximum selection. If omitted, every selected column that contains at least
-    one numeric value is treated as a value column. Tied maxima are all bolded.
-    ``bold_within`` optionally restarts best-value selection inside groups such
-    as ``["dataset", "shot"]``. Values are maximized by default; columns listed
-    in ``minimize_columns`` are minimized instead. By default, a selected
-    ``dataset`` column is collapsed into contiguous LaTeX ``multirow`` cells.
-    Pass an empty sequence to disable this behavior. ``resize_to_textwidth``
-    wraps wide tables with ``\resizebox{\textwidth}{!}{...}``.
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    columns : Sequence[str]
+        Giá trị ``columns`` được sử dụng trong phép xử lý.
+    value_columns : Sequence[str] | None, optional
+        Giá trị ``value_columns`` được sử dụng trong phép xử lý.
+    std_columns : Mapping[str, str] | None, optional
+        Giá trị ``std_columns`` được sử dụng trong phép xử lý.
+    column_labels : Mapping[str, str] | None, optional
+        Giá trị ``column_labels`` được sử dụng trong phép xử lý.
+    bold_within : Sequence[str] | None, optional
+        Giá trị ``bold_within`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    caption : str | None, optional
+        Giá trị ``caption`` được sử dụng trong phép xử lý.
+    label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    position : str, optional
+        Giá trị ``position`` được sử dụng trong phép xử lý.
+    table_environment : bool, optional
+        Giá trị ``table_environment`` được sử dụng trong phép xử lý.
+    font_size : str | None, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    multirow_columns : Sequence[str] | None, optional
+        Giá trị ``multirow_columns`` được sử dụng trong phép xử lý.
+    minimize_columns : Sequence[str] | None, optional
+        Giá trị ``minimize_columns`` được sử dụng trong phép xử lý.
+    resize_to_textwidth : bool, optional
+        Giá trị ``resize_to_textwidth`` được sử dụng trong phép xử lý.
+    bold_best : bool, optional
+        Giá trị ``bold_best`` được sử dụng trong phép xử lý.
+    column_widths : Mapping[str, str] | None, optional
+        Giá trị ``column_widths`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     frame = frame.copy()
     if "category" in frame.columns:
@@ -592,13 +763,36 @@ def generate_latex_table(
 
 
 def _prepare_plot_output(output: str | Path) -> Path:
+    """Chuẩn bị plot đầu ra cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     destination = resolve_path(output)
     destination.parent.mkdir(parents=True, exist_ok=True)
     return destination
 
 
 def _load_pyplot():
-    """Import matplotlib lazily so LaTeX generation has no plotting dependency."""
+    """Tải pyplot cho bước xử lý hiện tại.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     try:
         import matplotlib
 
@@ -613,10 +807,34 @@ def _load_pyplot():
 
 
 def _ordered_unique(series: pd.Series) -> list[Any]:
+    """Thực hiện bước ordered unique trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    series : pd.Series
+        Giá trị ``series`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return list(dict.fromkeys(series.dropna().tolist()))
 
 
 def _clean_x_tick_label(val: Any) -> str:
+    """Thực hiện bước clean x tick nhãn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    val : Any
+        Giá trị ``val`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     s = str(val)
     s = re.sub(r"^Few-shot\s*/\s*", "", s, flags=re.IGNORECASE)
     s = re.sub(r"(\d+)\s*shot", r"\1 mẫu", s, flags=re.IGNORECASE)
@@ -624,7 +842,18 @@ def _clean_x_tick_label(val: Any) -> str:
 
 
 def _shot_sort_key(val: Any) -> tuple[int, int | float, str]:
-    """Sort sample-limited categories in natural numeric order."""
+    """Thực hiện bước shot sort key trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    val : Any
+        Giá trị ``val`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[int, int | float, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     s = str(val)
     match = re.search(r"(\d+)\s*(?:shot|mẫu)", s, flags=re.IGNORECASE)
     if match:
@@ -648,7 +877,42 @@ def plot_bar_chart(
     precision: int = 3,
     dpi: int = 300,
 ) -> Path:
-    """Generate a grouped bar chart with clean labels, non-overlapping legend, and professional styling."""
+    """Vẽ bar chart cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dữ liệu đầu vào của bước xử lý.
+    x : str
+        Giá trị ``x`` được sử dụng trong phép xử lý.
+    y : str
+        Giá trị ``y`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    hue : str | None, optional
+        Giá trị ``hue`` được sử dụng trong phép xử lý.
+    error : str | None, optional
+        Giá trị ``error`` được sử dụng trong phép xử lý.
+    highlight : str | None, optional
+        Giá trị ``highlight`` được sử dụng trong phép xử lý.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    x_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    annotate : bool, optional
+        Giá trị ``annotate`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     plot_data = data.copy()
     _require_columns(
@@ -667,19 +931,19 @@ def plot_bar_chart(
     fig_width = max(6.5, 1.2 * len(x_values) + 2.5)
     fig, axis = plt.subplots(figsize=(fig_width, 4.8))
 
-    # Scikit-learn / Matplotlib tab10 palette (Blue, Orange, Green, Red, Purple, Brown, Pink, Grey, Olive, Cyan)
+    # Tạo thành phần trực quan cho kết quả phân tích.
     tab10_palette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
         "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
     ]
     max_height_val = 0.0
 
-    # Ensure every series gets a unique, non-overlapping color
+    # Bước hỗ trợ để vẽ bar chart cho bước xử lý hiện tại.
     color_map: dict[str, str] = {}
     used_indices: set[int] = set()
 
     if highlight is not None and any(str(sv) == highlight for sv in series_values):
-        color_map[highlight] = "#1f77b4"  # Dedicated blue for highlighted model
+        color_map[highlight] = "#1f77b4"  # Bước hỗ trợ để vẽ bar chart cho bước xử lý hiện tại.
         used_indices.add(0)
 
     color_idx = 0
@@ -807,7 +1071,45 @@ def plot_heatmap(
     precision: int = 3,
     dpi: int = 300,
 ) -> Path:
-    """Write an annotated heatmap from a long-form result table."""
+    """Vẽ heatmap cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    rows : str
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+    columns : str
+        Giá trị ``columns`` được sử dụng trong phép xử lý.
+    value : str
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    cmap : str, optional
+        Giá trị ``cmap`` được sử dụng trong phép xử lý.
+    x_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    colorbar_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     plt = _load_pyplot()
     _require_columns(frame, [rows, columns, value])
     data = frame.copy()
@@ -891,7 +1193,42 @@ def plot_line_chart(
     precision: int = 3,
     dpi: int = 300,
 ) -> Path:
-    """Generate a line chart with optional grouping and standard-deviation bands."""
+    """Vẽ line chart cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dữ liệu đầu vào của bước xử lý.
+    x : str
+        Giá trị ``x`` được sử dụng trong phép xử lý.
+    y : str
+        Giá trị ``y`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    hue : str | None, optional
+        Giá trị ``hue`` được sử dụng trong phép xử lý.
+    error : str | None, optional
+        Giá trị ``error`` được sử dụng trong phép xử lý.
+    highlight : str | None, optional
+        Giá trị ``highlight`` được sử dụng trong phép xử lý.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    x_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    annotate : bool, optional
+        Giá trị ``annotate`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     plot_data = data.copy()
     _require_columns(
@@ -1015,7 +1352,41 @@ def plot_scatter_chart(
     y_label: str | None = None,
     dpi: int = 300,
 ) -> Path:
-    """Generate an annotated scatter plot for trade-off or Pareto analyses."""
+    """Vẽ scatter chart cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dữ liệu đầu vào của bước xử lý.
+    x : str
+        Giá trị ``x`` được sử dụng trong phép xử lý.
+    y : str
+        Giá trị ``y`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    highlight : str | None, optional
+        Giá trị ``highlight`` được sử dụng trong phép xử lý.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    x_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     plt = _load_pyplot()
     plot_data = data.copy()
     _require_columns(plot_data, [x, y] + ([label] if label else []))
@@ -1093,7 +1464,41 @@ def plot_confusion_matrix(
     precision: int = 2,
     dpi: int = 300,
 ) -> Path:
-    """Generate a readable confusion matrix, optionally normalized by true class."""
+    """Vẽ confusion matrix cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        Giá trị ``matrix`` được sử dụng trong phép xử lý.
+    class_names : Sequence[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    normalize : bool, optional
+        Giá trị ``normalize`` được sử dụng trong phép xử lý.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    x_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    cmap : str, optional
+        Giá trị ``cmap`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     plt = _load_pyplot()
     values = np.asarray(matrix, dtype=np.float64)
     names = list(class_names)
@@ -1151,7 +1556,23 @@ def plot_confusion_matrix(
 
 
 def load_class_names(path: str | Path) -> list[str]:
-    """Load non-empty UTF-8 class names, preserving their file order."""
+    """Tải class names cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = resolve_path(path)
     names = [
         line.strip()
@@ -1177,12 +1598,44 @@ def plot_aggregate_confusion_matrix(
     precision: int = 2,
     dpi: int = 300,
 ) -> tuple[Path, np.ndarray]:
-    """Pool multiclass confusion counts across seeds and plot the result.
+    """Vẽ aggregate confusion matrix cho bước xử lý hiện tại.
 
-    Every prediction archive must contain ``probabilities`` with shape [N,C]
-    and integer ``labels`` with shape [N]. Pooling the raw counts gives every
-    evaluated sample from every seed equal weight. Row normalization is applied
-    only for display, so each row can be interpreted as class-wise recall.
+    Parameters
+    ----------
+    inputs : Sequence[str | Path]
+        Giá trị ``inputs`` được sử dụng trong phép xử lý.
+    class_names : Sequence[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    normalize : bool, optional
+        Giá trị ``normalize`` được sử dụng trong phép xử lý.
+    show_label_indices : bool, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    x_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    cmap : str, optional
+        Giá trị ``cmap`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Path, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if len(inputs) < 2:
         raise ValueError(
@@ -1262,7 +1715,27 @@ def calibration_statistics(
     *,
     n_bins: int = 15,
 ) -> dict[str, Any]:
-    """Compute top-label equal-width reliability bins, ECE, and Brier score."""
+    """Thực hiện bước calibration statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    n_bins : int, optional
+        Giá trị ``n_bins`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     probabilities = np.asarray(probabilities, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     if probabilities.ndim != 2 or probabilities.shape[0] != labels.shape[0]:
@@ -1317,7 +1790,35 @@ def load_calibration_arrays(
     label_column: str | None = None,
     probability_columns: Sequence[str] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Load probability and label arrays from NPZ or tabular data."""
+    """Tải calibration arrays cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    probabilities_key : str, optional
+        Tên hoặc khóa định danh của giá trị.
+    labels_key : str, optional
+        Tên hoặc khóa định danh của giá trị.
+    label_column : str | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    probability_columns : Sequence[str] | None, optional
+        Giá trị ``probability_columns`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = resolve_path(path)
     if not source.is_file():
         hint = ""
@@ -1355,10 +1856,26 @@ def _prepare_ovr_targets(
     *,
     task: str = "auto",
 ) -> tuple[np.ndarray, np.ndarray, str]:
-    """Validate scores and return one-vs-rest binary targets.
+    """Chuẩn bị ovr targets cho bước xử lý hiện tại.
 
-    Multiclass labels may be integer class IDs or one-hot matrices. Multilabel
-    targets must be a binary matrix with the same shape as ``probabilities``.
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     scores = np.asarray(probabilities, dtype=np.float64)
     raw_labels = np.asarray(labels)
@@ -1433,7 +1950,29 @@ def roc_curve_statistics(
     *,
     task: str = "auto",
 ) -> dict[str, Any]:
-    """Compute per-class, macro, and micro one-vs-rest ROC curves."""
+    """Thực hiện bước roc curve statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     try:
         from sklearn.metrics import auc, roc_curve
     except ImportError as error:
@@ -1499,7 +2038,29 @@ def precision_recall_curve_statistics(
     *,
     task: str = "auto",
 ) -> dict[str, Any]:
-    """Compute per-class, macro, and micro one-vs-rest PR curves."""
+    """Thực hiện bước precision recall curve statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     try:
         from sklearn.metrics import average_precision_score, precision_recall_curve
     except ImportError as error:
@@ -1576,6 +2137,25 @@ def _curve_class_names(
     num_classes: int,
     class_names: Sequence[str] | None,
 ) -> list[str]:
+    """Thực hiện bước curve class names trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    num_classes : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    class_names : Sequence[str] | None
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if class_names is None:
         return [f"Class {class_id}" for class_id in range(num_classes)]
     names = [str(value) for value in class_names]
@@ -1597,7 +2177,32 @@ def plot_roc_curve(
     title: str | None = None,
     dpi: int = 300,
 ) -> tuple[Path, dict[str, Any]]:
-    """Write the macro-average one-vs-rest ROC curve."""
+    """Vẽ roc curve cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+    class_names : Sequence[str] | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    show_per_class : bool, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Path, dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     statistics = roc_curve_statistics(probabilities, labels, task=task)
     fig, axis = plt.subplots(figsize=(6.2, 6.2))
@@ -1651,7 +2256,32 @@ def plot_precision_recall_curve(
     title: str | None = None,
     dpi: int = 300,
 ) -> tuple[Path, dict[str, Any]]:
-    """Write the macro-average one-vs-rest precision--recall curve."""
+    """Vẽ precision recall curve cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+    class_names : Sequence[str] | None, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    show_per_class : bool, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Path, dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     statistics = precision_recall_curve_statistics(
         probabilities,
@@ -1711,7 +2341,36 @@ def plot_calibration_curve(
     y_label: str = "Observed accuracy",
     dpi: int = 300,
 ) -> tuple[Path, dict[str, Any]]:
-    """Write a reliability diagram with ECE and multiclass Brier annotations."""
+    """Vẽ calibration curve cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    n_bins : int, optional
+        Giá trị ``n_bins`` được sử dụng trong phép xử lý.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    model_label : str, optional
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    ideal_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    x_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    y_label : str, optional
+        Nhãn hoặc chỉ số lớp liên quan.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Path, dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     statistics = calibration_statistics(probabilities, labels, n_bins=n_bins)
     occupied = statistics["bin_count"] > 0
@@ -1773,6 +2432,18 @@ def plot_calibration_curve(
 
 
 def _mean_std(values: Sequence[float]) -> tuple[float, float]:
+    """Thực hiện bước mean std trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : Sequence[float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[float, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     array = np.asarray(values, dtype=np.float64)
     return float(array.mean()), float(array.std(ddof=1)) if len(array) > 1 else 0.0
 
@@ -1787,11 +2458,34 @@ def plot_aggregate_prediction_curves(
     title_prefix: str = "Model",
     dpi: int = 300,
 ) -> dict[str, Any]:
-    """Plot mean macro ROC, macro PR, and calibration curves across seeds.
+    """Vẽ aggregate prediction curves cho bước xử lý hiện tại.
 
-    Each input must contain predictions for the same test set. Curves are
-    interpolated on common grids before computing the seed-wise mean and sample
-    standard deviation. The function writes three figures and a JSON summary.
+    Parameters
+    ----------
+    inputs : Sequence[str | Path]
+        Giá trị ``inputs`` được sử dụng trong phép xử lý.
+    output_dir : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    prefix : str, optional
+        Giá trị ``prefix`` được sử dụng trong phép xử lý.
+    task : str, optional
+        Giá trị ``task`` được sử dụng trong phép xử lý.
+    n_bins : int, optional
+        Giá trị ``n_bins`` được sử dụng trong phép xử lý.
+    title_prefix : str, optional
+        Giá trị ``title_prefix`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if len(inputs) < 2:
         raise ValueError("Aggregate curves require predictions from at least two seeds.")
@@ -2071,7 +2765,35 @@ def plot_full_shot_comparison(
     figure_title: str | None = None,
     dpi: int = 300,
 ) -> Path:
-    """Compare XBone-Net with the two nearest PEFT baselines in full-shot."""
+    """Vẽ full shot comparison cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    datasets : Sequence[str], optional
+        Giá trị ``datasets`` được sử dụng trong phép xử lý.
+    title_template : str, optional
+        Giá trị ``title_template`` được sử dụng trong phép xử lý.
+    dataset_titles : Mapping[str, str] | None, optional
+        Dữ liệu đầu vào của bước xử lý.
+    figure_title : str | None, optional
+        Giá trị ``figure_title`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     frame = load_frame(input_file)
     resolved_dataset_titles = dict(dataset_titles or {})
     required = (
@@ -2253,7 +2975,18 @@ FULL_SHOT_BASELINE_ORDER = (
 
 
 def _seed_list(value: Any) -> list[int]:
-    """Parse the space-separated seed field used by run_all_table.csv."""
+    """Thực hiện bước seed list trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return [int(item) for item in re.findall(r"\d+", str(value))]
 
 
@@ -2265,7 +2998,31 @@ def build_full_shot_paired_effects(
     metric: str = "f1_macro",
     confidence_level: float = 0.95,
 ) -> pd.DataFrame:
-    """Estimate paired seed-level XBone-Net minus baseline effects."""
+    """Xây dựng full shot paired effects cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    results_root : str | Path, optional
+        Đường dẫn tài nguyên được sử dụng.
+    datasets : Sequence[str], optional
+        Giá trị ``datasets`` được sử dụng trong phép xử lý.
+    metric : str, optional
+        Giá trị điểm hoặc độ đo cần sử dụng.
+    confidence_level : float, optional
+        Giá trị ``confidence_level`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     supported_metrics = {
         "accuracy",
         "balanced_accuracy",
@@ -2393,7 +3150,32 @@ def plot_full_shot_paired_forest(
     csv_output: str | Path | None = None,
     dpi: int = 300,
 ) -> tuple[Path, Path]:
-    """Plot paired seed-level confidence intervals against every baseline."""
+    """Vẽ full shot paired forest cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    results_root : str | Path, optional
+        Đường dẫn tài nguyên được sử dụng.
+    datasets : Sequence[str], optional
+        Giá trị ``datasets`` được sử dụng trong phép xử lý.
+    metric : str, optional
+        Giá trị điểm hoặc độ đo cần sử dụng.
+    confidence_level : float, optional
+        Giá trị ``confidence_level`` được sử dụng trong phép xử lý.
+    csv_output : str | Path | None, optional
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Path, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     effects = build_full_shot_paired_effects(
         input_file,
         results_root=results_root,
@@ -2552,6 +3334,13 @@ def plot_full_shot_paired_forest(
 
 
 def _add_shared_input(parser: argparse.ArgumentParser) -> None:
+    """Thực hiện bước add shared đầu vào trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Giá trị ``parser`` được sử dụng trong phép xử lý.
+    """
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument(
         "--json-record-path",
@@ -2575,6 +3364,18 @@ def _add_shared_input(parser: argparse.ArgumentParser) -> None:
 
 
 def _load_filtered_frame(args: argparse.Namespace) -> pd.DataFrame:
+    """Tải filtered bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Các đối số vị trí bổ sung.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return filter_frame(
         load_frame(args.input, args.json_record_path),
         where=args.where,
@@ -2583,6 +3384,13 @@ def _load_filtered_frame(args: argparse.Namespace) -> pd.DataFrame:
 
 
 def _add_prediction_curve_args(parser: argparse.ArgumentParser) -> None:
+    """Thực hiện bước add prediction curve tham số trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Giá trị ``parser`` được sử dụng trong phép xử lý.
+    """
     parser.add_argument(
         "--input",
         type=Path,
@@ -2615,6 +3423,13 @@ def _add_prediction_curve_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Xây dựng parser cho bước xử lý hiện tại.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -3226,6 +4041,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load_efficiency_json(exp_dir: str, seed: int = 42) -> dict | None:
+    """Tải efficiency json cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    exp_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     json_file = DEFAULT_RESULTS_ROOT / exp_dir / f"seed_{seed}" / "efficiency.json"
     if not json_file.is_file():
         return None
@@ -3234,6 +4063,13 @@ def _load_efficiency_json(exp_dir: str, seed: int = 42) -> dict | None:
 
 
 def generate_full_shot_efficiency_table(output_file: Path) -> None:
+    """Sinh full shot efficiency table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output_file : Path
+        Đường dẫn tài nguyên được sử dụng.
+    """
     targets = [
         ("BTXRD", "btxrd/baselines/peft_finetuned/lora_biomedclip", "LoRA-BiomedCLIP"),
         ("BTXRD", "btxrd/baselines/peft_finetuned/lora_pubmedclip", "LoRA-PubMedCLIP"),
@@ -3283,7 +4119,7 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         print("[ERROR] No full-shot efficiency data found. Please run efficiency.py benchmark first.")
         return
 
-    # Table 1: Parameters
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
     lines_params = [
         r"\begin{table}[!htbp]",
         r"\centering",
@@ -3320,7 +4156,7 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         r"\end{table}",
     ])
 
-    # Table 2: Computation
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     lines_compute = [
         r"\begin{table}[!htbp]",
         r"\centering",
@@ -3361,6 +4197,13 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
 
 
 def generate_few_shot_efficiency_table(output_file: Path) -> None:
+    """Sinh few shot efficiency table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output_file : Path
+        Đường dẫn tài nguyên được sử dụng.
+    """
     shots = ["1", "10", "20"]
     models = [
         ("lora_biomedclip", "LoRA-BiomedCLIP"),
@@ -3422,7 +4265,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         print("[ERROR] No few-shot efficiency data found. Please run efficiency.py benchmark first.")
         return
 
-    # Table 1: Parameters
+    # Thiết lập trạng thái và thống kê các tham số mô hình.
     lines_params = [
         r"\begin{table}[H]",
         r"\centering",
@@ -3482,7 +4325,7 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\end{table}",
     ])
 
-    # Table 2: Computation
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     lines_compute = [
         r"\begin{table}[H]",
         r"\centering",
@@ -3547,6 +4390,13 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
 
 
 def _generate_ood_table_legacy(output_file: Path) -> None:
+    """Sinh ood table legacy cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output_file : Path
+        Đường dẫn tài nguyên được sử dụng.
+    """
     lines = [
         r"\begin{table}[H]",
         r"\centering",
@@ -3810,6 +4660,20 @@ LEAVE_ONE_OUT_METRICS = (
 
 
 def _leave_one_out_number(value: float, precision: int) -> str:
+    """Thực hiện bước leave one out number trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : float
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    precision : int
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return f"{float(value):.{precision}f}".replace(".", "{.}")
 
 
@@ -3819,7 +4683,27 @@ def generate_ablation_leave_one_out_table(
     *,
     precision: int = 4,
 ) -> Path:
-    """Generate the author-style CTCH leave-one-component-out LaTeX table."""
+    """Sinh ablation leave one out table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     frame = load_frame(input_file)
     required = {
         "experiment",
@@ -3999,7 +4883,27 @@ def _classification_metric_values(
     labels: np.ndarray,
     metrics: Sequence[str],
 ) -> dict[str, float]:
-    """Compute report metrics without printing intermediate output."""
+    """Thực hiện bước classification độ đo các giá trị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    metrics : Sequence[str]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     from sklearn.metrics import average_precision_score, roc_auc_score
 
     probabilities = np.asarray(probabilities, dtype=np.float64)
@@ -4101,7 +5005,20 @@ def _prepare_rank_metric_cache(
     probabilities: np.ndarray,
     labels: np.ndarray,
 ) -> list[dict[str, np.ndarray]]:
-    """Pre-sort fixed class scores for exact weighted AUROC/AUPRC bootstrap."""
+    """Chuẩn bị rank độ đo cache cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[dict[str, np.ndarray]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     probabilities = np.asarray(probabilities, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     row_sums = probabilities.sum(axis=1, keepdims=True)
@@ -4131,7 +5048,24 @@ def _weighted_rank_metrics(
     need_auroc: bool,
     need_auprc: bool,
 ) -> tuple[float, float]:
-    """Compute exact macro rank metrics from fixed scores and case weights."""
+    """Thực hiện bước weighted rank các độ đo trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    cache : Sequence[Mapping[str, np.ndarray]]
+        Giá trị ``cache`` được sử dụng trong phép xử lý.
+    sample_weight : np.ndarray
+        Giá trị ``sample_weight`` được sử dụng trong phép xử lý.
+    need_auroc : bool
+        Giá trị ``need_auroc`` được sử dụng trong phép xử lý.
+    need_auprc : bool
+        Giá trị ``need_auprc`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[float, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     aurocs: list[float] = []
     auprcs: list[float] = []
     weights = np.asarray(sample_weight, dtype=np.float64)
@@ -4183,7 +5117,31 @@ def _classification_metric_values_weighted(
     *,
     rank_cache: Sequence[Mapping[str, np.ndarray]] | None = None,
 ) -> dict[str, float]:
-    """Compute the report metrics for one bootstrap vector of case weights."""
+    """Thực hiện bước classification độ đo các giá trị weighted trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    probabilities : np.ndarray
+        Giá trị ``probabilities`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    metrics : Sequence[str]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    sample_weight : np.ndarray
+        Giá trị ``sample_weight`` được sử dụng trong phép xử lý.
+    rank_cache : Sequence[Mapping[str, np.ndarray]] | None, optional
+        Giá trị ``rank_cache`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     probabilities = np.asarray(probabilities, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     weights = np.asarray(sample_weight, dtype=np.float64).reshape(-1)
@@ -4273,7 +5231,33 @@ def _load_aligned_prediction_archive(
     expected_image_ids: np.ndarray | None = None,
     expected_labels: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
-    """Load and, when necessary, reorder one prediction archive by image ID."""
+    """Tải aligned prediction archive cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    source : Path
+        Dữ liệu nguồn của phép xử lý.
+    expected_image_ids : np.ndarray | None, optional
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    expected_labels : np.ndarray | None, optional
+        Giá trị ``expected_labels`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not source.is_file():
         raise FileNotFoundError(f"Missing prediction archive: {source}")
     required = ("probabilities", "labels", "image_id", "patient_id")
@@ -4319,6 +5303,18 @@ def _load_aligned_prediction_archive(
 def _leave_one_out_prediction_roots(
     results_root: str | Path,
 ) -> list[tuple[str, str, Path]]:
+    """Thực hiện bước leave one out prediction roots trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    results_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[tuple[str, str, Path]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     base = resolve_path(results_root)
     roots: list[tuple[str, str, Path]] = []
     for specification in LEAVE_ONE_OUT_CONFIGS:
@@ -4344,7 +5340,25 @@ def _load_leave_one_out_predictions(
     np.ndarray,
     np.ndarray,
 ]:
-    """Load six leave-one-out configurations on one strictly paired test set."""
+    """Tải leave one out predictions cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[list[tuple[str, str, Path]], dict[str, dict[int, np.ndarray]], np.ndarray, np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     roots = _leave_one_out_prediction_roots(results_root)
     if not roots:
         raise ValueError("No leave-one-out configurations were defined.")
@@ -4390,7 +5404,25 @@ def _stratified_patient_groups(
     labels: np.ndarray,
     patient_ids: np.ndarray,
 ) -> tuple[list[np.ndarray], dict[int, np.ndarray]]:
-    """Build patient clusters and class-stratified cluster lookup tables."""
+    """Thực hiện bước stratified patient groups trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    patient_ids : np.ndarray
+        Giá trị ``patient_ids`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[list[np.ndarray], dict[int, np.ndarray]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     patient_ids = np.asarray(patient_ids).astype(str)
     unique_patients, inverse = np.unique(patient_ids, return_inverse=True)
@@ -4415,6 +5447,22 @@ def _sample_stratified_patient_indices(
     clusters: Sequence[np.ndarray],
     class_groups: Mapping[int, np.ndarray],
 ) -> np.ndarray:
+    """Lấy mẫu stratified patient indices cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    rng : np.random.Generator
+        Giá trị ``rng`` được sử dụng trong phép xử lý.
+    clusters : Sequence[np.ndarray]
+        Giá trị ``clusters`` được sử dụng trong phép xử lý.
+    class_groups : Mapping[int, np.ndarray]
+        Nhãn hoặc chỉ số lớp liên quan.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     selected: list[np.ndarray] = []
     for group_indices in class_groups.values():
         sampled_groups = rng.choice(
@@ -4427,7 +5475,18 @@ def _sample_stratified_patient_indices(
 
 
 def _holm_adjust(p_values: Sequence[float]) -> np.ndarray:
-    """Holm step-down family-wise error correction."""
+    """Thực hiện bước holm adjust trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    p_values : Sequence[float]
+        Giá trị ``p_values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = np.asarray(p_values, dtype=np.float64)
     order = np.argsort(values)
     adjusted = np.empty_like(values)
@@ -4445,6 +5504,20 @@ def _percentile_interval(
     *,
     alpha: float,
 ) -> tuple[float, float]:
+    """Thực hiện bước percentile interval trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    alpha : float
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[float, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     lower = 100.0 * alpha / 2.0
     upper = 100.0 * (1.0 - alpha / 2.0)
     return (
@@ -4467,7 +5540,43 @@ def _paired_variant_statistics(
     random_seed: int,
     test_method: str,
 ) -> list[dict[str, float]]:
-    """Estimate paired effects with crossed bootstrap and cluster permutation."""
+    """Thực hiện bước paired variant statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    reference : Mapping[int, np.ndarray]
+        Giá trị ``reference`` được sử dụng trong phép xử lý.
+    variant : Mapping[int, np.ndarray]
+        Giá trị ``variant`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    patient_ids : np.ndarray
+        Giá trị ``patient_ids`` được sử dụng trong phép xử lý.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    metrics : Sequence[str]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    n_bootstrap : int
+        Giá trị ``n_bootstrap`` được sử dụng trong phép xử lý.
+    n_permutations : int
+        Giá trị ``n_permutations`` được sử dụng trong phép xử lý.
+    alpha : float
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    random_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    test_method : str
+        Phương pháp hoặc chế độ xử lý được chọn.
+
+    Returns
+    -------
+    list[dict[str, float]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     seed_order = [int(seed) for seed in seeds]
     clusters, class_groups = _stratified_patient_groups(labels, patient_ids)
     _, patient_inverse = np.unique(
@@ -4578,9 +5687,9 @@ def _paired_variant_statistics(
             bootstrap_variant[metric][iteration] = var_value
             bootstrap_delta[metric][iteration] = var_value - ref_value
 
-    # Under the paired null, exchange the complete prediction trajectories of
-    # the two models within each patient. The same swap is used across seeds so
-    # repeated predictions for one patient are not treated as independent.
+    # Bước hỗ trợ để thực hiện xử lý ``paired_variant_statistics`` trong quy trình hiện tại.
+    # Bước hỗ trợ để thực hiện xử lý ``paired_variant_statistics`` trong quy trình hiện tại.
+    # Bước hỗ trợ để thực hiện xử lý ``paired_variant_statistics`` trong quy trình hiện tại.
     permutation_delta: dict[str, np.ndarray] = {}
     if test_method == "permutation":
         permutation_delta = {
@@ -4695,6 +5804,18 @@ def _paired_variant_statistics(
 
 
 def _format_p_value(value: float) -> str:
+    """Định dạng p giá trị cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    value : float
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if value < 0.001:
         return r"$<0{.}001$"
     return f"${value:.3f}$".replace(".", "{.}")
@@ -4706,7 +5827,22 @@ def generate_paired_statistics_latex(
     *,
     precision: int = 4,
 ) -> Path:
-    """Write an appendix-ready table of paired effects and corrected tests."""
+    """Sinh paired statistics latex cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     required = (
         "variant",
         "metric",
@@ -4724,6 +5860,22 @@ def generate_paired_statistics_latex(
     _require_columns(frame, required)
 
     def estimate(mean: float, lower: float, upper: float) -> str:
+        """Ước lượng kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        mean : float
+            Giá trị ``mean`` được sử dụng trong phép xử lý.
+        lower : float
+            Giá trị ``lower`` được sử dụng trong phép xử lý.
+        upper : float
+            Giá trị ``upper`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        str
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return (
             f"${mean:.{precision}f}$ "
             f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
@@ -4820,7 +5972,29 @@ def generate_paired_metric_latex(
     metric: str,
     precision: int = 4,
 ) -> Path:
-    """Write one compact paired-statistics table for a selected metric."""
+    """Sinh paired độ đo latex cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    metric : str
+        Giá trị điểm hoặc độ đo cần sử dụng.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if metric not in PAIRED_STATISTIC_METRICS:
         raise ValueError(f"Unsupported table metric: {metric}")
     subset = frame[frame["metric"].astype(str) == metric].copy()
@@ -4828,6 +6002,22 @@ def generate_paired_metric_latex(
         raise ValueError(f"No paired statistics are available for '{metric}'.")
 
     def estimate(mean: float, lower: float, upper: float) -> str:
+        """Ước lượng kết quả cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        mean : float
+            Giá trị ``mean`` được sử dụng trong phép xử lý.
+        lower : float
+            Giá trị ``lower`` được sử dụng trong phép xử lý.
+        upper : float
+            Giá trị ``upper`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        str
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return (
             f"${mean:.{precision}f}$ "
             f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
@@ -4911,7 +6101,29 @@ def plot_ablation_forest(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Plot paired leave-one-out effects with bootstrap confidence intervals."""
+    """Vẽ ablation forest cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    metric : str
+        Giá trị điểm hoặc độ đo cần sử dụng.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if metric not in PAIRED_STATISTIC_METRICS:
         raise ValueError(f"Unsupported forest metric: {metric}")
     required = (
@@ -5071,7 +6283,41 @@ def run_leave_one_out_statistical_analysis(
     test_method: str = "permutation",
     dpi: int = 300,
 ) -> dict[str, Path]:
-    """Run confirmatory paired analysis and create CSV, LaTeX, and forests."""
+    """Thực hiện leave one out statistical analysis cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_dir : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    metrics : Sequence[str]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    n_bootstrap : int, optional
+        Giá trị ``n_bootstrap`` được sử dụng trong phép xử lý.
+    n_permutations : int, optional
+        Giá trị ``n_permutations`` được sử dụng trong phép xử lý.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    random_seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+    test_method : str, optional
+        Phương pháp hoặc chế độ xử lý được chọn.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not seeds:
         raise ValueError("At least one training seed is required.")
     if n_bootstrap < 1:
@@ -5222,6 +6468,29 @@ def _load_seed_metrics(
     *,
     seeds: Sequence[int],
 ) -> dict[int, dict[str, float]]:
+    """Tải seed các độ đo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[int, dict[str, float]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     root = resolve_path(experiment_root)
     values: dict[int, dict[str, float]] = {}
     for seed in seeds:
@@ -5248,7 +6517,27 @@ def load_ablation_summary_frame(
     *,
     seeds: Sequence[int] = (42, 123, 456),
 ) -> pd.DataFrame:
-    """Build an ordered CTCH ablation summary from per-seed metric files."""
+    """Tải ablation summary bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    ablation_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    reference_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int], optional
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     seed_order = [int(seed) for seed in seeds]
     if not seed_order:
         raise ValueError("At least one seed is required.")
@@ -5316,7 +6605,27 @@ def plot_ablation_macro_f1_delta(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Plot paired per-seed Macro-F1 changes relative to XBone-Net."""
+    """Vẽ ablation macro f1 delta cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     plt = _load_pyplot()
     from matplotlib.patches import Patch
 
@@ -5405,7 +6714,28 @@ def generate_ablation_report(
     precision: int = 3,
     dpi: int = 300,
 ) -> dict[str, Path]:
-    """Generate the ordered ablation CSV, LaTeX table, and delta chart."""
+    """Sinh ablation báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    ablation_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    reference_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_dir : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int], optional
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     destination_dir = resolve_path(output_dir)
     destination_dir.mkdir(parents=True, exist_ok=True)
     frame = load_ablation_summary_frame(
@@ -5498,6 +6828,23 @@ REPRESENTATION_METRICS = {
 
 
 def _sample_mean_std(values: Sequence[float]) -> tuple[float, float]:
+    """Lấy mẫu mean std cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    values : Sequence[float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[float, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     array = np.asarray(values, dtype=np.float64)
     if array.size == 0 or not np.isfinite(array).all():
         raise ValueError("Cannot aggregate an empty or non-finite value sequence.")
@@ -5512,7 +6859,29 @@ def load_explanation_mechanism_frame(
     *,
     seeds: Sequence[int],
 ) -> pd.DataFrame:
-    """Aggregate literature-established attention and attribution metrics."""
+    """Tải explanation mechanism bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     root = resolve_path(experiment_root)
     per_seed: list[dict[str, float]] = []
     for seed in seeds:
@@ -5568,6 +6937,27 @@ def load_explanation_mechanism_frame(
             record_key: str,
             curve_key: str,
         ) -> np.ndarray:
+            """Tổng hợp curve auc cho bước xử lý hiện tại.
+
+            Parameters
+            ----------
+            record_key : str
+                Tên hoặc khóa định danh của giá trị.
+            curve_key : str
+                Tên hoặc khóa định danh của giá trị.
+
+            Returns
+            -------
+            np.ndarray
+                Kết quả được tạo bởi bước xử lý của hàm.
+
+            Raises
+            ------
+            KeyError
+                Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+            ValueError
+                Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+            """
             values = []
             for record in records:
                 curves = record.get(record_key)
@@ -5642,7 +7032,29 @@ def load_explanation_distribution_data(
     *,
     seeds: Sequence[int],
 ) -> dict[str, np.ndarray]:
-    """Pool per-sample attention statistics across the requested seeds."""
+    """Tải explanation distribution data cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     root = resolve_path(experiment_root)
     pooled: dict[str, list[np.ndarray]] = {
         "attention_entropy_visual": [],
@@ -5708,7 +7120,25 @@ def load_explanation_distribution_data(
 def load_representation_frame(
     aggregate_input: str | Path,
 ) -> pd.DataFrame:
-    """Load the six report-facing representation spaces from aggregate JSON."""
+    """Tải representation bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregate_input : str | Path
+        Dữ liệu nguồn của phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = resolve_path(aggregate_input)
     payload = json.loads(source.read_text(encoding="utf-8"))
     representation = (
@@ -5745,7 +7175,29 @@ def plot_explanation_mechanism_summary(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Plot established attention-entropy and perturbation AUC metrics."""
+    """Vẽ explanation mechanism summary cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    distributions : Mapping[str, np.ndarray]
+        Giá trị ``distributions`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     plt = _load_pyplot()
     _require_columns(frame, ["metric_key", "component", "mean", "std"])
     required_distributions = (
@@ -5842,7 +7294,27 @@ def load_attention_intervention_summary(
     *,
     seeds: Sequence[int],
 ) -> dict[str, Any]:
-    """Aggregate token-intervention probability drops over samples and seeds."""
+    """Tải attention intervention summary cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     root = resolve_path(experiment_root)
     modalities = {
         "visual": "curves",
@@ -5931,7 +7403,22 @@ def plot_attention_intervention_curves(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Plot visual- and clinical-token intervention curves in two panels."""
+    """Vẽ attention intervention curves cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    summary : Mapping[str, Any]
+        Giá trị ``summary`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     figure, axes = plt.subplots(1, 2, figsize=(10.8, 4.2), sharey=True)
     strategy_specs = (
@@ -6021,7 +7508,27 @@ def load_explainability_cases(
     *,
     seed: int,
 ) -> list[dict[str, Any]]:
-    """Select the highest-confidence correct and incorrect visualized cases."""
+    """Tải explainability cases cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     root = resolve_path(experiment_root)
     sample_path = (
         root
@@ -6068,7 +7575,29 @@ def plot_explainability_cases(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Compose one correct and one incorrect case with intervention curves."""
+    """Vẽ explainability cases cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    cases : Sequence[Mapping[str, Any]]
+        Giá trị ``cases`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if len(cases) != 2:
         raise ValueError("Exactly one correct and one incorrect case are required.")
     plt = _load_pyplot()
@@ -6212,7 +7741,22 @@ def plot_representation_geometry_summary(
     output: str | Path,
     dpi: int = 300,
 ) -> Path:
-    """Plot four horizontal comparisons across the six representation spaces."""
+    """Vẽ representation geometry summary cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Giá trị ``frame`` được sử dụng trong phép xử lý.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
     panel_specs = (
         ("silhouette_mean", "silhouette_std", "Silhouette ↑"),
@@ -6287,7 +7831,26 @@ def generate_explainability_report(
     seeds: Sequence[int],
     dpi: int = 300,
 ) -> dict[str, Path]:
-    """Generate thesis-ready explanation/representation tables and figures."""
+    """Sinh explainability báo cáo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    aggregate_input : str | Path
+        Dữ liệu nguồn của phép xử lý.
+    experiment_root : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_dir : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    seeds : Sequence[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     explanation = load_explanation_mechanism_frame(
         experiment_root,
         seeds=seeds,
@@ -6413,7 +7976,29 @@ def load_aggregated_ood_frame(
     scenarios: Sequence[str],
     methods: Sequence[str],
 ) -> pd.DataFrame:
-    """Flatten selected mean/std OOD results from the aggregate analysis JSON."""
+    """Tải aggregated ood bảng dữ liệu cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    scenarios : Sequence[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+    methods : Sequence[str]
+        Giá trị ``methods`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    pd.DataFrame
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = resolve_path(input_file)
     payload = json.loads(source.read_text(encoding="utf-8"))
     ood_payload = payload.get("ood")
@@ -6460,7 +8045,26 @@ def generate_ood_table(
     methods: Sequence[str],
     csv_output: str | Path | None = None,
 ) -> Path:
-    """Generate a three-metric LaTeX table for selected OOD scenarios."""
+    """Sinh ood table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    scenarios : Sequence[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+    methods : Sequence[str]
+        Giá trị ``methods`` được sử dụng trong phép xử lý.
+    csv_output : str | Path | None, optional
+        Vị trí hoặc cấu trúc nhận kết quả.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     frame = load_aggregated_ood_frame(
         input_file,
         scenarios=scenarios,
@@ -6527,7 +8131,28 @@ def plot_ood_metric_summary(
     title: str | None = None,
     dpi: int = 300,
 ) -> Path:
-    """Plot the three core OOD metrics for one scoring method."""
+    """Vẽ ood độ đo summary cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output : str | Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    scenarios : Sequence[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+    method : str, optional
+        Phương pháp hoặc chế độ xử lý được chọn.
+    title : str | None, optional
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = _load_pyplot()
 
     frame = load_aggregated_ood_frame(
@@ -6599,7 +8224,28 @@ def generate_ood_heatmaps(
     precision: int = 3,
     dpi: int = 300,
 ) -> dict[str, Path]:
-    """Generate one method-by-scenario heatmap for each core OOD metric."""
+    """Sinh ood heatmaps cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_dir : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+    scenarios : Sequence[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+    methods : Sequence[str]
+        Giá trị ``methods`` được sử dụng trong phép xử lý.
+    precision : int, optional
+        Giá trị ``precision`` được sử dụng trong phép xử lý.
+    dpi : int, optional
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     frame = load_aggregated_ood_frame(
         input_file,
         scenarios=scenarios,
@@ -6627,6 +8273,15 @@ def generate_ood_heatmaps(
 
 
 def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Kiểm tra tính hợp lệ của tham số cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Giá trị ``parser`` được sử dụng trong phép xử lý.
+    args : argparse.Namespace
+        Các đối số vị trí bổ sung.
+    """
     if hasattr(args, "precision") and args.precision < 0:
         parser.error("--precision cannot be negative.")
     if hasattr(args, "dpi") and args.dpi < 72:
@@ -6643,6 +8298,7 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun."""
     parser = _build_parser()
     args = parser.parse_args()
     _validate_args(parser, args)

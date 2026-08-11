@@ -1,4 +1,9 @@
-"""Batch explainability and representation audit for CTCH proposed checkpoints."""
+"""Thực hiện benchmark explainability analysis cho quy trình nghiên cứu XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +26,7 @@ from omegaconf import OmegaConf
 from PIL import Image, ImageFilter
 from sklearn.decomposition import PCA
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.datasets.ctch import CTCHDataset
@@ -70,7 +75,21 @@ def _render_representation_overview(
     output: Path,
     seed: int,
 ) -> None:
-    """Render deterministic PCA views; quantitative claims use full dimensions."""
+    """Kết xuất representation overview cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    train : dict[str, np.ndarray]
+        Giá trị ``train`` được sử dụng trong phép xử lý.
+    test : dict[str, np.ndarray]
+        Giá trị ``test`` được sử dụng trong phép xử lý.
+    metrics : dict[str, dict[str, float]]
+        Giá trị ``metrics`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    """
     figure, axes = plt.subplots(2, 3, figsize=(17, 10), facecolor="white", constrained_layout=True)
     labels = np.asarray(test["labels"], dtype=np.int64)
     scatter = None
@@ -81,7 +100,7 @@ def _render_representation_overview(
         projected = PCA(n_components=2, random_state=seed).fit_transform(combined)
         test_projected = projected[len(train_values):]
         
-        # Plot on the overview 2x3 grid
+        # Tạo thành phần trực quan cho kết quả phân tích.
         scatter = axis.scatter(
             test_projected[:, 0],
             test_projected[:, 1],
@@ -100,7 +119,7 @@ def _render_representation_overview(
         axis.set_yticks([])
         axis.grid(alpha=0.15)
         
-        # Plot and save individual figures
+        # Tạo thành phần trực quan cho kết quả phân tích.
         ind_fig, ind_ax = plt.subplots(figsize=(6, 5), facecolor="white")
         ind_scatter = ind_ax.scatter(
             test_projected[:, 0],
@@ -140,6 +159,18 @@ def _render_representation_overview(
 
 
 def _ctch_test_dataset(loaded) -> CTCHDataset:
+    """Thực hiện bước ctch test dữ liệu trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    CTCHDataset
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     params = dict(OmegaConf.to_container(loaded.cfg.dataset.params, resolve=True))
     return CTCHDataset(
         split="test",
@@ -150,6 +181,20 @@ def _ctch_test_dataset(loaded) -> CTCHDataset:
 
 
 def _one_sample(sample: dict[str, Any], loaded) -> dict[str, Any]:
+    """Thực hiện bước one sample trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    sample : dict[str, Any]
+        Giá trị ``sample`` được sử dụng trong phép xử lý.
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     batch = AnalysisDataCollator(loaded.model.backbone.tokenizer_obj)([sample])
     return {
         key: value.to(loaded.device) if isinstance(value, torch.Tensor) else value
@@ -158,6 +203,20 @@ def _one_sample(sample: dict[str, Any], loaded) -> dict[str, Any]:
 
 
 def _cached_tokens(model, batch: dict[str, Any]) -> dict[str, Any]:
+    """Thực hiện bước cached các token trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    batch : dict[str, Any]
+        Batch dữ liệu đầu vào.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     with torch.no_grad():
         _, text_tokens = model.backbone(
             batch["pixel_values"],
@@ -198,6 +257,20 @@ def _cached_tokens(model, batch: dict[str, Any]) -> dict[str, Any]:
 
 
 def _decode_tokens(tokenizer, token_ids: torch.Tensor) -> list[str]:
+    """Giải mã các token cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    token_ids : torch.Tensor
+        Token hoặc chuỗi token đầu vào.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     inner = getattr(tokenizer, "tokenizer", tokenizer)
     converter = getattr(inner, "convert_ids_to_tokens", None)
     ids = [int(value) for value in token_ids.detach().cpu().tolist()]
@@ -207,6 +280,20 @@ def _decode_tokens(tokenizer, token_ids: torch.Tensor) -> list[str]:
 
 
 def _displayable_token(token: str, tokenizer) -> bool:
+    """Thực hiện bước displayable token trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    token : str
+        Token hoặc chuỗi token đầu vào.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     inner = getattr(tokenizer, "tokenizer", tokenizer)
     special = set(getattr(inner, "all_special_tokens", []) or [])
     if token in special:
@@ -216,6 +303,18 @@ def _displayable_token(token: str, tokenizer) -> bool:
 
 
 def _entropy(values: np.ndarray) -> float:
+    """Thực hiện bước entropy trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = np.maximum(np.asarray(values, dtype=np.float64), 0.0)
     probability = values / max(values.sum(), 1e-12)
     return float(-(probability * np.log(np.maximum(probability, 1e-12))).sum())
@@ -227,6 +326,24 @@ def _rasterize(
     image_size: tuple[int, int],
     max_side: int = 720,
 ) -> np.ndarray:
+    """Thực hiện bước rasterize trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_side : int, optional
+        Giá trị ``max_side`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     width, height = image_size
     scale = min(1.0, max_side / max(width, height))
     out_width = max(1, round(width * scale))
@@ -248,7 +365,20 @@ def _rasterize(
 
 
 def _curve_auc(fractions: np.ndarray, values: np.ndarray) -> float:
-    """Return a trapezoidal AUC for a probability intervention curve."""
+    """Thực hiện bước curve auc trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    fractions : np.ndarray
+        Giá trị ``fractions`` được sử dụng trong phép xử lý.
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return float(
         np.trapezoid(
             np.asarray(values, dtype=np.float64),
@@ -262,7 +392,22 @@ def _tile_indices(
     tokens_per_tile: int,
     include_local_cls_token: bool,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Separate tile-level CLS tokens from spatial patch tokens."""
+    """Thực hiện bước tile indices trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    token_count : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    tokens_per_tile : int
+        Giá trị ``tokens_per_tile`` được sử dụng trong phép xử lý.
+    include_local_cls_token : bool
+        Token hoặc chuỗi token đầu vào.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     all_indices = np.arange(token_count, dtype=np.int64)
     if not include_local_cls_token:
         return np.asarray([], dtype=np.int64), all_indices
@@ -284,7 +429,29 @@ def _draw_normalized_boxes(
     alpha: float = 1.0,
     hatch: str | None = None,
 ) -> None:
-    """Draw normalized source-space boxes on an image axis."""
+    """Vẽ normalized boxes cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    indices : np.ndarray
+        Chỉ mục của phần tử cần xử lý.
+    image_shape : tuple[int, int]
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    edgecolor : str
+        Giá trị ``edgecolor`` được sử dụng trong phép xử lý.
+    linewidths : np.ndarray | float, optional
+        Giá trị ``linewidths`` được sử dụng trong phép xử lý.
+    facecolor : str, optional
+        Giá trị ``facecolor`` được sử dụng trong phép xử lý.
+    alpha : float, optional
+        Giá trị ``alpha`` được sử dụng trong phép xử lý.
+    hatch : str | None, optional
+        Giá trị ``hatch`` được sử dụng trong phép xử lý.
+    """
     height, width = image_shape
     widths = np.broadcast_to(
         np.asarray(linewidths, dtype=np.float64), (len(indices),)
@@ -318,7 +485,29 @@ def _render_token_faithfulness_pipeline(
     include_local_cls_token: bool,
     intervention_fraction: float = 0.25,
 ) -> None:
-    """Render a RISE-like figure while preserving token-level semantics."""
+    """Kết xuất token faithfulness pipeline cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    visual_scores : np.ndarray
+        Giá trị ``visual_scores`` được sử dụng trong phép xử lý.
+    curves : dict[str, np.ndarray]
+        Giá trị ``curves`` được sử dụng trong phép xử lý.
+    record : dict[str, Any]
+        Giá trị ``record`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    tokens_per_tile : int
+        Giá trị ``tokens_per_tile`` được sử dụng trong phép xử lý.
+    include_local_cls_token : bool
+        Token hoặc chuỗi token đầu vào.
+    intervention_fraction : float, optional
+        Giá trị ``intervention_fraction`` được sử dụng trong phép xử lý.
+    """
     image = Image.open(image_path).convert("RGB")
     width, height = image.size
     cls_indices, patch_indices = _tile_indices(
@@ -480,7 +669,30 @@ def _render_spatial_saliency_map(
     tokens_per_tile: int,
     include_local_cls_token: bool,
 ) -> None:
-    """Render a simple class-specific saliency map from spatial local tokens."""
+    """Kết xuất spatial saliency map cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    visual_scores : np.ndarray
+        Giá trị ``visual_scores`` được sử dụng trong phép xử lý.
+    record : dict[str, Any]
+        Giá trị ``record`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    tokens_per_tile : int
+        Giá trị ``tokens_per_tile`` được sử dụng trong phép xử lý.
+    include_local_cls_token : bool
+        Token hoặc chuỗi token đầu vào.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     image = Image.open(image_path).convert("RGB")
     _, patch_indices = _tile_indices(
         len(visual_scores),
@@ -550,7 +762,20 @@ def _cross_attention_distributions(
     model,
     cached: dict[str, torch.Tensor],
 ) -> dict[str, np.ndarray]:
-    """Return head-wise and head-averaged bidirectional attention."""
+    """Thực hiện bước cross attention distributions trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cached : dict[str, torch.Tensor]
+        Giá trị ``cached`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     with torch.no_grad():
         image_tokens = model.backbone.visual_resampler(
             cached["global_feature"],
@@ -608,6 +833,18 @@ def _cross_attention_distributions(
 
 
 def _normalized_entropy(values: np.ndarray) -> float:
+    """Thực hiện bước normalized entropy trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = np.maximum(np.asarray(values, dtype=np.float64), 0.0)
     positive = values > 0
     if int(positive.sum()) <= 1:
@@ -625,7 +862,24 @@ def _merge_display_tokens(
     valid_mask: np.ndarray,
     tokenizer,
 ) -> list[tuple[str, float]]:
-    """Merge WordPiece/SentencePiece fragments for a readable attention plot."""
+    """Kết hợp display các token cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    tokens : list[str]
+        Giá trị ``tokens`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    valid_mask : np.ndarray
+        Giá trị ``valid_mask`` được sử dụng trong phép xử lý.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[tuple[str, float]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     merged: list[list[Any]] = []
     for token, score, valid in zip(tokens, scores, valid_mask):
         if not bool(valid) or not _displayable_token(token, tokenizer):
@@ -657,7 +911,33 @@ def _render_cross_attention_pipeline(
     tokens_per_tile: int,
     include_local_cls_token: bool,
 ) -> None:
-    """Render the two directional cross-attention distributions separately."""
+    """Kết xuất cross attention pipeline cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    visual_attention : np.ndarray
+        Giá trị ``visual_attention`` được sử dụng trong phép xử lý.
+    text_attention : np.ndarray
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    text_tokens : list[str]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    text_valid_mask : np.ndarray
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    record : dict[str, Any]
+        Giá trị ``record`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    tokens_per_tile : int
+        Giá trị ``tokens_per_tile`` được sử dụng trong phép xử lý.
+    include_local_cls_token : bool
+        Token hoặc chuỗi token đầu vào.
+    """
     image = Image.open(image_path).convert("RGB")
     cls_indices, patch_indices = _tile_indices(
         len(visual_attention),
@@ -730,7 +1010,20 @@ def _attention_head_entropies(
     attention_heads: np.ndarray,
     valid_mask: np.ndarray,
 ) -> np.ndarray:
-    """Compute normalized entropy independently for every attention head."""
+    """Thực hiện bước attention head entropies trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    attention_heads : np.ndarray
+        Giá trị ``attention_heads`` được sử dụng trong phép xử lý.
+    valid_mask : np.ndarray
+        Giá trị ``valid_mask`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     valid = np.asarray(valid_mask, dtype=bool)
     return np.asarray(
         [
@@ -748,7 +1041,21 @@ def _draw_attention_text(
     valid_mask: np.ndarray,
     tokenizer,
 ) -> None:
-    """Draw clinical words in reading order with attention-colored boxes."""
+    """Vẽ attention văn bản cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    tokens : list[str]
+        Giá trị ``tokens`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    valid_mask : np.ndarray
+        Giá trị ``valid_mask`` được sử dụng trong phép xử lý.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    """
     items = _merge_display_tokens(tokens, scores, valid_mask, tokenizer)
     maximum = max((score for _, score in items), default=1.0)
     color_map = plt.get_cmap("Oranges")
@@ -790,6 +1097,19 @@ def _plot_attention_intervention(
     title: str,
     xlabel: str,
 ) -> None:
+    """Vẽ attention intervention cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    axis : object
+        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    curves : dict[str, np.ndarray]
+        Giá trị ``curves`` được sử dụng trong phép xử lý.
+    title : str
+        Giá trị ``title`` được sử dụng trong phép xử lý.
+    xlabel : str
+        Giá trị ``xlabel`` được sử dụng trong phép xử lý.
+    """
     fractions = np.asarray(curves["fractions"], dtype=np.float64)
     deletion = np.asarray(curves["delete_most_relevant"], dtype=np.float64)
     random_deletion = np.asarray(curves["delete_random"], dtype=np.float64)
@@ -853,7 +1173,35 @@ def _render_attention_evaluation(
     tokens_per_tile: int,
     include_local_cls_token: bool,
 ) -> None:
-    """Render raw attention, per-head entropy, and attention-ranked fidelity."""
+    """Kết xuất attention evaluation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    attention : dict[str, np.ndarray]
+        Giá trị ``attention`` được sử dụng trong phép xử lý.
+    text_tokens : list[str]
+        Chuỗi token hoặc biểu diễn token đầu vào.
+    text_valid_mask : np.ndarray
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    visual_curves : dict[str, np.ndarray]
+        Giá trị ``visual_curves`` được sử dụng trong phép xử lý.
+    text_curves : dict[str, np.ndarray]
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    record : dict[str, Any]
+        Giá trị ``record`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    tokenizer : object
+        Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+    tokens_per_tile : int
+        Giá trị ``tokens_per_tile`` được sử dụng trong phép xử lý.
+    include_local_cls_token : bool
+        Token hoặc chuỗi token đầu vào.
+    """
     image = Image.open(image_path).convert("RGB")
     visual_mean = np.asarray(attention["visual_mean"], dtype=np.float64)
     text_mean = np.asarray(attention["text_mean"], dtype=np.float64)
@@ -998,6 +1346,27 @@ def _render_sample(
     record: dict[str, Any],
     output: Path,
 ) -> None:
+    """Kết xuất sample cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    visual_scores : np.ndarray
+        Giá trị ``visual_scores`` được sử dụng trong phép xử lý.
+    curves : dict[str, np.ndarray]
+        Giá trị ``curves`` được sử dụng trong phép xử lý.
+    text_curves : dict[str, np.ndarray]
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    top_text : list[dict[str, Any]]
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    record : dict[str, Any]
+        Giá trị ``record`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    """
     image = Image.open(image_path).convert("RGB")
     heatmap = _rasterize(boxes, visual_scores, image.size)
     resized = image.resize((heatmap.shape[1], heatmap.shape[0]), Image.Resampling.LANCZOS)
@@ -1105,6 +1474,45 @@ def _sample_explanation(
     run_sanity_check: bool,
     render_path: Path | None,
 ) -> dict[str, Any]:
+    """Lấy mẫu explanation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    loaded : object
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    dataset : CTCHDataset
+        Dữ liệu đầu vào của bước xử lý.
+    dataset_index : int
+        Dữ liệu đầu vào của bước xử lý.
+    image_id : str
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    ig_steps : int
+        Giá trị ``ig_steps`` được sử dụng trong phép xử lý.
+    random_trials : int
+        Giá trị ``random_trials`` được sử dụng trong phép xử lý.
+    stability_repeats : int
+        Giá trị ``stability_repeats`` được sử dụng trong phép xử lý.
+    stability_steps : int
+        Giá trị ``stability_steps`` được sử dụng trong phép xử lý.
+    noise_scale : float
+        Giá trị ``noise_scale`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    run_sanity_check : bool
+        Giá trị ``run_sanity_check`` được sử dụng trong phép xử lý.
+    render_path : Path | None
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     sample = dataset[dataset_index]
     batch = _one_sample(sample, loaded)
     cached = _cached_tokens(loaded.model, batch)
@@ -1667,6 +2075,20 @@ def _sample_explanation(
 
 
 def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
+    """Thực hiện bước flatten numeric trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    prefix : str, optional
+        Giá trị ``prefix`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     result: dict[str, float] = {}
     if isinstance(value, dict):
         for key, child in value.items():
@@ -1680,6 +2102,20 @@ def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
 
 
 def _aggregate_records(records: list[dict[str, Any]], bootstrap_seed: int) -> dict[str, Any]:
+    """Tổng hợp records cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    records : list[dict[str, Any]]
+        Giá trị ``records`` được sử dụng trong phép xử lý.
+    bootstrap_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     excluded = {"ground_truth", "prediction", "target_class"}
     keys = sorted(
         set().union(*(_flatten_numeric(record).keys() for record in records))
@@ -1722,7 +2158,20 @@ def _aggregate_subgroups(
     records: list[dict[str, Any]],
     bootstrap_seed: int,
 ) -> dict[str, Any]:
-    """Report whether attribution behavior changes with correctness/confidence."""
+    """Tổng hợp subgroups cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    records : list[dict[str, Any]]
+        Giá trị ``records`` được sử dụng trong phép xử lý.
+    bootstrap_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not records:
         return {}
     confidences = np.asarray(
@@ -1764,6 +2213,18 @@ def _aggregate_subgroups(
 
 
 def _source_role_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Thực hiện bước source role summary trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    records : list[dict[str, Any]]
+        Giá trị ``records`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     sources = ("global_image", "local_image", "clinical_text")
     values = {
         source: np.asarray(
@@ -1801,6 +2262,17 @@ def _source_role_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--train-features", type=Path, required=True)

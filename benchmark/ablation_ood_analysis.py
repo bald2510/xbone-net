@@ -1,10 +1,8 @@
-"""Compare CTCH representation baselines with one shared post-hoc OOD protocol.
+"""Thực hiện benchmark ablation ood analysis cho quy trình nghiên cứu XBone-Net.
 
-The default RQ4 preset compares XBone-Net with frozen original BiomedCLIP
-encoders, Phase-2-only training, concatenation fusion, and a linear head. For
-every trained experiment and seed, the runner exports the same
-``fused_embeddings`` archives and evaluates Semantic OOD and BTXRD
-with cosine-centroid, Mahalanobis-centroid, kNN, and entropy scores.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -22,7 +20,7 @@ from typing import Any
 import numpy as np
 from omegaconf import OmegaConf
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 if sys.platform == "win32":
@@ -111,6 +109,22 @@ METRIC_KEYS = ("auroc_ood", "aupr_out", "fpr_at_95tpr")
 
 
 def _run(command: list[str], tag: str, *, dry_run: bool) -> None:
+    """Thực hiện kết quả cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    command : list[str]
+        Giá trị ``command`` được sử dụng trong phép xử lý.
+    tag : str
+        Giá trị ``tag`` được sử dụng trong phép xử lý.
+    dry_run : bool
+        Giá trị ``dry_run`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     print(f"\n[{tag}] {' '.join(command)}")
     if dry_run:
         return
@@ -122,6 +136,20 @@ def _run(command: list[str], tag: str, *, dry_run: bool) -> None:
 
 
 def _checkpoint_path(experiment: str, seed: int) -> Path:
+    """Thực hiện bước checkpoint đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return (
         ROOT
         / "checkpoints"
@@ -132,10 +160,38 @@ def _checkpoint_path(experiment: str, seed: int) -> Path:
 
 
 def _metrics_path(experiment: str, seed: int) -> Path:
+    """Thực hiện bước các độ đo đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return ROOT / "results" / experiment / f"seed_{int(seed)}" / "metrics.json"
 
 
 def _analysis_root(experiment: str, seed: int | None = None) -> Path:
+    """Thực hiện bước analysis root trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int | None, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     root = ROOT / "results" / experiment
     if seed is not None:
         root = root / f"seed_{int(seed)}"
@@ -143,10 +199,42 @@ def _analysis_root(experiment: str, seed: int | None = None) -> Path:
 
 
 def _feature_path(experiment: str, seed: int, archive: str) -> Path:
+    """Thực hiện bước đặc trưng đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    archive : str
+        Giá trị ``archive`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return _analysis_root(experiment, seed) / "features" / f"{archive}.npz"
 
 
 def _ood_output(experiment: str, seed: int, scenario: str) -> Path:
+    """Thực hiện bước ood đầu ra trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return _analysis_root(experiment, seed) / "ood" / scenario
 
 
@@ -155,6 +243,22 @@ def _scenario_feature_paths(
     seed: int,
     scenario: str,
 ) -> dict[str, Path]:
+    """Thực hiện bước scenario đặc trưng các đường dẫn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return {
         "fit": _feature_path(experiment, seed, "ctch_train"),
         "calibration": _feature_path(experiment, seed, "ctch_val"),
@@ -168,6 +272,23 @@ def _scenario_feature_paths(
 
 
 def _validate_experiment_name(experiment: str) -> str:
+    """Kiểm tra tính hợp lệ của experiment name cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     experiment = str(experiment).replace("\\", "/").strip("/")
     if not (
         experiment == SOURCE_EXPERIMENT
@@ -183,7 +304,20 @@ def _validate_experiment_name(experiment: str) -> str:
 
 
 def _seeds_for_experiment(experiment: str, seeds: list[int]) -> list[int]:
-    """Avoid pseudo-replicating one deterministic zero-shot foundation model."""
+    """Thực hiện bước seeds for experiment trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if experiment == ZEROSHOT_BIOMEDCLIP_EXPERIMENT:
         return [42] if 42 in seeds else []
     return seeds
@@ -195,6 +329,29 @@ def _preflight(
     *,
     skip_missing: bool,
 ) -> list[str]:
+    """Thực hiện bước preflight trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiments : list[str]
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    skip_missing : bool
+        Giá trị ``skip_missing`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     runnable: list[str] = []
     for experiment in experiments:
         missing = []
@@ -228,6 +385,24 @@ def _ood_result_is_current(
     seed: int,
     feature_paths: dict[str, Path],
 ) -> tuple[bool, str]:
+    """Thực hiện bước ood kết quả is current trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    feature_paths : dict[str, Path]
+        Biểu diễn đặc trưng cần xử lý.
+
+    Returns
+    -------
+    tuple[bool, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not path.is_file():
         return False, "missing"
     try:
@@ -250,6 +425,18 @@ def _ood_result_is_current(
 
 
 def _mean_std(values: list[float]) -> dict[str, Any]:
+    """Thực hiện bước mean std trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : list[float]
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     array = np.asarray(values, dtype=np.float64)
     return {
         "mean": float(array.mean()),
@@ -259,6 +446,20 @@ def _mean_std(values: list[float]) -> dict[str, Any]:
 
 
 def _classification_f1(experiment: str, seeds: list[int]) -> dict[str, Any]:
+    """Thực hiện bước classification f1 trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     values = []
     for seed in seeds:
         payload = json.loads(
@@ -278,7 +479,26 @@ def aggregate_existing(
     output_dir: Path,
     preset_name: str,
 ) -> dict[str, Any]:
-    """Aggregate available ablation OOD results and write long-form CSV."""
+    """Tổng hợp existing cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    experiments : list[str]
+        Giá trị ``experiments`` được sử dụng trong phép xử lý.
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+    scenarios : list[str]
+        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+    output_dir : Path
+        Đường dẫn tài nguyên được sử dụng.
+    preset_name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     aggregate: dict[str, Any] = {
         "preset": preset_name,
@@ -409,6 +629,13 @@ def aggregate_existing(
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    SystemExit
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     ood_cfg = OmegaConf.load(OOD_CONFIG)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

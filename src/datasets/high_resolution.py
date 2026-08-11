@@ -1,9 +1,8 @@
-"""Foreground-aware fixed-budget high-resolution preprocessing for X-rays.
+"""Cung cấp thành phần dữ liệu high resolution cho XBone-Net.
 
-BiomedCLIP remains a fixed 224x224 visual encoder.  Each sample contains one
-aspect-preserving global view and a small, constant number of local views.  The
-local views are selected using image-only coverage and texture statistics; no
-label, report, or lesion annotation is consulted.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -22,7 +21,12 @@ Box = tuple[int, int, int, int]
 
 @dataclass(frozen=True)
 class SparseFocalSelection:
-    """Cacheable image-space selection produced without labels or reports."""
+    """Đóng gói hành vi của thành phần ``SparseFocalSelection``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     foreground_box: Box
     tile_boxes: tuple[Box, ...]
@@ -31,7 +35,12 @@ class SparseFocalSelection:
 
 @dataclass(frozen=True)
 class SparseFocalViews:
-    """Inspectable output of the sparse focal preprocessing pipeline."""
+    """Đóng gói hành vi của thành phần ``SparseFocalViews``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     foreground_box: Box
     foreground_image: Image.Image
@@ -48,6 +57,13 @@ class SparseFocalViews:
 
     @property
     def selection(self) -> SparseFocalSelection:
+        """Thực hiện bước selection trong quy trình hiện tại.
+
+        Returns
+        -------
+        SparseFocalSelection
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return SparseFocalSelection(
             foreground_box=self.foreground_box,
             tile_boxes=self.tile_boxes,
@@ -56,6 +72,20 @@ class SparseFocalViews:
 
 
 def _border_pixels(image: Image.Image, border_fraction: float) -> np.ndarray:
+    """Thực hiện bước border pixels trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    border_fraction : float
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     array = np.asarray(image.convert("RGB"), dtype=np.uint8)
     height, width = array.shape[:2]
     band = max(1, round(min(height, width) * border_fraction))
@@ -74,7 +104,25 @@ def estimate_border_color(
     image: Image.Image,
     border_fraction: float = 0.04,
 ) -> tuple[int, int, int]:
-    """Estimate scanner-background color robustly from the image perimeter."""
+    """Ước lượng border color cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    border_fraction : float, optional
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not 0 < border_fraction <= 0.25:
         raise ValueError("border_fraction must be in (0, 0.25].")
     median = np.median(_border_pixels(image, border_fraction), axis=0)
@@ -86,6 +134,27 @@ def _resolve_pad_color(
     pad_value: str | int | tuple[int, int, int],
     border_fraction: float,
 ) -> tuple[int, int, int]:
+    """Xác định pad color cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    pad_value : str | int | tuple[int, int, int]
+        Giá trị ``pad_value`` được sử dụng trong phép xử lý.
+    border_fraction : float
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if isinstance(pad_value, str):
         value = pad_value.lower()
         if value == "border_median":
@@ -107,7 +176,29 @@ def letterbox_square(
     pad_value: str | int | tuple[int, int, int] = "border_median",
     border_fraction: float = 0.04,
 ) -> Image.Image:
-    """Resize and pad to a square while preserving the source aspect ratio."""
+    """Thực hiện bước letterbox square trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    size : int | None, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    pad_value : str | int | tuple[int, int, int], optional
+        Giá trị ``pad_value`` được sử dụng trong phép xử lý.
+    border_fraction : float, optional
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Image.Image
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     source = image.convert("RGB")
     side = int(size) if size is not None else max(source.size)
     if side < 1:
@@ -118,7 +209,7 @@ def letterbox_square(
         max(1, min(side, round(source.width * scale))),
         max(1, min(side, round(source.height * scale))),
     )
-    # Match the bicubic interpolation used by OpenCLIP/BiomedCLIP transforms.
+    # Xử lý bộ mã hóa nền tảng theo giao diện tương ứng.
     resized = source.resize(resized_size, resample=Image.Resampling.BICUBIC)
     canvas = Image.new(
         "RGB",
@@ -136,6 +227,20 @@ def _stable_extent(
     active: np.ndarray,
     min_run_ratio: float,
 ) -> tuple[int, int] | None:
+    """Thực hiện bước stable extent trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    active : np.ndarray
+        Giá trị ``active`` được sử dụng trong phép xử lý.
+    min_run_ratio : float
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     indices = np.flatnonzero(active)
     if indices.size == 0:
         return None
@@ -161,7 +266,41 @@ def find_foreground_box(
     min_energy_retained: float = 0.95,
     mask_max_side: int = 512,
 ) -> Box:
-    """Find a conservative anatomy foreground box using only image pixels."""
+    """Tìm foreground box cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    margin : float, optional
+        Giá trị ``margin`` được sử dụng trong phép xử lý.
+    border_fraction : float, optional
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+    min_contrast : float, optional
+        Giá trị ``min_contrast`` được sử dụng trong phép xử lý.
+    min_axis_coverage : float, optional
+        Giá trị ``min_axis_coverage`` được sử dụng trong phép xử lý.
+    min_run_ratio : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    min_dimension_ratio : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    min_area_ratio : float, optional
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    min_energy_retained : float, optional
+        Giá trị ``min_energy_retained`` được sử dụng trong phép xử lý.
+    mask_max_side : int, optional
+        Giá trị ``mask_max_side`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Box
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not 0 <= margin <= 0.25:
         raise ValueError("margin must be in [0, 0.25].")
     if not 0 < min_contrast < 1:
@@ -222,8 +361,8 @@ def find_foreground_box(
     x2 = min(image.width, x2 + margin_x)
     y2 = min(image.height, y2 + margin_y)
 
-    # A tiny component is more likely a marker than the anatomy. Fall back to
-    # the complete image instead of risking removal of clinically useful pixels.
+    # Bước hỗ trợ để tìm foreground box cho bước xử lý hiện tại.
+    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
     if (
         (x2 - x1) < min_dimension_ratio * image.width
         or (y2 - y1) < min_dimension_ratio * image.height
@@ -250,7 +389,20 @@ def crop_foreground(
     image: Image.Image,
     config: Mapping[str, Any] | None = None,
 ) -> tuple[Image.Image, Box]:
-    """Crop scanner padding conservatively and return source-image coordinates."""
+    """Thực hiện bước crop foreground trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    config : Mapping[str, Any] | None, optional
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    tuple[Image.Image, Box]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     config = config or {}
     box = find_foreground_box(
         image,
@@ -272,7 +424,27 @@ def prepare_global_image(
     transform: Callable[[Image.Image], Any] | None,
     config: Mapping[str, Any] | None = None,
 ) -> Any:
-    """Apply configured global preprocessing before the encoder transform."""
+    """Chuẩn bị global ảnh cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    transform : Callable[[Image.Image], Any] | None
+        Giá trị ``transform`` được sử dụng trong phép xử lý.
+    config : Mapping[str, Any] | None, optional
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     config = config or {}
     strategy = str(config.get("strategy", "direct_resize")).lower()
     target_size = int(config.get("target_size", 224))
@@ -305,6 +477,22 @@ def prepare_global_image(
 
 
 def _axis_positions(length: int, window: int, stride: int) -> list[int]:
+    """Thực hiện bước axis positions trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    length : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    window : int
+        Giá trị ``window`` được sử dụng trong phép xử lý.
+    stride : int
+        Giá trị ``stride`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[int]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if length <= window:
         return [0]
     positions = list(range(0, length - window + 1, stride))
@@ -319,6 +507,27 @@ def _resize_long_side(
     long_side: int,
     allow_upsample: bool,
 ) -> Image.Image:
+    """Thực hiện bước resize long side trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    long_side : int
+        Giá trị ``long_side`` được sử dụng trong phép xử lý.
+    allow_upsample : bool
+        Giá trị ``allow_upsample`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Image.Image
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if long_side < 1:
         raise ValueError("canonical_long_side must be positive.")
     scale = long_side / max(image.size)
@@ -333,6 +542,18 @@ def _resize_long_side(
 
 
 def _minmax(values: np.ndarray) -> np.ndarray:
+    """Thực hiện bước minmax trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     lower = float(values.min())
     span = float(values.max() - lower)
     if span < 1e-8:
@@ -346,14 +567,32 @@ def _candidate_statistics(
     border_fraction: float,
     min_contrast: float,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Thực hiện bước candidate statistics trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    canvas : Image.Image
+        Giá trị ``canvas`` được sử dụng trong phép xử lý.
+    boxes : list[Box]
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    border_fraction : float
+        Giá trị ``border_fraction`` được sử dụng trong phép xử lý.
+    min_contrast : float
+        Giá trị ``min_contrast`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     gray = np.asarray(canvas.convert("L"), dtype=np.float32) / 255.0
     band = max(1, round(min(gray.shape) * border_fraction))
     border = np.concatenate(
         [gray[:band].ravel(), gray[-band:].ravel(), gray[:, :band].ravel(), gray[:, -band:].ravel()]
     )
-    # The border median is unreliable when anatomy touches several edges.  A
-    # histogram mode still recovers the dominant scanner-background intensity
-    # in that case and does not let a high border MAD erase the whole mask.
+    # Bước hỗ trợ để thực hiện xử lý ``candidate_statistics`` trong quy trình hiện tại.
+    # Bước hỗ trợ để thực hiện xử lý ``candidate_statistics`` trong quy trình hiện tại.
+    # Bước hỗ trợ để thực hiện xử lý ``candidate_statistics`` trong quy trình hiện tại.
     border_histogram, border_edges = np.histogram(border, bins=64, range=(0.0, 1.0))
     mode_index = int(border_histogram.argmax())
     background = float((border_edges[mode_index] + border_edges[mode_index + 1]) / 2.0)
@@ -391,6 +630,20 @@ def _candidate_statistics(
 
 
 def _box_iou(first: Box, second: Box) -> float:
+    """Thực hiện bước box iou trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    first : Box
+        Giá trị ``first`` được sử dụng trong phép xử lý.
+    second : Box
+        Giá trị ``second`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    float
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     left = max(first[0], second[0])
     top = max(first[1], second[1])
     right = min(first[2], second[2])
@@ -414,13 +667,41 @@ def _select_candidates(
     focal_diversity_weight: float,
     canvas_size: tuple[int, int],
 ) -> tuple[list[int], list[str]]:
+    """Chọn candidates cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    boxes : list[Box]
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    coverages : np.ndarray
+        Giá trị ``coverages`` được sử dụng trong phép xử lý.
+    num_tiles : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    coverage_tiles : int
+        Giá trị ``coverage_tiles`` được sử dụng trong phép xử lý.
+    min_foreground_ratio : float
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    nms_iou : float
+        Giá trị ``nms_iou`` được sử dụng trong phép xử lý.
+    focal_diversity_weight : float
+        Giá trị ``focal_diversity_weight`` được sử dụng trong phép xử lý.
+    canvas_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    tuple[list[int], list[str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     eligible = [
         index for index, coverage in enumerate(coverages)
         if coverage >= min_foreground_ratio
     ]
     if len(eligible) < min(num_tiles, len(boxes)):
-        # An uncertain foreground mask must not restrict selection to the first
-        # few row-major windows. Fall back to the complete candidate pool.
+        # Bước hỗ trợ để chọn candidates cho bước xử lý hiện tại.
+        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
         eligible = list(range(len(boxes)))
     if not eligible:
         eligible = list(range(len(boxes)))
@@ -522,9 +803,9 @@ def _select_candidates(
         selected.append(choice)
         roles.append("focal")
 
-    # Very small source images can contain fewer distinct 224px candidates than
-    # K. Repeating deterministic views keeps the encoder budget and tensor shape
-    # fixed without pretending that upsampling introduced new information.
+    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
+    # Bước hỗ trợ để chọn candidates cho bước xử lý hiện tại.
+    # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
     unique_count = len(selected)
     while len(selected) < num_tiles:
         selected.append(selected[len(selected) % unique_count])
@@ -548,6 +829,24 @@ def _canvas_box_to_source(
     foreground_size: tuple[int, int],
     canvas_size: tuple[int, int],
 ) -> Box:
+    """Thực hiện bước canvas box to source trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    box : Box
+        Giá trị ``box`` được sử dụng trong phép xử lý.
+    foreground_box : Box
+        Giá trị ``foreground_box`` được sử dụng trong phép xử lý.
+    foreground_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    canvas_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    Box
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     source_left, source_top, source_right, source_bottom = foreground_box
     scale_x = foreground_size[0] / canvas_size[0]
     scale_y = foreground_size[1] / canvas_size[1]
@@ -564,7 +863,25 @@ def build_sparse_focal_views(
     image: Image.Image,
     config: Mapping[str, Any] | None = None,
 ) -> SparseFocalViews:
-    """Create one global view and exactly K coverage/focal local views."""
+    """Xây dựng sparse focal views cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    config : Mapping[str, Any] | None, optional
+        Cấu hình điều khiển bước xử lý.
+
+    Returns
+    -------
+    SparseFocalViews
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     config = config or {}
     strategy = str(config.get("strategy", "sparse_focal")).lower()
     if strategy != "sparse_focal":
@@ -681,7 +998,20 @@ def normalize_tile_boxes(
     boxes: list[Box] | tuple[Box, ...],
     image_size: tuple[int, int],
 ) -> torch.Tensor:
-    """Normalize source-image XYXY boxes to the [0, 1] interval."""
+    """Chuẩn hóa tile boxes cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    boxes : list[Box] | tuple[Box, ...]
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    torch.Tensor
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     width, height = image_size
     scale = torch.tensor([width, height, width, height], dtype=torch.float32)
     return torch.tensor(boxes, dtype=torch.float32) / scale.clamp_min(1.0)
@@ -692,7 +1022,27 @@ def _render_cached_selection(
     config: Mapping[str, Any],
     selection: SparseFocalSelection,
 ) -> tuple[Image.Image, tuple[Image.Image, ...]]:
-    """Render global/local PIL views from cached coordinates without rescoring."""
+    """Kết xuất cached selection cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    config : Mapping[str, Any]
+        Cấu hình điều khiển bước xử lý.
+    selection : SparseFocalSelection
+        Giá trị ``selection`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[Image.Image, tuple[Image.Image, ...]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     original = image.convert("RGB")
     expected_tiles = int(config.get("num_tiles", 4))
     if len(selection.tile_boxes) != expected_tiles:
@@ -740,7 +1090,31 @@ def prepare_high_resolution_inputs(
     selection: SparseFocalSelection | None = None,
     return_selection: bool = False,
 ) -> dict[str, Any] | tuple[dict[str, Any], SparseFocalSelection]:
-    """Build global image, fixed-K local tiles, and normalized spatial boxes."""
+    """Chuẩn bị high resolution inputs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    image : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    transform : Callable[[Image.Image], Any] | None
+        Giá trị ``transform`` được sử dụng trong phép xử lý.
+    config : Mapping[str, Any]
+        Cấu hình điều khiển bước xử lý.
+    selection : SparseFocalSelection | None, optional
+        Giá trị ``selection`` được sử dụng trong phép xử lý.
+    return_selection : bool, optional
+        Giá trị ``return_selection`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any] | tuple[dict[str, Any], SparseFocalSelection]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     strategy = str(config.get("strategy", "sparse_focal")).lower()
     if strategy != "sparse_focal":
         raise ValueError(

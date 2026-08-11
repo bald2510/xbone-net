@@ -1,11 +1,8 @@
-"""
-Multimodal Fusion Module Registry & Factory for XBone-Net.
-===============================================================================
-Defines the registry and factory function for instantiating multimodal feature fusion
-strategies:
-  - IdentityFusion: Pass-through image features (Phase 1 or single-modality)
-  - CrossAttentionFusion: Multi-head cross-attention mixing image and text embeddings
-  - ConcatFusion: Feature concatenation with linear projection bottleneck
+"""Cung cấp cơ chế dung hợp đa phương thức   init   cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from .identity import IdentityFusion
@@ -14,7 +11,7 @@ from .gated_cross_attention import GatedCrossAttentionFusion
 from .concat import ConcatFusion
 
 # ============================================================
-# Fusion Registry Mapping
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 FUSION_REGISTRY = {
@@ -26,23 +23,26 @@ FUSION_REGISTRY = {
 
 
 # ============================================================
-# Fusion Module Factory
+# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
 # ============================================================
 
 def build_fusion_module(cfg: dict):
-    """Build multimodal fusion module from configuration dictionary.
+    """Xây dựng fusion module cho bước xử lý hiện tại.
 
-    Args:
-        cfg (dict): Fusion configuration containing 'type' and optional 'params'.
+    Parameters
+    ----------
+    cfg : dict
+        Cấu hình điều khiển bước xử lý.
 
-    Returns:
-        nn.Module: Instantiated fusion module matching specified strategy.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Raises:
-        ValueError: If specified fusion type is not supported in FUSION_REGISTRY.
-
-    Example:
-        >>> fusion = build_fusion_module({'type': 'cross_attention', 'params': {'img_dim': 512}})
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     fusion_type = cfg.get('type', 'none')
     if fusion_type not in FUSION_REGISTRY:

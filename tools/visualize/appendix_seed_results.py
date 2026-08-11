@@ -1,4 +1,9 @@
-"""Generate report appendix tables and figures from per-seed result files."""
+"""Tạo bảng hoặc hình trực quan bằng công cụ appendix seed results.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -24,18 +29,18 @@ OOD_METRICS = (
     ("fpr_at_95tpr", "\\makecell{FPR@\\\\95\\%TPR}"),
 )
 FULL_SHOT_MODELS = (
-    ("BioMedCLIP", "baselines/full_finetuned/fft_biomedclip"),
+    ("BiomedCLIP", "baselines/full_finetuned/fft_BiomedCLIP"),
     ("CLIP", "baselines/full_finetuned/fft_clip"),
     ("DenseNet-121", "baselines/full_finetuned/fft_densenet"),
     ("MedCLIP", "baselines/full_finetuned/fft_medclip"),
     ("PubMedCLIP", "baselines/full_finetuned/fft_pubmedclip"),
     ("ResNet-50", "baselines/full_finetuned/fft_resnet50"),
-    ("LoRA-BiomedCLIP", "baselines/peft_finetuned/lora_biomedclip"),
+    ("LoRA-BiomedCLIP", "baselines/peft_finetuned/lora_BiomedCLIP"),
     ("LoRA-PubMedCLIP", "baselines/peft_finetuned/lora_pubmedclip"),
     ("XBone-Net", "proposed/ours_xbone_net"),
 )
 FEW_SHOT_MODELS = (
-    ("LoRA-BiomedCLIP", "lora_biomedclip"),
+    ("LoRA-BiomedCLIP", "lora_BiomedCLIP"),
     ("LoRA-PubMedCLIP", "lora_pubmedclip"),
     ("XBone-Net", "ours_xbone_net"),
 )
@@ -72,11 +77,42 @@ REPORT_PALETTE = {
 
 
 def resolve_path(path: str | Path) -> Path:
+    """Xác định đường dẫn tuyệt đối của tài nguyên.
+
+    Parameters
+    ----------
+    path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     value = Path(path)
     return (value if value.is_absolute() else ROOT / value).resolve()
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    """Tải json cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if not path.is_file():
         raise FileNotFoundError(f"Missing result file: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -86,6 +122,27 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def load_classification_metrics(path: Path, expected_seed: int) -> dict[str, float]:
+    """Tải classification các độ đo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    expected_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    dict[str, float]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     payload = load_json(path)
     recorded_seed = int(payload.get("seed", expected_seed))
     if recorded_seed != expected_seed:
@@ -106,6 +163,27 @@ def load_ood_metrics(
     path: Path,
     expected_seed: int,
 ) -> tuple[dict[str, dict[str, float]], int, int, str]:
+    """Tải ood các độ đo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    expected_seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    tuple[dict[str, dict[str, float]], int, int, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     payload = load_json(path)
     recorded_seed = int(payload.get("seed", expected_seed))
     if recorded_seed != expected_seed:
@@ -134,10 +212,34 @@ def load_ood_metrics(
 
 
 def number(value: float) -> str:
+    """Thực hiện bước number trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : float
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return f"{value:.4f}".replace(".", "{,}")
 
 
 def latex_escape(text: str) -> str:
+    """Thực hiện bước latex escape trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    text : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     replacements = {
         "\\": r"\textbackslash{}",
         "&": r"\&",
@@ -163,6 +265,34 @@ def longtable(
     include_in_list: bool = True,
     placement: str = "H",
 ) -> str:
+    """Thực hiện bước longtable trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    rows : Iterable[list[str]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+    column_spec : str
+        Giá trị ``column_spec`` được sử dụng trong phép xử lý.
+    headers : list[str]
+        Giá trị ``headers`` được sử dụng trong phép xử lý.
+    caption : str
+        Giá trị ``caption`` được sử dụng trong phép xử lý.
+    label : str | None
+        Nhãn hoặc chỉ số lớp liên quan.
+    shaded_rows : set[int] | None, optional
+        Giá trị ``shaded_rows`` được sử dụng trong phép xử lý.
+    continued : bool, optional
+        Giá trị ``continued`` được sử dụng trong phép xử lý.
+    include_in_list : bool, optional
+        Giá trị ``include_in_list`` được sử dụng trong phép xử lý.
+    placement : str, optional
+        Giá trị ``placement`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     shaded_rows = shaded_rows or set()
     lines = [rf"\begin{{table}}[{placement}]"]
     if continued:
@@ -191,7 +321,87 @@ def longtable(
     return "\n".join(lines)
 
 
+def multipage_longtable(
+    rows: Iterable[list[str]],
+    *,
+    column_spec: str,
+    headers: list[str],
+    caption: str,
+    label: str,
+    shaded_rows: set[int] | None = None,
+) -> str:
+    """Thực hiện bước multipage longtable trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    rows : Iterable[list[str]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+    column_spec : str
+        Giá trị ``column_spec`` được sử dụng trong phép xử lý.
+    headers : list[str]
+        Giá trị ``headers`` được sử dụng trong phép xử lý.
+    caption : str
+        Giá trị ``caption`` được sử dụng trong phép xử lý.
+    label : str
+        Nhãn hoặc chỉ số lớp liên quan.
+    shaded_rows : set[int] | None, optional
+        Giá trị ``shaded_rows`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
+    shaded_rows = shaded_rows or set()
+    column_count = len(headers)
+    header_row = " & ".join(
+        rf"\textbf{{{header}}}" for header in headers
+    ) + r" \\"
+    lines = [
+        r"\begingroup",
+        r"\footnotesize",
+        r"\setlength{\LTpre}{0pt}",
+        r"\setlength{\LTpost}{0pt}",
+        r"\setlength{\LTcapwidth}{\textwidth}",
+        r"\setlength{\tabcolsep}{5pt}",
+        r"\renewcommand{\arraystretch}{1.08}",
+        rf"\begin{{longtable}}{{{column_spec}}}",
+        rf"\caption{{{caption}}}\label{{{label}}}\\",
+        r"\toprule",
+        header_row,
+        r"\midrule",
+        r"\endfirsthead",
+        rf"\multicolumn{{{column_count}}}{{l}}{{\textit{{Bảng~\ref{{{label}}} (tiếp theo)}}}}\\",
+        r"\toprule",
+        header_row,
+        r"\midrule",
+        r"\endhead",
+        r"\midrule",
+        rf"\multicolumn{{{column_count}}}{{r}}{{\textit{{Còn tiếp ở trang sau}}}}\\",
+        r"\endfoot",
+        r"\bottomrule",
+        r"\endlastfoot",
+    ]
+    for index, row in enumerate(rows):
+        prefix = r"\rowcolor{gray!12}" if index in shaded_rows else ""
+        lines.append(prefix + " & ".join(row) + r" \\")
+    lines.extend([r"\end{longtable}", r"\endgroup", ""])
+    return "\n".join(lines)
+
+
 def collect_full_shot(results_root: Path) -> dict[str, list[dict[str, Any]]]:
+    """Thu thập full shot cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, list[dict[str, Any]]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     collected: dict[str, list[dict[str, Any]]] = {}
     for dataset in ("btxrd", "ctch"):
         rows: list[dict[str, Any]] = []
@@ -216,6 +426,18 @@ def collect_full_shot(results_root: Path) -> dict[str, list[dict[str, Any]]]:
 
 
 def collect_few_shot(results_root: Path) -> dict[str, list[dict[str, Any]]]:
+    """Thu thập few shot cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    dict[str, list[dict[str, Any]]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     collected: dict[str, list[dict[str, Any]]] = {}
     for dataset in ("btxrd", "ctch"):
         rows: list[dict[str, Any]] = []
@@ -244,6 +466,18 @@ def collect_few_shot(results_root: Path) -> dict[str, list[dict[str, Any]]]:
 
 
 def collect_ablation(results_root: Path) -> list[dict[str, Any]]:
+    """Thu thập ablation cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     rows: list[dict[str, Any]] = []
     for variant_label, experiment_path in ABLATION_VARIANTS:
         for seed in SEEDS:
@@ -265,6 +499,18 @@ def collect_ablation(results_root: Path) -> list[dict[str, Any]]:
 
 
 def collect_ood(results_root: Path) -> list[dict[str, Any]]:
+    """Thu thập ood cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     rows: list[dict[str, Any]] = []
     for scenario_label, scenario_key in OOD_SCENARIOS:
         for seed in SEEDS:
@@ -301,6 +547,20 @@ def write_full_shot_tables(
     output: Path,
     collected: dict[str, list[dict[str, Any]]],
 ) -> Path:
+    """Ghi full shot tables cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    collected : dict[str, list[dict[str, Any]]]
+        Giá trị ``collected`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     tables: list[str] = []
     headers = [
         "Mô hình",
@@ -326,14 +586,19 @@ def write_full_shot_tables(
             for index, row in enumerate(rows)
             if row["model"] == "XBone-Net"
         }
+        table_renderer = multipage_longtable if dataset == "btxrd" else longtable
         tables.append(
-            longtable(
+            table_renderer(
                 table_rows,
-                column_spec=r"L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}",
+                column_spec=(
+                    r"@{}L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}@{}"
+                    if dataset == "btxrd"
+                    else r"L{2.85cm}C{1.05cm}*{5}{C{1.55cm}}"
+                ),
                 headers=headers,
                 caption=(
                     "Kết quả khi sử dụng toàn bộ dữ liệu huấn luyện của từng hạt giống trên "
-                    f"{display}; hàng XBone-Net được tô xám để dễ đối chiếu."
+                    f"{display}"
                 ),
                 label=f"tab:appendix-full-shot-seeds-{dataset}",
                 shaded_rows=shaded,
@@ -347,6 +612,20 @@ def write_few_shot_tables(
     output: Path,
     collected: dict[str, list[dict[str, Any]]],
 ) -> Path:
+    """Ghi few shot tables cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    collected : dict[str, list[dict[str, Any]]]
+        Giá trị ``collected`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     tables: list[str] = []
     headers = [
         "Thiết lập",
@@ -408,6 +687,20 @@ def write_few_shot_tables(
 
 
 def write_ablation_table(output: Path, rows: list[dict[str, Any]]) -> Path:
+    """Ghi ablation table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    rows : list[dict[str, Any]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     variant_groups = (
         {"XBone-Net", "Không dùng ảnh độ phân giải cao", "Gộp trung bình"},
         {"Chỉ pha 2", "Nối đặc trưng", "Đầu tuyến tính"},
@@ -462,6 +755,20 @@ def write_ablation_table(output: Path, rows: list[dict[str, Any]]) -> Path:
 
 
 def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
+    """Ghi ood table cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    rows : list[dict[str, Any]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     tables: list[str] = []
     for part_index, (scenario, scenario_key) in enumerate(OOD_SCENARIOS):
         part_rows = [row for row in rows if row["scenario_key"] == scenario_key]
@@ -513,6 +820,13 @@ def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
 
 
 def pyplot() -> Any:
+    """Thực hiện bước pyplot trong quy trình hiện tại.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     import matplotlib
 
     matplotlib.use("Agg")
@@ -536,6 +850,22 @@ def plot_full_shot_seed_f1(
     collected: dict[str, list[dict[str, Any]]],
     dpi: int,
 ) -> Path:
+    """Vẽ full shot seed f1 cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    collected : dict[str, list[dict[str, Any]]]
+        Giá trị ``collected`` được sử dụng trong phép xử lý.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = pyplot()
     figure, axes = plt.subplots(1, 2, figsize=(11.5, 4.6), sharex=True)
     models = (
@@ -585,6 +915,22 @@ def plot_ood_seed_metrics(
     rows: list[dict[str, Any]],
     dpi: int,
 ) -> Path:
+    """Vẽ ood seed các độ đo cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    rows : list[dict[str, Any]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     plt = pyplot()
     figure, axes = plt.subplots(1, 3, figsize=(13.2, 4.4), sharex=True)
     metric_specs = (
@@ -636,6 +982,22 @@ def plot_ood_seed_metrics(
 
 
 def build_outputs(results_root: Path, output_dir: Path, dpi: int) -> list[Path]:
+    """Xây dựng outputs cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    results_root : Path
+        Đường dẫn tài nguyên được sử dụng.
+    output_dir : Path
+        Đường dẫn tài nguyên được sử dụng.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     full_shot = collect_full_shot(results_root)
     few_shot = collect_few_shot(results_root)
@@ -697,6 +1059,7 @@ def build_outputs(results_root: Path, output_dir: Path, dpi: int) -> list[Path]:
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results-root", type=Path, default=Path("results"))
     parser.add_argument(

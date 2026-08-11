@@ -1,8 +1,8 @@
-"""Prompt templates used by zero-shot classification and OOD scoring.
+"""Cung cấp tiện ích prompts cho huấn luyện, đánh giá và phân tích XBone-Net.
 
-Zero-shot classification follows the single-template protocol described in the
-original CLIP paper.  The positive/negative prompt pairs are kept as a separate
-utility for the optional text-anchor OOD detector.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 
@@ -10,25 +10,31 @@ ORIGINAL_CLIP_PROMPT_TEMPLATE = "A radiograph showing {label}."
 
 
 # ============================================================
-# Prompt Generation Functions
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 def generate_clip_class_prompts(
     class_names: list[str],
     template: str = ORIGINAL_CLIP_PROMPT_TEMPLATE,
 ) -> dict[str, str]:
-    """Generate one canonical CLIP prompt for every class.
+    """Sinh clip class prompts cho bước xử lý hiện tại.
 
-    The default is the single prompt reported by Radford et al.:
-    ``A radiograph showing {label}.``.  Each class competes with all other classes
-    through one class-wise softmax during zero-shot classification.
+    Parameters
+    ----------
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    template : str, optional
+        Giá trị ``template`` được sử dụng trong phép xử lý.
 
-    Args:
-        class_names: Ordered class names substituted into ``{label}``.
-        template: Prompt template containing exactly the ``{label}`` field.
+    Returns
+    -------
+    dict[str, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
 
-    Returns:
-        An insertion-ordered mapping from class name to prompt.
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if "{label}" not in template:
         raise ValueError("The CLIP prompt template must contain the '{label}' field.")
@@ -42,27 +48,21 @@ def generate_custom_prompts(
     pathologies: list[str],
     image_context: str = "a bone x-ray",
 ) -> dict[str, dict[str, str]]:
-    """Generate positive / negative prompt pairs for text-anchor OOD scoring.
+    """Sinh custom prompts cho bước xử lý hiện tại.
 
-    Each pathology receives two prompts:
-      - Positive: asserts the pathology is present in the image
-      - Negative: asserts the pathology is absent from the image
+    Parameters
+    ----------
+    pathologies : list[str]
+        Danh sách tên bệnh lý hoặc lớp đích.
+    image_context : str, optional
+        Ảnh hoặc biểu diễn ảnh đầu vào.
 
-    Template pattern: "this is an image of <context>; <assertion>"
-
-    Args:
-        pathologies: List of pathology or class names (e.g., ['Osteosarcoma', 'Normal']).
-        image_context: Modality context descriptor prepended to prompts.
-
-    Returns:
-        Nested dictionary mapping each pathology name to a dict with
-        'positive' and 'negative' prompt strings.
-
-    Example:
-        prompts = generate_custom_prompts(["Osteosarcoma", "Normal"])
-        pos = prompts["Osteosarcoma"]["positive"]
+    Returns
+    -------
+    dict[str, dict[str, str]]
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
-    # --- Generate positive and negative prompt templates ---
+    # Bước hỗ trợ để sinh custom prompts cho bước xử lý hiện tại.
     return {
         path: {
             "positive": f"this is an image of {image_context}; {path.lower()} presented in image",

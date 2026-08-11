@@ -1,4 +1,9 @@
-"""Export BTXRD cases that CTCH OOD detectors incorrectly accept as ID."""
+"""Cung cấp công cụ nghiên cứu export btxrd ood confusions cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -29,6 +34,17 @@ ARCHIVE = "btxrd_test"
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
+    """Ghi csv cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    rows : list[dict[str, Any]]
+        Giá trị ``rows`` được sử dụng trong phép xử lý.
+    fields : list[str]
+        Giá trị ``fields`` được sử dụng trong phép xử lý.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -37,6 +53,23 @@ def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> Non
 
 
 def _ctch_class_names(provenance: dict[str, Any]) -> list[str]:
+    """Thực hiện bước ctch class names trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    provenance : dict[str, Any]
+        Giá trị ``provenance`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     names = (
         provenance.get("resolved_config", {})
         .get("dataset", {})
@@ -50,6 +83,25 @@ def _ctch_class_names(provenance: dict[str, Any]) -> list[str]:
 
 
 def _load_seed(seed: int):
+    """Tải seed cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     feature_path = analysis_root(seed) / "features" / f"{ARCHIVE}.npz"
     result_root = analysis_root(seed) / "ood" / SCENARIO
     metrics_path = result_root / "ood_metrics.json"
@@ -80,6 +132,23 @@ def _load_seed(seed: int):
 
 
 def _case_and_pair_rows(seed: int):
+    """Thực hiện bước case and pair rows trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     arrays, provenance, metrics, scores, result_root = _load_seed(seed)
     image_ids = arrays["image_id"].astype(str)
     btxrd_ids = np.asarray(arrays["labels"]).reshape(-1).astype(np.int64)
@@ -184,6 +253,18 @@ def _case_and_pair_rows(seed: int):
 
 
 def export(seeds: list[int]) -> None:
+    """Xuất kết quả cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    seeds : list[int]
+        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     all_cases: list[dict[str, Any]] = []
     all_pairs: list[dict[str, Any]] = []
     primary_methods: list[str] | None = None
@@ -297,6 +378,13 @@ def export(seeds: list[int]) -> None:
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--seeds", nargs="+", type=int, default=list(SOURCE_SEEDS)

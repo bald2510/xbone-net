@@ -1,14 +1,8 @@
-"""
-Dataset registry and dataset exports for XBone-Net architecture.
-============================================================
-Provides a centralized dataset registry mapping config names to PyTorch
-Dataset classes for Stage 1 (contrastive VLM alignment), Stage 2
-classification, and post-hoc OOD analysis pipelines.
+"""Cung cấp thành phần dữ liệu   init   cho XBone-Net.
 
-Supported Datasets:
-  - btxrd: BTXRD (Bone Tumor X-Ray Dataset) multi-class/multi-label loader
-  - ctch: CTCH pediatric bone fracture dataset loader
-  - fracatlas: FracAtlas fracture dataset loader (ID or OOD evaluation)
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from .btxrd import BTXRDDataset
@@ -17,15 +11,15 @@ from .fracatlas import FracAtlasDataset
 from .analysis import CTCHOODDataset
 
 # ============================================================
-# DATASET REGISTRY
+# Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
 # ============================================================
 
-# Maps dataset string key to PyTorch Dataset class constructor.
-# Used by dataset builder (src/datasets/builder.py) during runtime setup.
+# Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
+# Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
 DATASET_REGISTRY = {
-    'btxrd': BTXRDDataset,       # Bone Tumor X-Ray Dataset (primary ID dataset)
-    'ctch': CTCHDataset,         # CTCH pediatric fracture dataset
-    'ctch_ood': CTCHOODDataset,  # CTCH semantic OOD evaluation manifest
-    'fracatlas': FracAtlasDataset,  # FracAtlas fracture atlas (OOD evaluation)
+    'btxrd': BTXRDDataset,       # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
+    'ctch': CTCHDataset,         # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
+    'ctch_ood': CTCHOODDataset,  # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+    'fracatlas': FracAtlasDataset,  # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
 }
 

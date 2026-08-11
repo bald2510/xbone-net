@@ -1,8 +1,8 @@
-"""Visualize Proposed-v3 split embeddings and empirical classifier centroids.
+"""Tạo bảng hoặc hình trực quan bằng công cụ centroids.
 
-The script rebuilds the evaluated model from ``metrics.json``, loads its exact
-Phase-2 checkpoint, extracts fused embeddings from a selected CTCH split, and
-projects samples and classifier centroids into the same cosine-normalized space.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -54,6 +54,13 @@ DEFAULT_EXPERIMENT = "ctch/proposed/ours_xbone_net"
 
 
 def _parse_args() -> argparse.Namespace:
+    """Phân tích các tham số dòng lệnh.
+
+    Returns
+    -------
+    argparse.Namespace
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--experiment",
@@ -117,10 +124,39 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _resolve_path(path: Path) -> Path:
+    """Xác định đường dẫn tuyệt đối của tài nguyên.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return (path if path.is_absolute() else ROOT / path).resolve()
 
 
 def _select_device(name: str) -> torch.device:
+    """Chọn thiết bị cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    name : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    torch.device
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if name == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if name == "cuda" and not torch.cuda.is_available():
@@ -129,6 +165,23 @@ def _select_device(name: str) -> torch.device:
 
 
 def _plain_dict(value: Any) -> dict[str, Any]:
+    """Thực hiện bước plain dict trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if OmegaConf.is_config(value):
         value = OmegaConf.to_container(value, resolve=True)
     if not isinstance(value, dict):
@@ -137,7 +190,20 @@ def _plain_dict(value: Any) -> dict[str, Any]:
 
 
 def _display_class_names(cfg: Any, num_classes: int) -> list[str]:
-    """Prefer the UTF-8 source labels when old metrics contain mojibake."""
+    """Thực hiện bước display class names trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    cfg : Any
+        Cấu hình điều khiển bước xử lý.
+    num_classes : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    list[str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     dataset_cfg_path = ROOT / "configs" / "dataset" / "ctch.yaml"
     candidates: list[Any] = []
     if dataset_cfg_path.is_file():
@@ -152,6 +218,20 @@ def _display_class_names(cfg: Any, num_classes: int) -> list[str]:
 
 
 def _cache_scalar(archive: Any, key: str) -> str | None:
+    """Thực hiện bước cache scalar trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    archive : Any
+        Giá trị ``archive`` được sử dụng trong phép xử lý.
+    key : str
+        Tên hoặc khóa định danh của giá trị.
+
+    Returns
+    -------
+    str | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if key not in archive:
         return None
     return str(np.asarray(archive[key]).reshape(-1)[0])
@@ -164,6 +244,26 @@ def _validate_embedding_cache(
     checkpoint_sha256: str,
     split: str,
 ) -> None:
+    """Kiểm tra tính hợp lệ của biểu diễn cache cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    cache_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    checkpoint_sha256 : str
+        Giá trị ``checkpoint_sha256`` được sử dụng trong phép xử lý.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     with np.load(cache_path, allow_pickle=False) as archive:
         actual = {
             "source_experiment": _cache_scalar(archive, "source_experiment"),
@@ -197,6 +297,26 @@ def _extract_split_embeddings(
     num_workers: int,
     split: str,
 ) -> tuple[np.ndarray, np.ndarray, str]:
+    """Thực hiện bước extract split các biểu diễn trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    loaded : Any
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    cache_path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    batch_size : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    num_workers : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     params = _plain_dict(loaded.cfg.dataset.params)
     dataset = CTCHDataset(
         split=split,
@@ -251,6 +371,22 @@ def _load_or_extract_embeddings(
     loaded: Any,
     output_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray, str, Path]:
+    """Tải or extract các biểu diễn cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Các đối số vị trí bổ sung.
+    loaded : Any
+        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    output_dir : Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, str, Path]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if args.embeddings is not None:
         path = _resolve_path(args.embeddings)
         embeddings, labels, key = load_fused_embeddings(path)
@@ -282,6 +418,18 @@ def _load_or_extract_embeddings(
 
 
 def _class_colors(num_classes: int) -> np.ndarray:
+    """Thực hiện bước class colors trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    num_classes : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     cmap_name = "tab20" if num_classes <= 20 else "turbo"
     cmap = plt.get_cmap(cmap_name, num_classes)
     return np.asarray([cmap(index) for index in range(num_classes)])
@@ -292,6 +440,22 @@ def _centroid_split_alignment(
     embeddings: np.ndarray,
     labels: np.ndarray,
 ) -> dict[str, np.ndarray]:
+    """Thực hiện bước tâm lớp split alignment trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    centroids : np.ndarray
+        Giá trị ``centroids`` được sử dụng trong phép xử lý.
+    embeddings : np.ndarray
+        Giá trị ``embeddings`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     num_classes = centroids.shape[0]
     normalized_centroids = l2_normalize(centroids)
     normalized_embeddings = l2_normalize(embeddings)
@@ -326,6 +490,31 @@ def _plot_projection(
     split: str,
     ood_projection: np.ndarray | None = None,
 ) -> None:
+    """Vẽ projection cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    centroid_projection : np.ndarray
+        Giá trị ``centroid_projection`` được sử dụng trong phép xử lý.
+    sample_projection : np.ndarray
+        Giá trị ``sample_projection`` được sử dụng trong phép xử lý.
+    sample_labels : np.ndarray
+        Giá trị ``sample_labels`` được sử dụng trong phép xử lý.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    counts : np.ndarray
+        Giá trị ``counts`` được sử dụng trong phép xử lý.
+    explained_variance : np.ndarray
+        Giá trị ``explained_variance`` được sử dụng trong phép xử lý.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+    ood_projection : np.ndarray | None, optional
+        Giá trị ``ood_projection`` được sử dụng trong phép xử lý.
+    """
     colors = _class_colors(len(class_names))
     fig, axis = plt.subplots(figsize=(16, 10))
     for class_id in range(len(class_names)):
@@ -460,6 +649,19 @@ def _plot_similarity_heatmap(
     output: Path,
     dpi: int,
 ) -> None:
+    """Vẽ similarity heatmap cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    similarity : np.ndarray
+        Giá trị ``similarity`` được sử dụng trong phép xử lý.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+    """
     num_classes = len(class_names)
     size = min(18.0, max(8.0, num_classes * 0.42))
     fig, axis = plt.subplots(figsize=(size, size))
@@ -486,6 +688,23 @@ def _plot_diagnostics(
     dpi: int,
     split: str,
 ) -> None:
+    """Vẽ diagnostics cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    diagnostics : dict[str, Any]
+        Giá trị ``diagnostics`` được sử dụng trong phép xử lý.
+    alignment : dict[str, np.ndarray]
+        Giá trị ``alignment`` được sử dụng trong phép xử lý.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    output : Path
+        Vị trí hoặc cấu trúc nhận kết quả.
+    dpi : int
+        Giá trị ``dpi`` được sử dụng trong phép xử lý.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+    """
     num_classes = len(class_names)
     labels = [f"{index}: {name}" for index, name in enumerate(class_names)]
     y_positions = np.arange(num_classes)
@@ -543,6 +762,28 @@ def _write_metrics_csv(
     alignment: dict[str, np.ndarray],
     split: str,
 ) -> list[dict[str, Any]]:
+    """Ghi các độ đo csv cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    class_names : list[str]
+        Nhãn hoặc chỉ số lớp liên quan.
+    checkpoint_counts : np.ndarray
+        Giá trị ``checkpoint_counts`` được sử dụng trong phép xử lý.
+    diagnostics : dict[str, Any]
+        Giá trị ``diagnostics`` được sử dụng trong phép xử lý.
+    alignment : dict[str, np.ndarray]
+        Giá trị ``alignment`` được sử dụng trong phép xử lý.
+    split : str
+        Giá trị ``split`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     rows: list[dict[str, Any]] = []
     split_counts = alignment["selected_split_counts"]
     alignment_cosine = alignment["checkpoint_vs_split_mean_cosine"]
@@ -587,6 +828,17 @@ def _write_metrics_csv(
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     args = _parse_args()
     experiment = args.experiment.strip("/")
     device = _select_device(args.device)
@@ -655,7 +907,7 @@ def main() -> None:
         if not ood_feature_path.is_file():
             raise FileNotFoundError(
                 f"OOD features not found at {ood_feature_path}. "
-                "Please run `python tools/benchmark/ood_analysis.py --analyses ood` first to extract them."
+                "Please run `python benchmark/ood_analysis.py --analyses ood` first to extract them."
             )
         ood_embeddings, _, _ = load_fused_embeddings(ood_feature_path)
         ood_sample = ood_embeddings[args.ood_index : args.ood_index + 1]

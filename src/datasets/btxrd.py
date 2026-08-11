@@ -1,4 +1,9 @@
-"""BTXRD dataset with fixed-budget sparse focal image preprocessing."""
+"""Cung cấp thành phần dữ liệu btxrd cho XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +33,12 @@ BTXRD_CLASS_NAMES = (
 
 
 class BTXRDDataset(Dataset):
-    """Pair BTXRD radiographs with reports and multiclass labels."""
+    """Biểu diễn và truy xuất dữ liệu bằng lớp ``BTXRDDataset``.
+
+    Notes
+    -----
+    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
+    """
 
     def __init__(
         self,
@@ -52,6 +62,54 @@ class BTXRDDataset(Dataset):
         preprocess: dict | None = None,
         **kwargs,
     ):
+        """Thực hiện bước init trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        img_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        report_dir : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_split_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        csv_labels_path : str
+            Đường dẫn tài nguyên được sử dụng.
+        pathologies : list | None, optional
+            Danh sách tên bệnh lý hoặc lớp đích.
+        classes : list | None, optional
+            Giá trị ``classes`` được sử dụng trong phép xử lý.
+        task_type : str, optional
+            Phương pháp hoặc chế độ xử lý được chọn.
+        num_classes : int | None, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        split : str, optional
+            Giá trị ``split`` được sử dụng trong phép xử lý.
+        train_ratio : float, optional
+            Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+        transform : object, optional
+            Giá trị ``transform`` được sử dụng trong phép xử lý.
+        tokenizer : object, optional
+            Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
+        max_text_len : int, optional
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+        clinical_subdir : str, optional
+            Giá trị ``clinical_subdir`` được sử dụng trong phép xử lý.
+        k_shot : int | None, optional
+            Giá trị ``k_shot`` được sử dụng trong phép xử lý.
+        seed : int, optional
+            Hạt giống phục vụ khả năng tái lập.
+        high_res : dict | None, optional
+            Giá trị ``high_res`` được sử dụng trong phép xử lý.
+        preprocess : dict | None, optional
+            Giá trị ``preprocess`` được sử dụng trong phép xử lý.
+        **kwargs : dict
+            Các đối số từ khóa bổ sung.
+
+        Raises
+        ------
+        ValueError
+            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        """
         del num_classes
         self.img_dir = img_dir
         self.report_dir = report_dir
@@ -88,8 +146,8 @@ class BTXRDDataset(Dataset):
             label_matrix = merged[self.classes].apply(
                 pd.to_numeric, errors="coerce"
             )
-            # BTXRD contains hierarchical indicators. A specific subtype is the
-            # multiclass target when both it and its generic parent are active.
+            # Bước hỗ trợ để khởi tạo trạng thái.
+            # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
             hierarchical_children = {
                 "osteochondroma": (
                     "multiple osteochondromas",
@@ -216,9 +274,30 @@ class BTXRDDataset(Dataset):
         )
 
     def __len__(self):
+        """Thực hiện bước len trong quy trình hiện tại.
+
+        Returns
+        -------
+        int
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         return len(self.df)
 
     def _load_and_tokenize(self, path: str, default_text: str):
+        """Tải and tokenize cho bước xử lý hiện tại.
+
+        Parameters
+        ----------
+        path : str
+            Đường dẫn tài nguyên được sử dụng.
+        default_text : str
+            Văn bản hoặc biểu diễn văn bản đầu vào.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         raw_text = ""
         if path and os.path.exists(path):
             with open(path, "r", encoding="utf-8") as report_file:
@@ -227,6 +306,18 @@ class BTXRDDataset(Dataset):
         return self.tokenizer([text]).squeeze(0) if self.tokenizer else text
 
     def _label(self, row) -> torch.Tensor:
+        """Thực hiện bước nhãn trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        row : object
+            Giá trị ``row`` được sử dụng trong phép xử lý.
+
+        Returns
+        -------
+        torch.Tensor
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         if self.task_type == "multiclass":
             return torch.tensor(int(row["class_id"]), dtype=torch.long)
         return torch.tensor(
@@ -235,6 +326,18 @@ class BTXRDDataset(Dataset):
         )
 
     def __getitem__(self, index: int):
+        """Thực hiện bước getitem trong quy trình hiện tại.
+
+        Parameters
+        ----------
+        index : int
+            Chỉ mục của phần tử cần xử lý.
+
+        Returns
+        -------
+        object
+            Kết quả được tạo bởi bước xử lý của hàm.
+        """
         row = self.df.iloc[index]
         image_id = str(row["image_id"])
         stem = os.path.splitext(image_id)[0]

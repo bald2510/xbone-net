@@ -1,4 +1,4 @@
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
@@ -7,26 +7,26 @@
 \toprule
 \textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
 \midrule
-OOD ngữ nghĩa & Cosine theo tâm lớp & 42 & 669 & 44 & 0{,}5856 & 0{,}1040 & 0{,}8864 \\
-\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 42 & 669 & 44 & 0{,}6112 & 0{,}1134 & 0{,}8409 \\
-OOD ngữ nghĩa & kNN & 42 & 669 & 44 & 0{,}6094 & 0{,}1212 & 0{,}8636 \\
-OOD ngữ nghĩa & Entropy & 42 & 669 & 44 & 0{,}5969 & 0{,}1237 & 0{,}8409 \\
-OOD ngữ nghĩa & Cosine theo tâm lớp & 123 & 669 & 44 & 0{,}6061 & 0{,}0941 & 0{,}8864 \\
-\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 123 & 669 & 44 & 0{,}6278 & 0{,}0953 & 0{,}9091 \\
-OOD ngữ nghĩa & kNN & 123 & 669 & 44 & 0{,}6267 & 0{,}1014 & 0{,}8864 \\
-OOD ngữ nghĩa & Entropy & 123 & 669 & 44 & 0{,}5595 & 0{,}0983 & 0{,}8864 \\
-OOD ngữ nghĩa & Cosine theo tâm lớp & 456 & 669 & 44 & 0{,}6102 & 0{,}0916 & 0{,}8864 \\
-\rowcolor{gray!12}OOD ngữ nghĩa & Mahalanobis theo tâm lớp & 456 & 669 & 44 & 0{,}6467 & 0{,}1014 & 0{,}9091 \\
-OOD ngữ nghĩa & kNN & 456 & 669 & 44 & 0{,}6445 & 0{,}1023 & 0{,}8864 \\
-OOD ngữ nghĩa & Entropy & 456 & 669 & 44 & 0{,}5550 & 0{,}0936 & 0{,}9091 \\
+OOD CTCH & Cosine theo tâm lớp & 42 & 669 & 44 & 0{,}5856 & 0{,}1040 & 0{,}8864 \\
+\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 42 & 669 & 44 & 0{,}6112 & 0{,}1134 & 0{,}8409 \\
+OOD CTCH & kNN & 42 & 669 & 44 & 0{,}6094 & 0{,}1212 & 0{,}8636 \\
+OOD CTCH & Entropy & 42 & 669 & 44 & 0{,}5969 & 0{,}1237 & 0{,}8409 \\
+OOD CTCH & Cosine theo tâm lớp & 123 & 669 & 44 & 0{,}6061 & 0{,}0941 & 0{,}8864 \\
+\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 123 & 669 & 44 & 0{,}6278 & 0{,}0953 & 0{,}9091 \\
+OOD CTCH & kNN & 123 & 669 & 44 & 0{,}6267 & 0{,}1014 & 0{,}8864 \\
+OOD CTCH & Entropy & 123 & 669 & 44 & 0{,}5595 & 0{,}0983 & 0{,}8864 \\
+OOD CTCH & Cosine theo tâm lớp & 456 & 669 & 44 & 0{,}6102 & 0{,}0916 & 0{,}8864 \\
+\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 456 & 669 & 44 & 0{,}6467 & 0{,}1014 & 0{,}9091 \\
+OOD CTCH & kNN & 456 & 669 & 44 & 0{,}6445 & 0{,}1023 & 0{,}8864 \\
+OOD CTCH & Entropy & 456 & 669 & 44 & 0{,}5550 & 0{,}0936 & 0{,}9091 \\
 \bottomrule
 \end{tabular}%
 }
-\caption{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản OOD ngữ nghĩa; các hàng Mahalanobis theo tâm lớp được tô xám.}
+\caption{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản OOD CTCH}
 \label{tab:appendix-ood-seeds}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[htbp]
 \ContinuedFloat
 \centering
 \footnotesize
@@ -51,5 +51,5 @@ BTXRD & Entropy & 456 & 669 & 750 & 0{,}7498 & 0{,}7313 & 0{,}8640 \\
 \bottomrule
 \end{tabular}%
 }
-\caption[]{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản BTXRD; các hàng Mahalanobis theo tâm lớp được tô xám.}
+\caption[]{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản BTXRD}
 \end{table}

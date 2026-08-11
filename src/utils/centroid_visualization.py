@@ -1,4 +1,9 @@
-"""Loading and diagnostic helpers for empirical-centroid visualisation."""
+"""Cung cấp tiện ích centroid visualization cho huấn luyện, đánh giá và phân tích XBone-Net.
+
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +20,29 @@ def _find_state_tensor(
     suffix: str,
     required: bool = True,
 ) -> torch.Tensor | None:
+    """Tìm state tensor cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    state_dict : dict[str, Any]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    suffix : str
+        Giá trị ``suffix`` được sử dụng trong phép xử lý.
+    required : bool, optional
+        Giá trị ``required`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    torch.Tensor | None
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     exact = state_dict.get(suffix)
     if isinstance(exact, torch.Tensor):
         return exact
@@ -38,7 +66,27 @@ def _find_state_tensor(
 def load_centroids_from_checkpoint(
     checkpoint_path: str | Path,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Load centroid vectors and train counts without rebuilding the model."""
+    """Tải các tâm lớp from checkpoint cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    checkpoint_path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    TypeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     path = Path(checkpoint_path)
     if not path.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {path}")
@@ -78,7 +126,27 @@ def load_centroids_from_checkpoint(
 def load_fused_embeddings(
     embeddings_path: str | Path,
 ) -> tuple[np.ndarray, np.ndarray, str]:
-    """Load fused embeddings and labels exported by evaluate.py."""
+    """Tải fused các biểu diễn cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    embeddings_path : str | Path
+        Đường dẫn tài nguyên được sử dụng.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, str]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     path = Path(embeddings_path)
     if not path.is_file():
         raise FileNotFoundError(f"Embeddings file not found: {path}")
@@ -106,7 +174,25 @@ def load_fused_embeddings(
 
 
 def l2_normalize(values: np.ndarray, eps: float = 1e-12) -> np.ndarray:
-    """L2-normalize rows to match the cosine classifier geometry."""
+    """Chuẩn hóa các vectơ theo chuẩn L2.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Giá trị ``values`` được sử dụng trong phép xử lý.
+    eps : float, optional
+        Giá trị ``eps`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     values = np.asarray(values, dtype=np.float32)
     norms = np.linalg.norm(values, axis=1, keepdims=True)
     zero_rows = np.flatnonzero(norms.reshape(-1) <= eps).tolist()
@@ -122,7 +208,31 @@ def stratified_subsample(
     max_points_per_class: int,
     seed: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Limit plot density while preserving all observed classes."""
+    """Thực hiện bước stratified subsample trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    embeddings : np.ndarray
+        Giá trị ``embeddings`` được sử dụng trong phép xử lý.
+    labels : np.ndarray
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+    num_classes : int
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_points_per_class : int
+        Nhãn hoặc chỉ số lớp liên quan.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if max_points_per_class < 1:
         raise ValueError("max_points_per_class must be positive.")
     rng = np.random.default_rng(seed)
@@ -141,7 +251,27 @@ def project_cosine_space(
     embeddings: np.ndarray | None = None,
     seed: int = 42,
 ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, PCA]:
-    """Fit a reproducible 2-D PCA projection on normalized vectors."""
+    """Thực hiện bước project cosine space trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    centroids : np.ndarray
+        Giá trị ``centroids`` được sử dụng trong phép xử lý.
+    embeddings : np.ndarray | None, optional
+        Giá trị ``embeddings`` được sử dụng trong phép xử lý.
+    seed : int, optional
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray | None, np.ndarray, PCA]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     normalized_centroids = l2_normalize(centroids)
     normalized_embeddings = l2_normalize(embeddings) if embeddings is not None else None
     fit_values = (
@@ -164,7 +294,27 @@ def compute_centroid_diagnostics(
     embeddings: np.ndarray | None = None,
     labels: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    """Compute centroid separation and optional sample-to-centroid margins."""
+    """Tính tâm lớp diagnostics cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    centroids : np.ndarray
+        Giá trị ``centroids`` được sử dụng trong phép xử lý.
+    embeddings : np.ndarray | None, optional
+        Giá trị ``embeddings`` được sử dụng trong phép xử lý.
+    labels : np.ndarray | None, optional
+        Giá trị ``labels`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, Any]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     normalized_centroids = l2_normalize(centroids)
     similarity = normalized_centroids @ normalized_centroids.T
     other_similarity = similarity.copy()

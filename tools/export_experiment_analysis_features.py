@@ -1,10 +1,8 @@
-"""Export CTCH/OOD features for an evaluated representation baseline.
+"""Cung cấp công cụ nghiên cứu export experiment analysis features cho XBone-Net.
 
-Unlike ``export_analysis_features.py``, this script is not locked to the
-canonical proposed architecture. It accepts the canonical CTCH model, the
-deterministic BioMedCLIP zero-shot baseline, or an experiment below
-``ctch/ablation_study`` and reconstructs the network from the resolved
-configuration saved in that experiment's ``metrics.json``.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 from __future__ import annotations
@@ -49,10 +47,38 @@ SCENARIOS = (
 
 
 def experiment_analysis_root(experiment: str, seed: int) -> Path:
+    """Thực hiện bước experiment analysis root trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+
+    Returns
+    -------
+    Path
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return ROOT / "results" / experiment / f"seed_{int(seed)}" / "analysis"
 
 
 def _to_device(value: Any, device: torch.device) -> Any:
+    """Thực hiện bước to thiết bị trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    value : Any
+        Giá trị ``value`` được sử dụng trong phép xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+
+    Returns
+    -------
+    Any
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     return value.to(device) if isinstance(value, torch.Tensor) else value
 
 
@@ -63,7 +89,29 @@ def _collect_fused_feature_batches(
     device: torch.device,
     report_type: str,
 ) -> dict[str, np.ndarray]:
-    """Collect a representation shared by multimodal and unimodal ablations."""
+    """Thu thập fused đặc trưng batches cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    report_type : str
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     tensor_parts: dict[str, list[np.ndarray]] = {}
     metadata_parts: dict[str, list[str]] = {
         key: [] for key in ANALYSIS_METADATA_KEYS
@@ -165,7 +213,33 @@ def _collect_zeroshot_feature_batches(
     prompt_classes: list[str],
     temperature: float,
 ) -> dict[str, np.ndarray]:
-    """Export original BioMedCLIP global-image features and prompt logits."""
+    """Thu thập zeroshot đặc trưng batches cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    loader : object
+        Bộ nạp dữ liệu cung cấp các batch đầu vào.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    prompt_classes : list[str]
+        Văn bản hoặc biểu diễn văn bản đầu vào.
+    temperature : float
+        Giá trị ``temperature`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     if temperature <= 0:
         raise ValueError("Zero-shot temperature must be positive.")
     tokenizer = model.backbone.tokenizer_obj
@@ -249,6 +323,30 @@ def _can_resume(
     scenario: str,
     allow_incomplete_ood: bool,
 ) -> bool:
+    """Thực hiện bước can resume trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    path : Path
+        Đường dẫn tài nguyên được sử dụng.
+    experiment : str
+        Giá trị ``experiment`` được sử dụng trong phép xử lý.
+    seed : int
+        Hạt giống phục vụ khả năng tái lập.
+    checkpoint_sha256 : str
+        Giá trị ``checkpoint_sha256`` được sử dụng trong phép xử lý.
+    config_sha256 : str
+        Cấu hình điều khiển bước xử lý.
+    scenario : str
+        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+    allow_incomplete_ood : bool
+        Giá trị ``allow_incomplete_ood`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    bool
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     if not path.is_file():
         return False
     try:
@@ -274,6 +372,13 @@ def _can_resume(
 
 
 def main() -> None:
+    """Thực thi điểm vào chính của mô-đun.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--seed", type=int, required=True)

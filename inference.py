@@ -1,14 +1,8 @@
-"""
-XBone-Net Single-Sample Inference & OOD Visualizer.
-===============================================================================
-Executes single-sample CLI inference, attention map visualization, and OOD scoring:
-  - Model Loading: Loads model architecture and Phase 2 checkpoint.
-  - OOD Detection: Scores sample against ID calibration using Mahalanobis, k-NN, or text-anchor.
-  - Spatial Attention: Projects text-to-image attention through the spatial resampler
-    and renders it in the original X-ray coordinate system.
-  - Cross-Attention: Analyzes bi-directional cross-attention head weights and cross-modal affinity.
+"""Thực hiện suy luận XBone-Net cho một mẫu ảnh và văn bản lâm sàng.
 
-Outputs prediction probabilities, OOD status, and PNG visualization of attention maps.
+Notes
+-----
+Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
 """
 
 import sys
@@ -38,12 +32,32 @@ from src.utils.trainer import resolve_pad_token_id
 
 
 # ============================================================
-# High-Resolution Attention Projection & Rendering
+# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
 
 
 def project_visual_attention_to_source(model, visual_attention: torch.Tensor):
-    """Project attention over resampled visual tokens back to source-image boxes."""
+    """Thực hiện bước project visual attention to source trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    visual_attention : torch.Tensor
+        Giá trị ``visual_attention`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     backbone = getattr(model, "backbone", None)
     resampler = getattr(backbone, "visual_resampler", None)
     resampler_attention = getattr(resampler, "last_attention", None)
@@ -85,7 +99,24 @@ def rasterize_spatial_attention(
     image_size: tuple[int, int],
     max_side: int = 840,
 ) -> np.ndarray:
-    """Rasterize normalized boxes without introducing letterbox distortion."""
+    """Thực hiện bước rasterize spatial attention trong quy trình hiện tại.
+
+    Parameters
+    ----------
+    boxes : np.ndarray
+        Giá trị ``boxes`` được sử dụng trong phép xử lý.
+    scores : np.ndarray
+        Giá trị ``scores`` được sử dụng trong phép xử lý.
+    image_size : tuple[int, int]
+        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
+    max_side : int, optional
+        Giá trị ``max_side`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    np.ndarray
+        Kết quả được tạo bởi bước xử lý của hàm.
+    """
     width, height = image_size
     scale = min(1.0, max_side / max(width, height))
     out_width = max(1, round(width * scale))
@@ -112,7 +143,19 @@ def render_high_resolution_attention(
     local_scores: torch.Tensor,
     output_path: str = "results/attention_map.png",
 ) -> None:
-    """Render text-to-image high-resolution attention in source coordinates."""
+    """Kết xuất high resolution attention cho bước xử lý hiện tại.
+
+    Parameters
+    ----------
+    raw_img : Image.Image
+        Ảnh hoặc biểu diễn ảnh đầu vào.
+    local_boxes : torch.Tensor
+        Giá trị ``local_boxes`` được sử dụng trong phép xử lý.
+    local_scores : torch.Tensor
+        Giá trị ``local_scores`` được sử dụng trong phép xử lý.
+    output_path : str, optional
+        Đường dẫn tài nguyên được sử dụng.
+    """
     boxes = local_boxes[0].detach().float().cpu().numpy()
     scores = local_scores[0].detach().float().cpu().numpy()
     spatial_map = rasterize_spatial_attention(boxes, scores, raw_img.size)
@@ -146,21 +189,26 @@ def render_high_resolution_attention(
 
 
 # ============================================================
-# Helper Functions & Checkpoint Loading
+# Kiểm tra và xử lý checkpoint tương ứng của mô hình.
 # ============================================================
 
 def adapt_state_dict_keys(
     state_dict: dict[str, torch.Tensor],
     model_keys: list[str],
 ) -> dict[str, torch.Tensor]:
-    """Adapt checkpoint key prefixes for XBone-Net wrapper compatibility.
+    """Thực hiện bước adapt state dict keys trong quy trình hiện tại.
 
-    Args:
-        state_dict: Checkpoint OrderedDict of parameter tensors.
-        model_keys: Parameter names from target model state_dict.
+    Parameters
+    ----------
+    state_dict : dict[str, torch.Tensor]
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    model_keys : list[str]
+        Mô hình hoặc thành phần mô hình cần xử lý.
 
-    Returns:
-        dict[str, torch.Tensor]: State dict with corrected key prefixes.
+    Returns
+    -------
+    dict[str, torch.Tensor]
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     model_has_backbone_model = any(k.startswith("backbone.model.") for k in model_keys)
     checkpoint_keys = list(state_dict.keys())
@@ -181,6 +229,27 @@ def adapt_state_dict_keys(
 
 
 def load_state_dict_checked(model, state_dict, context: str):
+    """Tải trọng số mô hình và kiểm tra mức độ tương thích.
+
+    Parameters
+    ----------
+    model : object
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    state_dict : object
+        Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+    context : str
+        Giá trị ``context`` được sử dụng trong phép xử lý.
+
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    RuntimeError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    """
     result = model.load_state_dict(state_dict, strict=False)
     missing = list(result.missing_keys)
     unexpected = list(result.unexpected_keys)
@@ -210,15 +279,21 @@ def load_checkpoint_from_dir(
     model_dir: str,
     device: torch.device,
 ) -> str | None:
-    """Load checkpoint weights from directory by searching standard filenames.
+    """Tải checkpoint from dir cho bước xử lý hiện tại.
 
-    Args:
-        model: Target nn.Module.
-        model_dir: Directory path containing checkpoints.
-        device: Target torch.device for weight loading.
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    model_dir : str
+        Đường dẫn tài nguyên được sử dụng.
+    device : torch.device
+        Thiết bị thực thi phép tính.
 
-    Returns:
-        Loaded checkpoint path, or None when no Phase-2 checkpoint exists.
+    Returns
+    -------
+    str | None
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     if not os.path.isdir(model_dir):
         return None
@@ -252,16 +327,28 @@ def load_model_checkpoint(
     device: torch.device,
     custom_checkpoint_path: str = None,
 ) -> str:
-    """Load model checkpoint weights with fallback search strategy.
+    """Tải mô hình checkpoint cho bước xử lý hiện tại.
 
-    Args:
-        model: Target nn.Module.
-        cfg: Hydra DictConfig containing checkpoint path fields.
-        device: Target torch.device for weight loading.
-        custom_checkpoint_path: If provided, used directly.
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Mô hình hoặc thành phần mô hình cần xử lý.
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
+    device : torch.device
+        Thiết bị thực thi phép tính.
+    custom_checkpoint_path : str, optional
+        Đường dẫn tài nguyên được sử dụng.
 
-    Returns:
-        Path of the loaded Phase-2 checkpoint.
+    Returns
+    -------
+    str
+        Kết quả được tạo bởi bước xử lý của hàm.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if custom_checkpoint_path:
         if not os.path.isfile(custom_checkpoint_path):
@@ -313,14 +400,16 @@ def load_model_checkpoint(
 
 
 # ============================================================
-# Main Entry Point & CLI Parsing
+# Điểm vào chính và phân tích tham số dòng lệnh
 # ============================================================
 
 def parse_args():
-    """Parse non-Hydra CLI flags for single-sample inference.
+    """Phân tích các tham số dòng lệnh.
 
-    Returns:
-        argparse.Namespace: CLI arguments namespace.
+    Returns
+    -------
+    object
+        Kết quả được tạo bởi bước xử lý của hàm.
     """
     parser = argparse.ArgumentParser(description="Multi-Modal Inference & OOD Detection")
     parser.add_argument("--image", required=True, type=str, help="Path to test image file")
@@ -348,16 +437,19 @@ args = None
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(cfg: DictConfig) -> None:
-    """Run single-sample inference with OOD detection and attention maps.
+    """Thực thi điểm vào chính của mô-đun.
 
-    Loads model and checkpoint, processes one image (with optional clinical text),
-    runs OOD scoring, generates spatial/cross-attention visualizations, and prints results.
+    Parameters
+    ----------
+    cfg : DictConfig
+        Cấu hình điều khiển bước xử lý.
 
-    Args:
-        cfg: Hydra DictConfig resolved from configs/config.yaml.
-
-    Returns:
-        None
+    Raises
+    ------
+    KeyError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    ValueError
+        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     if args.device:
         device = torch.device(args.device)
@@ -504,7 +596,7 @@ def main(cfg: DictConfig) -> None:
     image = Image.open(args.image).convert("RGB")
     preprocess = model.backbone.preprocess
 
-    # --- Fixed-budget sparse high-resolution support ---
+    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
     high_res_cfg = cfg.dataset.get("params", {}).get("high_res", {})
     use_high_res = high_res_cfg.get("enabled", False)
 
@@ -587,7 +679,7 @@ def main(cfg: DictConfig) -> None:
         else:
             probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
 
-        # Re-run only the fusion path to expose attention weights for visualization.
+        # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
         if use_text and getattr(model.fusion, "supports_padding_mask", False):
             img_feats, txt_feats = model.backbone(
                 image_tensor,

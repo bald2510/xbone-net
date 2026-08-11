@@ -1,12 +1,11 @@
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 1 mẫu & LoRA-BiomedCLIP & 42 & 0{,}2880 & 0{,}1666 & 0{,}1413 & 0{,}6239 & 0{,}1747 \\
 1 mẫu & LoRA-BiomedCLIP & 123 & 0{,}3280 & 0{,}2601 & 0{,}2098 & 0{,}6756 & 0{,}2430 \\
@@ -20,12 +19,11 @@
 \bottomrule
 \end{tabular}%
 }
-\caption{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 1 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 1 mẫu}
 \label{tab:appendix-few-shot-seeds-btxrd}
 \end{table}
 
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \ContinuedFloat
 \centering
 \footnotesize
@@ -33,7 +31,7 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 10 mẫu & LoRA-BiomedCLIP & 42 & 0{,}6373 & 0{,}4487 & 0{,}4074 & 0{,}8503 & 0{,}4289 \\
 10 mẫu & LoRA-BiomedCLIP & 123 & 0{,}7133 & 0{,}4759 & 0{,}4308 & 0{,}8764 & 0{,}4634 \\
@@ -47,11 +45,10 @@
 \bottomrule
 \end{tabular}%
 }
-\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 10 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 10 mẫu}
 \end{table}
 
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \ContinuedFloat
 \centering
 \footnotesize
@@ -59,7 +56,7 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 20 mẫu & LoRA-BiomedCLIP & 42 & 0{,}7347 & 0{,}5774 & 0{,}4866 & 0{,}9268 & 0{,}5491 \\
 20 mẫu & LoRA-BiomedCLIP & 123 & 0{,}7360 & 0{,}5353 & 0{,}4838 & 0{,}9365 & 0{,}5383 \\
@@ -73,18 +70,17 @@
 \bottomrule
 \end{tabular}%
 }
-\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 20 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên BTXRD ở thiết lập 20 mẫu}
 \end{table}
 
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 1 mẫu & LoRA-BiomedCLIP & 42 & 0{,}2093 & 0{,}2674 & 0{,}2110 & 0{,}8286 & 0{,}2244 \\
 1 mẫu & LoRA-BiomedCLIP & 123 & 0{,}2257 & 0{,}3002 & 0{,}2067 & 0{,}8411 & 0{,}2328 \\
@@ -98,12 +94,11 @@
 \bottomrule
 \end{tabular}%
 }
-\caption{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 1 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 1 mẫu}
 \label{tab:appendix-few-shot-seeds-ctch}
 \end{table}
 
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \ContinuedFloat
 \centering
 \footnotesize
@@ -111,7 +106,7 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 10 mẫu & LoRA-BiomedCLIP & 42 & 0{,}4141 & 0{,}5817 & 0{,}4384 & 0{,}9399 & 0{,}4741 \\
 10 mẫu & LoRA-BiomedCLIP & 123 & 0{,}3662 & 0{,}5270 & 0{,}4101 & 0{,}9272 & 0{,}4345 \\
@@ -125,11 +120,10 @@
 \bottomrule
 \end{tabular}%
 }
-\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 10 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 10 mẫu}
 \end{table}
 
-\clearpage
-\begin{table}[p]
+\begin{table}[htbp]
 \ContinuedFloat
 \centering
 \footnotesize
@@ -137,7 +131,7 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{C{1.0cm}L{2.35cm}C{1.0cm}*{5}{C{1.45cm}}}
 \toprule
-\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AP} \\
+\textbf{Thiết lập} & \textbf{Mô hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\
 \midrule
 20 mẫu & LoRA-BiomedCLIP & 42 & 0{,}4694 & 0{,}6409 & 0{,}5033 & 0{,}9527 & 0{,}5364 \\
 20 mẫu & LoRA-BiomedCLIP & 123 & 0{,}4170 & 0{,}5883 & 0{,}4597 & 0{,}9255 & 0{,}4756 \\
@@ -151,5 +145,5 @@
 \bottomrule
 \end{tabular}%
 }
-\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 20 mẫu; hàng XBone-Net được tô xám để dễ đối chiếu.}
+\caption[]{Kết quả mẫu học hạn chế của từng hạt giống trên CTCH ở thiết lập 20 mẫu}
 \end{table}
