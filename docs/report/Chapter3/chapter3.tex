@@ -53,9 +53,9 @@ Hình~\ref{fig:ch3_high_resolution_preprocessing} minh họa quy trình tạo �
 
 \subsubsection{Xác định vùng nội dung và tạo ảnh toàn cục}
 
-Ảnh được chuyển sang thang xám, chuẩn hóa cường độ về $[0,1]$ và thu nhỏ tạm thời sao cho cạnh dài không vượt quá $512$ điểm ảnh. Mức nền được ước lượng bằng trung vị của dải biên, còn độ phân tán được ước lượng bằng độ lệch tuyệt đối trung vị với hệ số hiệu chỉnh $1{,}4826$. Điểm ảnh có độ lệch so với nền không nhỏ hơn giá trị lớn hơn giữa $0{,}035$ và bốn lần độ phân tán được xem là tiền cảnh.
+Ảnh X-quang đầu vào có thể chứa các vùng nền hoặc dải biên không mang nhiều thông tin giải phẫu. Vì vậy, ảnh được chuyển sang thang xám và chuẩn hóa cường độ. Mức nền được ước lượng từ vùng biên ảnh; những điểm ảnh có cường độ khác biệt rõ so với nền được xem là vùng nội dung. Từ đó, hệ thống xác định một hộp bao quanh phần giải phẫu chính và mở rộng nhẹ để tránh cắt mất các cấu trúc nằm sát biên.
 
-Hộp nội dung được xác định từ các hàng và cột có ít nhất $1\%$ điểm ảnh tiền cảnh. Các đoạn liên tục ngắn hơn $3\%$ chiều tương ứng bị loại và hộp được mở rộng thêm $4\%$. Nếu chiều rộng hoặc chiều cao của hộp dưới $35\%$ kích thước ảnh, diện tích dưới $20\%$ hoặc năng lượng tương phản được giữ lại dưới $95\%$, toàn bộ ảnh được sử dụng để hạn chế cắt mất cấu trúc giải phẫu. Vùng nội dung sau đó được đổi kích thước đồng nhất trên hai trục bằng nội suy hai chiều bậc ba, đệm bằng trung vị màu biên thành ảnh vuông $224\times224$ và chuẩn hóa theo đầu vào của BiomedCLIP để tạo ảnh toàn cục $x_i^{\mathrm{img},g}$.
+Để hạn chế sai sót khi vùng nội dung được xác định không đầy đủ, hệ thống giữ lại toàn bộ ảnh nếu vùng được phát hiện quá nhỏ hoặc không chứa đủ thông tin tương phản. Vùng ảnh cuối cùng được thu phóng nhưng vẫn giữ nguyên tỷ lệ, sau đó đệm thành ảnh vuông và chuẩn hóa theo yêu cầu đầu vào của BiomedCLIP. Kết quả thu được là ảnh toàn cục $x_i^{\mathrm{img},g}$ với kích thước $224\times224$, thể hiện bố cục giải phẫu chung của ảnh X-quang.
 
 \subsubsection{Sinh và lựa chọn vùng cục bộ}
 
