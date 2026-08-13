@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import sys
 from html import escape
 from pathlib import Path
@@ -24,6 +25,11 @@ from PIL import Image, ImageDraw
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+# Ưu tiên bộ checkpoint và feature archive đã đóng gói cùng demo. Biến môi
+# trường vẫn cho phép người triển khai chủ động trỏ sang một bộ tài nguyên khác.
+DEMO_ARTIFACT_ROOT = Path(__file__).resolve().parent / "artifacts"
+os.environ.setdefault("XBONE_DEMO_ARTIFACT_ROOT", str(DEMO_ARTIFACT_ROOT))
 
 import streamlit as st
 
@@ -565,8 +571,27 @@ def show_reproducibility(result, engine: OnlineInferenceEngine) -> None:
             f"seed={result.seed}",
             f"device={engine.device}",
             f"ood_method={result.ood_method}",
+            f"confidence_calibrated={result.confidence_is_calibrated}",
+            f"temperature={result.calibration_temperature:.8f}",
             f"checkpoint={result.checkpoint}",
         ]
+        if engine.confidence_calibration is not None:
+            lines.extend(
+                [
+                    (
+                        "confidence_calibration_id_count="
+                        f"{engine.confidence_calibration.validation_count}"
+                    ),
+                    (
+                        "confidence_calibration_nll_before="
+                        f"{engine.confidence_calibration.nll_before:.8f}"
+                    ),
+                    (
+                        "confidence_calibration_nll_after="
+                        f"{engine.confidence_calibration.nll_after:.8f}"
+                    ),
+                ]
+            )
         if engine.ood is not None:
             lines.extend(
                 [
@@ -697,19 +722,22 @@ def resolve_ctch_image(image_id: str) -> Path | None:
     return None
 
 
-def show_similar_images(result) -> None:
+def show_similar_images(result, *, show_labels: bool = True) -> None:
     """Thực hiện bước show similar các ảnh trong quy trình hiện tại.
 
     Parameters
     ----------
     result : object
         Giá trị ``result`` được sử dụng trong phép xử lý.
+    show_labels : bool, optional
+        Có hiển thị nhãn thật của các ảnh tham chiếu hay không.
     """
 
-    st.subheader("Ảnh CTCH-train giống ảnh đầu vào nhất")
+    st.subheader("Các mẫu CTCH-train gần ảnh đầu vào nhất")
     st.caption(
         "Độ giống là cosine similarity giữa global visual embedding của ảnh "
-        "đầu vào và CTCH-train. Phép tìm kiếm này không sử dụng bệnh sử đầu vào."
+        "đầu vào và CTCH-train. Phép tìm kiếm này không sử dụng bệnh sử đầu vào "
+        "và không phải là một phép gán nhãn cho ảnh đang kiểm tra."
     )
     if not result.similar_images:
         st.info("Feature archive không có dữ liệu tham chiếu để tìm ảnh tương tự.")
@@ -727,7 +755,8 @@ def show_similar_images(result) -> None:
                 try:
                     image = Image.open(path).convert("RGB")
                     st.image(bounded_image(image, 240, 180))
-                    st.markdown(f"**{escape(reference.class_label)}**")
+                    if show_labels:
+                        st.markdown(f"**{escape(reference.class_label)}**")
                     st.caption(
                         f"{reference.image_id} · cosine={reference.cosine_similarity:.4f}"
                     )
@@ -744,36 +773,45 @@ def show_classification_and_ood(result) -> None:
         Giá trị ``result`` được sử dụng trong phép xử lý.
     """
 
-    confidence = float(result.probabilities.max())
-    gap = float(result.ood_score - result.ood_threshold)
     if result.is_ood:
         st.error(
-            "Cảnh báo OOD: điểm OOD lớn hơn ngưỡng đã khóa. Dự đoán lớp bên "
-            "dưới vẫn là đầu ra closed-set và không nên diễn giải như một kết "
-            "luận chẩn đoán cho mẫu ngoài phân phối."
+            "Cảnh báo ngoài phân phối (OOD): mẫu không đủ tương đồng với dữ liệu "
+            "CTCH-ID theo ngưỡng đã khóa. Hệ thống không gán nhãn bệnh, không "
+            "hiển thị confidence hoặc bảng xác suất cho mẫu này."
         )
-    else:
-        st.success(
-            "Mẫu được chấp nhận là trong phân phối CTCH (ID) theo ngưỡng đã khóa."
-        )
+        return
+
+    st.success(
+        "Mẫu được chấp nhận là trong phân phối CTCH (ID) theo ngưỡng đã khóa."
+    )
+    gap = float(result.ood_score - result.ood_threshold)
 
     metric_1, metric_2, metric_3, metric_4 = st.columns(4)
     metric_1.metric("Lớp dự đoán", result.predicted_label)
-    metric_2.metric("Confidence (max softmax)", f"{100.0 * confidence:.2f}%")
+    metric_2.metric(
+        "Confidence hiệu chỉnh (MSP)",
+        f"{100.0 * float(result.confidence):.2f}%",
+    )
     metric_3.metric(
         "OOD score / ngưỡng",
         f"{result.ood_score:.4f} / {result.ood_threshold:.4f}",
     )
     metric_4.metric("Khoảng cách tới ngưỡng", f"{gap:+.4f}")
 
-    status = "OOD" if result.is_ood else "ID"
     st.markdown(
-        f"<div class='result-card'><strong>Trạng thái OOD:</strong> {status} · "
-        f"quy tắc quyết định: score {'>' if result.is_ood else '≤'} threshold.</div>",
+        "<div class='result-card'><strong>Cách tính confidence:</strong> "
+        "maximum softmax probability sau temperature scaling trên CTCH "
+        f"validation-ID (T={result.calibration_temperature:.4f}). Confidence là "
+        "ước lượng đã hiệu chỉnh cho một dự đoán cụ thể, không phải accuracy và "
+        "không bảo đảm xác suất đúng tuyệt đối.</div>",
         unsafe_allow_html=True,
     )
 
-    st.subheader("Xác suất dự đoán của 22 lớp CTCH")
+    st.subheader("Xếp hạng 22 lớp CTCH theo softmax gốc")
+    st.caption(
+        "Bảng này dùng softmax thông thường để báo cáo và xếp hạng lớp. "
+        "Temperature scaling chỉ được áp dụng cho điểm confidence ở phía trên."
+    )
     table = probability_frame(result)
     st.markdown(
         probability_table_markup(table),
@@ -855,7 +893,12 @@ def main() -> None:
         if LOGO_PATH.is_file():
             st.image(str(LOGO_PATH), width=72)
         st.subheader("Thiết lập suy luận")
-        seed = st.selectbox("Checkpoint seed", [42, 123, 456], index=0)
+        seed = st.selectbox(
+            "Checkpoint seed",
+            [42],
+            index=0,
+            help="Bản demo chấm điểm được khóa với checkpoint seed 42 đã đóng gói.",
+        )
         device = st.selectbox(
             "Thiết bị",
             ["auto", "cuda", "cpu"],
@@ -977,7 +1020,7 @@ def main() -> None:
         show_section_heading(
             2,
             "Đầu ra",
-            "Theo dõi preprocessing và xem toàn bộ kết quả suy luận, OOD cùng IG.",
+            "Mẫu ID có nhãn và confidence hiệu chỉnh; mẫu OOD chỉ có cảnh báo và các mẫu gần nhất.",
         )
         if analysis is None:
             st.info("Kết quả sẽ xuất hiện tại đây sau khi nhấn Phân tích.")
@@ -991,9 +1034,12 @@ def main() -> None:
             engine = analysis["engine"]
             show_preprocessing(result_image, analysis["views"])
             show_classification_and_ood(result)
-            show_similar_images(result)
-            show_integrated_gradients(result_image, result)
-            show_reproducibility(result, engine)
+            if result.is_ood:
+                show_similar_images(result, show_labels=False)
+            else:
+                show_similar_images(result)
+                show_integrated_gradients(result_image, result)
+                show_reproducibility(result, engine)
 
             st.warning(
                 "Demo chỉ phục vụ nghiên cứu và minh họa luận văn; không phải thiết bị "

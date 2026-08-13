@@ -2,9 +2,13 @@
 # Keep dataset payloads private/ignored while allowing the reproducible CTCH
 # preprocessing implementation to be versioned with the experiment code.
 data/*
+!data/BTXRD/
+data/BTXRD/*
+!data/BTXRD/validate_btxrd.py
 !data/CTCH/
 data/CTCH/*
 !data/CTCH/preprocess_ctch.py
+!data/CTCH/validate_ctch.py
 outputs/
 checkpoints/
 runs/

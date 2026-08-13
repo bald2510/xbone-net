@@ -50,11 +50,10 @@ CLINICAL_FIELDS = [
 ]
 
 # Chủ động loại chẩn đoán xác định và cột Label để giảm nguy cơ rò rỉ nhãn.
-XRAY_FIELDS = [
-    ("KhamXet_TomTatCanLamSang", "Imaging and examination summary"),
-    ("TongKetBenhAn_TomTatKetQuaXetNghiem", "Investigation summary"),
-]
-
+# XRAY_FIELDS = [
+#     ("KhamXet_TomTatCanLamSang", "Imaging and examination summary"),
+#     ("TongKetBenhAn_TomTatKetQuaXetNghiem", "Investigation summary"),
+# ]
 
 def normalize_text(value) -> str:
     """Chuẩn hóa văn bản cho bước xử lý hiện tại.
@@ -569,10 +568,10 @@ def write_reports(
         clinical = build_report(
             row, CLINICAL_FIELDS, "No clinical information available."
         )
-        xray = build_report(row, XRAY_FIELDS, "No imaging description available.")
+        # xray = build_report(row, XRAY_FIELDS, "No imaging description available.")
         for report_type, directory, content in (
             ("clinical", paths["clinical_vi"], clinical),
-            ("xray", paths["xray_vi"], xray),
+            #("xray", paths["xray_vi"], xray),
         ):
             destination = directory / f"{stem}.txt"
             if destination.exists() and not overwrite:

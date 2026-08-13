@@ -29,7 +29,7 @@ if sys.platform == "win32":
 from src.utils.analysis import (
     ANALYSIS_METADATA_KEYS,
     build_analysis_loader,
-    load_evaluated_ctch_model,
+    load_evaluated_classification_model,
     load_feature_archive,
     save_feature_archive,
 )
@@ -126,9 +126,15 @@ def _collect_fused_feature_batches(
             tile_values = _to_device(batch.get("tile_values"), device)
             tile_mask = _to_device(batch.get("tile_mask"), device)
             tile_boxes = _to_device(batch.get("tile_boxes"), device)
-            input_ids = _to_device(batch.get(f"{prefix}_input_ids"), device)
+            input_ids = _to_device(
+                batch.get(f"{prefix}_input_ids", batch.get("input_ids")),
+                device,
+            )
             attention_mask = _to_device(
-                batch.get(f"{prefix}_attention_mask"),
+                batch.get(
+                    f"{prefix}_attention_mask",
+                    batch.get("attention_mask"),
+                ),
                 device,
             )
 
@@ -407,7 +413,7 @@ def main() -> None:
             raise RuntimeError("--device cuda requested but CUDA is unavailable.")
         device = torch.device(args.device)
 
-    loaded = load_evaluated_ctch_model(
+    loaded = load_evaluated_classification_model(
         experiment,
         args.seed,
         device=device,
@@ -448,7 +454,11 @@ def main() -> None:
         )
         loader = build_analysis_loader(
             dataset,
-            tokenizer=loaded.model.backbone.tokenizer_obj,
+            tokenizer=getattr(
+                loaded.model.backbone,
+                "tokenizer_obj",
+                getattr(loaded.model.backbone, "tokenizer", None),
+            ),
             batch_size=args.batch_size,
             num_workers=args.num_workers,
         )

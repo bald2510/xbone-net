@@ -175,8 +175,8 @@ def build_scenario_dataset(
         split = scenario.removeprefix("ctch_")
         return MetadataDataset(_ctch_dataset(loaded, split), scenario), {}
 
-    high_res = dict(_plain(loaded.cfg.dataset.params.high_res))
     if scenario == "ctch_ood":
+        high_res = dict(_plain(loaded.cfg.dataset.params.high_res))
         dataset = CTCHOODDataset(
             img_dir=str(ROOT / "data" / "CTCH" / "images"),
             xray_report_dir=str(ROOT / "data" / "CTCH" / "reports" / "xray"),
@@ -192,6 +192,28 @@ def build_scenario_dataset(
         return dataset, {"coverage": dataset.coverage}
 
     if scenario == "btxrd_test":
+        if str(loaded.cfg.dataset.name).casefold() == "btxrd":
+            params = dict(_plain(loaded.cfg.dataset.params))
+            dataset = BTXRDDataset(
+                split="test",
+                transform=loaded.model.backbone.preprocess,
+                tokenizer=getattr(
+                    loaded.model.backbone,
+                    "tokenizer_obj",
+                    getattr(loaded.model.backbone, "tokenizer", None),
+                ),
+                **params,
+            )
+            return MetadataDataset(dataset, scenario), {
+                "analysis_mode": "in_distribution_classification",
+                "dataset": "BTXRD",
+                "split": "test",
+                "class_names": list(BTXRD_CLASS_NAMES),
+                "report_schema": (
+                    "dual_reports" if dataset.has_dual_reports else "single_report"
+                ),
+            }
+        high_res = dict(_plain(loaded.cfg.dataset.params.high_res))
         dataset = BTXRDDataset(
             img_dir=str(ROOT / "data" / "BTXRD" / "images"),
             report_dir=str(ROOT / "data" / "BTXRD" / "reports"),

@@ -110,7 +110,68 @@ Ngữ cảnh theo tuổi &
 
 Quy trình không chèn trực tiếp tên của 10 lớp đích vào văn bản. Tuy nhiên, cờ có u và cờ ác tính tham gia trực tiếp vào việc chọn ngân hàng mẫu câu; vì vậy, nội dung tổng hợp vẫn mang tín hiệu liên hệ mạnh với nhãn. Các triệu chứng, thời gian mắc bệnh, dấu hiệu khám và tiền sử được chọn từ mẫu câu là dữ liệu giả lập, không phải lời khai của người bệnh hoặc ghi nhận của nhân viên y tế. Do đó, kết quả liên quan đến văn bản BTXRD chỉ phản ánh thiết lập giả lâm sàng có điều kiện này và không được diễn giải tương đương với bệnh sử tự nhiên của CTCH.
 
-Hình~\ref{fig:appendix-btxrd-example-flow} minh họa toàn bộ quá trình đối với mẫu \texttt{IMG000001.jpeg}. Do đây là hàng đầu tiên của siêu dữ liệu, trạng thái bộ sinh giả ngẫu nhiên bắt đầu trực tiếp từ hạt giống 42.
+\subsubsection{Kiểm chứng liên kết và khả năng tái lập}
+
+Để kiểm tra văn bản đã được ghép đúng với hàng siêu dữ liệu, bộ sinh được phát lại từ đầu trên toàn bộ \texttt{dataset.csv} với hạt giống 42 và giữ nguyên thứ tự 3.746 hàng. Văn bản tái tạo của mỗi hàng được so sánh từng ký tự với tệp có cùng định danh ảnh trong \texttt{reports/}. Cách kiểm tra tuần tự này là cần thiết vì lựa chọn mẫu câu của một hàng phụ thuộc vào trạng thái bộ sinh giả ngẫu nhiên sau các hàng đứng trước; gọi hàm sinh riêng lẻ cho một mẫu không bảo toàn trạng thái đó. Ngoài liên kết văn bản, phép kiểm tra còn đối chiếu nhãn với siêu dữ liệu nguồn và xác nhận quy mô ba tập chia. Kết quả được trình bày trong Bảng~\ref{tab:appendix-btxrd-text-verification}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|L{8.2cm}|r|}
+\hline
+\textbf{Phép kiểm tra} & \textbf{Kết quả} \\ \hline
+Định danh duy nhất trong siêu dữ liệu, nhãn và tập chia & 3.746/3.746 (100\%) \\ \hline
+Nhãn có đúng một lớp trong 10 lớp & 3.746/3.746 (100\%) \\ \hline
+Nhãn khớp với các cờ lớp trong \texttt{dataset.csv} & 3.746/3.746 (100\%) \\ \hline
+Quy mô \texttt{train}/\texttt{validate}/\texttt{test} & 2.621/375/750 \\ \hline
+Hàng siêu dữ liệu có văn bản cùng định danh & 3.746/3.746 (100\%) \\ \hline
+Văn bản khớp chính xác khi phát lại bộ sinh & 3.746/3.746 (100\%) \\ \hline
+Tệp thiếu/tệp dư so với \texttt{dataset.csv} & 0/0 \\ \hline
+Văn bản có đủ sáu trường cấu trúc & 3.746/3.746 (100\%) \\ \hline
+Văn bản duy nhất & 3.745/3.746 (99,97\%) \\ \hline
+Độ dài trung bình & $57{,}70 \pm 6{,}66$ từ \\ \hline
+Trung vị và miền độ dài & 56 từ; 44--91 từ \\ \hline
+Thiếu tuổi, giới tính, vị trí hoặc tư thế chụp & 0 mẫu \\ \hline
+Xuất hiện trực tiếp tên bệnh đích trong danh sách kiểm tra & 0/3.746 \\ \hline
+\end{tabular}
+\caption{Kết quả kiểm chứng tính toàn vẹn của dữ liệu BTXRD}
+\label{tab:appendix-btxrd-text-verification}
+\end{table}
+
+Hai mẫu \texttt{IMG002607.jpeg} và \texttt{IMG003588.jpeg} tạo cùng một văn bản, giải thích vì sao số văn bản duy nhất thấp hơn tổng số mẫu một đơn vị. Kiểm tra từ khóa không phát hiện sự xuất hiện trực tiếp của các tên bệnh đích như \textit{osteochondroma}, \textit{osteosarcoma}, \textit{simple bone cyst} hoặc \textit{giant cell tumor}. Phép kiểm tra này xác nhận bộ sinh không chèn trực tiếp các tên bệnh được rà soát, nhưng không tự loại trừ tín hiệu nhãn gián tiếp. Trong phiên bản dữ liệu hiện tại, cả 3.746 hàng đều là nhãn một-nóng; mẫu \texttt{IMG001276.jpeg} chỉ mang nhãn cụ thể \textit{synovial osteochondroma} và không còn đồng thời mang nhãn cha \textit{osteochondroma}.
+
+\subsubsection{Kiểm tra rò rỉ nhãn trực tiếp và gián tiếp}
+
+Quy trình được thực hiện trên toàn bộ 3.746 cặp văn bản--nhãn theo các bước sau:
+
+\begin{enumerate}
+    \item \textbf{Kiểm tra trực tiếp:} chuẩn hóa chữ hoa--chữ thường và rà soát mỗi báo cáo để tìm sự xuất hiện nguyên văn của tên bệnh đích cùng các biến thể tên đã định nghĩa trước.
+    \item \textbf{Tạo câu nhắc lớp:} tạo một câu nhắc theo cùng mẫu \textit{Clinical history associated with [disease label]} cho từng lớp trong 10 lớp bệnh.
+    \item \textbf{Mã hóa ngữ nghĩa:} mã hóa báo cáo và các câu nhắc lớp bằng bộ mã hóa văn bản BioMedCLIP, sau đó chuẩn hóa embedding và tính độ tương đồng cosin giữa mỗi báo cáo với cả 10 câu nhắc.
+    \item \textbf{Tính cosine margin:} với mẫu $i$ có nhãn đúng $y_i$, tính
+    \begin{equation}
+        m_i = \cos(r_i,p_{y_i}) - \max_{c\ne y_i}\cos(r_i,p_c),
+    \end{equation}
+    trong đó $r_i$ là embedding của báo cáo và $p_c$ là embedding câu nhắc lớp $c$. Margin dương nghĩa là câu nhắc đúng nhãn gần báo cáo nhất; margin âm nghĩa là có ít nhất một câu nhắc nhãn khác gần hơn.
+    \item \textbf{Tổng hợp:} lấy trung bình $m_i$ trên toàn bộ tập dữ liệu để đánh giá liệu tên bệnh đúng có thể được truy hồi ổn định từ nội dung văn bản hay không.
+\end{enumerate}
+
+Bảng~\ref{tab:appendix-btxrd-label-leakage} chỉ giữ hai kết quả có diễn giải trực tiếp đối với nguy cơ rò rỉ nhãn; các kết quả trung gian được lược bỏ để tránh gây nhầm lẫn.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|L{8.6cm}|r|}
+\hline
+\textbf{Phép kiểm tra} & \textbf{Kết quả} \\ \hline
+Báo cáo chứa trực tiếp tên bệnh đích trong danh sách rà soát & 0/3.746 \\ \hline
+Cosine margin trung bình giữa đúng nhãn và nhãn khác gần nhất & $-0{,}0400$ \\ \hline
+\end{tabular}
+\caption{Kiểm tra nguy cơ rò rỉ nhãn trực tiếp và gián tiếp trong văn bản BTXRD}
+\label{tab:appendix-btxrd-label-leakage}
+\end{table}
+
+Không phát hiện trường hợp tên bệnh đích xuất hiện trực tiếp trong văn bản. Cosine margin trung bình bằng $-0{,}0400$, tức là độ tương đồng với đúng nhãn thấp hơn nhãn khác gần nhất trung bình 0,04 đơn vị cosin. Vì vậy, phép kiểm tra không cho thấy tên bệnh cụ thể có thể được suy ra trực tiếp và ổn định từ báo cáo tổng hợp. Kết quả này chỉ đánh giá nguy cơ lộ tên nhãn; không đánh giá tính đúng đắn lâm sàng hay hình thái của nội dung văn bản.
 
 \begin{figure}[H]
 \centering
@@ -152,11 +213,11 @@ Bảng~\ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|l|l|}
 \hline
-\textbf{Thành phần}                    & \textbf{Số lượng} & \textbf{Vai trò}                          \\ \hline
-\texttt{images/}          & 3.293            & Lưu ảnh X-quang đầu vào.                  \\ \hline
+\textbf{Thành phần}                    & \textbf{Số lượng sử dụng} & \textbf{Vai trò}                          \\ \hline
+\texttt{images/}          & 3.293            & Lưu ảnh X-quang đầu vào được liên kết bởi manifest.                  \\ \hline
 \texttt{reports/} &
-  3.293  &
-  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh có một bệnh sử lâm sàng \\ tương ứng của bệnh nhân.\end{tabular} \\ \hline
+  \begin{tabular}[c]{@{}l@{}}3.293 cặp song ngữ \\ (6.586 tệp)\end{tabular}  &
+  \begin{tabular}[c]{@{}l@{}}Mỗi ảnh được chọn có một bệnh sử lâm sàng \\ tiếng Việt và một bản tiếng Anh tương ứng.\end{tabular} \\ \hline
 \texttt{ctch-labels.csv} & 3.249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
 \texttt{ctch-ood.csv} & 44           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
 \texttt{ctch-split.csv} &
@@ -236,6 +297,34 @@ Nhãn phân lớp & Không & Chỉ dùng làm mục tiêu huấn luyện và đ�
 \end{table}
 
 Trong bước tạo thư mục \texttt{reports/}, ba trường được giữ lại được làm sạch và ghép theo thứ tự cố định; không có tên lớp, kết quả đọc ảnh hoặc chẩn đoán được bổ sung từ tệp nhãn. Việc chia tập được thực hiện theo mã người bệnh trước khi huấn luyện, còn mã liên kết không được đưa vào văn bản hoặc mô hình. Cách tổ chức này loại rò rỉ trực tiếp từ các cột chẩn đoán, nhưng không loại bỏ khả năng bệnh sử chứa những triệu chứng hoặc vị trí giải phẫu có tính dự báo cao; vì vậy, khóa luận vẫn báo cáo đối chứng chỉ văn bản và phép ghép sai để khảo sát mức phụ thuộc vào nguồn này.
+
+\subsubsection{Kiểm chứng liên kết, nhãn và tập chia}
+
+Khác với BTXRD, bệnh sử CTCH là dữ liệu được trích từ bệnh án nên không thể kiểm chứng bằng cách phát lại một ngân hàng mẫu câu. Phép kiểm tra phù hợp là đối chiếu khóa định danh giữa manifest, ảnh, văn bản và nhãn; xác nhận tính một-nóng của nhãn; đồng thời kiểm tra giao nhau theo người bệnh giữa các tập dữ liệu. Kết quả tính trực tiếp trên quần thể được manifest lựa chọn được trình bày trong Bảng~\ref{tab:appendix-ctch-integrity-verification}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|L{8.2cm}|r|}
+\hline
+\textbf{Phép kiểm tra} & \textbf{Kết quả} \\ \hline
+Định danh trong phân phối là duy nhất & 3.249/3.249 (100\%) \\ \hline
+Định danh ngoài phân phối là duy nhất & 44/44 (100\%) \\ \hline
+Giao nhau theo ảnh giữa quần thể trong và ngoài phân phối & 0 mẫu \\ \hline
+Giao nhau theo người bệnh giữa quần thể trong và ngoài phân phối & 0 người bệnh \\ \hline
+Mẫu được chọn có ảnh giải mã được & 3.293/3.293 (100\%) \\ \hline
+Mẫu được chọn có đủ bệnh sử tiếng Việt và tiếng Anh & 3.293/3.293 (100\%) \\ \hline
+Tệp bệnh sử được liên kết có nội dung khác rỗng & 6.586/6.586 (100\%) \\ \hline
+Nhãn trong phân phối có đúng một lớp trong 22 lớp & 3.249/3.249 (100\%) \\ \hline
+\texttt{class\_id}, tên lớp và cột một-nóng nhất quán & 3.249/3.249 (100\%) \\ \hline
+Giao nhau theo người bệnh giữa \texttt{train}/\texttt{validate}/\texttt{test} & 0/0/0 \\ \hline
+Quy mô \texttt{train}/\texttt{validate}/\texttt{test} & 2.265/315/669 \\ \hline
+\end{tabular}
+\caption{Kết quả kiểm chứng tính toàn vẹn của quần thể CTCH được sử dụng}
+\label{tab:appendix-ctch-integrity-verification}
+\end{table}
+
+Trong 3.293 bệnh sử tiếng Anh được liên kết, trường lý do vào viện và diễn tiến bệnh có nội dung ở toàn bộ mẫu; trường tiền sử có nội dung ở 2.956 mẫu (89,77\%) và không có dữ liệu ở 337 mẫu. Hai con số tương ứng giống nhau ở nguồn tiếng Việt, nên tổng cộng có 5.912/6.586 tệp (89,77\%) chứa nội dung tiền sử. Việc thiếu tiền sử được giữ như trạng thái dữ liệu nguồn, không được nội suy bằng câu giả lập. Thư mục vật lý hiện còn 171 ảnh và 1.919 tệp văn bản trong mỗi thư mục bệnh sử tiếng Việt và tiếng Anh nằm ngoài hợp của hai manifest trong phân phối và ngoài phân phối. Các tệp tồn dư này không được bộ nạp sử dụng vì việc chọn mẫu bắt đầu từ định danh trong \texttt{ctch-labels.csv}, \texttt{ctch-split.csv} và \texttt{ctch-ood.csv}; số lượng trong Bảng~\ref{tab:appendix-ctch-storage} vì vậy là số tệp được liên kết và sử dụng, không phải tổng số tệp thô còn trên đĩa.
 
 \subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
 

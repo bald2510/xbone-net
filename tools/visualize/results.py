@@ -3983,6 +3983,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "auroc_macro",
             "auprc_macro",
             "ece_15",
+            "brier_score",
         ),
         default=["f1_macro", "balanced_accuracy", "accuracy"],
         help=(
@@ -4875,6 +4876,11 @@ PAIRED_STATISTIC_METRICS = {
         "latex": r"ECE $\downarrow$",
         "higher_is_better": False,
     },
+    "brier_score": {
+        "label": "Brier Score",
+        "latex": r"Brier Score $\downarrow$",
+        "higher_is_better": False,
+    },
 }
 
 
@@ -4998,6 +5004,17 @@ def _classification_metric_values(
                     - float(confidence[mask].mean())
                 )
         values["ece_15"] = float(ece)
+    if "brier_score" in requested:
+        true_class_probability = probabilities[
+            np.arange(len(labels)),
+            labels,
+        ]
+        per_case_brier = (
+            np.square(probabilities).sum(axis=1)
+            - 2.0 * true_class_probability
+            + 1.0
+        )
+        values["brier_score"] = float(per_case_brier.mean())
     return values
 
 
@@ -5222,6 +5239,19 @@ def _classification_metric_values_weighted(
                     bin_accuracy - bin_confidence
                 )
         values["ece_15"] = float(ece)
+    if "brier_score" in requested:
+        true_class_probability = probabilities[
+            np.arange(len(labels)),
+            labels,
+        ]
+        per_case_brier = (
+            np.square(probabilities).sum(axis=1)
+            - 2.0 * true_class_probability
+            + 1.0
+        )
+        values["brier_score"] = float(
+            np.average(per_case_brier, weights=weights)
+        )
     return values
 
 
@@ -5472,31 +5502,6 @@ def _sample_stratified_patient_indices(
         )
         selected.extend(clusters[int(group)] for group in sampled_groups)
     return np.concatenate(selected)
-
-
-def _holm_adjust(p_values: Sequence[float]) -> np.ndarray:
-    """Thực hiện bước holm adjust trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    p_values : Sequence[float]
-        Giá trị ``p_values`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    values = np.asarray(p_values, dtype=np.float64)
-    order = np.argsort(values)
-    adjusted = np.empty_like(values)
-    running = 0.0
-    total = len(values)
-    for rank, index in enumerate(order):
-        candidate = min(1.0, (total - rank) * float(values[index]))
-        running = max(running, candidate)
-        adjusted[index] = running
-    return adjusted
 
 
 def _percentile_interval(
@@ -5855,7 +5860,7 @@ def generate_paired_statistics_latex(
         "delta_mean",
         "delta_ci_low",
         "delta_ci_high",
-        "p_holm",
+        "p_raw",
     )
     _require_columns(frame, required)
 
@@ -5896,7 +5901,7 @@ def generate_paired_statistics_latex(
             r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
             r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
             r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
+            r"\multicolumn{1}{c}{\textbf{$p$}} \\"
         ),
         r"\midrule",
     ]
@@ -5917,7 +5922,7 @@ def generate_paired_statistics_latex(
                 float(row["delta_ci_low"]),
                 float(row["delta_ci_high"]),
             )
-            if bool(row.get("significant_holm", False)):
+            if float(row["p_raw"]) < 0.05:
                 delta_text = rf"\textbf{{{delta_text}}}"
             lines.append(
                 " & ".join(
@@ -5935,7 +5940,7 @@ def generate_paired_statistics_latex(
                             float(row["variant_ci_high"]),
                         ),
                         delta_text,
-                        _format_p_value(float(row["p_holm"])),
+                        _format_p_value(float(row["p_raw"])),
                     )
                 )
                 + r" \\"
@@ -5951,8 +5956,8 @@ def generate_paired_statistics_latex(
                 r"\caption{So sánh thống kê ghép cặp giữa XBone-Net và các "
                 r"biến thể leave-one-out. Giá trị trong ngoặc vuông là khoảng "
                 r"tin cậy bootstrap 95\%; $\Delta$ được tính bằng biến thể trừ "
-                r"XBone-Net. Giá trị $p$ thu được từ phép kiểm định hoán vị ghép "
-                r"cặp theo bệnh nhân và được hiệu chỉnh Holm trong từng họ độ đo.}"
+                r"XBone-Net. Giá trị $p$ thô thu được từ phép kiểm định ghép "
+                r"cặp và chưa được hiệu chỉnh cho nhiều phép so sánh.}"
             ),
             r"\label{tab:ablation_paired_statistics}",
             r"\end{table}",
@@ -6038,7 +6043,7 @@ def generate_paired_metric_latex(
             r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
             r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
             r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
+            r"\multicolumn{1}{c}{\textbf{$p$}} \\"
         ),
         r"\midrule",
     ]
@@ -6048,7 +6053,7 @@ def generate_paired_metric_latex(
             float(row["delta_ci_low"]),
             float(row["delta_ci_high"]),
         )
-        if bool(row["significant_holm"]):
+        if float(row["p_raw"]) < 0.05:
             delta = rf"\textbf{{{delta}}}"
         lines.append(
             " & ".join(
@@ -6065,7 +6070,7 @@ def generate_paired_metric_latex(
                         float(row["variant_ci_high"]),
                     ),
                     delta,
-                    _format_p_value(float(row["p_holm"])),
+                    _format_p_value(float(row["p_raw"])),
                 )
             )
             + r" \\"
@@ -6081,7 +6086,7 @@ def generate_paired_metric_latex(
                 r"ước lượng theo từng phép so sánh (pointwise) bằng bootstrap "
                 r"phân tầng theo bệnh nhân và seed; "
                 r"$\Delta$ được tính bằng biến thể trừ XBone-Net. Giá trị $p$ "
-                r"được hiệu chỉnh Holm cho năm phép so sánh.}"
+                r"là p-value thô và chưa được hiệu chỉnh cho nhiều phép so sánh.}"
             ),
             rf"\label{{tab:ablation_paired_{metric}}}",
             r"\end{table}",
@@ -6132,8 +6137,7 @@ def plot_ablation_forest(
         "delta_mean",
         "delta_ci_low",
         "delta_ci_high",
-        "p_holm",
-        "significant_holm",
+        "p_raw",
     )
     _require_columns(frame, required)
     plot_data = frame[frame["metric"].astype(str) == metric].copy()
@@ -6147,7 +6151,7 @@ def plot_ablation_forest(
     means = numeric_series(plot_data["delta_mean"]).to_numpy()
     lowers = numeric_series(plot_data["delta_ci_low"]).to_numpy()
     uppers = numeric_series(plot_data["delta_ci_high"]).to_numpy()
-    significant = plot_data["significant_holm"].astype(bool).to_numpy()
+    significant = numeric_series(plot_data["p_raw"]).to_numpy() < 0.05
     higher_is_better = bool(
         PAIRED_STATISTIC_METRICS[metric]["higher_is_better"]
     )
@@ -6212,7 +6216,7 @@ def plot_ablation_forest(
     for position, upper, p_value in zip(
         positions,
         uppers,
-        numeric_series(plot_data["p_holm"]).to_numpy(),
+        numeric_series(plot_data["p_raw"]).to_numpy(),
     ):
         axis.annotate(
             f"p={p_value:.3f}" if p_value >= 0.001 else "p<0.001",
@@ -6247,7 +6251,7 @@ def plot_ablation_forest(
             marker="o",
             linestyle="none",
             color=REPORT_PALETTE["gray"],
-            label="Chưa có ý nghĩa sau hiệu chỉnh Holm",
+            label=r"Chưa có ý nghĩa ($p\geq0{,}05$)",
         ),
     ]
     axis.legend(
@@ -6379,13 +6383,7 @@ def run_leave_one_out_statistical_analysis(
             rows.append(row)
 
     frame = pd.DataFrame(rows)
-    frame["p_holm"] = np.nan
-    for metric in metrics:
-        mask = frame["metric"] == metric
-        frame.loc[mask, "p_holm"] = _holm_adjust(
-            numeric_series(frame.loc[mask, "p_raw"]).to_numpy()
-        )
-    frame["significant_holm"] = frame["p_holm"] < alpha
+    frame["significant_raw"] = frame["p_raw"] < alpha
     frame["ci_excludes_zero"] = (
         (frame["delta_ci_low"] > 0.0)
         | (frame["delta_ci_high"] < 0.0)
@@ -6430,8 +6428,7 @@ def run_leave_one_out_statistical_analysis(
             "n_permutations": (
                 int(n_permutations) if test_method == "permutation" else 0
             ),
-            "multiplicity_correction": "Holm within each metric",
-            "family_size": len(roots) - 1,
+            "multiplicity_correction": "none; report pointwise raw p-values",
             "alpha": float(alpha),
         },
         "random_seed": int(random_seed),

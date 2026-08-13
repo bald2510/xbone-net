@@ -66,6 +66,23 @@ class OODCalibration:
 
 
 @dataclass(frozen=True)
+class ConfidenceCalibration:
+    """Lưu tham số temperature scaling của confidence phân loại.
+
+    Notes
+    -----
+    Temperature được khớp trên logits và nhãn của CTCH validation-ID thuộc
+    đúng checkpoint đang suy luận. Phép biến đổi không làm thay đổi lớp có
+    logit lớn nhất, mà chỉ hiệu chỉnh độ lớn xác suất.
+    """
+
+    temperature: float
+    validation_count: int
+    nll_before: float
+    nll_after: float
+
+
+@dataclass(frozen=True)
 class SimilarImageReference:
     """Đóng gói hành vi của thành phần ``SimilarImageReference``.
 
@@ -89,9 +106,12 @@ class OnlineInferenceResult:
     Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
     """
 
-    predicted_index: int
-    predicted_label: str
+    predicted_index: int | None
+    predicted_label: str | None
     probabilities: np.ndarray
+    confidence: float | None
+    confidence_is_calibrated: bool
+    calibration_temperature: float
     class_labels: list[str]
     ood_method: str
     ood_score: float
@@ -130,6 +150,193 @@ def _labels(values: np.ndarray) -> np.ndarray:
     if labels.ndim == 2:
         labels = labels.argmax(axis=1)
     return labels.astype(np.int64).reshape(-1)
+
+
+def multiclass_nll(
+    logits: np.ndarray,
+    labels: np.ndarray,
+    temperature: float,
+) -> float:
+    """Tính negative log-likelihood đa lớp sau temperature scaling.
+
+    Parameters
+    ----------
+    logits : numpy.ndarray
+        Ma trận logits có kích thước ``[N, C]``.
+    labels : numpy.ndarray
+        Nhãn nguyên có kích thước ``[N]``.
+    temperature : float
+        Nhiệt độ dương dùng để chia logits.
+
+    Returns
+    -------
+    float
+        Negative log-likelihood trung bình.
+
+    Raises
+    ------
+    ValueError
+        Khi logits, nhãn hoặc temperature không hợp lệ.
+    """
+
+    scores = np.asarray(logits, dtype=np.float64)
+    targets = np.asarray(labels, dtype=np.int64).reshape(-1)
+    if scores.ndim != 2 or len(scores) != len(targets) or not len(targets):
+        raise ValueError("Expected non-empty logits [N,C] and labels [N].")
+    if np.any(targets < 0) or np.any(targets >= scores.shape[1]):
+        raise ValueError("Calibration labels are outside the logits class range.")
+    if not np.isfinite(temperature) or float(temperature) <= 0.0:
+        raise ValueError("Temperature must be a finite positive value.")
+
+    scaled = scores / float(temperature)
+    row_max = scaled.max(axis=1, keepdims=True)
+    log_partition = row_max[:, 0] + np.log(
+        np.exp(scaled - row_max).sum(axis=1)
+    )
+    true_logits = scaled[np.arange(len(targets)), targets]
+    return float(np.mean(log_partition - true_logits))
+
+
+def fit_temperature_scaling(
+    logits: np.ndarray,
+    labels: np.ndarray,
+    *,
+    minimum: float = 0.01,
+    maximum: float = 100.0,
+    iterations: int = 96,
+) -> ConfidenceCalibration:
+    """Khớp một temperature bằng tối thiểu hóa NLL trên tập xác thực.
+
+    Parameters
+    ----------
+    logits : numpy.ndarray
+        Ma trận logits xác thực có kích thước ``[N, C]``.
+    labels : numpy.ndarray
+        Nhãn nguyên hoặc nhãn một-nóng của tập xác thực.
+    minimum : float, optional
+        Cận dưới dương của miền tìm kiếm temperature.
+    maximum : float, optional
+        Cận trên của miền tìm kiếm temperature.
+    iterations : int, optional
+        Số vòng lặp golden-section trên thang log-temperature.
+
+    Returns
+    -------
+    ConfidenceCalibration
+        Tham số hiệu chỉnh và NLL trước/sau hiệu chỉnh.
+
+    Raises
+    ------
+    ValueError
+        Khi miền tìm kiếm hoặc số vòng lặp không hợp lệ.
+    """
+
+    scores = np.asarray(logits, dtype=np.float64)
+    targets = _labels(np.asarray(labels))
+    if minimum <= 0.0 or maximum <= minimum:
+        raise ValueError("Temperature bounds must satisfy 0 < minimum < maximum.")
+    if int(iterations) < 8:
+        raise ValueError("Temperature fitting requires at least eight iterations.")
+
+    lower = float(np.log(minimum))
+    upper = float(np.log(maximum))
+    golden_ratio = (np.sqrt(5.0) - 1.0) / 2.0
+    left = upper - golden_ratio * (upper - lower)
+    right = lower + golden_ratio * (upper - lower)
+    left_loss = multiclass_nll(scores, targets, np.exp(left))
+    right_loss = multiclass_nll(scores, targets, np.exp(right))
+
+    for _ in range(int(iterations)):
+        if left_loss <= right_loss:
+            upper = right
+            right = left
+            right_loss = left_loss
+            left = upper - golden_ratio * (upper - lower)
+            left_loss = multiclass_nll(scores, targets, np.exp(left))
+        else:
+            lower = left
+            left = right
+            left_loss = right_loss
+            right = lower + golden_ratio * (upper - lower)
+            right_loss = multiclass_nll(scores, targets, np.exp(right))
+
+    temperature = float(np.exp((lower + upper) / 2.0))
+    return ConfidenceCalibration(
+        temperature=temperature,
+        validation_count=int(len(targets)),
+        nll_before=multiclass_nll(scores, targets, 1.0),
+        nll_after=multiclass_nll(scores, targets, temperature),
+    )
+
+
+def calibrated_softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
+    """Chuyển logits thành xác suất bằng temperature scaling và softmax.
+
+    Parameters
+    ----------
+    logits : numpy.ndarray
+        Vector ``[C]`` hoặc ma trận ``[N, C]`` logits.
+    temperature : float
+        Temperature dương đã được khớp trên tập xác thực.
+
+    Returns
+    -------
+    numpy.ndarray
+        Xác suất có cùng số chiều với đầu vào và tổng mỗi hàng bằng một.
+
+    Raises
+    ------
+    ValueError
+        Khi logits hoặc temperature không hợp lệ.
+    """
+
+    scores = np.asarray(logits, dtype=np.float64)
+    was_vector = scores.ndim == 1
+    if was_vector:
+        scores = scores[None, :]
+    if scores.ndim != 2 or scores.shape[1] < 2:
+        raise ValueError("Expected logits with shape [C] or [N,C].")
+    if not np.isfinite(temperature) or float(temperature) <= 0.0:
+        raise ValueError("Temperature must be a finite positive value.")
+
+    scaled = scores / float(temperature)
+    scaled -= scaled.max(axis=1, keepdims=True)
+    exponentiated = np.exp(scaled)
+    probabilities = exponentiated / exponentiated.sum(axis=1, keepdims=True)
+    return probabilities[0] if was_vector else probabilities
+
+
+def fit_locked_confidence_calibration(loaded) -> ConfidenceCalibration:
+    """Khớp temperature scaling từ CTCH validation-ID đã khóa.
+
+    Parameters
+    ----------
+    loaded : object
+        Mô hình và provenance của checkpoint đang suy luận.
+
+    Returns
+    -------
+    ConfidenceCalibration
+        Temperature và thống kê NLL của đúng checkpoint.
+
+    Raises
+    ------
+    RuntimeError
+        Khi feature archive không thuộc checkpoint đang tải.
+    """
+
+    feature_root = analysis_root(loaded.provenance["seed"]) / "features"
+    validation, provenance = load_feature_archive(
+        feature_root / "ctch_val.npz",
+        expected_source_experiment=SOURCE_EXPERIMENT,
+    )
+    archive_hash = str(provenance.get("checkpoint_sha256", ""))
+    if archive_hash != loaded.checkpoint_sha256:
+        raise RuntimeError(
+            "CTCH validation feature archive was not produced by the loaded "
+            "checkpoint. Re-export it before calibrated online inference."
+        )
+    return fit_temperature_scaling(validation["logits"], validation["labels"])
 
 
 def _score_method(
@@ -636,6 +843,7 @@ class OnlineInferenceEngine:
         *,
         experiment_name: str = SOURCE_EXPERIMENT,
         enable_ood: bool = True,
+        enable_confidence_calibration: bool = True,
         target_id_fpr: float = 0.05,
         knn_k: int = 5,
     ) -> None:
@@ -651,6 +859,8 @@ class OnlineInferenceEngine:
             Tên hoặc khóa định danh của giá trị.
         enable_ood : bool, optional
             Giá trị ``enable_ood`` được sử dụng trong phép xử lý.
+        enable_confidence_calibration : bool, optional
+            Có khớp temperature scaling trên CTCH validation-ID hay không.
         target_id_fpr : float, optional
             Nhãn hoặc chỉ số lớp liên quan.
         knn_k : int, optional
@@ -681,6 +891,12 @@ class OnlineInferenceEngine:
         self.loaded.model.eval()
         self.loaded.model.backbone.explain_mode = True
         self.knn_k = int(knn_k)
+        self.confidence_calibration = (
+            fit_locked_confidence_calibration(self.loaded)
+            if enable_confidence_calibration
+            and self.experiment_name == SOURCE_EXPERIMENT
+            else None
+        )
         self.ood = (
             fit_locked_ood_calibration(
                 self.loaded,
@@ -829,8 +1045,24 @@ class OnlineInferenceEngine:
             clinical_text,
         )
         fused_raw, logits, cached = _forward_and_cache(self.loaded, inputs)
-        probabilities = torch.softmax(logits, dim=-1)[0]
-        predicted_index = int(probabilities.argmax().item())
+        raw_probabilities = torch.softmax(logits, dim=-1)[0]
+        raw_probabilities_array = raw_probabilities.detach().cpu().numpy()
+        logits_array = logits.detach().cpu().numpy()
+        if self.confidence_calibration is None:
+            calibrated_probabilities = raw_probabilities_array
+            calibration_temperature = 1.0
+            confidence_is_calibrated = False
+        else:
+            calibration_temperature = self.confidence_calibration.temperature
+            calibrated_probabilities = calibrated_softmax(
+                logits_array,
+                calibration_temperature,
+            )[0]
+            confidence_is_calibrated = True
+        # Bảng xếp hạng dùng softmax gốc; temperature scaling chỉ hiệu chỉnh
+        # confidence của lớp đứng đầu và không làm thay đổi thứ tự lớp.
+        predicted_index = int(raw_probabilities_array.argmax())
+        confidence = float(calibrated_probabilities[predicted_index])
         similar_images = self._nearest_training_images(
             cached["visual_global_embedding"],
             int(similar_image_count),
@@ -838,7 +1070,6 @@ class OnlineInferenceEngine:
 
         fused_embedding_raw = fused_raw.cpu().numpy()
         fused_embedding = F.normalize(fused_raw, dim=-1).cpu().numpy()
-        logits_array = logits.cpu().numpy()
         if self.ood is None:
             score = float("nan")
             threshold = float("nan")
@@ -858,14 +1089,15 @@ class OnlineInferenceEngine:
             threshold = float(self.ood.thresholds[ood_method])
             is_ood = bool(score > threshold)
 
-        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-        # Bước hỗ trợ để dự đoán kết quả cho bước xử lý hiện tại.
-        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
+        # Không công bố nhãn hoặc confidence khi mẫu bị phát hiện là OOD.
         if is_ood:
             return OnlineInferenceResult(
-                predicted_index=predicted_index,
-                predicted_label=self.class_labels[predicted_index],
-                probabilities=probabilities.detach().cpu().numpy(),
+                predicted_index=None,
+                predicted_label=None,
+                probabilities=raw_probabilities_array,
+                confidence=None,
+                confidence_is_calibrated=confidence_is_calibrated,
+                calibration_temperature=calibration_temperature,
                 class_labels=self.class_labels,
                 ood_method=ood_method,
                 ood_score=score,
@@ -1012,7 +1244,7 @@ class OnlineInferenceEngine:
                 - text_faithfulness["deletion_auc"]
             )
             if global_faithfulness is not None:
-                full_probability = float(probabilities[predicted_index])
+                full_probability = float(raw_probabilities[predicted_index])
                 contribution_drops = {
                     "global_visual": full_probability
                     - float(global_faithfulness["deletion"][-1]),
@@ -1038,7 +1270,10 @@ class OnlineInferenceEngine:
         return OnlineInferenceResult(
             predicted_index=predicted_index,
             predicted_label=self.class_labels[predicted_index],
-            probabilities=probabilities.detach().cpu().numpy(),
+            probabilities=raw_probabilities_array,
+            confidence=confidence,
+            confidence_is_calibrated=confidence_is_calibrated,
+            calibration_temperature=calibration_temperature,
             class_labels=self.class_labels,
             ood_method=ood_method,
             ood_score=score,

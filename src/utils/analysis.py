@@ -32,6 +32,7 @@ SOURCE_SEEDS = (42, 123, 456)
 EXPECTED_NUM_CLASSES = 22
 EXPECTED_TOTAL_PARAMETERS = 204_535_320
 EXPECTED_TRAINABLE_PARAMETERS = 8_632_599
+DEMO_ARTIFACT_ROOT_ENV = "XBONE_DEMO_ARTIFACT_ROOT"
 
 ANALYSIS_METADATA_KEYS = (
     "image_id",
@@ -40,6 +41,26 @@ ANALYSIS_METADATA_KEYS = (
     "report_source_id",
     "scenario",
 )
+
+
+def _packaged_demo_artifact_root(seed: int) -> Optional[Path]:
+    """Trả về thư mục tài nguyên đóng gói của demo cho seed 42.
+
+    Parameters
+    ----------
+    seed : int
+        Hạt giống của checkpoint cần tải.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Thư mục chứa checkpoint và feature archive đóng gói, hoặc ``None``
+        khi demo không khai báo thư mục này hay yêu cầu một seed khác.
+    """
+    configured_root = os.environ.get(DEMO_ARTIFACT_ROOT_ENV, "").strip()
+    if not configured_root or int(seed) != 42:
+        return None
+    return Path(configured_root).expanduser().resolve()
 
 
 def seed_everything(seed: int) -> None:
@@ -82,6 +103,9 @@ def locked_checkpoint_path(seed: int) -> Path:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
         )
+    packaged_root = _packaged_demo_artifact_root(seed)
+    if packaged_root is not None:
+        return packaged_root / "best_phase2.pth"
     return (
         PROJECT_ROOT
         / "checkpoints"
@@ -106,6 +130,11 @@ def analysis_root(seed: Optional[int] = None) -> Path:
     Path
         Kết quả được tạo bởi bước xử lý của hàm.
     """
+    if seed is not None:
+        packaged_root = _packaged_demo_artifact_root(seed)
+        if packaged_root is not None:
+            return packaged_root
+
     root = PROJECT_ROOT / "results" / SOURCE_EXPERIMENT
     if seed is not None:
         root = root / f"seed_{int(seed)}"
@@ -132,6 +161,15 @@ def _absolute_dataset_paths(cfg: DictConfig) -> None:
         )
         params.csv_split_path = str(PROJECT_ROOT / "data" / "CTCH" / "ctch-split.csv")
         params.csv_labels_path = str(PROJECT_ROOT / "data" / "CTCH" / "ctch-labels.csv")
+    elif dataset_name == "btxrd":
+        params.img_dir = str(PROJECT_ROOT / "data" / "BTXRD" / "images")
+        params.report_dir = str(PROJECT_ROOT / "data" / "BTXRD" / "reports")
+        params.csv_split_path = str(
+            PROJECT_ROOT / "data" / "BTXRD" / "btxrd-split.csv"
+        )
+        params.csv_labels_path = str(
+            PROJECT_ROOT / "data" / "BTXRD" / "btxrd-labels.csv"
+        )
 
 
 def compose_source_config(seed: int) -> DictConfig:
@@ -300,13 +338,19 @@ def _load_checkpoint_payload(path: Path, device: torch.device) -> dict[str, Any]
     return payload
 
 
-def _validate_checkpoint_state(state_dict: dict[str, torch.Tensor]) -> None:
+def _validate_checkpoint_state(
+    state_dict: dict[str, torch.Tensor],
+    expected_num_classes: int = EXPECTED_NUM_CLASSES,
+) -> None:
     """Kiểm tra tính hợp lệ của checkpoint state cho bước xử lý hiện tại.
 
     Parameters
     ----------
     state_dict : dict[str, torch.Tensor]
         Giá trị ``state_dict`` được sử dụng trong phép xử lý.
+
+    expected_num_classes : int, optional
+        Số lớp dự kiến của tensor tâm lớp.
 
     Raises
     ------
@@ -323,7 +367,7 @@ def _validate_checkpoint_state(state_dict: dict[str, torch.Tensor]) -> None:
             "Canonical Phase-2 checkpoint must contain exactly one head.centroids tensor."
         )
     key, centroids = centroid_items[0]
-    expected = (EXPECTED_NUM_CLASSES, 512)
+    expected = (int(expected_num_classes), 512)
     if tuple(centroids.shape) != expected:
         raise RuntimeError(
             f"Checkpoint {key} has shape {tuple(centroids.shape)}, expected {expected}."
@@ -845,6 +889,177 @@ def load_evaluated_ctch_zeroshot_model(
     )
 
 
+def load_evaluated_classification_model(
+    experiment_name: str,
+    seed: int,
+    device: Optional[torch.device] = None,
+) -> LoadedAnalysisModel:
+    """Tải mô hình phân loại đã đánh giá từ checkpoint tương ứng.
+
+    Parameters
+    ----------
+    experiment_name : str
+        Tên thí nghiệm đầy đủ, bao gồm tên bộ dữ liệu.
+    seed : int
+        Hạt giống huấn luyện của checkpoint.
+    device : torch.device, optional
+        Thiết bị dùng để thực hiện suy luận.
+
+    Returns
+    -------
+    LoadedAnalysisModel
+        Mô hình, cấu hình và thông tin nguồn của checkpoint đã tải.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi thiếu kết quả đánh giá hoặc checkpoint.
+    RuntimeError
+        Khi checkpoint không phù hợp với kiến trúc đã đánh giá.
+    TypeError
+        Khi checkpoint không chứa ánh xạ trọng số hợp lệ.
+    ValueError
+        Khi cấu hình đã lưu không khớp tên thí nghiệm hoặc bộ dữ liệu.
+    """
+    experiment_name = str(experiment_name).strip("/")
+    seed = int(seed)
+    dataset_name = experiment_name.split("/", maxsplit=1)[0].casefold()
+    if dataset_name not in {"ctch", "btxrd"}:
+        raise ValueError(f"Unsupported classification dataset: {dataset_name!r}.")
+
+    if dataset_name == "ctch":
+        return load_evaluated_ctch_model(experiment_name, seed, device=device)
+
+    metrics_path = (
+        PROJECT_ROOT / "results" / experiment_name / f"seed_{seed}" / "metrics.json"
+    )
+    if not metrics_path.is_file():
+        raise FileNotFoundError(
+            f"Missing evaluated configuration for {experiment_name}: {metrics_path}"
+        )
+    metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    resolved = metrics_payload.get("config")
+    if not isinstance(resolved, dict):
+        raise ValueError(f"Evaluation result has no resolved config: {metrics_path}")
+
+    cfg = OmegaConf.create(resolved)
+    OmegaConf.set_struct(cfg, False)
+    recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
+    if recorded_experiment != experiment_name:
+        raise ValueError(
+            f"Resolved config records {recorded_experiment!r}, expected "
+            f"{experiment_name!r}."
+        )
+    recorded_seed = int(cfg.get("seed", cfg.get("params", {}).get("seed", seed)))
+    if recorded_seed != seed:
+        raise ValueError(
+            f"Resolved config records seed {recorded_seed}, expected {seed}."
+        )
+    if str(cfg.dataset.name).casefold() != dataset_name:
+        raise ValueError(
+            f"Experiment {experiment_name!r} requires dataset {dataset_name!r}, "
+            f"but the evaluated config records {str(cfg.dataset.name)!r}."
+        )
+    _absolute_dataset_paths(cfg)
+
+    checkpoint = (
+        PROJECT_ROOT
+        / "checkpoints"
+        / experiment_name
+        / f"seed_{seed}"
+        / "best_phase2.pth"
+    ).resolve()
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Missing classification checkpoint: {checkpoint}")
+    cfg.params.model_dir = str(checkpoint.parent)
+    cfg.params.phase2.checkpoint_path = str(checkpoint)
+
+    from src.models.builder import build_model, setup_phase2_modules
+
+    seed_everything(seed)
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = build_model(cfg.model).to(device)
+    model, classifier_type, fusion_type, num_classes = setup_phase2_modules(
+        model, cfg, device
+    )
+    expected_num_classes = int(cfg.dataset.params.num_classes)
+    if int(num_classes) != expected_num_classes:
+        raise RuntimeError(
+            f"Classification head has {num_classes} classes, expected "
+            f"{expected_num_classes}."
+        )
+
+    payload = _load_checkpoint_payload(checkpoint, device)
+    state_dict = payload.get("model_state_dict", payload)
+    if not isinstance(state_dict, dict):
+        raise TypeError("Checkpoint model_state_dict must be a mapping.")
+    state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
+    if classifier_type == "empirical_centroid":
+        _validate_checkpoint_state(
+            state_dict,
+            expected_num_classes=expected_num_classes,
+        )
+    result = model.load_state_dict(state_dict, strict=False)
+    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_prefixes = ("fusion.", "head.")
+    critical_missing = [
+        key
+        for key in result.missing_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    critical_unexpected = [
+        key
+        for key in result.unexpected_keys
+        if key.startswith(critical_prefixes)
+        or any(token in key for token in critical_tokens)
+    ]
+    if critical_missing or critical_unexpected:
+        raise RuntimeError(
+            "Classification checkpoint architecture mismatch. Missing critical "
+            f"keys: {critical_missing[:20]}; unexpected critical keys: "
+            f"{critical_unexpected[:20]}."
+        )
+
+    model.eval()
+    total_parameters = sum(parameter.numel() for parameter in model.parameters())
+    trainable_parameters = sum(
+        parameter.numel()
+        for parameter in model.parameters()
+        if parameter.requires_grad
+    )
+    resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
+    checkpoint_sha256 = sha256_file(checkpoint)
+    provenance = {
+        "source_experiment": experiment_name,
+        "analysis_scope": f"{dataset_name}_classification",
+        "seed": seed,
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": checkpoint_sha256,
+        "metrics_path": str(metrics_path.resolve()),
+        "metrics_sha256": sha256_file(metrics_path),
+        "git_revision": _git_revision(),
+        "total_parameters": total_parameters,
+        "trainable_parameters": trainable_parameters,
+        "num_classes": int(num_classes),
+        "fusion_type": fusion_type,
+        "classifier_type": classifier_type,
+        "config_sha256": hashlib.sha256(
+            resolved_config_yaml.encode("utf-8")
+        ).hexdigest(),
+        "resolved_config": OmegaConf.to_container(cfg, resolve=True),
+        "created_at": _datetime.datetime.now(_datetime.timezone.utc).isoformat(),
+    }
+    return LoadedAnalysisModel(
+        model=model,
+        cfg=cfg,
+        checkpoint=checkpoint,
+        checkpoint_sha256=checkpoint_sha256,
+        device=device,
+        provenance=provenance,
+    )
+
+
 def load_evaluated_ctch_model(
     experiment_name: str,
     seed: int,
@@ -1179,6 +1394,8 @@ class MetadataDataset(Dataset):
             if candidate in row:
                 patient = str(row[candidate])
                 break
+        if not patient:
+            patient = image_id
         sample.update(
             {
                 "image_id": image_id,

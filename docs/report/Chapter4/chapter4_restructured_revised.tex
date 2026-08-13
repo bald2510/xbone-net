@@ -685,7 +685,7 @@ Bỏ xử lý ảnh độ phân giải cao gần như giữ nguyên điểm F1 �
 
 Chỉ huấn luyện pha 2 làm điểm F1 tăng lên $0{,}5753\pm0{,}0175$, nhưng Macro-AUROC giảm xuống $0{,}9144\pm0{,}0198$ và sai số hiệu chỉnh tăng lên $0{,}1868\pm0{,}0724$. Do đó, pha khớp ngữ nghĩa chưa cải thiện quyết định lớp một cách nhất quán, nhưng có liên hệ với chất lượng xếp hạng và hành vi xác suất của mô hình.
 
-Các khoảng tái lấy mẫu bắt cặp trong Hình~\ref{fig:ablation_accuracy_forest}, Hình~\ref{fig:ablation_f1_forest} và Hình~\ref{fig:ablation_auroc_forest} cho thấy sau hiệu chỉnh Holm, chỉ cấu hình chỉ huấn luyện pha 2 và cấu hình đầu tuyến tính có độ chính xác cao hơn XBone-Net trong phép so sánh hiện tại. Không biến thể nào khác biệt rõ theo điểm F1, độ chính xác cân bằng hoặc Macro-AUPRC, trong khi XBone-Net có Macro-AUROC cao hơn đầu tuyến tính. Các phép so sánh được tính trên dự đoán của ba lần huấn luyện hiện có và không thay thế việc lặp lại thí nghiệm với số hạt giống lớn hơn.
+Các khoảng tái lấy mẫu bắt cặp trong Hình~\ref{fig:ablation_accuracy_forest}, Hình~\ref{fig:ablation_f1_forest} và Hình~\ref{fig:ablation_auroc_forest} được trình bày cùng p-value thô của từng phép so sánh. Ở mức $p<0{,}05$, cấu hình không dùng ảnh độ phân giải cao, cấu hình chỉ huấn luyện pha 2 và đầu tuyến tính có độ chính xác cao hơn XBone-Net; XBone-Net có Macro-AUROC cao hơn cấu hình không dùng ảnh độ phân giải cao và đầu tuyến tính. Không biến thể nào khác biệt rõ theo điểm F1, độ chính xác cân bằng hoặc Macro-AUPRC. Các p-value này chưa được hiệu chỉnh cho nhiều phép so sánh và chỉ được dùng như bằng chứng thăm dò trên ba lần huấn luyện hiện có.
 
 \begin{figure}[H]
 \centering

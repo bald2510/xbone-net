@@ -314,7 +314,7 @@ Việc co toàn bộ ảnh X-quang về kích thước đầu vào cố định 
 \textbf{Về thích nghi mô hình nền tảng:}
 LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa của BiomedCLIP với miền ảnh X-quang xương mà không cần cập nhật toàn bộ tham số nền. Lựa chọn này giúp giảm chi phí huấn luyện, hạn chế nguy cơ quá khớp trên các lớp có ít mẫu và bảo toàn phần lớn tri thức y sinh đã được học trong giai đoạn tiền huấn luyện.
 
-Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, khóa luận sử dụng hàm mất mát khớp ngữ nghĩa với phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
+Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, khóa luận sử dụng hàm mất mát khớp ngữ nghĩa kế thừa từ MedCLIP và xây dựng phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
 
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân lớp không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
@@ -322,10 +322,10 @@ Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh
 Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
 
 \textbf{Về phân lớp đa lớp và mất cân bằng dữ liệu:}
-Phương pháp sử dụng đầu phân lớp dựa trên tâm lớp thực nghiệm, trong đó mỗi lớp được đại diện bằng trung bình các vectơ biểu diễn thuộc lớp đó thay vì một nguyên mẫu được học tự do. Độ tương đồng cosine với từng tâm được chuyển thành logit và kết hợp với độ lệch học được theo lớp trước khi áp dụng Softmax. Vì vậy, nhãn dự đoán không nhất thiết luôn là tâm có độ tương đồng lớn nhất. Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
+Phương pháp sử dụng đầu phân lớp dựa trên tâm lớp thực nghiệm, được phát triển từ ý tưởng của mạng nguyên mẫu, trong đó mỗi lớp được đại diện bằng trung bình các vectơ biểu diễn thuộc lớp đó thay vì một nguyên mẫu được học tự do. Độ tương đồng cosine với từng tâm được chuyển thành logit và kết hợp với độ lệch học được theo lớp trước khi áp dụng Softmax. Vì vậy, nhãn dự đoán không nhất thiết luôn là tâm có độ tương đồng lớn nhất. Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
 
 \textbf{Về phát hiện dữ liệu ngoài phân phối:}
-Ngoài nhiệm vụ phân lớp, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không yêu cầu mẫu ngoài phân phối trong quá trình huấn luyện. Khoảng cách Mahalanobis được tính giữa biểu diễn của mẫu mới và các trung bình lớp thực nghiệm, có xét đến cấu trúc hiệp phương sai của không gian đặc trưng. Mẫu có điểm vượt ngưỡng được gắn thêm cảnh báo ngoài phân phối. Trong phạm vi khóa luận, cảnh báo này không thay đổi nhãn phân lớp nội tại và chưa được sử dụng để tự động từ chối dự đoán. Ngưỡng được hiệu chỉnh trên tập xác thực.
+Ngoài nhiệm vụ phân lớp, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không yêu cầu mẫu ngoài phân phối trong quá trình huấn luyện, hoạt động dựa trên cơ chế phân loại trong không gian đặc trưng được xây dựng từ bộ phân loại. Khoảng cách Mahalanobis được tính giữa biểu diễn của mẫu mới và các trung bình lớp thực nghiệm, có xét đến cấu trúc hiệp phương sai của không gian đặc trưng. Mẫu có điểm vượt ngưỡng được gắn thêm cảnh báo ngoài phân phối. Trong phạm vi khóa luận, cảnh báo này không thay đổi nhãn phân lớp nội tại và chưa được sử dụng để tự động từ chối dự đoán. Ngưỡng được hiệu chỉnh trên tập xác thực.
 
 \textbf{Về quy trình huấn luyện:}
 Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:
@@ -335,7 +335,7 @@ Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai 
     hai bộ mã hóa của BiomedCLIP được thích nghi thông qua LoRA bằng hàm mất mát khớp ngữ nghĩa. Mô-đun dung hợp và đầu phân lớp chưa được tối ưu trong giai đoạn này.
 
     \item \textbf{Giai đoạn 2 - Dung hợp và phân lớp:}
-    các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân lớp. Các tâm lớp thực nghiệm được cập nhật từ embedding của tập huấn luyện và được sử dụng cho cả phân lớp lẫn phát hiện dữ liệu ngoài phân phối.
+    các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân lớp. Các tâm lớp thực nghiệm được cập nhật từ đặc trưng của tập huấn luyện và được sử dụng cho cả phân lớp lẫn phát hiện dữ liệu ngoài phân phối.
 \end{itemize}
 
 Các định hướng trên được hiện thực hóa trong phương pháp XBone-Net. Kiến trúc chi tiết, quy trình huấn luyện và cơ chế suy luận được trình bày trong Chương~\ref{Chapter3}.
