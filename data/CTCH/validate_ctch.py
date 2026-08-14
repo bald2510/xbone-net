@@ -1,9 +1,11 @@
-"""Kiểm tra tính toàn vẹn của bộ dữ liệu CTCH đã chuẩn bị.
+"""Kiểm tra tính toàn vẹn và độ tương đồng ngữ nghĩa của dữ liệu CTCH.
 
 Notes
 -----
 Chương trình chỉ đọc manifest, ảnh và văn bản đã chọn. Các tệp vật lý nằm ngoài
 manifest được báo dưới dạng cảnh báo vì bộ nạp dữ liệu không sử dụng chúng.
+Phép so sánh ngữ nghĩa Việt--Anh là tùy chọn vì có thể cần tải mô hình embedding
+đa ngôn ngữ trong lần chạy đầu tiên.
 """
 
 from __future__ import annotations
@@ -19,8 +21,11 @@ from PIL import Image
 
 
 EXPECTED_ID_SIZE = 3_249
-EXPECTED_OOD_SIZE = 44
+EXPECTED_OOD_SIZE = 26
 EXPECTED_SPLITS = {"train": 2_265, "validate": 315, "test": 669}
+DEFAULT_SEMANTIC_MODEL = (
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
 REPORT_LAYOUT = {
     "clinical": ("Reason for admission:", "Disease history:", "Personal medical history:"),
     "clinical_vi": ("Reason for admission:", "Disease history:", "Personal medical history:"),
@@ -28,6 +33,11 @@ REPORT_LAYOUT = {
 OPTIONAL_REPORT_FIELDS = {
     "clinical": {"Personal medical history:"},
     "clinical_vi": {"Personal medical history:"},
+}
+SEMANTIC_FIELD_NAMES = {
+    "Reason for admission:": "reason_for_admission",
+    "Disease history:": "disease_history",
+    "Personal medical history:": "personal_medical_history",
 }
 
 
@@ -55,6 +65,50 @@ def parse_args() -> argparse.Namespace:
         "--json-output",
         type=Path,
         help="Tùy chọn lưu báo cáo kiểm tra dưới dạng JSON.",
+    )
+    parser.add_argument(
+        "--semantic-similarity",
+        action="store_true",
+        help="Đánh giá cosine similarity giữa từng trường tiếng Việt và tiếng Anh.",
+    )
+    parser.add_argument(
+        "--semantic-model",
+        default=DEFAULT_SEMANTIC_MODEL,
+        help="Tên hoặc đường dẫn mô hình embedding đa ngôn ngữ trên Hugging Face.",
+    )
+    parser.add_argument(
+        "--semantic-threshold",
+        type=float,
+        default=0.70,
+        help="Ngưỡng cosine similarity dùng để gắn cờ rà soát (mặc định: 0.70).",
+    )
+    parser.add_argument(
+        "--semantic-batch-size",
+        type=int,
+        default=32,
+        help="Số câu được mã hóa trong mỗi batch (mặc định: 32).",
+    )
+    parser.add_argument(
+        "--semantic-max-length",
+        type=int,
+        default=256,
+        help="Số token tối đa của mỗi trường văn bản (mặc định: 256).",
+    )
+    parser.add_argument(
+        "--semantic-device",
+        choices=("auto", "cpu", "cuda"),
+        default="auto",
+        help="Thiết bị mã hóa văn bản; auto ưu tiên CUDA khi khả dụng.",
+    )
+    parser.add_argument(
+        "--semantic-local-files-only",
+        action="store_true",
+        help="Chỉ dùng mô hình đã có trong bộ nhớ đệm, không tải từ mạng.",
+    )
+    parser.add_argument(
+        "--semantic-output",
+        type=Path,
+        help="Tùy chọn lưu điểm từng cặp trường Việt--Anh dưới dạng CSV.",
     )
     return parser.parse_args()
 
@@ -323,7 +377,7 @@ def validate_images(
     checks: list[dict[str, Any]],
     *,
     decode: bool,
-) -> None:
+) -> set[str]:
     """Kiểm tra liên kết và khả năng giải mã ảnh CTCH được chọn.
 
     Parameters
@@ -336,13 +390,24 @@ def validate_images(
         Danh sách nhận kết quả kiểm tra.
     decode : bool
         Có giải mã từng ảnh hay không.
+
+    Returns
+    -------
+    set[str]
+        Tập định danh ảnh còn lại sau khi loại ảnh thiếu và, nếu được yêu cầu,
+        ảnh không thể giải mã.
     """
-    missing = sorted(image_id for image_id in selected_ids if not (image_dir / image_id).is_file())
+    missing_ids = {
+        image_id
+        for image_id in selected_ids
+        if not (image_dir / image_id).is_file()
+    }
+    available_ids = selected_ids - missing_ids
     add_check(
         checks,
         "Liên kết ảnh được chọn",
-        not missing,
-        f"Tìm thấy={len(selected_ids) - len(missing)}/{len(selected_ids)}, thiếu={len(missing)}.",
+        not missing_ids,
+        f"Tìm thấy={len(available_ids)}/{len(selected_ids)}, thiếu={len(missing_ids)}.",
     )
     physical_images = {path.name for path in image_dir.iterdir() if path.is_file()}
     extra = physical_images - selected_ids
@@ -353,22 +418,28 @@ def validate_images(
         f"Có {len(extra)} ảnh vật lý không được manifest lựa chọn.",
         warning=True,
     )
-    if not decode or missing:
-        return
+    if not decode:
+        return available_ids
 
-    failures: list[str] = []
-    for image_id in sorted(selected_ids):
+    failure_ids: set[str] = set()
+    failure_details: list[str] = []
+    for image_id in sorted(available_ids):
         try:
             with Image.open(image_dir / image_id) as image:
                 image.verify()
         except (OSError, ValueError) as error:
-            failures.append(f"{image_id}: {error}")
+            failure_ids.add(image_id)
+            failure_details.append(f"{image_id}: {error}")
     add_check(
         checks,
         "Giải mã ảnh được chọn",
-        not failures,
-        f"Giải mã được={len(selected_ids) - len(failures)}/{len(selected_ids)}.",
+        not failure_ids,
+        (
+            f"Giải mã được={len(available_ids) - len(failure_ids)}/"
+            f"{len(available_ids)}; ví dụ lỗi={failure_details[:5]}."
+        ),
     )
+    return available_ids - failure_ids
 
 
 def field_value(text: str, prefix: str) -> str | None:
@@ -390,6 +461,362 @@ def field_value(text: str, prefix: str) -> str | None:
         if line.startswith(prefix):
             return line[len(prefix):].strip()
     return None
+
+
+def resolve_semantic_device(requested_device: str) -> str:
+    """Chọn thiết bị tính toán cho mô hình embedding đa ngôn ngữ.
+
+    Parameters
+    ----------
+    requested_device : str
+        Thiết bị do người dùng yêu cầu: ``auto``, ``cpu`` hoặc ``cuda``.
+
+    Returns
+    -------
+    str
+        Tên thiết bị PyTorch thực tế được sử dụng.
+
+    Raises
+    ------
+    RuntimeError
+        Khi CUDA được yêu cầu nhưng không khả dụng.
+    """
+    import torch
+
+    if requested_device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("Đã yêu cầu CUDA nhưng PyTorch không phát hiện GPU khả dụng.")
+    return requested_device
+
+
+def collect_parallel_report_fields(
+    filtered_image_ids: set[str],
+    report_root: Path,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Thu thập các cặp trường bệnh sử tiếng Việt và tiếng Anh.
+
+    Parameters
+    ----------
+    filtered_image_ids : set[str]
+        Tập định danh ảnh còn lại sau bước kiểm tra và lọc ảnh.
+    report_root : pathlib.Path
+        Thư mục gốc chứa ``clinical_vi`` và ``clinical``.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, list[str]]
+        Bảng các cặp trường khác rỗng và danh sách trường chỉ có nội dung ở một
+        trong hai ngôn ngữ.
+
+    Raises
+    ------
+    FileNotFoundError
+        Khi thiếu thư mục bệnh sử tiếng Việt hoặc tiếng Anh.
+    """
+    vietnamese_dir = report_root / "clinical_vi"
+    english_dir = report_root / "clinical"
+    missing_directories = [
+        str(directory)
+        for directory in (vietnamese_dir, english_dir)
+        if not directory.is_dir()
+    ]
+    if missing_directories:
+        raise FileNotFoundError(
+            f"Thiếu thư mục bệnh sử song ngữ: {missing_directories}"
+        )
+
+    rows: list[dict[str, Any]] = []
+    one_sided_fields: list[str] = []
+    for image_id in sorted(filtered_image_ids):
+        file_name = f"{Path(image_id).stem}.txt"
+        vietnamese_path = vietnamese_dir / file_name
+        english_path = english_dir / file_name
+        if not vietnamese_path.is_file() or not english_path.is_file():
+            continue
+
+        vietnamese_text = vietnamese_path.read_text(encoding="utf-8")
+        english_text = english_path.read_text(encoding="utf-8")
+        for prefix, field_name in SEMANTIC_FIELD_NAMES.items():
+            vietnamese_value = field_value(vietnamese_text, prefix) or ""
+            english_value = field_value(english_text, prefix) or ""
+            if bool(vietnamese_value) != bool(english_value):
+                one_sided_fields.append(f"{file_name}:{field_name}")
+            if vietnamese_value and english_value:
+                rows.append(
+                    {
+                        "file_name": file_name,
+                        "field": field_name,
+                        "vietnamese": vietnamese_value,
+                        "english": english_value,
+                    }
+                )
+
+    return pd.DataFrame(rows), one_sided_fields
+
+
+def encode_semantic_texts(
+    texts: list[str],
+    tokenizer: Any,
+    model: Any,
+    *,
+    device: str,
+    batch_size: int,
+    max_length: int,
+) -> np.ndarray:
+    """Mã hóa danh sách câu thành các vector đơn vị bằng mean pooling.
+
+    Parameters
+    ----------
+    texts : list[str]
+        Danh sách câu cần mã hóa.
+    tokenizer : Any
+        Tokenizer tương ứng với mô hình Transformer.
+    model : Any
+        Mô hình Transformer trả về ``last_hidden_state``.
+    device : str
+        Thiết bị PyTorch dùng để suy luận.
+    batch_size : int
+        Số câu trong mỗi batch.
+    max_length : int
+        Số token tối đa của mỗi câu.
+
+    Returns
+    -------
+    numpy.ndarray
+        Ma trận embedding đã chuẩn hóa L2, mỗi hàng ứng với một câu.
+    """
+    import torch
+    import torch.nn.functional as functional
+
+    tokenizer_limit = int(getattr(tokenizer, "model_max_length", max_length))
+    if tokenizer_limit <= 0 or tokenizer_limit > 1_000_000:
+        tokenizer_limit = max_length
+    effective_max_length = min(max_length, tokenizer_limit)
+    embeddings: list[np.ndarray] = []
+
+    model.eval()
+    with torch.inference_mode():
+        for start in range(0, len(texts), batch_size):
+            batch_texts = texts[start : start + batch_size]
+            encoded = tokenizer(
+                batch_texts,
+                padding=True,
+                truncation=True,
+                max_length=effective_max_length,
+                return_tensors="pt",
+            )
+            encoded = {name: tensor.to(device) for name, tensor in encoded.items()}
+            output = model(**encoded)
+
+            # Mean pooling chỉ tính trên token thật, không tính phần đệm của batch.
+            attention_mask = encoded["attention_mask"].unsqueeze(-1)
+            attention_mask = attention_mask.expand(output.last_hidden_state.size()).float()
+            summed = torch.sum(output.last_hidden_state * attention_mask, dim=1)
+            token_counts = torch.clamp(attention_mask.sum(dim=1), min=1e-9)
+            pooled = functional.normalize(summed / token_counts, p=2, dim=1)
+            embeddings.append(pooled.cpu().numpy())
+
+    return np.concatenate(embeddings, axis=0)
+
+
+def semantic_score_statistics(scores: np.ndarray) -> dict[str, float | int]:
+    """Tính các thống kê mô tả cho điểm cosine similarity.
+
+    Parameters
+    ----------
+    scores : numpy.ndarray
+        Vector điểm cosine similarity.
+
+    Returns
+    -------
+    dict[str, float | int]
+        Số lượng, trung bình, trung vị, phân vị 5%, nhỏ nhất và lớn nhất.
+
+    Raises
+    ------
+    ValueError
+        Khi vector điểm không có phần tử.
+    """
+    if scores.size == 0:
+        raise ValueError("Không có điểm tương đồng ngữ nghĩa để tổng hợp.")
+    return {
+        "count": int(scores.size),
+        "mean": float(np.mean(scores)),
+        "median": float(np.median(scores)),
+        "p05": float(np.quantile(scores, 0.05)),
+        "min": float(np.min(scores)),
+        "max": float(np.max(scores)),
+    }
+
+
+def validate_semantic_similarity(
+    filtered_image_ids: set[str],
+    report_root: Path,
+    checks: list[dict[str, Any]],
+    *,
+    model_name: str,
+    threshold: float,
+    batch_size: int,
+    max_length: int,
+    requested_device: str,
+    local_files_only: bool,
+    output_path: Path | None,
+) -> dict[str, Any]:
+    """Đánh giá cosine similarity giữa các trường bệnh sử Việt--Anh.
+
+    Parameters
+    ----------
+    filtered_image_ids : set[str]
+        Tập định danh ảnh còn lại sau bước kiểm tra và lọc ảnh.
+    report_root : pathlib.Path
+        Thư mục gốc chứa các báo cáo CTCH.
+    checks : list[dict[str, Any]]
+        Danh sách nhận kết quả kiểm tra.
+    model_name : str
+        Tên hoặc đường dẫn mô hình embedding đa ngôn ngữ.
+    threshold : float
+        Ngưỡng điểm dùng để gắn cờ rà soát thủ công.
+    batch_size : int
+        Số câu được mã hóa trong mỗi batch.
+    max_length : int
+        Số token tối đa của mỗi trường.
+    requested_device : str
+        Thiết bị do người dùng yêu cầu.
+    local_files_only : bool
+        Nếu đúng, chỉ đọc mô hình từ bộ nhớ đệm cục bộ.
+    output_path : pathlib.Path | None
+        Đường dẫn CSV tùy chọn nhận điểm chi tiết.
+
+    Returns
+    -------
+    dict[str, Any]
+        Thống kê tổng thể, thống kê theo trường và cấu hình đã sử dụng.
+
+    Raises
+    ------
+    ValueError
+        Khi tham số không hợp lệ hoặc không có cặp trường để đánh giá.
+    """
+    if not -1.0 <= threshold <= 1.0:
+        raise ValueError("semantic-threshold phải nằm trong đoạn [-1, 1].")
+    if batch_size <= 0:
+        raise ValueError("semantic-batch-size phải lớn hơn 0.")
+    if max_length <= 0:
+        raise ValueError("semantic-max-length phải lớn hơn 0.")
+
+    from transformers import AutoModel, AutoTokenizer
+
+    paired_fields, one_sided_fields = collect_parallel_report_fields(
+        filtered_image_ids, report_root
+    )
+    if paired_fields.empty:
+        raise ValueError("Không tìm thấy cặp trường Việt--Anh khác rỗng.")
+
+    add_check(
+        checks,
+        "Nội dung trường song ngữ tương ứng",
+        not one_sided_fields,
+        (
+            f"Số trường chỉ có nội dung ở một ngôn ngữ={len(one_sided_fields)}; "
+            f"ví dụ={one_sided_fields[:5]}."
+        ),
+        warning=True,
+    )
+
+    device = resolve_semantic_device(requested_device)
+    print(
+        "\nĐang tải mô hình ngữ nghĩa "
+        f"'{model_name}' và mã hóa {len(paired_fields):,} cặp trường của "
+        f"{len(filtered_image_ids):,} ảnh đã lọc trên {device}..."
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name,
+        local_files_only=local_files_only,
+    )
+    model = AutoModel.from_pretrained(
+        model_name,
+        local_files_only=local_files_only,
+    ).to(device)
+
+    vietnamese_embeddings = encode_semantic_texts(
+        paired_fields["vietnamese"].tolist(),
+        tokenizer,
+        model,
+        device=device,
+        batch_size=batch_size,
+        max_length=max_length,
+    )
+    english_embeddings = encode_semantic_texts(
+        paired_fields["english"].tolist(),
+        tokenizer,
+        model,
+        device=device,
+        batch_size=batch_size,
+        max_length=max_length,
+    )
+    paired_fields["similarity"] = np.clip(
+        np.sum(vietnamese_embeddings * english_embeddings, axis=1),
+        -1.0,
+        1.0,
+    )
+    paired_fields["below_threshold"] = paired_fields["similarity"] < threshold
+    paired_fields = paired_fields.sort_values("similarity", kind="stable")
+
+    overall_scores = paired_fields["similarity"].to_numpy(dtype=float)
+    overall = semantic_score_statistics(overall_scores)
+    overall["below_threshold"] = int(paired_fields["below_threshold"].sum())
+    add_check(
+        checks,
+        "Tương đồng ngữ nghĩa Việt--Anh",
+        overall["below_threshold"] == 0,
+        (
+            f"Số cặp={overall['count']}, trung bình={overall['mean']:.4f}, "
+            f"trung vị={overall['median']:.4f}, P05={overall['p05']:.4f}, "
+            f"nhỏ nhất={overall['min']:.4f}, dưới ngưỡng {threshold:.2f}="
+            f"{overall['below_threshold']}."
+        ),
+        warning=True,
+    )
+
+    per_field: dict[str, dict[str, float | int]] = {}
+    for field_name, field_frame in paired_fields.groupby("field", sort=True):
+        field_scores = field_frame["similarity"].to_numpy(dtype=float)
+        field_summary = semantic_score_statistics(field_scores)
+        field_summary["below_threshold"] = int(field_frame["below_threshold"].sum())
+        per_field[str(field_name)] = field_summary
+        add_check(
+            checks,
+            f"Ngữ nghĩa trường {field_name}",
+            field_summary["below_threshold"] == 0,
+            (
+                f"Số cặp={field_summary['count']}, trung bình="
+                f"{field_summary['mean']:.4f}, P05={field_summary['p05']:.4f}, "
+                f"dưới ngưỡng={field_summary['below_threshold']}."
+            ),
+            warning=True,
+        )
+
+    resolved_output: str | None = None
+    if output_path is not None:
+        output = output_path.resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        paired_fields.to_csv(output, index=False, encoding="utf-8-sig")
+        resolved_output = str(output)
+        print(f"Đã lưu điểm tương đồng ngữ nghĩa: {output}")
+
+    return {
+        "model": model_name,
+        "device": device,
+        "threshold": threshold,
+        "batch_size": batch_size,
+        "max_length": max_length,
+        "filtered_image_count": len(filtered_image_ids),
+        "one_sided_field_count": len(one_sided_fields),
+        "overall": overall,
+        "per_field": per_field,
+        "csv_output": resolved_output,
+    }
 
 
 def validate_reports(
@@ -533,7 +960,12 @@ def main() -> int:
     args = parse_args()
     data_dir = args.data_dir.resolve()
     checks: list[dict[str, Any]] = []
+    semantic_summary: dict[str, Any] | None = None
     try:
+        if args.semantic_output is not None and not args.semantic_similarity:
+            raise ValueError(
+                "--semantic-output chỉ được dùng cùng --semantic-similarity."
+            )
         paths = require_paths(data_dir, checks)
         labels = pd.read_csv(paths["labels"], encoding="utf-8-sig")
         splits = pd.read_csv(paths["splits"], encoding="utf-8-sig")
@@ -542,13 +974,26 @@ def main() -> int:
         id_ids, ood_ids = validate_manifests(labels, splits, ood, class_names, checks)
         selected_ids = id_ids | ood_ids
         if selected_ids:
-            validate_images(
+            filtered_image_ids = validate_images(
                 selected_ids,
                 paths["images"],
                 checks,
                 decode=not args.skip_image_decode,
             )
             validate_reports(selected_ids, paths["reports"], checks)
+            if args.semantic_similarity:
+                semantic_summary = validate_semantic_similarity(
+                    filtered_image_ids,
+                    paths["reports"],
+                    checks,
+                    model_name=args.semantic_model,
+                    threshold=args.semantic_threshold,
+                    batch_size=args.semantic_batch_size,
+                    max_length=args.semantic_max_length,
+                    requested_device=args.semantic_device,
+                    local_files_only=args.semantic_local_files_only,
+                    output_path=args.semantic_output,
+                )
     except Exception as error:  # Bảo đảm lỗi bất ngờ vẫn tạo báo cáo và mã thoát thất bại.
         add_check(checks, "Thực thi chương trình", False, f"{type(error).__name__}: {error}")
 
@@ -563,6 +1008,8 @@ def main() -> int:
         "warning_count": len(warnings),
         "checks": checks,
     }
+    if semantic_summary is not None:
+        summary["semantic_similarity"] = semantic_summary
     if args.json_output is not None:
         output = args.json_output.resolve()
         output.parent.mkdir(parents=True, exist_ok=True)

@@ -202,7 +202,38 @@ Không phát hiện trường hợp tên bệnh đích xuất hiện trực ti�
 \section{Bộ dữ liệu CTCH}
 \label{AppendixCTCH}
 
-Phụ lục này mô tả quy trình chuẩn bị CTCH nhằm hỗ trợ tái lập và đánh giá tính hợp lệ của dữ liệu. Tên tệp, cấu trúc thư mục và định danh nội bộ của mã nguồn được lược bỏ vì không đóng góp trực tiếp cho việc hiểu thiết kế thực nghiệm; thay vào đó, nội dung tập trung vào tiêu chí lựa chọn mẫu, cách hình thành nhãn, nguyên tắc chia tập, nguồn gốc văn bản và các phép kiểm tra toàn vẹn.
+Phụ lục này mô tả quy trình chuẩn bị CTCH nhằm hỗ trợ tái lập và đánh giá tính hợp lệ của dữ liệu. Nội dung tập trung vào tiêu chí lựa chọn mẫu, cách hình thành nhãn, nguyên tắc chia tập, nguồn gốc văn bản và các phép kiểm tra toàn vẹn.
+
+\subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
+
+Quần thể đích của bộ dữ liệu CTCH gồm các bệnh nhân được chụp X-quang xương khớp nhằm hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương. Quần thể tiếp cận bao gồm các bệnh nhân có bệnh án và dữ liệu hình ảnh được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
+
+Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này chưa thể được sử dụng trực tiếp vì có sự khác biệt về loại dữ liệu cận lâm sàng, thời điểm thăm khám, tình trạng điều trị và mức độ phù hợp của nhãn. Quy trình sàng lọc được thực hiện tuần tự nhằm hình thành quần thể có ảnh X-quang, bệnh sử và nhãn phù hợp với phạm vi phân loại của nghiên cứu. Số lượng hồ sơ còn lại sau từng bước được trình bày trong Hình~\ref{fig:appendix-ctch-screening-flow}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=4mm,
+    flowbox/.style={draw, rounded corners, align=left, text width=0.85\textwidth, inner sep=5pt, fill=gray!7},
+    flowarrow/.style={-{Latex[length=2.4mm]}, semithick}
+]
+\node[flowbox] (step1) {\textbf{1. Dữ liệu bệnh án ban đầu}\quad Tổng số: 12.949 hồ sơ};
+\node[flowbox, below=of step1] (step2) {\textbf{2. Các mẫu không có ảnh X-quang}\quad Còn lại: 9.142 hồ sơ};
+\node[flowbox, below=of step2] (step3) {\textbf{3. Loại các trường hợp đã mổ}\quad Còn lại: 7.900 hồ sơ};
+\node[flowbox, below=of step3] (step4) {\textbf{4. Loại các ca tái khám}\quad Còn lại: 7.070 hồ sơ};
+\node[flowbox, below=of step4] (step5) {\textbf{5. Chỉ giữ lần khám đầu tiên}\quad Còn lại: 6.575 hồ sơ};
+\node[flowbox, below=of step5] (step6) {\textbf{6. Lọc và chuẩn hóa nhãn}\quad Còn lại: 3.641 hồ sơ};
+\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3.293 hồ sơ};
+\draw[flowarrow] (step1) -- (step2);
+\draw[flowarrow] (step2) -- (step3);
+\draw[flowarrow] (step3) -- (step4);
+\draw[flowarrow] (step4) -- (step5);
+\draw[flowarrow] (step5) -- (step6);
+\draw[flowarrow] (step6) -- (step7);
+\end{tikzpicture}
+\caption{Quy trình sàng lọc hồ sơ cho bộ dữ liệu CTCH}
+\label{fig:appendix-ctch-screening-flow}
+\end{figure}
 
 \subsection{Cấu trúc dữ liệu và đặc điểm kỹ thuật}
 
@@ -275,7 +306,7 @@ Quần thể ngoài phân phối gồm 34 mẫu thuộc nhóm chấn thương v�
 
 \subsubsection{Nguồn văn bản và kiểm soát rò rỉ nhãn}
 
-Văn bản đầu vào CTCH được tạo ngoại tuyến từ ba trường có sẵn trước kết luận chẩn đoán cuối cùng gồm lý do vào viện, diễn tiến bệnh và tiền sử. Các trường kết quả khảo sát hình ảnh, chẩn đoán chuyên môn và nhãn phân lớp không được nối vào chuỗi văn bản đầu vào. Chẩn đoán chuyên môn chỉ được sử dụng trong quá trình chuẩn hóa và kiểm tra nhãn đích; nhãn chỉ tham gia mục tiêu huấn luyện và đánh giá.
+Văn bản đầu vào CTCH được tạo ngoại tuyến từ ba trường có sẵn trước kết luận chẩn đoán cuối cùng gồm lý do vào viện, diễn tiến bệnh và tiền sử. Các trường kết quả khảo sát hình ảnh, chẩn đoán chuyên môn và nhãn phân lớp không được nối vào chuỗi văn bản đầu vào như thể hiện trong Bảng \ref{tab:appendix-ctch-text-fields}. Chẩn đoán chuyên môn chỉ được sử dụng trong quá trình chuẩn hóa và dùng làm nhãn đích; nhãn phân loại chỉ tham gia kiểm tra và xác minh nhãn.
 
 \begin{table}[H]
 \centering
@@ -288,8 +319,8 @@ Lý do vào viện & Có & Cung cấp triệu chứng hoặc vấn đề chính 
 Diễn tiến bệnh & Có & Cung cấp cơ chế, thời điểm và diễn biến trước khi hình thành kết luận chẩn đoán. \\ \hline
 Tiền sử & Có & Cung cấp thông tin bệnh lý, phẫu thuật hoặc điều trị trước đó khi trường này có dữ liệu. \\ \hline
 Kết quả khảo sát hình ảnh & Không & Bị loại khỏi chuỗi đầu vào vì có thể chứa mô tả trực tiếp dấu hiệu trên phim. \\ \hline
-Chẩn đoán chuyên môn & Không & Chỉ dùng để chuẩn hóa, ánh xạ và kiểm tra nhãn; không được mã hóa bởi nhánh văn bản. \\ \hline
-Nhãn phân lớp & Không & Chỉ dùng làm mục tiêu huấn luyện và đánh giá. \\ \hline
+Chẩn đoán chuyên môn & Không & Chỉ dùng để chuẩn hóa, ánh xạ và dùng làm nhãn phân loại chính; không được mã hóa bởi nhánh văn bản. \\ \hline
+Nhãn phân lớp & Không & Dùng để kiểm tra và xác minh nhãn. \\ \hline
 \end{tabularx}%
 }
 \caption{Vai trò của các trường bệnh án CTCH và nguyên tắc loại thông tin có nguy cơ rò rỉ nhãn}
@@ -297,6 +328,31 @@ Nhãn phân lớp & Không & Chỉ dùng làm mục tiêu huấn luyện và đ�
 \end{table}
 
 Trong bước tạo thư mục \texttt{reports/}, ba trường được giữ lại được làm sạch và ghép theo thứ tự cố định; không có tên lớp, kết quả đọc ảnh hoặc chẩn đoán được bổ sung từ tệp nhãn. Việc chia tập được thực hiện theo mã người bệnh trước khi huấn luyện, còn mã liên kết không được đưa vào văn bản hoặc mô hình. Cách tổ chức này loại rò rỉ trực tiếp từ các cột chẩn đoán, nhưng không loại bỏ khả năng bệnh sử chứa những triệu chứng hoặc vị trí giải phẫu có tính dự báo cao; vì vậy, khóa luận vẫn báo cáo đối chứng chỉ văn bản và phép ghép sai để khảo sát mức phụ thuộc vào nguồn này.
+
+\paragraph{Công cụ dịch tiếng Anh.}
+Bệnh sử tiếng Anh được tạo ngoại tuyến từ bản tiếng Việt bằng gói \texttt{deep-translator} phiên bản 1.11.4 với lớp \texttt{GoogleTranslator}, thiết lập ngôn ngữ nguồn là tiếng Việt (\texttt{vi}) và ngôn ngữ đích là tiếng Anh (\texttt{en}) \cite{DeepTranslator}. Nội dung của từng trường được dịch riêng, trong khi tên trường, thứ tự trường và định danh liên kết với ảnh được giữ nguyên. Các đoạn tiếng Việt đã dịch được lưu trong một tệp bộ nhớ đệm JSON; khi một đoạn xuất hiện lại, quy trình tái sử dụng đúng bản dịch đã lưu thay vì gửi một yêu cầu mới. Cơ chế này làm cho các câu lặp lại nhận cùng một bản dịch và hỗ trợ tái lập dữ liệu đã tạo.
+
+\paragraph{Đánh giá độ tương đồng ngữ nghĩa của bản dịch.}
+Chất lượng bản dịch được sàng lọc tự động bằng mô hình MiniLM đa ngôn ngữ \texttt{paraphrase-multilingual-MiniLM-L12-v2} \cite{ParaphraseMultilingualMiniLM}. Phép đánh giá chỉ chạy trên 3.293 ảnh còn lại sau sàng lọc và có tệp ảnh hợp lệ, không chạy trên các tệp vật lý ngoài manifest. Với mỗi trường có nội dung ở cả hai ngôn ngữ, câu tiếng Việt và câu tiếng Anh được mã hóa riêng với độ dài tối đa 256 token. Vector câu được tạo bằng trung bình có mặt nạ trên các token hợp lệ, sau đó chuẩn hóa theo chuẩn $L_2$ và tính cosine similarity giữa hai ngôn ngữ. Điểm càng gần 1 biểu thị hai biểu diễn càng gần nhau về ngữ nghĩa. Ngưỡng 0,70 chỉ được dùng để gắn cờ các cặp cần rà soát, không được xem là tiêu chuẩn tuyệt đối về tính đúng đắn y khoa.
+
+Trung bình phản ánh mức điểm chung nhưng nhạy với phần đuôi điểm thấp, còn trung vị mô tả vị trí trung tâm bền vững hơn trước các trường hợp ngoại lệ. Bảng~\ref{tab:appendix-ctch-translation-similarity} báo cáo cả hai đại lượng trên 9.542 cặp trường song ngữ được liên kết.
+
+\begin{table}[H]
+\centering
+\caption{Độ tương đồng ngữ nghĩa giữa bệnh sử tiếng Việt và bản dịch tiếng Anh của CTCH}
+\label{tab:appendix-ctch-translation-similarity}
+\small
+\begin{tabular}{|L{5.0cm}|r|r|r|r|}
+\hline
+\textbf{Trường bệnh sử} & \textbf{Số cặp} & \textbf{Trung bình} & \textbf{Trung vị} & \textbf{Dưới 0,70} \\ \hline
+Lý do vào viện & 3.293 & 0,7264 & 0,7767 & 1.083 (32,89\%) \\ \hline
+Diễn tiến bệnh & 3.293 & 0,7462 & 0,7747 & 839 (25,48\%) \\ \hline
+Tiền sử cá nhân & 2.956 & 0,5330 & 0,4737 & 2.474 (83,69\%) \\ \hline
+Toàn bộ & 9.542 & 0,6733 & 0,7234 & 4.396 (46,07\%) \\ \hline
+\end{tabular}
+\end{table}
+
+Ở hai trường cốt lõi, điểm trung bình đạt 0,7264--0,7462 và trung vị đạt 0,7747--0,7767. Các đại lượng trung tâm gần nhau và trung vị xấp xỉ 0,78 cho thấy phần trung tâm của phân bố tương đồng tương đối ổn định. Điểm tiền sử thấp hơn vì trường này có nhiều câu rất ngắn và 1.980 trường hợp thuộc ba biến thể của phát biểu ``chưa phát hiện/chưa ghi nhận bất thường''; bản dịch đúng ý nghĩa nhưng chỉ nhận cosine similarity khoảng 0,41--0,47. Rà soát phần đuôi điểm thấp ghi nhận cả cảnh báo giả lẫn một số lỗi thuật ngữ cần sửa. Do đó, trung bình và trung vị cung cấp bằng chứng định lượng rằng bản dịch tiếng Anh nhìn chung giữ được ngữ nghĩa, đặc biệt ở lý do vào viện và diễn tiến bệnh, nhưng vẫn cần kiểm tra thủ công bởi người có chuyên môn.
 
 \subsubsection{Kiểm chứng liên kết, nhãn và tập chia}
 
@@ -324,39 +380,7 @@ Quy mô \texttt{train}/\texttt{validate}/\texttt{test} & 2.265/315/669 \\ \hline
 \label{tab:appendix-ctch-integrity-verification}
 \end{table}
 
-Trong 3.293 bệnh sử tiếng Anh được liên kết, trường lý do vào viện và diễn tiến bệnh có nội dung ở toàn bộ mẫu; trường tiền sử có nội dung ở 2.956 mẫu (89,77\%) và không có dữ liệu ở 337 mẫu. Hai con số tương ứng giống nhau ở nguồn tiếng Việt, nên tổng cộng có 5.912/6.586 tệp (89,77\%) chứa nội dung tiền sử. Việc thiếu tiền sử được giữ như trạng thái dữ liệu nguồn, không được nội suy bằng câu giả lập. Thư mục vật lý hiện còn 171 ảnh và 1.919 tệp văn bản trong mỗi thư mục bệnh sử tiếng Việt và tiếng Anh nằm ngoài hợp của hai manifest trong phân phối và ngoài phân phối. Các tệp tồn dư này không được bộ nạp sử dụng vì việc chọn mẫu bắt đầu từ định danh trong \texttt{ctch-labels.csv}, \texttt{ctch-split.csv} và \texttt{ctch-ood.csv}; số lượng trong Bảng~\ref{tab:appendix-ctch-storage} vì vậy là số tệp được liên kết và sử dụng, không phải tổng số tệp thô còn trên đĩa.
-
-\subsubsection{Sàng lọc và xác định quần thể nghiên cứu}
-
-Quần thể đích của bộ dữ liệu CTCH gồm các bệnh nhân được chụp X-quang xương khớp nhằm hỗ trợ chẩn đoán bệnh lý hoặc chấn thương xương. Quần thể tiếp cận bao gồm các bệnh nhân có bệnh án và dữ liệu hình ảnh được thu thập tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
-
-Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này chưa thể được sử dụng trực tiếp vì có sự khác biệt về loại dữ liệu cận lâm sàng, thời điểm thăm khám, tình trạng điều trị và mức độ phù hợp của nhãn. Quy trình sàng lọc được thực hiện tuần tự nhằm hình thành quần thể có ảnh X-quang, bệnh sử và nhãn phù hợp với phạm vi phân loại của nghiên cứu. Số lượng hồ sơ còn lại sau từng bước được trình bày trong Hình~\ref{fig:appendix-ctch-screening-flow}.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-    node distance=4mm,
-    flowbox/.style={draw, rounded corners, align=left, text width=0.85\textwidth, inner sep=5pt, fill=gray!7},
-    flowarrow/.style={-{Latex[length=2.4mm]}, semithick}
-]
-\node[flowbox] (step1) {\textbf{1. Dữ liệu bệnh án ban đầu}\quad Tổng số: 12.949 hồ sơ};
-\node[flowbox, below=of step1] (step2) {\textbf{2. Các mẫu không có ảnh X-quang}\quad Còn lại: 9.142 hồ sơ};
-\node[flowbox, below=of step2] (step3) {\textbf{3. Loại các trường hợp đã mổ}\quad Còn lại: 7.900 hồ sơ};
-\node[flowbox, below=of step3] (step4) {\textbf{4. Loại các ca tái khám}\quad Còn lại: 7.070 hồ sơ};
-\node[flowbox, below=of step4] (step5) {\textbf{5. Chỉ giữ lần khám đầu tiên}\quad Còn lại: 6.575 hồ sơ};
-\node[flowbox, below=of step5] (step6) {\textbf{6. Lọc và gán nhãn thủ công}\quad Còn lại: 3.641 hồ sơ};
-\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3.293 hồ sơ};
-\draw[flowarrow] (step1) -- (step2);
-\draw[flowarrow] (step2) -- (step3);
-\draw[flowarrow] (step3) -- (step4);
-\draw[flowarrow] (step4) -- (step5);
-\draw[flowarrow] (step5) -- (step6);
-\draw[flowarrow] (step6) -- (step7);
-\end{tikzpicture}
-\caption{Quy trình sàng lọc hồ sơ cho bộ dữ liệu CTCH}
-\label{fig:appendix-ctch-screening-flow}
-\end{figure}
-
+Trong 3.293 bệnh sử tiếng Anh được liên kết, trường lý do vào viện và diễn tiến bệnh có nội dung ở toàn bộ mẫu; trường tiền sử có nội dung ở 2.956 mẫu (89,77\%) và không có dữ liệu ở 337 mẫu. Hai con số tương ứng giống nhau ở nguồn tiếng Việt, nên tổng cộng có 5.912/6.586 tệp (89,77\%) chứa nội dung tiền sử. Việc thiếu tiền sử được giữ như trạng thái dữ liệu nguồn, không được nội suy bằng câu giả lập.
 \input{Appendix/model_details}
 
 \chapter{Kết quả chi tiết theo từng hạt giống}
@@ -374,7 +398,7 @@ Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-ful
 
 \input{generated/appendix_seed_results/table_full_shot_per_seed}
 
-Hình~\ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai mô hình cơ sở PEFT gần nhất để minh họa biến thiên Macro-F1 mà không lặp lại toàn bộ thông tin trong hai bảng. Trên BTXRD, đường của XBone-Net thay đổi ít hơn hai mô hình cơ sở nhưng nằm ở mức thấp hơn; trên CTCH, ba đường giao nhau giữa các hạt giống, phù hợp với nhận định rằng chênh lệch Macro-F1 giữa các mô hình ngôn ngữ trực quan chưa ổn định trong phạm vi ba lần huấn luyện.
+Hình~\ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai mô hình cơ sở PEFT gần nhất để minh họa biến thiên Macro-F1 mà không lặp lại toàn bộ thông tin trong hai bảng. Trên BTXRD, đường trung bình quan sát của XBone-Net nằm dưới hai mô hình cơ sở PEFT ở một số hạt giống; tuy nhiên, khoảng tin cậy và p-value ghép cặp trong Chương~4 không cho thấy khác biệt Macro-F1 nhất quán. Trên CTCH, ba đường giao nhau giữa các hạt giống và kết quả kiểm định cũng cho thấy Macro-F1 của XBone-Net cạnh tranh với hai mô hình này.
 
 \begin{figure}[H]
 \centering
@@ -383,7 +407,35 @@ Hình~\ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai m
 \label{fig:appendix-full-shot-f1-seeds}
 \end{figure}
 
-Hình~\ref{fig:appendix-full-shot-f1-seeds} trình bày trung bình chênh lệch Macro-F1 giữa XBone-Net và từng mô hình đối sánh tại cùng hạt giống; khoảng tin cậy được tính theo phân phối $t$ hai phía với hai bậc tự do. Trên BTXRD, khoảng ước lượng khi so với LoRA-BiomedCLIP nằm dưới mốc 0, còn khoảng khi so với các mô hình chỉ dùng ảnh nằm trên mốc 0. Trên CTCH, các khoảng khi so với hai mô hình chỉ dùng ảnh nằm trên mốc 0, trong khi các khoảng của nhóm mô hình ngôn ngữ trực quan và nhóm tinh chỉnh hiệu quả tham số cắt mốc 0. Vì chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên giữa các lần huấn luyện hiện có.
+Hình~\ref{fig:appendix-full-shot-f1-seeds} chỉ trình bày điểm Macro-F1 tại từng hạt giống để minh họa độ biến thiên giữa các lần huấn luyện. Forest plot Macro-F1 được giữ trong phần kết quả chính tại Hình~\ref{fig:full_shot_f1_forest}. Bốn forest plot bổ sung ở Hình~\ref{fig:appendix-full-shot-accuracy-forest}--\ref{fig:appendix-full-shot-auprc-forest} báo cáo Accuracy, Balanced Accuracy, Macro-AUROC và Macro-AUPRC. Các khoảng tin cậy 95\% được ước lượng bằng bootstrap phân tầng theo bệnh nhân và hạt giống, còn p-value thô được tính bằng kiểm định hoán vị ghép cặp.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
+\label{fig:appendix-full-shot-accuracy-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_balanced_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
+\label{fig:appendix-full-shot-balanced-accuracy-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_auroc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
+\label{fig:appendix-full-shot-auroc-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_auprc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
+\label{fig:appendix-full-shot-auprc-forest}
+\end{figure}
 
 \section{Phân loại trong trường hợp mẫu học hạn chế}
 
@@ -391,47 +443,70 @@ Bảng~\ref{tab:appendix-few-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-few-
 
 \input{generated/appendix_seed_results/table_few_shot_per_seed}
 
+Forest plot Macro-F1 của thiết lập ít mẫu được giữ trong phần kết quả chính tại Hình~\ref{fig:few_shot_f1_forest}. Các forest plot bổ sung ở Hình~\ref{fig:appendix-few-shot-accuracy-forest}--\ref{fig:appendix-few-shot-auprc-forest} sử dụng khoảng Student-t 95\% và p-value thô của kiểm định t ghép cặp trên ba hạt giống chung. Do chỉ có ba cặp hạt giống, các kết quả này được diễn giải như bằng chứng thăm dò.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy trong thiết lập ít mẫu}
+\label{fig:appendix-few-shot-accuracy-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_balanced_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy trong thiết lập ít mẫu}
+\label{fig:appendix-few-shot-balanced-accuracy-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_auroc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC trong thiết lập ít mẫu}
+\label{fig:appendix-few-shot-auroc-forest}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_auprc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC trong thiết lập ít mẫu}
+\label{fig:appendix-few-shot-auprc-forest}
+\end{figure}
+
 \section{Nghiên cứu loại bỏ từng thành phần}
 
 Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net và năm biến thể loại bỏ từng thành phần tại từng hạt giống trên CTCH. Một biến thể có giá trị trung bình cao hơn nhưng thay đổi dấu chênh lệch giữa các hạt giống không được xem là bằng chứng về ưu thế ổn định.
 
 \input{generated/appendix_seed_results/table_ablation_per_seed}
 
-Các khoảng trong Hình~\ref{fig:ablation_forest_accuracy}--\ref{fig:ablation_forest_auprc_macro} được tính bằng 10.000 lần tái lấy mẫu bắt cặp; hai cận là phân vị $2{,}5\%$ và $97{,}5\%$ của phân bố chênh lệch. Trong mỗi lần, người bệnh được tái lấy mẫu theo cụm và phân tầng theo lớp, đồng thời ba hạt giống huấn luyện được tái lấy mẫu có hoàn lại. Cùng một mẫu tái lập được áp dụng cho cấu hình tham chiếu và biến thể. Thành phần biến thiên theo hạt giống chỉ dựa trên ba giá trị quan sát, vì vậy các khoảng được diễn giải theo hướng mô tả và thăm dò.
+Forest plot Macro-F1 của nghiên cứu thành phần được giữ trong phần kết quả chính tại Hình~\ref{fig:ablation_f1_forest}. Các khoảng trong bốn forest plot bổ sung ở Hình~\ref{fig:appendix-ablation-accuracy-forest}--\ref{fig:appendix-ablation-auprc-forest} được tính bằng 10.000 lần tái lấy mẫu bắt cặp; hai cận là phân vị $2{,}5\%$ và $97{,}5\%$ của phân bố chênh lệch XBone-Net trừ biến thể. Trong mỗi lần, người bệnh được tái lấy mẫu theo cụm và phân tầng theo lớp, đồng thời ba hạt giống huấn luyện được tái lấy mẫu có hoàn lại. Cùng một mẫu tái lập được áp dụng cho cấu hình tham chiếu và biến thể. P-value thô được tính bằng kiểm định hoán vị ghép cặp và không được hiệu chỉnh cho nhiều phép so sánh. Khác biệt chỉ được xem là nhất quán khi khoảng tin cậy không chứa 0 và đồng thời $p<0{,}05$.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_accuracy.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_forest_accuracy}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
+\label{fig:appendix-ablation-accuracy-forest}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_balanced_accuracy.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Balanced Accuracy giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_forest_balanced_accuracy}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_balanced_accuracy.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
+\label{fig:appendix-ablation-balanced-accuracy-forest}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_f1_macro.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Macro-F1 giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_forest_f1_macro}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_auroc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
+\label{fig:appendix-ablation-auroc-forest}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auroc_macro.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUROC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_forest_auroc_macro}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/forest_auprc_macro.png}
-\caption{Khoảng tin cậy 95\% của chênh lệch Macro-AUPRC giữa từng biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_forest_auprc_macro}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_auprc_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
+\label{fig:appendix-ablation-auprc-forest}
 \end{figure}
 
 \section{Kết quả đánh giá dữ liệu ngoài phân phối}

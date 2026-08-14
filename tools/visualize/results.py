@@ -3276,14 +3276,6 @@ def plot_full_shot_paired_forest(
         float(np.nanmin(all_limits) - padding),
         float(np.nanmax(all_limits) + padding),
     )
-    figure.suptitle(
-        f"Khoảng tin cậy ghép cặp {confidence_level:.0%} của {metric_label}",
-        y=0.99,
-    )
-    figure.supxlabel(
-        rf"Chênh lệch {metric_label}: XBone-Net $-$ mô hình cơ sở ($\Delta$)",
-        y=0.08,
-    )
     handles = [
         Line2D(
             [0],
@@ -3318,7 +3310,7 @@ def plot_full_shot_paired_forest(
         frameon=False,
         fontsize=8.5,
     )
-    figure.tight_layout(rect=(0.0, 0.12, 1.0, 0.95))
+    figure.tight_layout(rect=(0.0, 0.12, 1.0, 1.0))
 
     destination = _prepare_plot_output(output)
     figure.savefig(destination, dpi=dpi, bbox_inches="tight")
@@ -6206,13 +6198,6 @@ def plot_ablation_forest(
     axis.set_axisbelow(True)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
-    metric_label = str(PAIRED_STATISTIC_METRICS[metric]["label"])
-    axis.set_xlabel(
-        rf"Chênh lệch {metric_label}: biến thể $-$ XBone-Net ($\Delta$)"
-    )
-    axis.set_title(
-        f"Ảnh hưởng của phép loại bỏ từng thành phần đối với {metric_label} trên CTCH"
-    )
     for position, upper, p_value in zip(
         positions,
         uppers,

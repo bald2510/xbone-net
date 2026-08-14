@@ -575,20 +575,20 @@ Khi bệnh sử của mỗi mẫu CTCH được thay bằng bệnh sử của m�
 Mức suy giảm trên BTXRD lớn hơn đáng kể so với CTCH vì phép ghép bắt buộc chọn văn bản khác lớp và văn bản tổng hợp mang tín hiệu liên hệ mạnh với nhãn. Do đó, kết quả BTXRD chỉ xác nhận độ nhạy của mô hình đối với quan hệ ghép cặp trong thiết lập văn bản có điều kiện theo siêu dữ liệu. Trên CTCH, sự suy giảm khi ghép sai cùng với kết quả đơn phương thức cho thấy mô hình sử dụng quan hệ ảnh--bệnh sử, nhưng chưa phải ước lượng đóng góp biên thuần túy của bệnh sử.
 
 \subsection{Tổng kết}
-Thiết lập đa phương thức đạt điểm F1 trung bình theo lớp cao hơn các thiết lập đơn phương thức trên cả hai bộ dữ liệu, đồng thời phép ghép sai làm hiệu năng giảm rõ rệt. Các kết quả cho thấy XBone-Net khai thác quan hệ liên phương thức, nhưng chênh lệch còn chịu ảnh hưởng của việc các cấu hình đơn phương thức không thực hiện pha khớp ảnh--văn bản. CTCH là nguồn bằng chứng chính cho kịch bản bệnh sử thực, còn BTXRD chỉ phản ánh thiết lập văn bản tổng hợp có điều kiện.
+Thiết lập đa phương thức có điểm F1 trung bình theo lớp quan sát được cao hơn các thiết lập đơn phương thức trên cả hai bộ dữ liệu, đồng thời phép ghép sai làm hiệu năng giảm rõ rệt. Do các đối chứng đơn phương thức không thực hiện pha khớp ảnh--văn bản và chưa có khoảng tin cậy ghép cặp kèm p-value cho phép so sánh này, kết quả chỉ cho thấy XBone-Net sử dụng quan hệ liên phương thức, không được dùng để khẳng định ưu thế thống kê của kiến trúc đa phương thức. CTCH là nguồn bằng chứng chính cho kịch bản bệnh sử thực, còn BTXRD chỉ phản ánh thiết lập văn bản tổng hợp có điều kiện.
 
 \section{Hiệu năng theo dữ liệu và chi phí}
 \label{sec:data_cost_performance}
 
 \subsection{Kết quả khi sử dụng toàn bộ dữ liệu}
 \label{subsec:full_data_results}
-Bảng~\ref{tab:classification_full_data} và Bảng~\ref{tab:classification_full_data_ranking} lần lượt trình bày các độ đo quyết định lớp, độ đo xếp hạng và sai số hiệu chỉnh kỳ vọng trong thiết lập sử dụng toàn bộ dữ liệu huấn luyện.
+Bảng~\ref{tab:classification_full_data} và Bảng~\ref{tab:classification_full_data_ranking} lần lượt trình bày các độ đo quyết định lớp và độ đo xếp hạng trong thiết lập sử dụng toàn bộ dữ liệu huấn luyện.
 
 \input{generated/chapter4_results/table_full_shot_classification}
 
-Trên BTXRD, XBone-Net đạt điểm F1 trung bình theo lớp $0{,}6010\pm0{,}0034$, thấp hơn LoRA-PubMedCLIP $0{,}0317$ điểm. Độ chính xác và độ chính xác cân bằng cũng thấp hơn kết quả cao nhất lần lượt $0{,}0089$ và $0{,}0636$ điểm. Trên CTCH, điểm F1 của XBone-Net đạt $0{,}5558\pm0{,}0072$, thấp hơn kết quả cao nhất $0{,}0075$ điểm. Vì vậy, XBone-Net không dẫn đầu nhất quán trên các độ đo quyết định lớp.
+Các trung bình trong hai bảng chỉ dùng để mô tả. Macro-F1 là độ đo chính và forest plot tương ứng được trình bày tại Hình~\ref{fig:full_shot_f1_forest}; các forest plot bổ sung cho Accuracy, Balanced Accuracy, Macro-AUROC và Macro-AUPRC được chuyển xuống Phụ lục, Hình~\ref{fig:appendix-full-shot-accuracy-forest}--\ref{fig:appendix-full-shot-auprc-forest}. Trong các biểu đồ, $\Delta$ được tính bằng XBone-Net trừ mô hình cơ sở. Khoảng tin cậy 95\% được ước lượng bằng bootstrap phân tầng theo bệnh nhân và hạt giống, còn p-value thô được tính bằng kiểm định hoán vị ghép cặp. Một khác biệt chỉ được xem là nhất quán khi khoảng tin cậy không chứa 0 và đồng thời $p<0{,}05$; các p-value không được hiệu chỉnh cho nhiều phép so sánh.
 
-Ngược lại, XBone-Net đạt Macro-AUROC cao nhất trên BTXRD và CTCH với các giá trị lần lượt $0{,}9243\pm0{,}0298$ và $0{,}9473\pm0{,}0246$, đồng thời đạt Macro-AUPRC cao nhất trên CTCH với $0{,}6189\pm0{,}0145$. Về hiệu chỉnh, XBone-Net có ECE thấp nhất trên BTXRD với $0{,}0966\pm0{,}0265$, nhưng trên CTCH, LoRA-PubMedCLIP đạt ECE thấp nhất $0{,}0611\pm0{,}0040$ so với $0{,}1032\pm0{,}0303$ của XBone-Net. Kết quả cho thấy ưu thế xếp hạng không mặc nhiên đi kèm hiệu chỉnh xác suất tốt nhất trên mọi bộ dữ liệu.
+Theo tiêu chí trên, điểm Macro-F1 của XBone-Net cạnh tranh với toàn bộ các Med-VLM trên cả BTXRD và CTCH: không phép so sánh nào đồng thời có khoảng tin cậy loại trừ 0 và $p<0{,}05$. XBone-Net cao hơn rõ ràng so với ResNet-50 và DenseNet-121 trên phần lớn độ đo. Trong nhóm Med-VLM, XBone-Net cao hơn PubMedCLIP về Accuracy và cao hơn MedCLIP về Macro-AUROC trên BTXRD; LoRA-BiomedCLIP cao hơn XBone-Net về Balanced Accuracy trên BTXRD. Trên CTCH, XBone-Net cao hơn PubMedCLIP và MedCLIP về Macro-AUROC. Các so sánh còn lại chưa cung cấp bằng chứng khác biệt nhất quán, vì vậy được diễn giải là hiệu năng cạnh tranh thay vì thấp hơn hoặc cao hơn dựa riêng trên trung bình.
 
 \input{generated/chapter4_results/table_full_shot_ranking}
 
@@ -596,12 +596,10 @@ Ngược lại, XBone-Net đạt Macro-AUROC cao nhất trên BTXRD và CTCH v�
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\linewidth]{generated/chapter4_results/full_shot_paired_f1_forest.png}
-\caption{Khoảng ước lượng ghép cặp 95\% của chênh lệch điểm F1 trung bình theo lớp giữa XBone-Net và các mô hình cơ sở}
-\label{fig:full_shot_paired_f1_forest}
+\includegraphics[width=1\linewidth]{generated/chapter4_results/full_shot_forest_f1_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-F1 giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
+\label{fig:full_shot_f1_forest}
 \end{figure}
-
-Khoảng ước lượng ghép cặp của chênh lệch điểm F1 trong Hình~\ref{fig:full_shot_paired_f1_forest} cho thấy XBone-Net cao hơn rõ rệt so với ResNet-50 và DenseNet-121 trên cả hai bộ dữ liệu, nhưng phần lớn khoảng so sánh với các mô hình thị giác--ngôn ngữ bao gồm mốc 0. Trên BTXRD, khoảng so sánh với LoRA-BiomedCLIP nghiêng về mô hình cơ sở. Do chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên của những lần huấn luyện hiện có và không được dùng để suy rộng thành phân phối hiệu năng rộng hơn.
 
 Trên CTCH, ma trận nhầm lẫn tổng hợp ở Hình~\ref{fig:ctch_confusion_matrix} cho thấy độ nhạy cao ở các lớp gãy xương đùi, gãy xương gót, gãy cột sống thắt lưng, gãy xương ngón tay và gãy xương cổ chân. Các lớp có độ nhạy thấp gồm cắt cụt ngón tay, gãy cột sống ngực, gãy xương trụ và gãy xương thuyền. Cắt cụt ngón tay thường bị nhầm với gãy xương ngón tay, còn gãy cột sống ngực thường bị nhầm với gãy cột sống thắt lưng. Đây là các cặp có vị trí giải phẫu hoặc nội dung bệnh sử gần nhau. Lớp bình thường chỉ đạt độ nhạy trung bình $0{,}43$, cho thấy mô hình vẫn gán một phần đáng kể ảnh không tổn thương vào các lớp bệnh lý.
 
@@ -639,19 +637,26 @@ Hình~\ref{fig:ctch_pr_curve} và Hình~\ref{fig:ctch_roc_curve} làm rõ khoả
 
 \subsection{Kết quả trong thiết lập ít mẫu}
 \label{subsec:few_shot_results}
-Bảng~\ref{tab:classification_few_shot} và Bảng~\ref{tab:classification_few_shot_ranking} cho thấy hiệu năng nhìn chung tăng theo ngân sách mẫu, nhưng thứ hạng giữa các mô hình thay đổi theo bộ dữ liệu và số mẫu mỗi lớp.
+Bảng~\ref{tab:classification_few_shot} và Bảng~\ref{tab:classification_few_shot_ranking} mô tả hiệu năng theo ngân sách mẫu. Forest plot của độ đo chính Macro-F1 được trình bày tại Hình~\ref{fig:few_shot_f1_forest}; bốn độ đo bổ sung được báo cáo ở Phụ lục, Hình~\ref{fig:appendix-few-shot-accuracy-forest}--\ref{fig:appendix-few-shot-auprc-forest}. Các biểu đồ sử dụng khoảng Student-t 95\% và p-value thô của kiểm định t ghép cặp trên ba hạt giống chung, với $\Delta$ bằng XBone-Net trừ mô hình cơ sở. Do cỡ mẫu chỉ gồm ba cặp hạt giống, các kết quả suy luận này được xem là bằng chứng thăm dò.
 
 \input{generated/chapter4_results/table_few_shot_classification}
 
 \input{generated/chapter4_results/table_few_shot_ranking}
 
-Trên BTXRD, XBone-Net đạt điểm F1 $0{,}1620\pm0{,}0259$ ở mức một mẫu và thấp hơn hai mô hình cơ sở. Tại mức 10 và 20 mẫu, XBone-Net dẫn đầu với các giá trị lần lượt $0{,}4302\pm0{,}0263$ và $0{,}5202\pm0{,}0300$. Trên CTCH, XBone-Net dẫn đầu ở mức một mẫu với $0{,}2236\pm0{,}0206$ và ở mức 10 mẫu với $0{,}4329\pm0{,}0357$, nhưng thấp hơn LoRA-BiomedCLIP tại mức 20 mẫu.
+Trên cả BTXRD và CTCH, điểm Macro-F1 của XBone-Net cạnh tranh với LoRA-BiomedCLIP và LoRA-PubMedCLIP ở cả ba ngân sách vì mọi khoảng tin cậy đều chứa 0 và mọi p-value đều lớn hơn $0{,}05$. Trên CTCH với một mẫu mỗi lớp, XBone-Net cao hơn LoRA-BiomedCLIP về Accuracy, Macro-AUROC và Macro-AUPRC, đồng thời cao hơn LoRA-PubMedCLIP về hai độ đo xếp hạng. Ở 10 mẫu trên CTCH, LoRA-BiomedCLIP cao hơn XBone-Net về Macro-AUPRC; ở 20 mẫu, LoRA-PubMedCLIP cao hơn XBone-Net về Accuracy. Các phép so sánh còn lại chưa cho thấy khác biệt nhất quán.
 
-Khi tăng từ một lên 10 mẫu, điểm F1 của XBone-Net tăng $0{,}2682$ điểm trên BTXRD và $0{,}2093$ điểm trên CTCH. Mức tăng từ 10 lên 20 mẫu giảm còn $0{,}0900$ và $0{,}0355$ điểm. Xu hướng này gợi ý lợi ích biên giảm khi bổ sung mẫu, nhưng ba mức ngân sách chưa đủ để mô tả đầy đủ đường học. Độ lệch chuẩn tương đối lớn ở một số thiết lập, đặc biệt tại 10 và 20 mẫu trên BTXRD và 10 mẫu trên CTCH, cho thấy kết quả còn nhạy với tập mẫu được chọn theo từng hạt giống.
+Khi tăng từ một lên 10 mẫu, điểm F1 trung bình quan sát được của XBone-Net tăng $0{,}2682$ điểm trên BTXRD và $0{,}2093$ điểm trên CTCH. Mức tăng từ 10 lên 20 mẫu giảm còn $0{,}0900$ và $0{,}0355$ điểm. Xu hướng này chỉ mô tả đường học của XBone-Net và không thay thế kiểm định giữa các mô hình; ba mức ngân sách cũng chưa đủ để mô tả đầy đủ lợi ích biên của dữ liệu bổ sung.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{generated/chapter4_results/few_shot_forest_f1_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-F1 trong thiết lập ít mẫu}
+\label{fig:few_shot_f1_forest}
+\end{figure}
 
 \subsection{Hiệu quả tham số và chi phí suy luận}
 \label{subsec:rq3_adaptation_results}
-Bảng~\ref{tab:rq3_adaptation} đối chiếu ba mức thích nghi bộ mã hóa nền tảng trên CTCH. XBone-Net sử dụng thích nghi hạng thấp và cập nhật $8{,}63$ triệu tham số, tương đương $4{,}22\%$ tổng số tham số, trong khi tinh chỉnh toàn bộ cập nhật $199{,}43$ triệu tham số. Cấu hình thích nghi hạng thấp đạt điểm F1 trung bình theo lớp $0{,}5558\pm0{,}0072$ và Macro-AUPRC $0{,}6189\pm0{,}0145$, cao hơn tinh chỉnh toàn bộ lần lượt $0{,}0146$ và $0{,}0357$ điểm. Macro-AUROC của hai cấu hình gần tương đương. Kết quả cho thấy việc giới hạn phạm vi cập nhật vẫn duy trì hiệu năng cạnh tranh trên dữ liệu hiện có.
+Bảng~\ref{tab:rq3_adaptation} đối chiếu ba mức thích nghi bộ mã hóa nền tảng trên CTCH. XBone-Net sử dụng thích nghi hạng thấp và cập nhật $8{,}63$ triệu tham số, tương đương $4{,}22\%$ tổng số tham số, trong khi tinh chỉnh toàn bộ cập nhật $199{,}43$ triệu tham số. Các chênh lệch hiệu năng trong bảng chỉ là mô tả trung bình vì phép đối chứng này chưa có khoảng tin cậy ghép cặp và p-value tương ứng. Do đó, kết luận được giới hạn ở việc XBone-Net duy trì hiệu năng quan sát được cạnh tranh trong khi cập nhật ít tham số hơn, không khẳng định thích nghi hạng thấp vượt trội về hiệu năng dự đoán.
 
 \input{generated/chapter4_results/table_rq3_adaptation}
 
@@ -668,44 +673,26 @@ Trên BTXRD, XBone-Net đạt thông lượng $17{,}7$ mẫu mỗi giây và đ�
 Các kết quả trong thiết lập ít mẫu được trình bày tại Bảng~\ref{tab:efficiency_few_shot_params} và Bảng~\ref{tab:efficiency_few_shot_compute}. Số tham số và số phép toán trên mỗi mẫu không thay đổi theo ngân sách một, 10 hoặc 20 mẫu mỗi lớp vì kiến trúc suy luận được giữ nguyên. XBone-Net duy trì $8{,}63$ triệu tham số huấn luyện và $229{,}020$ GFLOPs trên mỗi mẫu ở mọi ngân sách. Thông lượng quan sát được dao động từ $14{,}2$ đến $15{,}4$ mẫu mỗi giây trên BTXRD và từ $14{,}5$ đến $16{,}8$ mẫu mỗi giây trên CTCH. Độ trễ tương ứng dao động từ $77{,}28$ đến $84{,}25$ mili giây và từ $66{,}27$ đến $80{,}92$ mili giây. Những chênh lệch nhỏ giữa các ngân sách không được diễn giải như ảnh hưởng của số mẫu huấn luyện, vì độ phức tạp suy luận là như nhau và sai khác chủ yếu phản ánh biến thiên của phép đo thời gian.
 
 \subsection{Tổng kết}
-Trong thiết lập toàn bộ dữ liệu, XBone-Net không dẫn đầu điểm F1 nhưng đạt chất lượng xếp hạng cao nhất trên cả hai bộ dữ liệu và có hiệu năng quyết định lớp gần các mô hình mạnh nhất trên CTCH. Lợi thế xuất hiện ở một số ngân sách ít mẫu nhưng không ổn định ở mọi mức. LoRA làm giảm mạnh số tham số cần cập nhật. Đổi lại, nhánh ảnh toàn cục--cục bộ và quy trình hai pha khiến mức tiết kiệm tham số không đồng nghĩa với giảm chi phí suy luận.
+Trong thiết lập toàn bộ dữ liệu, XBone-Net có Macro-F1 cạnh tranh với các Med-VLM trên cả hai bộ dữ liệu và có lợi thế thống kê ở một số phép so sánh Accuracy hoặc Macro-AUROC, nhưng không vượt trội nhất quán trên mọi độ đo. Trong thiết lập ít mẫu, Macro-F1 tiếp tục cạnh tranh ở toàn bộ ngân sách; lợi thế và bất lợi có ý nghĩa chỉ xuất hiện ở một số độ đo trên CTCH. LoRA làm giảm mạnh số tham số cần cập nhật. Đổi lại, nhánh ảnh toàn cục--cục bộ và quy trình hai pha khiến mức tiết kiệm tham số không đồng nghĩa với giảm chi phí suy luận.
 
 \section{Đánh giá thành phần}
 \label{sec:component_evaluation_results}
 
 \subsection{Kết quả loại bỏ thành phần}
 \label{subsec:leave_one_out_results}
-Bảng~\ref{tab:ablation_leave_one_out_classification} trình bày ảnh hưởng của việc thay đổi từng thành phần so với cấu hình XBone-Net đầy đủ. Không biến thể nào cải thiện hoặc làm giảm đồng thời toàn bộ các độ đo, cho thấy mỗi thành phần tạo ra một đánh đổi khác nhau giữa quyết định lớp, chất lượng xếp hạng và hiệu chỉnh.
+Bảng~\ref{tab:ablation_leave_one_out_classification} trình bày trung bình và độ lệch chuẩn của từng cấu hình. Forest plot của độ đo chính Macro-F1 được giữ tại Hình~\ref{fig:ablation_f1_forest}; các forest plot bổ sung được trình bày ở Phụ lục, Hình~\ref{fig:appendix-ablation-accuracy-forest}--\ref{fig:appendix-ablation-auprc-forest}. Trong các biểu đồ, $\Delta$ bằng XBone-Net trừ biến thể. Khoảng tin cậy 95\% được ước lượng bằng bootstrap phân tầng theo bệnh nhân và hạt giống, p-value thô được tính bằng kiểm định hoán vị ghép cặp và không được hiệu chỉnh cho nhiều phép so sánh.
 
-So với XBone-Net, gộp trung bình làm tăng độ chính xác cân bằng $0{,}0205$, điểm F1 $0{,}0178$, Macro-AUROC $0{,}0104$ và Macro-AUPRC $0{,}0123$ điểm, nhưng sai số hiệu chỉnh kỳ vọng tăng từ $0{,}1032$ lên $0{,}1506$. Đầu tuyến tính làm tăng độ chính xác $0{,}0538$ và điểm F1 $0{,}0331$ điểm, đồng thời làm Macro-AUROC giảm $0{,}0393$ điểm. Phép nối đặc trưng đạt sai số hiệu chỉnh thấp nhất với $0{,}0789\pm0{,}0148$, nhưng điểm F1 giảm $0{,}0133$ điểm. Các kết quả này cho thấy cấu hình phức tạp hơn không mặc nhiên tối ưu cho mọi tiêu chí.
+Theo đồng thời khoảng tin cậy và p-value, XBone-Net cạnh tranh với gộp trung bình và nối đặc trưng trên cả năm độ đo. Cấu hình chỉ pha 2 và đầu tuyến tính có Accuracy cao hơn XBone-Net; ngược lại, XBone-Net có Macro-AUROC cao hơn cấu hình không dùng ảnh độ phân giải cao và đầu tuyến tính. Không phép so sánh nào cho thấy khác biệt nhất quán về Balanced Accuracy, Macro-F1 hoặc Macro-AUPRC. Vì vậy, các chênh lệch trung bình còn lại trong bảng không được diễn giải thành ưu thế hoặc bất lợi.
 
 \input{generated/chapter4_results/table_ablation_leave_one_out_classification}
 
-Bỏ xử lý ảnh độ phân giải cao gần như giữ nguyên điểm F1 ở mức $0{,}5553\pm0{,}0136$, nhưng làm hai độ đo xếp hạng giảm và sai số hiệu chỉnh tăng lên $0{,}1743\pm0{,}0634$. Kết quả hỗ trợ vai trò của nhánh ảnh cục bộ đối với chất lượng xếp hạng và hiệu chỉnh. Tuy nhiên, việc gộp trung bình tốt hơn gộp có trọng số chú ý ở nhiều độ đo cho thấy lợi ích quan sát được gắn với việc duy trì thông tin cục bộ nhiều hơn với cơ chế gộp hiện tại.
-
-Chỉ huấn luyện pha 2 làm điểm F1 tăng lên $0{,}5753\pm0{,}0175$, nhưng Macro-AUROC giảm xuống $0{,}9144\pm0{,}0198$ và sai số hiệu chỉnh tăng lên $0{,}1868\pm0{,}0724$. Do đó, pha khớp ngữ nghĩa chưa cải thiện quyết định lớp một cách nhất quán, nhưng có liên hệ với chất lượng xếp hạng và hành vi xác suất của mô hình.
-
-Các khoảng tái lấy mẫu bắt cặp trong Hình~\ref{fig:ablation_accuracy_forest}, Hình~\ref{fig:ablation_f1_forest} và Hình~\ref{fig:ablation_auroc_forest} được trình bày cùng p-value thô của từng phép so sánh. Ở mức $p<0{,}05$, cấu hình không dùng ảnh độ phân giải cao, cấu hình chỉ huấn luyện pha 2 và đầu tuyến tính có độ chính xác cao hơn XBone-Net; XBone-Net có Macro-AUROC cao hơn cấu hình không dùng ảnh độ phân giải cao và đầu tuyến tính. Không biến thể nào khác biệt rõ theo điểm F1, độ chính xác cân bằng hoặc Macro-AUPRC. Các p-value này chưa được hiệu chỉnh cho nhiều phép so sánh và chỉ được dùng như bằng chứng thăm dò trên ba lần huấn luyện hiện có.
+Đối với cấu hình không dùng ảnh độ phân giải cao, Macro-AUROC giảm một cách nhất quán so với XBone-Net, hỗ trợ vai trò của nhánh ảnh cục bộ đối với chất lượng xếp hạng. Tuy nhiên, khác biệt Accuracy có $p<0{,}05$ nhưng khoảng tin cậy vẫn chứa 0 nên không được xem là kết luận nhất quán. Với cấu hình chỉ pha 2, bằng chứng rõ chỉ xuất hiện ở Accuracy theo hướng có lợi cho biến thể; các độ đo còn lại chưa khác biệt rõ. Những kết quả này cho thấy đóng góp của từng thành phần phụ thuộc vào mục tiêu đánh giá thay vì tạo ra cải thiện đồng thời trên mọi độ đo.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\linewidth]{generated/chapter4_results/forest_accuracy.png}
-\caption{Chênh lệch độ chính xác giữa các biến thể loại bỏ thành phần và XBone-Net trên CTCH}
-\label{fig:ablation_accuracy_forest}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=1\linewidth]{generated/chapter4_results/forest_f1_macro.png}
-\caption{Chênh lệch điểm Macro-F1 giữa các biến thể và XBone-Net trên CTCH}
+\includegraphics[width=1\linewidth]{generated/chapter4_results/ablation_forest_f1_macro.png}
+\caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-F1 giữa XBone-Net và các biến thể ablation trên CTCH}
 \label{fig:ablation_f1_forest}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=1\linewidth]{generated/chapter4_results/forest_auroc_macro.png}
-\caption{Chênh lệch Macro-AUROC giữa các biến thể và XBone-Net trên CTCH}
-\label{fig:ablation_auroc_forest}
 \end{figure}
 
 \subsection{Đối chứng bổ sung theo nhóm thành phần}
@@ -714,12 +701,12 @@ Bên cạnh năm phép loại bỏ chính, Bảng \ref{tab:group_ablation} dư�
 
 \input{generated/chapter4_results/table_rq2_grouped_components}
 
-Trong nhóm mã hóa ảnh, giảm số đơn vị cục bộ và đệm biên giữ tỷ lệ làm điểm F1 tăng lần lượt lên $0{,}5684\pm0{,}0131$ và $0{,}5621\pm0{,}0083$, nhưng ECE đều tăng lên trên $0{,}18$. Gộp trung bình đạt Macro-AUROC và Macro-AUPRC cao nhất trong nhóm, song ECE tăng từ $0{,}1032\pm0{,}0303$ lên $0{,}1506\pm0{,}0564$. Các kết quả này củng cố nhận định rằng việc duy trì thông tin cục bộ có ích cho một số mục tiêu, nhưng số vùng và cơ chế gộp hiện tại chưa phải lựa chọn tối ưu đồng thời cho quyết định lớp, xếp hạng và hiệu chỉnh.
+Trong nhóm mã hóa ảnh, các biến thể có trung bình quan sát được khác nhau theo từng độ đo, nhưng không được xem là cao hơn hoặc thấp hơn XBone-Net nếu chưa có khoảng tin cậy và p-value ghép cặp tương ứng. Riêng gộp trung bình đã được kiểm định trong nhóm leave-one-out và cạnh tranh với XBone-Net trên cả năm độ đo. Vì vậy, bảng bổ sung được dùng để nhận diện các hướng đánh đổi cần kiểm chứng tiếp, không dùng để xếp hạng chắc chắn các cơ chế mã hóa ảnh.
 
-Trong nhóm huấn luyện, chỉ pha 2 làm điểm F1 và Macro-AUPRC tăng nhưng làm Macro-AUROC giảm và ECE tăng. Hợp nhất pha 1 đạt Macro-AUROC $0{,}9513\pm0{,}0166$ nhưng thấp hơn cấu hình đầy đủ về điểm F1 và Macro-AUPRC. Trong nhóm dung hợp, hai hướng chú ý một chiều đạt điểm F1 lần lượt $0{,}5559\pm0{,}0159$ và $0{,}5632\pm0{,}0217$, gần cấu hình hai chiều $0{,}5558\pm0{,}0072$, nhưng không hướng nào cải thiện đồng thời mọi độ đo. Phép nối đặc trưng có Macro-AUROC và ECE thuận lợi hơn nhưng điểm F1 thấp hơn. Ở nhóm đầu phân loại, đầu tuyến tính đạt điểm F1 cao nhất, còn bỏ trọng số lớp đạt Macro-AUROC cao nhất. Cả hai đều tạo đánh đổi ở các độ đo còn lại.
+Trong nhóm huấn luyện, chỉ pha 2 chỉ có bằng chứng nhất quán về Accuracy cao hơn XBone-Net; khác biệt Macro-F1, Macro-AUROC và Macro-AUPRC chưa rõ. Trong nhóm dung hợp, phép nối đặc trưng cạnh tranh với XBone-Net trên toàn bộ năm độ đo được kiểm định. Trong nhóm đầu phân loại, đầu tuyến tính có Accuracy cao hơn nhưng Macro-AUROC thấp hơn XBone-Net, còn Macro-F1 chưa khác biệt rõ. Các cấu hình bổ sung chưa có kiểm định ghép cặp chỉ được mô tả bằng trung bình và không được dùng để khẳng định hơn hoặc kém.
 
 \subsection{Tổng kết}
-Nhánh ảnh cục bộ, huấn luyện hai pha, cơ chế dung hợp và đầu phân lớp theo tâm lớp đều làm thay đổi ít nhất một trong ba khía cạnh gồm quyết định lớp, chất lượng xếp hạng và hiệu chỉnh, nhưng không thành phần nào cải thiện nhất quán toàn bộ tiêu chí. Cấu hình đầy đủ vì vậy được xem là một điểm đánh đổi: nhánh cục bộ và pha khớp ngữ nghĩa có liên hệ với chất lượng xếp hạng hoặc hiệu chỉnh, trong khi gộp trung bình, đầu tuyến tính và một số biến thể đơn giản đạt điểm F1 hoặc độ chính xác cao hơn. Kết quả gần nhau giữa chú ý chéo hai chiều và hai hướng chú ý một chiều cũng cho thấy cơ chế dung hợp hiện tại có thể được đơn giản hóa.
+Không biến thể ablation nào cao hơn XBone-Net một cách nhất quán trên toàn bộ năm độ đo. XBone-Net cạnh tranh với gộp trung bình và nối đặc trưng; nhánh ảnh cục bộ và đầu phân lớp theo tâm lớp có bằng chứng thuận lợi về Macro-AUROC, trong khi chỉ pha 2 và đầu tuyến tính thuận lợi hơn về Accuracy. Cấu hình đầy đủ vì vậy được xem là một điểm đánh đổi giữa quyết định lớp và chất lượng xếp hạng, thay vì cấu hình vượt trội tuyệt đối hoặc thấp hơn các biến thể dựa trên trung bình.
 
 \section{Biểu diễn và dữ liệu ngoài phân phối}
 \label{sec:representation_ood}
@@ -751,7 +738,7 @@ Bảng~\ref{tab:ood_semantic_btxrd} đánh giá bốn điểm OOD trên 669 mẫ
 
 Trong bốn phương pháp, khoảng cách Mahalanobis đạt AUROC-OOD cao nhất trên tập kiểm thử BTXRD với $0{,}8042\pm0{,}0938$ và trên nhóm ngoài không gian nhãn với $0{,}6286\pm0{,}0177$. Phương pháp năm láng giềng gần nhất đạt AUPR-Out cao nhất trên nhóm ngoài không gian nhãn. Các kết quả cho thấy biểu diễn chứa tín hiệu dịch chuyển, nhưng mức phân biệt phụ thuộc mạnh vào dạng OOD được xét.
 
-Bảng~\ref{tab:rq4_ood_baselines} giữ cố định điểm Mahalanobis để so sánh ảnh hưởng của không gian biểu diễn. BiomedCLIP không mẫu đạt AUROC-OOD $0{,}6362$ trên nhóm ngoài không gian nhãn trong một lần đánh giá, cao hơn nhẹ XBone-Net. Tuy nhiên, XBone-Net đạt AUPR-Out cao nhất trong nhóm các biểu diễn được huấn luyện trên kịch bản này. Trên BTXRD, phép nối đặc trưng dẫn đầu cả ba độ đo với AUROC-OOD $0{,}8966\pm0{,}0478$ và FPR@95\%TPR $0{,}5978\pm0{,}1744$. Kết quả cho thấy kiến trúc dung hợp phức tạp không mặc nhiên tạo không gian biểu diễn tốt nhất cho mọi dạng dịch chuyển.
+Bảng~\ref{tab:rq4_ood_baselines} giữ cố định điểm Mahalanobis để so sánh ảnh hưởng của không gian biểu diễn. Các thứ hạng trong bảng chỉ là mô tả trung bình vì chưa có khoảng tin cậy ghép cặp và p-value cho phép so sánh này. BiomedCLIP không mẫu có AUROC-OOD quan sát được $0{,}6362$ trên nhóm ngoài không gian nhãn trong một lần đánh giá, còn XBone-Net có AUPR-Out quan sát được cao nhất trong nhóm các biểu diễn được huấn luyện trên kịch bản này. Trên BTXRD, phép nối đặc trưng có trung bình thuận lợi nhất ở cả ba độ đo. Do đó, kết quả chỉ cho thấy hiệu năng OOD phụ thuộc vào không gian biểu diễn, không khẳng định một cấu hình vượt trội thống kê trên mọi dạng dịch chuyển.
 
 \input{generated/chapter4_results/table_rq4_ood_baselines}
 

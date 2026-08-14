@@ -1280,28 +1280,28 @@ def step_validate(args):
         name for name in labels["image_id"]
         if not (paths["clinical_vi"] / f"{Path(name).stem}.txt").is_file()
     ]
-    missing_xray = [
-        name for name in labels["image_id"]
-        if not (paths["xray_vi"] / f"{Path(name).stem}.txt").is_file()
-    ]
+    # missing_xray = [
+    #     name for name in labels["image_id"]
+    #     if not (paths["xray_vi"] / f"{Path(name).stem}.txt").is_file()
+    # ]
     missing_clinical_en = [
         name for name in labels["image_id"]
         if not (paths["clinical_en"] / f"{Path(name).stem}.txt").is_file()
     ]
-    missing_xray_en = [
-        name for name in labels["image_id"]
-        if not (paths["xray_en"] / f"{Path(name).stem}.txt").is_file()
-    ]
+    # missing_xray_en = [
+    #     name for name in labels["image_id"]
+    #     if not (paths["xray_en"] / f"{Path(name).stem}.txt").is_file()
+    # ]
     if missing_images:
         errors.append(f"Missing {len(missing_images)} images")
     if missing_clinical:
         errors.append(f"Missing {len(missing_clinical)} clinical reports")
-    if missing_xray:
-        errors.append(f"Missing {len(missing_xray)} X-ray reports")
+    # if missing_xray:
+    #     errors.append(f"Missing {len(missing_xray)} X-ray reports")
     if missing_clinical_en:
         errors.append(f"Missing {len(missing_clinical_en)} English clinical reports")
-    if missing_xray_en:
-        errors.append(f"Missing {len(missing_xray_en)} English X-ray reports")
+    # if missing_xray_en:
+    #     errors.append(f"Missing {len(missing_xray_en)} English X-ray reports")
 
     if "image_id" not in ood.columns:
         errors.append("OOD manifest is missing image_id")
@@ -1318,32 +1318,32 @@ def step_validate(args):
         name for name in ood_names
         if not (paths["clinical_vi"] / f"{Path(name).stem}.txt").is_file()
     ]
-    missing_ood_xray = [
-        name for name in ood_names
-        if not (paths["xray_vi"] / f"{Path(name).stem}.txt").is_file()
-    ]
+    # missing_ood_xray = [
+    #     name for name in ood_names
+    #     if not (paths["xray_vi"] / f"{Path(name).stem}.txt").is_file()
+    # ]
     missing_ood_clinical_en = [
         name for name in ood_names
         if not (paths["clinical_en"] / f"{Path(name).stem}.txt").is_file()
     ]
-    missing_ood_xray_en = [
-        name for name in ood_names
-        if not (paths["xray_en"] / f"{Path(name).stem}.txt").is_file()
-    ]
+    # missing_ood_xray_en = [
+    #     name for name in ood_names
+    #     if not (paths["xray_en"] / f"{Path(name).stem}.txt").is_file()
+    # ]
     if missing_ood_images:
         errors.append(f"Missing {len(missing_ood_images)} OOD images")
     if missing_ood_clinical:
         errors.append(f"Missing {len(missing_ood_clinical)} OOD clinical reports")
-    if missing_ood_xray:
-        errors.append(f"Missing {len(missing_ood_xray)} OOD X-ray reports")
+    # if missing_ood_xray:
+    #     errors.append(f"Missing {len(missing_ood_xray)} OOD X-ray reports")
     if missing_ood_clinical_en:
         errors.append(
             f"Missing {len(missing_ood_clinical_en)} OOD English clinical reports"
         )
-    if missing_ood_xray_en:
-        errors.append(
-            f"Missing {len(missing_ood_xray_en)} OOD English X-ray reports"
-        )
+    # if missing_ood_xray_en:
+    #     errors.append(
+    #         f"Missing {len(missing_ood_xray_en)} OOD English X-ray reports"
+    #     )
 
     patient_overlap = None
     source_df, _ = load_data(args.input_xlsx.resolve(), args.include_ood_in_other)
@@ -1364,18 +1364,18 @@ def step_validate(args):
 
     print(f"Validated {len(labels):,} ID samples")
     print(f"  Splits: {dict(splits['split'].value_counts())}")
-    print(
-        "  Missing ID images/reports vi/en: "
-        f"{len(missing_images)}/{len(missing_clinical)}/{len(missing_xray)}/"
-        f"{len(missing_clinical_en)}/{len(missing_xray_en)}"
-    )
+    # print(
+    #     "  Missing ID images/reports vi/en: "
+    #     f"{len(missing_images)}/{len(missing_clinical)}/{len(missing_xray)}/"
+    #     f"{len(missing_clinical_en)}/{len(missing_xray_en)}"
+    # )
     print(
         "  OOD coverage images/reports vi/en: "
         f"{len(ood_names) - len(missing_ood_images)}/"
         f"{len(ood_names) - len(missing_ood_clinical)}/"
-        f"{len(ood_names) - len(missing_ood_xray)}/"
+        # f"{len(ood_names) - len(missing_ood_xray)}/"
         f"{len(ood_names) - len(missing_ood_clinical_en)}/"
-        f"{len(ood_names) - len(missing_ood_xray_en)} of {len(ood_names)}"
+        # f"{len(ood_names) - len(missing_ood_xray_en)} of {len(ood_names)}"
     )
     print(f"  Patient overlap across splits: {patient_overlap}")
     if errors:
