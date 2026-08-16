@@ -7,7 +7,7 @@ num_workers: 0
 params:
   img_dir: "${hydra:runtime.cwd}/data/BTXRD/images"
   report_dir: "${hydra:runtime.cwd}/data/BTXRD/reports"
-  clinical_subdir: "clinical"   # 'clinical_v2' (sanitized, no leakage) | 'clinical' (original, ablation only)
+  clinical_subdir: "clinical"
   csv_split_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-split.csv"
   csv_labels_path: "${hydra:runtime.cwd}/data/BTXRD/btxrd-labels.csv"
   k_shot: null

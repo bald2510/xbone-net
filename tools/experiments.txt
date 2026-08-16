@@ -1,76 +1,24 @@
-# Research-question experiment switches for tools/training.py.
-#
-# The selectors below are intentionally grouped by research question. Duplicate
-# configs (especially the canonical XBone-Net reference) are de-duplicated by
-# training.py before any subprocess is launched.
-#
-# Preview only:
-#   python tools/training.py --dry-run
-# List group membership:
-#   python tools/training.py --list-configs
+# Experiment switches for tools/training.py
+# Format: [enabled] or [disabled] followed by experiment config paths
 
 [enabled]
-
-# RQ1 — controlled modality comparison on BTXRD:
-# full multimodal, image-only, text-only, and cross-class shuffled text.
-+ group:rq1_btxrd_modality
-
-# RQ2 — component families. Existing leave-one-out config names and result
-# paths are unchanged; this group only reorganizes how they are selected.
-+ group:rq2_all_components
-
-# RQ3 — reuse the three existing CTCH adaptation levels: frozen BiomedCLIP
-# encoders, XBone-Net with LoRA, and XBone-Net with full fine-tuning. Historical
-# no-FT metrics are reused without checkpoints; LoRA/full-FT training summaries
-# are merged into the result table whenever available.
-+ group:rq3_lora_vs_full_ft
-
-# RQ4 — reuse existing XBone-Net, BioMedCLIP zero-shot, phase2-only, concat and
-# linear-head classification results. The post-hoc runner reuses existing OOD
-# archives for four trained models and only exports the deterministic zero-shot
-# BioMedCLIP representation once at seed 42.
-+ group:rq4_ood_representation_baselines
+ctch/proposed/ours_xbone_net
+btxrd/proposed/ours_xbone_net
+ctch/baselines/full_finetuned/fft_biomedclip
+ctch/baselines/full_finetuned/fft_clip
+ctch/baselines/full_finetuned/fft_densenet
+ctch/baselines/full_finetuned/fft_medclip
+ctch/baselines/full_finetuned/fft_pubmedclip
+ctch/baselines/full_finetuned/fft_resnet50
+btxrd/baselines/full_finetuned/fft_biomedclip
+btxrd/baselines/full_finetuned/fft_clip
+btxrd/baselines/full_finetuned/fft_densenet
+btxrd/baselines/full_finetuned/fft_medclip
+btxrd/baselines/full_finetuned/fft_pubmedclip
+btxrd/baselines/full_finetuned/fft_resnet50
 
 [disabled]
-
-# Keep unrelated baseline and few-shot suites out of the default queue. They
-# remain selectable explicitly with --ignore-experiment-file --group <name>.
-
-# =============================================================================
-# Commands for the current workspace state
-# =============================================================================
-#
-# All requested RQ4 Semantic-OOD/BTXRD results and all three RQ5
-# explainability summaries already exist. After an interrupted RQ4 aggregation,
-# refresh only the summaries; do not repeat feature export or OOD evaluation:
-#
-#    python benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd --aggregate-only
-#
-# Refresh classification/training-time and canonical OOD/explainability tables:
-#
-#    python tools/training.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
-#    python benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd
-#
-# =============================================================================
-# Full workflow when running from scratch
-# =============================================================================
-#
-# 1) Inspect the resolved classification queue:
-#    python tools/training.py --dry-run
-#
-# 2) Train/evaluate only missing RQ1-RQ4 classification configurations:
-#    python tools/training.py --seeds 42 123 456 --skip-completed
-#
-# 3) Generate classification, calibration, parameter, and training-time tables:
-#    python tools/training.py --table --group rq1_btxrd_modality rq2_all_components rq3_lora_vs_full_ft rq4_ood_representation_baselines
-#
-# 4) Run/resume RQ4 with only CTCH Semantic OOD and BTXRD. The runner reuses
-#    current archives and automatically restricts deterministic BioMedCLIP
-#    zero-shot to seed 42:
-#    python benchmark/ablation_ood_analysis.py --preset rq4 --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd
-#
-# 5) Run/resume full-test CTCH quantitative explainability for RQ5:
-#    python benchmark/ood_analysis.py --analyses explainability --seeds 42 123 456
-#
-# 6) Aggregate canonical OOD/explainability outputs without recomputation:
-#    python benchmark/ood_analysis.py --table --seeds 42 123 456 --ood-scenarios semantic_ood domain_ood_btxrd
+ctch/baselines/peft_finetuned/lora_biomedclip
+ctch/baselines/peft_finetuned/lora_pubmedclip
+btxrd/baselines/peft_finetuned/lora_biomedclip
+btxrd/baselines/peft_finetuned/lora_pubmedclip

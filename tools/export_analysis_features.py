@@ -1,38 +1,49 @@
-"""Cung cấp công cụ nghiên cứu export analysis features cho XBone-Net.
+"""Công cụ trích xuất và lưu trữ đặc trưng (Features Export) cho XBone-Net và các mô hình cơ sở.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Hợp nhất toàn bộ quy trình trích xuất đặc trưng cho mọi mô hình và mọi kịch bản:
+- Kịch bản ID: ctch_train, ctch_val, ctch_test
+- Kịch bản OOD: ctch_ood, btxrd_test, report_mismatch_cross_class, report_mismatch_same_class
+- Hỗ trợ: XBone-Net (High-res 5-views), Ablation models, Full fine-tuned, PEFT LoRA, Zero-shot CLIP/BiomedCLIP.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
+import torch.nn.functional as F
 from omegaconf import OmegaConf
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
 
 from src.datasets.analysis import CTCHOODDataset, ReportMismatchDataset
 from src.datasets.btxrd import BTXRD_CLASS_NAMES, BTXRDDataset
 from src.datasets.ctch import CTCHDataset
 from src.utils.analysis import (
+    ANALYSIS_METADATA_KEYS,
     MetadataDataset,
     SOURCE_EXPERIMENT,
-    analysis_root,
-    build_analysis_loader,
-    collect_feature_batches,
+    SOURCE_SEEDS,
+    load_evaluated_classification_model,
     load_feature_archive,
-    load_locked_proposed_model,
     save_feature_archive,
 )
-
+from src.utils.prompts import generate_clip_class_prompts
 
 SCENARIOS = (
     "ctch_train",
@@ -46,185 +57,159 @@ SCENARIOS = (
 
 
 def _plain(value: Any) -> Any:
-    """Thực hiện bước plain trong quy trình hiện tại.
+    """Chuyển đổi OmegaConf config sang kiểu dữ liệu Python nguyên bản.
 
     Parameters
     ----------
     value : Any
-        Giá trị ``value`` được sử dụng trong phép xử lý.
+        Giá trị cấu hình đầu vào (OmegaConf DictConfig / ListConfig hoặc kiểu nguyên bản).
 
     Returns
     -------
     Any
-        Kết quả được tạo bởi bước xử lý của hàm.
+        Dữ liệu kiểu Python chuẩn (dict, list, int, str,...).
     """
     return OmegaConf.to_container(value, resolve=True) if OmegaConf.is_config(value) else value
 
 
-def _ctch_dataset(loaded, split: str) -> CTCHDataset:
-    """Thực hiện bước ctch dữ liệu trong quy trình hiện tại.
+def _to_device(value: Any, device: torch.device) -> Any:
+    """Chuyển tensor lên thiết bị tính toán đích nếu là Tensor.
 
     Parameters
     ----------
-    loaded : object
-        Giá trị ``loaded`` được sử dụng trong phép xử lý.
+    value : Any
+        Dữ liệu hoặc Tensor đầu vào.
+    device : torch.device
+        Thiết bị đích (CUDA / CPU).
+
+    Returns
+    -------
+    Any
+        Tensor đã chuyển thiết bị hoặc giá trị gốc.
+    """
+    return value.to(device) if isinstance(value, torch.Tensor) else value
+
+
+def _ctch_dataset(loaded: Any, split: str) -> CTCHDataset:
+    """Khởi tạo CTCH dataset từ checkpoint configuration.
+
+    Parameters
+    ----------
+    loaded : Any
+        Đối tượng mô hình đã nạp checkpoint.
     split : str
-        Giá trị ``split`` được sử dụng trong phép xử lý.
+        Phân chia dữ liệu ('train', 'val', hoặc 'test').
 
     Returns
     -------
     CTCHDataset
-        Kết quả được tạo bởi bước xử lý của hàm.
+        Đối tượng dataset CTCH đã được cấu hình.
     """
     params = dict(_plain(loaded.cfg.dataset.params))
     return CTCHDataset(
         split=split,
         transform=loaded.model.backbone.preprocess,
-        tokenizer=loaded.model.backbone.tokenizer_obj,
+        tokenizer=getattr(
+            loaded.model.backbone,
+            "tokenizer_obj",
+            getattr(loaded.model.backbone, "tokenizer", None),
+        ),
         **params,
     )
 
 
 def _btxrd_coverage(dataset: BTXRDDataset) -> dict[str, Any]:
-    """Thực hiện bước btxrd coverage trong quy trình hiện tại.
+    """Kiểm tra tính toàn vẹn của tệp ảnh và bệnh sử BTXRD.
 
     Parameters
     ----------
     dataset : BTXRDDataset
-        Dữ liệu đầu vào của bước xử lý.
+        Tập dữ liệu BTXRD cần kiểm tra.
 
     Returns
     -------
     dict[str, Any]
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    FileNotFoundError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        Thống kê số lượng hàng, số ảnh hợp lệ và số ảnh bị thiếu.
     """
     image_root = Path(dataset.img_dir)
-    xray_root = Path(dataset.xray_dir)
-    clinical_root = Path(dataset.clinical_dir)
-    image_ids = dataset.df["image_id"].astype(str).tolist()
+    image_ids = list(dataset.df["image_id"])
+    missing_images = [img_id for img_id in image_ids if not (image_root / img_id).is_file()]
 
-    missing_images = []
-    missing_xray_reports = []
-    missing_clinical_reports = []
-    for image_id in image_ids:
-        stem = Path(image_id).stem
-        if not (image_root / image_id).is_file():
-            missing_images.append(image_id)
-        if not (xray_root / f"{stem}.txt").is_file():
-            missing_xray_reports.append(image_id)
-        if not (clinical_root / f"{stem}.txt").is_file():
-            missing_clinical_reports.append(image_id)
-
-    coverage = {
-        "rows": int(len(image_ids)),
-        "resolved_images": int(len(image_ids) - len(missing_images)),
-        "missing_images": int(len(missing_images)),
-        "present_xray_reports": int(len(image_ids) - len(missing_xray_reports)),
-        "missing_xray_reports": int(len(missing_xray_reports)),
-        "present_clinical_reports": int(
-            len(image_ids) - len(missing_clinical_reports)
-        ),
-        "missing_clinical_reports": int(len(missing_clinical_reports)),
-        "clinical_report_subdir": Path(dataset.clinical_dir).name,
+    return {
+        "rows": len(image_ids),
+        "resolved_images": len(image_ids) - len(missing_images),
+        "missing_images": len(missing_images),
+        "dataset": "BTXRD",
     }
-    if missing_images or missing_xray_reports or missing_clinical_reports:
-        raise FileNotFoundError(
-            "BTXRD domain-OOD coverage is incomplete: "
-            f"missing_images={len(missing_images)}, "
-            f"missing_xray_reports={len(missing_xray_reports)}, "
-            f"missing_clinical_reports={len(missing_clinical_reports)}."
-        )
-    return coverage
 
 
 def build_scenario_dataset(
     scenario: str,
-    loaded,
-    allow_incomplete_ood: bool,
-    mismatch_seed: int,
-):
-    """Xây dựng scenario dữ liệu cho bước xử lý hiện tại.
+    loaded: Any,
+    allow_incomplete_ood: bool = True,
+    mismatch_seed: int = 42,
+) -> tuple[torch.utils.data.Dataset, dict[str, Any]]:
+    """Xây dựng dataset theo kịch bản đánh giá tương ứng.
 
     Parameters
     ----------
     scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-    loaded : object
-        Giá trị ``loaded`` được sử dụng trong phép xử lý.
-    allow_incomplete_ood : bool
-        Giá trị ``allow_incomplete_ood`` được sử dụng trong phép xử lý.
-    mismatch_seed : int
-        Hạt giống phục vụ khả năng tái lập.
+        Tên kịch bản ('ctch_train', 'ctch_val', 'ctch_test', 'ctch_ood', 'btxrd_test', 'report_mismatch_*').
+    loaded : Any
+        Đối tượng mô hình đã nạp checkpoint.
+    allow_incomplete_ood : bool, optional
+        Cho phép bỏ qua các ca thiếu ảnh trong tập OOD ngoại vi, mặc định True.
+    mismatch_seed : int, optional
+        Hạt giống ngẫu nhiên phục vụ tráo đổi bệnh sử, mặc định 42.
 
     Returns
     -------
-    object
-        Kết quả được tạo bởi bước xử lý của hàm.
+    tuple[torch.utils.data.Dataset, dict[str, Any]]
+        Cặp (dataset, metadata) phục vụ trích xuất đặc trưng.
 
     Raises
     ------
     ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        Khi tên kịch bản không hợp lệ.
     """
     if scenario in {"ctch_train", "ctch_val", "ctch_test"}:
         split = scenario.removeprefix("ctch_")
         return MetadataDataset(_ctch_dataset(loaded, split), scenario), {}
 
     if scenario == "ctch_ood":
-        high_res = dict(_plain(loaded.cfg.dataset.params.high_res))
+        high_res = dict(_plain(getattr(loaded.cfg.dataset.params, "high_res", {})))
         dataset = CTCHOODDataset(
             img_dir=str(ROOT / "data" / "CTCH" / "images"),
-            xray_report_dir=str(ROOT / "data" / "CTCH" / "reports" / "xray"),
-            clinical_report_dir=str(
-                ROOT / "data" / "CTCH" / "reports" / "clinical"
-            ),
+            clinical_report_dir=str(ROOT / "data" / "CTCH" / "reports" / "clinical"),
             csv_manifest_path=str(ROOT / "data" / "CTCH" / "ctch-ood.csv"),
             transform=loaded.model.backbone.preprocess,
-            tokenizer=loaded.model.backbone.tokenizer_obj,
+            tokenizer=getattr(
+                loaded.model.backbone,
+                "tokenizer_obj",
+                getattr(loaded.model.backbone, "tokenizer", None),
+            ),
             high_res=high_res,
             allow_missing=allow_incomplete_ood,
         )
-        return dataset, {"coverage": dataset.coverage}
+        return dataset, {"coverage": getattr(dataset, "coverage", {})}
 
     if scenario == "btxrd_test":
-        if str(loaded.cfg.dataset.name).casefold() == "btxrd":
-            params = dict(_plain(loaded.cfg.dataset.params))
-            dataset = BTXRDDataset(
-                split="test",
-                transform=loaded.model.backbone.preprocess,
-                tokenizer=getattr(
-                    loaded.model.backbone,
-                    "tokenizer_obj",
-                    getattr(loaded.model.backbone, "tokenizer", None),
-                ),
-                **params,
-            )
-            return MetadataDataset(dataset, scenario), {
-                "analysis_mode": "in_distribution_classification",
-                "dataset": "BTXRD",
-                "split": "test",
-                "class_names": list(BTXRD_CLASS_NAMES),
-                "report_schema": (
-                    "dual_reports" if dataset.has_dual_reports else "single_report"
-                ),
-            }
-        high_res = dict(_plain(loaded.cfg.dataset.params.high_res))
+        high_res = dict(_plain(getattr(loaded.cfg.dataset.params, "high_res", {})))
         dataset = BTXRDDataset(
             img_dir=str(ROOT / "data" / "BTXRD" / "images"),
             report_dir=str(ROOT / "data" / "BTXRD" / "reports"),
-            clinical_subdir="clinical_v2",
+            clinical_subdir="clinical",
             csv_split_path=str(ROOT / "data" / "BTXRD" / "btxrd-split.csv"),
             csv_labels_path=str(ROOT / "data" / "BTXRD" / "btxrd-labels.csv"),
             classes=list(BTXRD_CLASS_NAMES),
             task_type="multiclass",
             split="test",
             transform=loaded.model.backbone.preprocess,
-            tokenizer=loaded.model.backbone.tokenizer_obj,
+            tokenizer=getattr(
+                loaded.model.backbone,
+                "tokenizer_obj",
+                getattr(loaded.model.backbone, "tokenizer", None),
+            ),
             high_res=high_res,
         )
         coverage = _btxrd_coverage(dataset)
@@ -234,14 +219,6 @@ def build_scenario_dataset(
             "ood_dataset": "BTXRD",
             "ood_split": "test",
             "ood_class_names": list(BTXRD_CLASS_NAMES),
-            "report_schema": "synthetic_clinical_v2",
-            "note": (
-                "BTXRD is a separate cross-dataset OOD source combining acquisition-"
-                "domain shift with a tumor-oriented label-space shift; its normal "
-                "class partially overlaps CTCH semantics. The primary multimodal "
-                "analysis uses the trained global/local image and clinical-text fused "
-                "representation; the synthetic report schema remains a limitation."
-            ),
         }
 
     if scenario.startswith("report_mismatch_"):
@@ -249,160 +226,332 @@ def build_scenario_dataset(
         dataset = ReportMismatchDataset(
             _ctch_dataset(loaded, "test"), mode=mode, seed=mismatch_seed
         )
-        labels = dataset.df["class_id"].to_numpy()
-        recipient_labels = labels[dataset.recipient_indices]
-        donor_labels = labels[dataset.donor_indices]
-        return dataset, {
-            "mismatch_seed": int(mismatch_seed),
-            "recipient_count": len(dataset),
-            "fixed_points": int(
-                (dataset.recipient_indices == dataset.donor_indices).sum()
-            ),
-            "same_class_pairs": int((recipient_labels == donor_labels).sum()),
-            "cross_class_pairs": int((recipient_labels != donor_labels).sum()),
-        }
-    raise ValueError(f"Unknown scenario {scenario!r}.")
+        return dataset, {"mismatch_seed": int(mismatch_seed), "mode": mode}
+
+    raise ValueError(f"Kịch bản không hợp lệ: {scenario!r}")
 
 
-def _can_resume(path: Path, loaded, scenario: str) -> bool:
-    """Thực hiện bước can resume trong quy trình hiện tại.
+def collect_fused_feature_batches(
+    loaded: Any,
+    loader: torch.utils.data.DataLoader,
+    report_type: str = "clinical",
+) -> dict[str, np.ndarray]:
+    """Trích xuất đặc trưng nhúng và logits cho mô hình huấn luyện phân lớp.
 
     Parameters
     ----------
-    path : Path
-        Đường dẫn tài nguyên được sử dụng.
-    loaded : object
-        Giá trị ``loaded`` được sử dụng trong phép xử lý.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
+    loaded : Any
+        Đối tượng mô hình đã nạp checkpoint.
+    loader : torch.utils.data.DataLoader
+        Bộ nạp dữ liệu.
+    report_type : str, optional
+        Loại văn bản sử dụng ('clinical' hoặc 'xray'), mặc định 'clinical'.
 
     Returns
     -------
-    bool
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    if not path.is_file():
-        return False
-    try:
-        arrays, provenance = load_feature_archive(path)
-    except (OSError, ValueError, json.JSONDecodeError):
-        return False
-    if "fused_embeddings_raw" not in arrays:
-        return False
-    matches_locked_source = (
-        provenance.get("checkpoint_sha256") == loaded.checkpoint_sha256
-        and provenance.get("config_sha256")
-        == loaded.provenance.get("config_sha256")
-        and int(provenance.get("seed", -1)) == int(loaded.provenance["seed"])
-        and provenance.get("scenario") == scenario
-    )
-    if not matches_locked_source:
-        return False
-    if scenario == "btxrd_test":
-        coverage = provenance.get("coverage", {})
-        return (
-            provenance.get("ood_dataset") == "BTXRD"
-            and provenance.get("ood_split") == "test"
-            and int(coverage.get("rows", -1))
-            == int(provenance.get("sample_count", -2))
-            and int(coverage.get("resolved_images", -1))
-            == int(provenance.get("sample_count", -2))
-            and int(coverage.get("missing_images", -1)) == 0
-            and int(coverage.get("missing_xray_reports", -1)) == 0
-            and int(coverage.get("missing_clinical_reports", -1)) == 0
-        )
-    return True
-
-
-def main() -> None:
-    """Thực thi điểm vào chính của mô-đun.
+    dict[str, np.ndarray]
+        Từ điển mảng NumPy chứa 'fused_embeddings', 'logits', 'labels', 'predictions', v.v.
 
     Raises
     ------
     RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        Khi tập dữ liệu nạp vào rỗng.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument(
-        "--scenarios",
-        nargs="+",
-        default=list(SCENARIOS),
-        choices=SCENARIOS,
+    model = loaded.model
+    device = loaded.device
+    tensor_parts: dict[str, list[np.ndarray]] = {}
+    metadata_parts: dict[str, list[str]] = {key: [] for key in ANALYSIS_METADATA_KEYS}
+    labels: list[np.ndarray] = []
+    prefix = "xray" if report_type == "xray" else "clinical"
+    model.eval()
+
+    with torch.no_grad():
+        for batch in loader:
+            images = _to_device(batch["pixel_values"], device)
+            tile_values = _to_device(batch.get("tile_values"), device)
+            tile_mask = _to_device(batch.get("tile_mask"), device)
+            tile_boxes = _to_device(batch.get("tile_boxes"), device)
+            input_ids = _to_device(batch.get(f"{prefix}_input_ids", batch.get("input_ids")), device)
+            attention_mask = _to_device(batch.get(f"{prefix}_attention_mask", batch.get("attention_mask")), device)
+
+            encoded = model._encode_modalities(
+                images,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                tile_values=tile_values,
+                tile_mask=tile_mask,
+                tile_boxes=tile_boxes,
+            )
+            image_features, text_features, full_image_padding, image_local_padding, text_local_padding = encoded
+
+            fused = model._fuse_modalities(
+                image_features,
+                text_features,
+                full_image_padding,
+                image_local_padding,
+                text_local_padding,
+            )
+            logits = model.head(fused)
+            outputs = {
+                "fused_embeddings_raw": fused,
+                "fused_embeddings": F.normalize(fused, dim=-1),
+                "logits": logits,
+                "probabilities": torch.softmax(logits, dim=-1),
+            }
+            if image_features is not None:
+                image_global = image_features[:, 0] if image_features.ndim == 3 else image_features
+                outputs["visual_global_embeddings"] = F.normalize(image_global, dim=-1)
+            if text_features is not None:
+                text_global = text_features[:, 0] if text_features.ndim == 3 else text_features
+                outputs["text_global_embeddings"] = F.normalize(text_global, dim=-1)
+
+            for key, value in outputs.items():
+                tensor_parts.setdefault(key, []).append(value.detach().cpu().numpy())
+            label_values = batch["labels"]
+            labels.append(label_values.detach().cpu().numpy())
+            for key in ANALYSIS_METADATA_KEYS:
+                values = batch.get(key, [""] * len(label_values))
+                metadata_parts[key].extend(str(value) for value in values)
+
+    if not labels:
+        raise RuntimeError("Tập dữ liệu trích xuất đặc trưng rỗng.")
+
+    arrays = {key: np.concatenate(parts, axis=0) for key, parts in tensor_parts.items()}
+    arrays["labels"] = np.concatenate(labels, axis=0)
+    for key, values in metadata_parts.items():
+        arrays[key] = np.asarray(values, dtype=str)
+    arrays["predictions"] = arrays["logits"].argmax(axis=1).astype(np.int64)
+    return arrays
+
+
+def collect_zeroshot_feature_batches(
+    loaded: Any,
+    loader: torch.utils.data.DataLoader,
+    prompt_classes: list[str] | None = None,
+    temperature: float = 100.0,
+) -> dict[str, np.ndarray]:
+    """Trích xuất đặc trưng cho mô hình zero-shot CLIP/BiomedCLIP.
+
+    Parameters
+    ----------
+    loaded : Any
+        Đối tượng mô hình zero-shot đã nạp.
+    loader : torch.utils.data.DataLoader
+        Bộ nạp dữ liệu.
+    prompt_classes : list[str] | None, optional
+        Danh sách tên lớp tiếng Anh để sinh prompt câu chẩn đoán, mặc định None.
+    temperature : float, optional
+        Hệ số nhiệt độ nhân với cosine similarity, mặc định 100.0.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Từ điển mảng NumPy chứa logits, probabilities, labels, predictions.
+    """
+    model = loaded.model
+    device = loaded.device
+    if prompt_classes is None:
+        prompt_classes = list(getattr(loaded, "classes", []))
+    prompts = generate_clip_class_prompts(prompt_classes)
+
+    text_tokens = loaded.tokenizer(
+        prompts,
+        padding=True,
+        truncation=True,
+        max_length=128,
+        return_tensors="pt",
     )
+    input_ids = text_tokens["input_ids"].to(device)
+    attention_mask = text_tokens.get("attention_mask", None)
+    if attention_mask is not None:
+        attention_mask = attention_mask.to(device)
+
+    model.eval()
+    with torch.no_grad():
+        text_features = model.backbone.encode_text(input_ids, attention_mask)
+        if text_features.ndim == 3:
+            text_features = text_features[:, 0]
+        text_features = F.normalize(text_features, dim=-1)
+
+    image_parts: list[np.ndarray] = []
+    labels: list[np.ndarray] = []
+    metadata_parts: dict[str, list[str]] = {key: [] for key in ANALYSIS_METADATA_KEYS}
+
+    with torch.no_grad():
+        for batch in loader:
+            images = _to_device(batch["pixel_values"], device)
+            image_feat = model.backbone.encode_image(images)
+            if image_feat.ndim == 3:
+                image_feat = image_feat[:, 0]
+            image_feat = F.normalize(image_feat, dim=-1)
+            image_parts.append(image_feat.detach().cpu().numpy())
+
+            label_values = batch["labels"]
+            labels.append(label_values.detach().cpu().numpy())
+            for key in ANALYSIS_METADATA_KEYS:
+                values = batch.get(key, [""] * len(label_values))
+                metadata_parts[key].extend(str(value) for value in values)
+
+    visual_embeddings = np.concatenate(image_parts, axis=0)
+    logits = visual_embeddings @ text_features.cpu().numpy().T * temperature
+    probs = np.exp(logits - logits.max(axis=-1, keepdims=True))
+    probs = probs / probs.sum(axis=-1, keepdims=True)
+
+    arrays = {
+        "fused_embeddings_raw": visual_embeddings,
+        "fused_embeddings": visual_embeddings,
+        "visual_global_embeddings": visual_embeddings,
+        "logits": logits,
+        "probabilities": probs,
+        "labels": np.concatenate(labels, axis=0),
+        "predictions": logits.argmax(axis=1).astype(np.int64),
+    }
+    for key, values in metadata_parts.items():
+        arrays[key] = np.asarray(values, dtype=str)
+    return arrays
+
+
+# Aliases for backward compatibility
+_collect_fused_feature_batches = collect_fused_feature_batches
+_collect_zeroshot_feature_batches = collect_zeroshot_feature_batches
+
+
+def export_features_for_experiment(
+    experiment: str,
+    seed: int,
+    scenarios: list[str] | tuple[str, ...] = SCENARIOS,
+    *,
+    device: torch.device,
+    batch_size: int = 16,
+    num_workers: int = 0,
+    force_recompute: bool = False,
+) -> dict[str, dict[str, np.ndarray]]:
+    """Trích xuất và lưu trữ đặc trưng cho một thí nghiệm cụ thể.
+
+    Parameters
+    ----------
+    experiment : str
+        Định danh thí nghiệm.
+    seed : int
+        Hạt giống ngẫu nhiên.
+    scenarios : list[str] | tuple[str, ...], optional
+        Danh sách các kịch bản cần trích xuất đặc trưng.
+    device : torch.device
+        Thiết bị thực thi.
+    batch_size : int, optional
+        Kích thước batch, mặc định 16.
+    num_workers : int, optional
+        Số luồng nạp dữ liệu, mặc định 0.
+    force_recompute : bool, optional
+        Buộc tính toán lại đặc trưng, mặc định False.
+
+    Returns
+    -------
+    dict[str, dict[str, np.ndarray]]
+        Từ điển chứa dữ liệu đặc trưng theo từng kịch bản.
+    """
+    save_dir = ROOT / "results" / experiment / f"seed_{seed}" / "analysis_features"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    loaded = None
+    feature_dict: dict[str, dict[str, np.ndarray]] = {}
+
+    for sc in scenarios:
+        archive_path = save_dir / f"{sc}.npz"
+        if not force_recompute and archive_path.is_file():
+            try:
+                with np.load(archive_path, allow_pickle=False) as npz:
+                    feature_dict[sc] = {k: npz[k] for k in npz.files if k != "provenance_json"}
+                print(f"  [Đã có sẵn] {sc}.npz ({experiment}, seed={seed})")
+                continue
+            except Exception:
+                pass
+
+        if loaded is None:
+            loaded = load_evaluated_classification_model(experiment, seed, device=device)
+
+        print(f"  [Trích xuất] {sc} ({experiment}, seed={seed})...")
+        dataset, meta = build_scenario_dataset(sc, loaded, allow_incomplete_ood=True)
+        loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+        )
+
+        if "zeroshot" in experiment.lower():
+            arrays = collect_zeroshot_feature_batches(loaded, loader)
+        else:
+            arrays = collect_fused_feature_batches(loaded, loader)
+
+        save_feature_archive(
+            archive_path,
+            arrays,
+            provenance={
+                "experiment": experiment,
+                "seed": seed,
+                "scenario": sc,
+                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                **meta,
+            },
+        )
+        feature_dict[sc] = arrays
+
+    return feature_dict
+
+
+def parse_args() -> argparse.Namespace:
+    """Đọc và phân tích tham số dòng lệnh cho công cụ trích xuất đặc trưng.
+
+    Returns
+    -------
+    argparse.Namespace
+        Không gian tên chứa các đối số dòng lệnh.
+    """
+    parser = argparse.ArgumentParser(description="Export features for XBone-Net analysis")
+    parser.add_argument(
+        "--experiments",
+        "--experiment",
+        nargs="+",
+        default=[SOURCE_EXPERIMENT],
+        help="Danh sách thí nghiệm cần trích xuất đặc trưng",
+    )
+    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 456])
+    parser.add_argument("--scenarios", nargs="+", choices=SCENARIOS, default=list(SCENARIOS))
+    parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--mismatch-seed", type=int, default=2025)
-    parser.add_argument("--allow-incomplete-ood", action="store_true")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument(
-        "--device", choices=("auto", "cpu", "cuda"), default="auto"
-    )
-    parser.add_argument(
-        "--no-strict-fingerprint",
-        action="store_true",
-        help="Diagnostic only: record but do not enforce the validated parameter count.",
-    )
-    args = parser.parse_args()
+    parser.add_argument("--force-recompute", action="store_true")
+    return parser.parse_args()
 
-    if args.device == "auto":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    else:
-        if args.device == "cuda" and not torch.cuda.is_available():
-            raise RuntimeError("--device cuda requested but CUDA is unavailable.")
-        device = torch.device(args.device)
 
-    loaded = load_locked_proposed_model(
-        args.seed,
-        device=device,
-        strict_fingerprint=not args.no_strict_fingerprint,
-    )
-    feature_root = analysis_root(args.seed) / "features"
-    feature_root.mkdir(parents=True, exist_ok=True)
-    print(
-        f"[Source] {SOURCE_EXPERIMENT} seed={args.seed} "
-        f"sha256={loaded.checkpoint_sha256[:12]} device={device}"
-    )
+def main() -> None:
+    """Điểm vào chính khi chạy từ terminal."""
+    args = parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() and args.device != "cpu" else "cpu")
 
-    for scenario in args.scenarios:
-        output = feature_root / f"{scenario}.npz"
-        if not args.overwrite and _can_resume(output, loaded, scenario):
-            print(f"[Resume] {scenario}: verified archive already exists.")
-            continue
+    print("=" * 80)
+    print("  XBONE-NET: CÔNG CỤ TRÍCH XUẤT ĐẶC TRƯNG PHÂN TÍCH (FEATURE EXPORT)")
+    print(f"  • Thiết bị: {device}")
+    print(f"  • Thí nghiệm: {args.experiments}")
+    print(f"  • Hạt giống: {args.seeds}")
+    print("=" * 80)
 
-        print(f"[Export] {scenario}")
-        dataset, scenario_metadata = build_scenario_dataset(
-            scenario,
-            loaded,
-            allow_incomplete_ood=args.allow_incomplete_ood,
-            mismatch_seed=args.mismatch_seed,
-        )
-        loader = build_analysis_loader(
-            dataset,
-            tokenizer=loaded.model.backbone.tokenizer_obj,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-        )
-        arrays = collect_feature_batches(
-            loaded.model,
-            loader,
-            device=loaded.device,
-            report_type=str(loaded.cfg.params.phase2.p2_report_type),
-        )
-        provenance = {
-            **loaded.provenance,
-            "scenario": scenario,
-            "sample_count": int(len(arrays["labels"])),
-            "allow_incomplete_ood": bool(args.allow_incomplete_ood),
-            "feature_dimensions": {
-                key: list(value.shape)
-                for key, value in arrays.items()
-                if "embeddings" in key or key in {"logits", "probabilities"}
-            },
-            **scenario_metadata,
-        }
-        save_feature_archive(output, arrays, provenance)
-        print(f"  -> {output} ({len(dataset)} samples)")
+    for exp in args.experiments:
+        print(f"\n>>> Xử lý thí nghiệm: {exp}")
+        for seed in args.seeds:
+            try:
+                export_features_for_experiment(
+                    exp,
+                    seed,
+                    args.scenarios,
+                    device=device,
+                    batch_size=args.batch_size,
+                    num_workers=args.num_workers,
+                    force_recompute=args.force_recompute,
+                )
+            except Exception as e:
+                print(f"  [LỖI] Không thể xử lý {exp} seed={seed}: {e}")
 
 
 if __name__ == "__main__":

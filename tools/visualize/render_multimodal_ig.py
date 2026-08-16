@@ -1,8 +1,11 @@
-"""Tạo bảng hoặc hình trực quan bằng công cụ render multimodal ig.
+"""Tạo hình trực quan Integrated Gradients (IG) đa phương thức chuẩn cho mọi mô hình.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Hỗ trợ mọi biến thể mô hình (proposed, xbone_letterbox, fft_biomedclip,...)
+và kết xuất theo đúng cấu trúc:
+- Header: Nhãn đúng (tiếng Việt) | Dự đoán (tiếng Việt) (%)
+- (a) Ảnh X-quang đầu vào
+- (b) Tích phân gradient trên ảnh toàn cục (Heatmap overlay turbo)
+- (d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử (toàn bộ từ đã giải mã và ghép nối)
 """
 
 from __future__ import annotations
@@ -12,24 +15,26 @@ import sys
 from pathlib import Path
 
 import matplotlib
-import numpy as np
-import pandas as pd
-from matplotlib.colors import LinearSegmentedColormap
-from PIL import Image
-
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
+from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
+import pandas as pd
+from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
 from src.utils.online_inference import (
     OnlineInferenceEngine,
     render_global_ig_overlay,
-    render_local_ig_overlay,
 )
 
 
@@ -40,26 +45,26 @@ TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
 
 
 def parse_args() -> argparse.Namespace:
-    """Phân tích các tham số dòng lệnh.
+    """Phân tích các tham số dòng lệnh phục vụ trực quan hóa Integrated Gradients.
 
     Returns
     -------
     argparse.Namespace
-        Kết quả được tạo bởi bước xử lý của hàm.
+        Không gian tên chứa các đối số dòng lệnh.
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--image-id", required=True)
+    parser = argparse.ArgumentParser(description="Render Multimodal Integrated Gradients")
+    parser.add_argument("--image-id", required=True, help="Tên file ảnh (ví dụ: 57_img-06186-00001.jpg)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="auto")
     parser.add_argument(
         "--experiment",
-        default="ctch/proposed/ours_xbone_net",
-        help="Evaluated proposed experiment to load.",
+        default="ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        help="Định danh thí nghiệm (ví dụ: ctch/ablation_study/architecture/preprocess/xbone_letterbox hoặc ctch/baselines/full_finetuned/fft_biomedclip)",
     )
     parser.add_argument(
         "--enable-ood",
         action="store_true",
-        help="Apply the experiment's locked OOD detector before class attribution.",
+        help="Áp dụng bộ phát hiện OOD trước khi giải thích lớp.",
     )
     parser.add_argument("--ood-method", default="mahalanobis_centroid")
     parser.add_argument("--ig-steps", type=int, default=24)
@@ -71,30 +76,30 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None:
-    """Vẽ token attribution cho bước xử lý hiện tại.
+def _draw_token_attribution(axis: plt.Axes, tokens: list[str], scores: np.ndarray) -> None:
+    """Vẽ khối token attribution dạng từ ngữ đóng khung theo màu tương ứng.
 
     Parameters
     ----------
-    axis : object
-        Giá trị ``axis`` được sử dụng trong phép xử lý.
+    axis : plt.Axes
+        Trục tọa độ Matplotlib để vẽ văn bản.
     tokens : list[str]
-        Giá trị ``tokens`` được sử dụng trong phép xử lý.
+        Danh sách các từ ngữ bệnh sử đã giải mã.
     scores : np.ndarray
-        Giá trị ``scores`` được sử dụng trong phép xử lý.
+        Mảng điểm đóng góp Integrated Gradients chuẩn hóa tương ứng từng từ.
     """
     axis.set_axis_off()
     axis.set_title(
         "(d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử\n"
         "Màu xanh biểu thị tác động phản đối; màu cam biểu thị tác động ủng hộ",
         loc="center",
-        fontsize=11,
+        fontsize=12,
     )
     figure = axis.figure
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
-    x, y = 0.01, 0.91
-    line_height = 0.095
+    x, y = 0.02, 0.88
+    line_height = 0.16
 
     for token, score in zip(tokens, scores):
         color = TEXT_ATTRIBUTION_CMAP(
@@ -105,7 +110,7 @@ def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None
             y,
             token,
             transform=axis.transAxes,
-            fontsize=11,
+            fontsize=12,
             va="top",
             ha="left",
             color="#111111",
@@ -119,16 +124,16 @@ def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None
         extent = label.get_window_extent(renderer=renderer).transformed(
             axis.transAxes.inverted()
         )
-        if extent.x1 > 0.99 and x > 0.01:
+        if extent.x1 > 0.98 and x > 0.02:
             label.remove()
-            x = 0.01
+            x = 0.02
             y -= line_height
             label = axis.text(
                 x,
                 y,
                 token,
                 transform=axis.transAxes,
-                fontsize=11,
+                fontsize=12,
                 va="top",
                 ha="left",
                 color="#111111",
@@ -145,97 +150,8 @@ def _draw_token_attribution(axis, tokens: list[str], scores: np.ndarray) -> None
         x = extent.x1 + 0.012
 
 
-def _draw_faithfulness_curve(
-    axis,
-    title: str,
-    values: dict,
-    *,
-    unit: str,
-) -> None:
-    """Vẽ faithfulness curve cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    axis : object
-        Giá trị ``axis`` được sử dụng trong phép xử lý.
-    title : str
-        Giá trị ``title`` được sử dụng trong phép xử lý.
-    values : dict
-        Giá trị ``values`` được sử dụng trong phép xử lý.
-    unit : str
-        Giá trị ``unit`` được sử dụng trong phép xử lý.
-    """
-    fractions = 100.0 * np.asarray(values["fractions"])
-    axis.plot(
-        fractions,
-        values["deletion"],
-        color="#1f77b4",
-        marker="o",
-        linewidth=2,
-        label=f"Deletion (AUC={values['deletion_auc']:.3f})",
-    )
-    axis.plot(
-        fractions,
-        values["insertion"],
-        color="#ff7f0e",
-        marker="s",
-        linewidth=2,
-        label=f"Insertion (AUC={values['insertion_auc']:.3f})",
-    )
-    axis.set_title(title, fontsize=11)
-    axis.set_xlabel(f"Tỷ lệ {unit} bị thay thế/khôi phục (%)")
-    axis.set_ylabel("Xác suất lớp dự đoán")
-    axis.set_xlim(0.0, 100.0)
-    axis.set_ylim(-0.02, 1.02)
-    axis.grid(alpha=0.25)
-    axis.legend(frameon=False, fontsize=9)
-
-
-def _draw_contribution(axis, values: dict[str, float]) -> None:
-    """Vẽ contribution cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    axis : object
-        Giá trị ``axis`` được sử dụng trong phép xử lý.
-    values : dict[str, float]
-        Giá trị ``values`` được sử dụng trong phép xử lý.
-    """
-    labels = ["Ảnh toàn cục", "Ảnh cục bộ", "Bệnh sử lâm sàng"]
-    keys = ["global_visual", "local_visual", "clinical_text"]
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-    drops = np.asarray([float(values[key]) for key in keys])
-    bars = axis.barh(labels, drops, color=colors, alpha=0.9)
-    axis.axvline(0.0, color="#333333", linewidth=1)
-    axis.set_title(
-        "(e) Mức giảm xác suất khi thay từng nguồn bằng mốc tham chiếu",
-        fontsize=11,
-    )
-    axis.set_xlabel(r"$\Delta p$ của lớp dự đoán")
-    axis.grid(axis="x", alpha=0.25)
-    axis.margins(x=0.12)
-    for bar, value in zip(bars, drops):
-        axis.annotate(
-            f"{value:+.3f}",
-            xy=(value, bar.get_y() + bar.get_height() / 2),
-            xytext=(7 if value >= 0 else -7, 0),
-            textcoords="offset points",
-            va="center",
-            ha="left" if value >= 0 else "right",
-            fontsize=9,
-        )
-
-
 def main() -> None:
-    """Thực thi điểm vào chính của mô-đun.
-
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
+    """Thực thi điểm vào chính của mô-đun."""
     args = parse_args()
     split = pd.read_csv(PROJECT_ROOT / "data" / "CTCH" / "ctch-split.csv")
     if args.image_id not in set(split["image_id"].astype(str)):
@@ -272,6 +188,7 @@ def main() -> None:
         compute_faithfulness=True,
         compute_global_ig=True,
     )
+
     if result.is_ood:
         raise RuntimeError(
             f"Sample is OOD: score={result.ood_score:.4f}, "
@@ -279,45 +196,31 @@ def main() -> None:
         )
     if result.text_tokens is None or result.text_ig_scores is None:
         raise RuntimeError("Text Integrated Gradients was not produced.")
-    if (
-        result.global_faithfulness is None
-        or result.contribution_drops is None
-        or result.global_ig_map is None
-        or result.visual_faithfulness is None
-        or result.text_faithfulness is None
-    ):
-        raise RuntimeError("The three-branch explanation was not produced.")
+    if result.global_ig_map is None:
+        raise RuntimeError("Global Integrated Gradients was not produced.")
 
     global_overlay = render_global_ig_overlay(image, result)
-    local_overlay = render_local_ig_overlay(image, result)
-    # Tạo thành phần trực quan cho kết quả phân tích.
-    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
-    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
-    figure = plt.figure(figsize=(12.5, 10.0), facecolor="white")
+
+    # Khởi tạo bố cục hình vẽ: Hàng trên 2 ảnh X-quang, Hàng dưới toàn bộ khối văn bản
+    figure = plt.figure(figsize=(12.5, 9.5), facecolor="white")
     grid = figure.add_gridspec(
         2,
         2,
-        wspace=0.08,
-        hspace=0.22,
-        top=0.88,
+        height_ratios=[1.25, 0.75],
+        wspace=0.10,
+        hspace=0.25,
+        top=0.90,
     )
     original_axis = figure.add_subplot(grid[0, 0])
     global_axis = figure.add_subplot(grid[0, 1])
-    local_axis = figure.add_subplot(grid[1, 0])
-    text_axis = figure.add_subplot(grid[1, 1])
-    text_position = text_axis.get_position()
-    text_axis.set_position(
-        [
-            text_position.x0,
-            text_position.y0 - 0.075,
-            text_position.width,
-            text_position.height,
-        ]
-    )
+    text_axis = figure.add_subplot(grid[1, :])
 
+    # (a) Ảnh X-quang đầu vào
     original_axis.imshow(image, cmap="gray")
     original_axis.set_title("(a) Ảnh X-quang đầu vào", fontsize=12)
     original_axis.axis("off")
+
+    # (b) Tích phân gradient trên ảnh toàn cục
     global_axis.imshow(global_overlay)
     global_axis.set_title(
         "(b) Tích phân gradient trên ảnh toàn cục\n"
@@ -325,19 +228,15 @@ def main() -> None:
         fontsize=12,
     )
     global_axis.axis("off")
-    local_axis.imshow(local_overlay)
-    local_axis.set_title(
-        "(c) Tích phân gradient trên các đơn vị biểu diễn ảnh cục bộ\n"
-        "Màu nóng biểu thị đóng góp lớn hơn",
-        fontsize=12,
-    )
-    local_axis.axis("off")
+
+    # (d) Tích phân gradient trên các từ ngữ bệnh sử
     _draw_token_attribution(
         text_axis,
         result.text_tokens,
         result.text_ig_scores,
     )
 
+    # Tra cứu tên nhãn tiếng Việt chuẩn
     predicted_label = str(result.predicted_label)
     if result.predicted_index is not None:
         class_names = (
@@ -349,22 +248,27 @@ def main() -> None:
         predicted_label = str(
             class_names.get(result.predicted_index, predicted_label)
         )
+
     ood_summary = ""
     if args.enable_ood:
         ood_summary = (
             f" | Điểm OOD: {result.ood_score:.2f} < "
             f"{result.ood_threshold:.2f}"
         )
+
     figure.suptitle(
         f"Nhãn đúng: {ground_truth} | Dự đoán: {predicted_label} "
         f"({100.0 * float(result.probabilities.max()):.1f}%){ood_summary}",
         fontsize=14,
         y=0.97,
     )
+
     args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(args.output, dpi=180, bbox_inches="tight")
     plt.close(figure)
+
+    # Lưu bảng điểm CSV
     score_table = pd.DataFrame(
         {
             "token": result.text_tokens,
@@ -374,29 +278,35 @@ def main() -> None:
     ).sort_values("absolute_ig_normalized", ascending=False)
     score_path = args.output.with_name(f"{args.output.stem}_text_ig.csv")
     score_table.to_csv(score_path, index=False, encoding="utf-8-sig")
-    faithfulness_path = args.output.with_name(
-        f"{args.output.stem}_faithfulness.csv"
-    )
-    pd.DataFrame(
-        {
+
+    if result.global_faithfulness is not None:
+        faithfulness_path = args.output.with_name(
+            f"{args.output.stem}_faithfulness.csv"
+        )
+        f_data = {
             "fraction": result.global_faithfulness["fractions"],
             "global_deletion": result.global_faithfulness["deletion"],
             "global_insertion": result.global_faithfulness["insertion"],
-            "local_deletion": result.visual_faithfulness["deletion"],
-            "local_insertion": result.visual_faithfulness["insertion"],
-            "text_deletion": result.text_faithfulness["deletion"],
-            "text_insertion": result.text_faithfulness["insertion"],
         }
-    ).to_csv(faithfulness_path, index=False, encoding="utf-8-sig")
-    contribution_path = args.output.with_name(
-        f"{args.output.stem}_contribution.csv"
-    )
-    pd.DataFrame(
-        {
-            "source": list(result.contribution_drops),
-            "probability_drop": list(result.contribution_drops.values()),
-        }
-    ).to_csv(contribution_path, index=False, encoding="utf-8-sig")
+        if result.visual_faithfulness is not None:
+            f_data["local_deletion"] = result.visual_faithfulness["deletion"]
+            f_data["local_insertion"] = result.visual_faithfulness["insertion"]
+        if result.text_faithfulness is not None:
+            f_data["text_deletion"] = result.text_faithfulness["deletion"]
+            f_data["text_insertion"] = result.text_faithfulness["insertion"]
+        pd.DataFrame(f_data).to_csv(faithfulness_path, index=False, encoding="utf-8-sig")
+
+    if result.contribution_drops is not None:
+        contribution_path = args.output.with_name(
+            f"{args.output.stem}_contribution.csv"
+        )
+        pd.DataFrame(
+            {
+                "source": list(result.contribution_drops),
+                "probability_drop": list(result.contribution_drops.values()),
+            }
+        ).to_csv(contribution_path, index=False, encoding="utf-8-sig")
+
     top_text = np.argsort(np.abs(result.text_ig_scores))[::-1][:10]
     print(
         "Top |text IG|:",
@@ -405,25 +315,8 @@ def main() -> None:
             for index in top_text
         ),
     )
-    print(args.output)
-    print(score_path)
-    print(
-        "Global visual AUC:",
-        f"deletion={result.global_faithfulness['deletion_auc']:.4f},",
-        f"insertion={result.global_faithfulness['insertion_auc']:.4f}",
-    )
-    print(
-        "Local visual AUC:",
-        f"deletion={result.visual_faithfulness['deletion_auc']:.4f},",
-        f"insertion={result.visual_faithfulness['insertion_auc']:.4f}",
-    )
-    print(
-        "Text AUC:",
-        f"deletion={result.text_faithfulness['deletion_auc']:.4f},",
-        f"insertion={result.text_faithfulness['insertion_auc']:.4f}",
-    )
-    print(faithfulness_path)
-    print(contribution_path)
+    print(f"Ảnh xuất ra: {args.output}")
+    print(f"Bảng điểm: {score_path}")
 
 
 if __name__ == "__main__":

@@ -428,7 +428,11 @@ def load_locked_proposed_model(
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     seed = int(seed)
-    from src.models.builder import build_model, setup_phase2_modules
+    from src.models.builder import (
+        build_model,
+        merge_peft_adapters,
+        setup_phase2_modules,
+    )
 
     seed_everything(seed)
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -507,6 +511,7 @@ def load_locked_proposed_model(
         )
 
     model.eval()
+    merge_peft_adapters(model, verbose=False)
     resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
     provenance = {
         "source_experiment": SOURCE_EXPERIMENT,
@@ -1106,11 +1111,13 @@ def load_evaluated_ctch_model(
             seed,
             device=device,
         )
-    if not experiment_name.startswith("ctch/ablation_study/"):
+    if not (
+        experiment_name.startswith("ctch/ablation_study/")
+        or experiment_name.startswith("ctch/baselines/")
+        or experiment_name.startswith("ctch/proposed/")
+    ):
         raise ValueError(
-            "Representation analysis accepts only the canonical CTCH model, "
-            "the BioMedCLIP zero-shot baseline, or experiments below "
-            "'ctch/ablation_study/'."
+            f"Unsupported CTCH experiment name: {experiment_name!r}."
         )
 
     metrics_path = (

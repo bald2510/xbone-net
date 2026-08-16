@@ -2814,16 +2814,40 @@ def plot_full_shot_comparison(
     _require_columns(frame, required)
     model_specs = (
         (
-            "lora_biomedclip",
-            "Baselines / PEFT",
-            "LoRA-BiomedCLIP",
-            REPORT_PALETTE["orange"],
+            "fft_resnet50",
+            "Baselines / Full fine-tuning",
+            "ResNet-50",
+            "#8c564b",
         ),
         (
-            "lora_pubmedclip",
-            "Baselines / PEFT",
-            "LoRA-PubMedCLIP",
+            "fft_densenet",
+            "Baselines / Full fine-tuning",
+            "DenseNet-121",
+            "#e377c2",
+        ),
+        (
+            "fft_medclip",
+            "Baselines / Full fine-tuning",
+            "MedCLIP",
+            "#bcbd22",
+        ),
+        (
+            "fft_clip",
+            "Baselines / Full fine-tuning",
+            "CLIP",
+            REPORT_PALETTE["purple"],
+        ),
+        (
+            "fft_pubmedclip",
+            "Baselines / Full fine-tuning",
+            "PubMedCLIP",
             REPORT_PALETTE["green"],
+        ),
+        (
+            "fft_biomedclip",
+            "Baselines / Full fine-tuning",
+            "BiomedCLIP",
+            REPORT_PALETTE["orange"],
         ),
         (
             "ours_xbone_net",
@@ -2844,12 +2868,12 @@ def plot_full_shot_comparison(
     figure, axes = plt.subplots(
         1,
         len(datasets),
-        figsize=(13.2, 5.2),
+        figsize=(16.5, 5.8),
         sharey=True,
         squeeze=False,
     )
     positions = np.arange(len(metric_specs), dtype=float)
-    width = 0.25
+    width = 0.11
     for dataset_index, dataset in enumerate(datasets):
         axis = axes[0, dataset_index]
         label_rows: list[
@@ -2878,47 +2902,24 @@ def plot_full_shot_comparison(
             errors = np.asarray(
                 [float(row[std_column]) for _, std_column, _ in metric_specs]
             )
-            offsets = positions + (model_index - 1) * width
+            offsets = positions + (model_index - 3) * width
             bars = axis.bar(
                 offsets,
                 values,
                 width=width,
                 yerr=errors,
-                capsize=3,
+                capsize=2,
                 color=color,
                 edgecolor="#333333",
-                linewidth=1.0,
+                linewidth=0.8,
                 error_kw={
                     "ecolor": "#333333",
-                    "elinewidth": 1.2,
-                    "capthick": 1.2,
+                    "elinewidth": 1.0,
+                    "capthick": 1.0,
                 },
                 label=model_label,
             )
             label_rows.append((bars, values, errors, config))
-        for metric_index in range(len(metric_specs)):
-            group_top = max(
-                values[metric_index] + errors[metric_index]
-                for _, values, errors, _ in label_rows
-            )
-            for model_index, (
-                bars,
-                values,
-                _,
-                config,
-            ) in enumerate(label_rows):
-                bar = bars[metric_index]
-                axis.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    group_top + 0.010 + model_index * 0.032,
-                    f"{values[metric_index]:.3f}",
-                    ha="center",
-                    va="bottom",
-                    fontsize=7.5,
-                    fontweight="bold"
-                    if config == "ours_xbone_net"
-                    else "normal",
-                )
         panel_title = resolved_dataset_titles.get(
             str(dataset),
             title_template.format(dataset=dataset),
@@ -2927,7 +2928,7 @@ def plot_full_shot_comparison(
         axis.set_xticks(
             positions,
             labels=[label for _, _, label in metric_specs],
-            rotation=20,
+            rotation=15,
             ha="right",
         )
         axis.set_ylim(0.0, 1.07)
@@ -2947,8 +2948,8 @@ def plot_full_shot_comparison(
         handles,
         labels,
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.02),
-        ncol=3,
+        bbox_to_anchor=(0.5, -0.04),
+        ncol=7,
         frameon=False,
     )
     if figure_title:

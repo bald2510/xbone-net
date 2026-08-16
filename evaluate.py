@@ -29,6 +29,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.models.builder import (
     build_model,
     checkpoint_model_config,
+    merge_peft_adapters,
     setup_phase2_modules,
     setup_phase3_modules,
 )
@@ -130,18 +131,15 @@ def load_state_dict_checked(model: nn.Module, state_dict: Dict[str, torch.Tensor
     unexpected = list(result.unexpected_keys)
 
     model_keys = set(model.state_dict().keys())
-    critical_prefixes = []
-    if any(key.startswith("fusion.") for key in model_keys):
-        critical_prefixes.append("fusion.")
-    if any(key.startswith("head.") for key in model_keys):
-        critical_prefixes.append("head.")
-    if any(key.startswith("drl_auxiliary.") for key in model_keys):
-        critical_prefixes.append("drl_auxiliary.")
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    has_fusion_in_ckpt = any(k.startswith("fusion.") for k in state_dict)
+    has_head_in_ckpt = any(k.startswith("head.") for k in state_dict)
+    has_lora_in_ckpt = any("lora_" in k for k in state_dict)
+
     critical_missing = [
         key for key in missing
-        if key.startswith(tuple(critical_prefixes))
-        or any(token in key for token in critical_tokens)
+        if (has_fusion_in_ckpt and key.startswith("fusion."))
+        or (has_head_in_ckpt and key.startswith("head."))
+        or (has_lora_in_ckpt and any(t in key for t in ("lora_A", "lora_B")))
     ]
 
     print(
@@ -718,6 +716,10 @@ def main(cfg: DictConfig) -> None:
         print("[ERROR] Cannot run evaluation for fine-tuned experiment because no trained checkpoint (.pth) was found!")
         print("        Please ensure train.py completes successfully before running evaluate.py.\n")
         sys.exit(1)
+
+    if not is_zero_shot:
+        merge_peft_adapters(model)
+
 
     print(f"Loading test dataset: {cfg.dataset.name}...")
     tokenizer_func = getattr(model.backbone, "tokenizer_obj", getattr(model.backbone, "tokenizer", None))

@@ -1,0 +1,26 @@
+# @package _global_
+# Thí nghiệm dùng ảnh letterbox, LoRA và cross-attention hai chiều, đồng thời
+# thay đầu empirical-centroid bằng đầu phân loại học được. Fusion MLP tạo đặc
+# trưng 512 chiều và lớp tuyến tính cuối ánh xạ trực tiếp đặc trưng này thành
+# logits của các lớp; toàn bộ tổ hợp được tối ưu bằng cross-entropy.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/preprocess/xbone_letterbox_mlp_classifier
+
+params:
+  # Tái sử dụng Phase 1 đã huấn luyện với đúng preprocessing letterbox để chỉ
+  # phải huấn luyện lại cơ chế dung hợp và đầu phân loại trong Phase 2.
+  run_phase1: false
+  phase1:
+    enabled: false
+    checkpoint_path: checkpoints/ctch/ablation_study/architecture/preprocess/xbone_letterbox/seed_${seed}/best_phase1.pth
+
+  phase2:
+    enabled: true
+    init_from_phase1_checkpoint: true
+    init_from_phase1_merged: false
+    classifier_type: linear
+    loss_type: ce

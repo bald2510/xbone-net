@@ -142,9 +142,7 @@ RESEARCH_GROUPS = OrderedDict({
     "rq2_visual_encoding": _registered_group(
         "ctch/proposed/ours_xbone_net",
         "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
-        "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling",
-        "ctch/ablation_study/architecture/preprocess/xbone_reduced_local_tokens",
-        "ctch/ablation_study/architecture/preprocess/xbone_letterbox",
+        "ctch/ablation_study/architecture/preprocess/xbone_letterbox_mlp_classifier",
     ),
     "rq2_training_strategy": _registered_group(
         "ctch/proposed/ours_xbone_net",
@@ -305,23 +303,30 @@ def get_experiments(groups: list[str] | None) -> list[str]:
 
 
 def load_experiment_switches(path: Path) -> tuple[list[str], list[str]]:
-    """Tải experiment switches cho bước xử lý hiện tại.
+    """Tải danh sách lựa chọn thí nghiệm từ tệp switch file hoặc cấu hình YAML.
 
     Parameters
     ----------
     path : Path
-        Đường dẫn tài nguyên được sử dụng.
+        Đường dẫn tới tệp chuyển mạch hoặc tệp cấu hình YAML.
 
     Returns
     -------
     tuple[list[str], list[str]]
-        Kết quả được tạo bởi bước xử lý của hàm.
+        Cặp danh sách (enabled, disabled) chứa các tên thí nghiệm được bật và bị tắt.
 
     Raises
     ------
     ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        Khi định dạng tệp chuyển mạch không hợp lệ.
     """
+    if path.suffix in (".yaml", ".yml"):
+        try:
+            rel = path.resolve().relative_to(CONFIG_ROOT.resolve()).with_suffix("").as_posix()
+        except ValueError:
+            rel = path.stem
+        return [rel], []
+
     enabled: list[str] = []
     disabled: list[str] = []
     section: list[str] | None = None
@@ -1163,7 +1168,12 @@ def main():
         default=None,
         help="Keep effective batch size fixed on memory-constrained GPUs.",
     )
+    parser.add_argument("configs", nargs="*", default=[],
+                        help="Optional direct experiment config names or YAML paths.")
     args = parser.parse_args()
+    if args.configs:
+        args.group = (args.group or []) + args.configs
+        args.ignore_experiment_file = True
     if args.batch_size is not None and args.batch_size < 1:
         parser.error("--batch-size must be positive")
     if (

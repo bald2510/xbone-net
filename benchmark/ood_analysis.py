@@ -1,851 +1,613 @@
-"""Thực hiện benchmark ood analysis cho quy trình nghiên cứu XBone-Net.
+"""Chương trình đánh giá Out-of-Distribution (OOD) toàn diện cho XBone-Net và các mô hình cơ sở / ablation.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Hợp nhất toàn bộ quy trình OOD analysis:
+1. Dựa hoàn toàn trên các thuật toán và bộ phát hiện chuẩn từ `src/utils/ood.py`.
+2. Nhận trực tiếp một hoặc nhiều thí nghiệm (--experiments) để đánh giá.
+3. Đánh giá đa kịch bản (Semantic OOD, Domain OOD BTXRD, Report mismatch).
+4. Đa phương pháp phát hiện (Cosine centroids, Mahalanobis centroid, kNN, Entropy).
+5. Tự động trích xuất / tái sử dụng bộ đặc trưng (features cache) an toàn.
+6. Tính toán thống kê Mean ± Std qua các hạt giống (seeds) kèm khoảng tin cậy Bootstrap 95% CI.
+7. Xuất bảng tổng hợp kết quả (Console, JSON, CSV, Markdown).
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
-import subprocess
 import sys
 from collections import OrderedDict
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from omegaconf import OmegaConf
+import pandas as pd
+import torch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
 
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
     SOURCE_SEEDS,
-    analysis_root,
-    locked_checkpoint_path,
-    sha256_file,
+    load_evaluated_classification_model,
+    save_feature_archive,
 )
 from src.utils.ood import (
-    COSINE_CENTROIDS_SCORE_DEFINITION,
-    MAHALANOBIS_SCORE_DEFINITION,
-    OOD_PROTOCOL_VERSION,
+    OODDetector,
+    bootstrap_ood_metrics,
+    calibrate_ood_threshold,
+    evaluate_ood,
+)
+from tools.export_analysis_features import (
+    _collect_fused_feature_batches,
+    _collect_zeroshot_feature_batches,
+    build_scenario_dataset,
 )
 
 
-OOD_CONFIG = ROOT / "configs" / "analysis" / "ctch" / "ood.yaml"
-EXPLAIN_CONFIG = ROOT / "configs" / "analysis" / "ctch" / "explainability.yaml"
+SCENARIO_ARCHIVES = OrderedDict(
+    [
+        ("semantic_ood", "ctch_ood"),
+        ("domain_ood_btxrd", "btxrd_test"),
+        ("report_mismatch_cross_class", "report_mismatch_cross_class"),
+        ("report_mismatch_same_class", "report_mismatch_same_class"),
+    ]
+)
 
-LOCKED_REPRESENTATION_SPACES = [
-    "fused_embeddings",
-    "visual_global_embeddings",
-    "visual_local_summary_embeddings",
-    "text_global_embeddings",
-    "image_from_text_embeddings",
-    "text_from_image_embeddings",
-]
-
-OOD_ARCHIVES = {
-    "semantic_ood": "ctch_ood",
-    "domain_ood_btxrd": "btxrd_test",
-    "report_mismatch_cross_class": "report_mismatch_cross_class",
-    "report_mismatch_same_class": "report_mismatch_same_class",
-}
-CORE_OOD_SCENARIOS = ("semantic_ood", "domain_ood_btxrd")
-
-# Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
-# Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
-# Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
-# Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
-OOD_FEATURE_KEYS = {
-    "semantic_ood": "fused_embeddings",
-    "domain_ood_btxrd": "fused_embeddings",
-    "report_mismatch_cross_class": "fused_embeddings",
-    "report_mismatch_same_class": "fused_embeddings",
-}
-OOD_SCORE_METHODS = [
-    "cosine_centroids",
-    "mahalanobis_centroid",
-    "knn",
-    "entropy",
-]
-OOD_METHOD_FEATURE_KEYS = {
-    "cosine_centroids": "fused_embeddings",
-    "mahalanobis_centroid": "fused_embeddings_raw",
-    "knn": "fused_embeddings",
-    "entropy": "logits",
+SCENARIO_LABELS = {
+    "semantic_ood": "CTCH Semantic OOD (44 ca ngoại vi)",
+    "domain_ood_btxrd": "BTXRD Dataset (Dịch chuyển miền)",
+    "report_mismatch_cross_class": "Mâu thuẫn bệnh sử chéo lớp",
+    "report_mismatch_same_class": "Mâu thuẫn bệnh sử cùng lớp",
 }
 
+ALL_METHODS = ["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"]
+DEFAULT_METHODS = ["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"]
 
-def _validate_locked_configs(ood_cfg, explain_cfg) -> None:
-    """Kiểm tra tính hợp lệ của locked configs cho bước xử lý hiện tại.
 
-    Parameters
-    ----------
-    ood_cfg : object
-        Cấu hình điều khiển bước xử lý.
-    explain_cfg : object
-        Cấu hình điều khiển bước xử lý.
+def parse_args() -> argparse.Namespace:
+    """Phân tích các tham số dòng lệnh phục vụ đánh giá OOD.
 
-    Raises
-    ------
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    Returns
+    -------
+    argparse.Namespace
+        Không gian tên chứa các đối số dòng lệnh đã phân tích.
     """
-    expected_ood_splits = {
-        "fit_split": "ctch_train",
-        "calibration_split": "ctch_val",
-        "id_test_split": "ctch_test",
-    }
-    for key, expected in expected_ood_splits.items():
-        if str(ood_cfg.get(key)) != expected:
-            raise ValueError(f"{key} is locked to {expected!r}.")
-
-    if list(ood_cfg.methods) != OOD_SCORE_METHODS:
-        raise ValueError(
-            f"OOD methods must be exactly {OOD_SCORE_METHODS}, "
-            f"got {list(ood_cfg.methods)}."
-        )
-    if dict(ood_cfg.method_feature_keys) != OOD_METHOD_FEATURE_KEYS:
-        raise ValueError(
-            "OOD method_feature_keys must be exactly "
-            f"{OOD_METHOD_FEATURE_KEYS}, got {dict(ood_cfg.method_feature_keys)}."
-        )
-    expected_mahalanobis = {
-        "input_feature": "fused_embeddings_raw",
-        "formulation": "classical_distance",
-        "class_centers": "empirical_train_means",
-        "covariance": "shared_ledoit_wolf",
-        "class_reduction": "minimum",
-        "detector_l2_normalization": False,
-    }
-    for key, expected in expected_mahalanobis.items():
-        actual = ood_cfg.mahalanobis_centroid.get(key)
-        if actual != expected:
-            raise ValueError(
-                f"Unsupported Mahalanobis setting {key}={actual!r}; "
-                f"expected {expected!r}."
-            )
-    for scenario, archive in OOD_ARCHIVES.items():
-        if str(ood_cfg.scenarios[scenario].archive) != archive:
-            raise ValueError(
-                f"OOD scenario {scenario!r} must use archive {archive!r}."
-            )
-        configured_feature = str(ood_cfg.scenarios[scenario].feature_key)
-        expected_feature = OOD_FEATURE_KEYS[scenario]
-        if configured_feature != expected_feature:
-            raise ValueError(
-                f"OOD scenario {scenario!r} must use feature_key "
-                f"{expected_feature!r}, got {configured_feature!r}."
-            )
-        if list(ood_cfg.scenarios[scenario].primary_methods) != OOD_SCORE_METHODS:
-            raise ValueError(
-                f"OOD scenario {scenario!r} must use exactly "
-                f"{OOD_SCORE_METHODS}."
-            )
-
-    expected_explain = {
-        "target": "predicted_class",
-        "sampling": "all_test_samples",
-        "integrated_gradients_baseline": (
-            "global_image_embedding_repeated_as_local_tokens"
-        ),
-        "clinical_token_intervention_baseline": (
-            "padding_embedding_with_special_tokens_preserved"
-        ),
-    }
-    for key, expected in expected_explain.items():
-        if str(explain_cfg.get(key)) != expected:
-            raise ValueError(
-                f"Unsupported explainability setting {key}={explain_cfg.get(key)!r}; "
-                f"the locked implementation requires {expected!r}."
-            )
-    if list(explain_cfg.representation_spaces) != LOCKED_REPRESENTATION_SPACES:
-        raise ValueError(
-            "representation_spaces must match the representations exported by "
-            "the locked explainability implementation."
-        )
+    parser = argparse.ArgumentParser(description="Unified OOD Analysis Benchmark")
+    parser.add_argument(
+        "--experiments",
+        "--experiment",
+        nargs="+",
+        default=[SOURCE_EXPERIMENT],
+        help="Một hoặc nhiều định danh thí nghiệm cần đánh giá (ví dụ: ctch/proposed/ours_xbone_net ctch/ablation_study/architecture/preprocess/xbone_letterbox)",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[42, 123, 456],
+        help="Danh sách hạt giống ngẫu nhiên (mặc định: 42 123 456)",
+    )
+    parser.add_argument(
+        "--scenarios",
+        nargs="+",
+        choices=list(SCENARIO_ARCHIVES.keys()),
+        default=["semantic_ood", "domain_ood_btxrd"],
+        help="Các kịch bản OOD cần đánh giá",
+    )
+    parser.add_argument(
+        "--methods",
+        nargs="+",
+        choices=ALL_METHODS,
+        default=DEFAULT_METHODS,
+        help="Các phương pháp phát hiện OOD cần đánh giá",
+    )
+    parser.add_argument("--knn-k", type=int, default=5, help="Tham số k lân cận cho kNN OOD")
+    parser.add_argument("--target-fpr", type=float, default=0.05, help="Mức FPR mục tiêu trên tập validation (mặc định 0.05 cho 95%% TPR)")
+    parser.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--force-recompute", action="store_true", help="Buộc trích xuất lại đặc trưng kể cả khi đã có cache")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=ROOT / "results" / "summary" / "ood",
+        help="Thư mục lưu báo cáo JSON và bảng tổng hợp",
+    )
+    return parser.parse_args()
 
 
-def _run(command: list[str], tag: str) -> None:
-    """Thực hiện kết quả cho bước xử lý hiện tại.
+def _load_features(archive_path: Path) -> dict[str, np.ndarray]:
+    """Nạp file đặc trưng .npz an toàn từ bộ nhớ đĩa.
 
     Parameters
     ----------
-    command : list[str]
-        Giá trị ``command`` được sử dụng trong phép xử lý.
-    tag : str
-        Giá trị ``tag`` được sử dụng trong phép xử lý.
+    archive_path : Path
+        Đường dẫn tới tệp nén đặc trưng .npz.
 
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Từ điển chứa các mảng đặc trưng đã trích xuất.
     """
-    print(f"\n[{tag}] {' '.join(command)}")
-    environment = dict(os.environ)
-    environment.setdefault("PYTHONUTF8", "1")
-    result = subprocess.run(command, cwd=ROOT, env=environment)
-    if result.returncode != 0:
-        raise RuntimeError(f"{tag} failed with exit code {result.returncode}.")
+    with np.load(archive_path, allow_pickle=False) as npz:
+        return {k: npz[k] for k in npz.files if k != "provenance_json"}
 
 
-def _verified_json(path: Path, seed: int, expected_type: str) -> dict[str, Any]:
-    """Thực hiện bước verified json trong quy trình hiện tại.
+def extract_or_load_features(
+    experiment: str,
+    seed: int,
+    scenarios: list[str],
+    *,
+    device: torch.device,
+    batch_size: int = 16,
+    num_workers: int = 0,
+    force_recompute: bool = False,
+) -> dict[str, dict[str, np.ndarray]]:
+    """Tải checkpoint và trích xuất hoặc nạp đặc trưng cache cho các tập ID và OOD.
 
     Parameters
     ----------
-    path : Path
-        Đường dẫn tài nguyên được sử dụng.
+    experiment : str
+        Định danh thí nghiệm (ví dụ: ctch/proposed/ours_xbone_net).
     seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    expected_type : str
-        Phương pháp hoặc chế độ xử lý được chọn.
+        Hạt giống ngẫu nhiên của mô hình.
+    scenarios : list[str]
+        Danh sách các kịch bản cần trích xuất đặc trưng.
+    device : torch.device
+        Thiết bị tính toán (CUDA / CPU).
+    batch_size : int, optional
+        Kích thước batch khi trích xuất, mặc định 16.
+    num_workers : int, optional
+        Số luồng nạp dữ liệu, mặc định 0.
+    force_recompute : bool, optional
+        Buộc tính toán lại đặc trưng kể cả khi đã tồn tại file cache, mặc định False.
 
     Returns
     -------
-    dict[str, Any]
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    FileNotFoundError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+    dict[str, dict[str, np.ndarray]]
+        Từ điển ánh xạ tên kịch bản sang các mảng đặc trưng tương ứng.
     """
-    if not path.is_file():
-        raise FileNotFoundError(f"Expected analysis output was not created: {path}")
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("source_experiment") != SOURCE_EXPERIMENT:
-        raise ValueError(f"Unexpected source experiment in {path}")
-    if int(payload.get("seed", -1)) != int(seed):
-        raise ValueError(f"Unexpected seed in {path}")
-    if payload.get("type") != expected_type:
-        raise ValueError(f"Unexpected result type in {path}")
-    return payload
+    feature_dir = ROOT / "results" / experiment / f"seed_{seed}" / "analysis_features"
+    required_archives = {"ctch_train", "ctch_val", "ctch_test"}
+    for sc in scenarios:
+        if sc in SCENARIO_ARCHIVES:
+            required_archives.add(SCENARIO_ARCHIVES[sc])
+
+    feature_dict: dict[str, dict[str, np.ndarray]] = {}
+    missing_archives = set()
+
+    if not force_recompute and feature_dir.is_dir():
+        for archive in required_archives:
+            archive_path = feature_dir / f"{archive}.npz"
+            if archive_path.is_file():
+                try:
+                    data = _load_features(archive_path)
+                    if "fused_embeddings" in data or "logits" in data:
+                        feature_dict[archive] = data
+                    else:
+                        missing_archives.add(archive)
+                except Exception:
+                    missing_archives.add(archive)
+            else:
+                missing_archives.add(archive)
+    else:
+        missing_archives = required_archives
+
+    if missing_archives:
+        print(f"  [Features] Đang trích xuất đặc trưng ({len(missing_archives)} archives còn thiếu) cho {experiment} seed={seed}...")
+        loaded = load_evaluated_classification_model(experiment, seed, device=device)
+        is_zeroshot = "zeroshot" in experiment.lower()
+        feature_dir.mkdir(parents=True, exist_ok=True)
+
+        for archive in sorted(missing_archives):
+            scenario_name = next((k for k, v in SCENARIO_ARCHIVES.items() if v == archive), archive)
+            dataset, mismatch_seed = build_scenario_dataset(
+                scenario_name,
+                loaded,
+                allow_incomplete_ood=True,
+            )
+            loader = torch.utils.data.DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=num_workers,
+            )
+            if is_zeroshot:
+                arrays = _collect_zeroshot_feature_batches(loaded, loader)
+            else:
+                arrays = _collect_fused_feature_batches(loaded, loader)
+
+            save_feature_archive(
+                feature_dir / f"{archive}.npz",
+                arrays,
+                provenance={
+                    "experiment": experiment,
+                    "seed": seed,
+                    "archive": archive,
+                    "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                },
+            )
+            feature_dict[archive] = arrays
+
+    return feature_dict
 
 
-def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
-    """Thực hiện bước flatten numeric trong quy trình hiện tại.
+def evaluate_single_seed_ood(
+    feature_dict: dict[str, dict[str, np.ndarray]],
+    scenarios: list[str],
+    methods: list[str],
+    *,
+    knn_k: int = 5,
+    target_fpr: float = 0.05,
+) -> dict[str, dict[str, Any]]:
+    """Đánh giá các độ đo OOD cho 1 seed trên tất cả các kịch bản và phương pháp.
 
     Parameters
     ----------
-    value : Any
-        Giá trị ``value`` được sử dụng trong phép xử lý.
-    prefix : str, optional
-        Giá trị ``prefix`` được sử dụng trong phép xử lý.
+    feature_dict : dict[str, dict[str, np.ndarray]]
+        Từ điển chứa đặc trưng của các tập ID và OOD.
+    scenarios : list[str]
+        Danh sách các kịch bản OOD cần đánh giá.
+    methods : list[str]
+        Danh sách các phương pháp phát hiện OOD.
+    knn_k : int, optional
+        Số láng giềng k trong kNN, mặc định 5.
+    target_fpr : float, optional
+        Mức FPR mục tiêu trên validation để xác định ngưỡng, mặc định 0.05.
 
     Returns
     -------
-    dict[str, float]
-        Kết quả được tạo bởi bước xử lý của hàm.
+    dict[str, dict[str, Any]]
+        Kết quả đánh giá độ đo OOD chi tiết cho từng kịch bản và phương pháp.
     """
-    output: dict[str, float] = {}
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key == "ci_95" or key == "subgroups":
-                continue
-            name = f"{prefix}.{key}" if prefix else key
-            output.update(_flatten_numeric(child, name))
-    elif isinstance(value, (int, float)) and not isinstance(value, bool):
-        number = float(value)
-        if np.isfinite(number):
-            output[prefix] = number
-    return output
+    train_data = feature_dict["ctch_train"]
+    val_data = feature_dict["ctch_val"]
+    test_id_data = feature_dict["ctch_test"]
+
+    # 1. Huấn luyện các bộ dò OOD trên tập train
+    train_embeddings = np.asarray(train_data["fused_embeddings"], dtype=np.float64)
+    train_embeddings_raw = np.asarray(train_data.get("fused_embeddings_raw", train_embeddings), dtype=np.float64)
+    train_labels = np.asarray(train_data["labels"], dtype=np.int64)
+
+    detector_norm = OODDetector().fit(train_embeddings, train_labels)
+    detector_raw = OODDetector().fit(train_embeddings_raw, train_labels)
+
+    # 2. Cân chỉnh ngưỡng cảnh báo trên tập validation ID
+    val_emb = np.asarray(val_data["fused_embeddings"], dtype=np.float64)
+    val_emb_raw = np.asarray(val_data.get("fused_embeddings_raw", val_emb), dtype=np.float64)
+    val_logits = np.asarray(val_data["logits"], dtype=np.float64)
+
+    val_scores: dict[str, np.ndarray] = {}
+    thresholds: dict[str, float] = {}
+
+    for method in methods:
+        if method == "mahalanobis_centroid":
+            scores = detector_raw.score(val_emb_raw, method=method)
+        elif method == "entropy":
+            scores = OODDetector().score(val_logits, method="entropy")
+        elif method == "knn":
+            scores = detector_norm.score(val_emb, method="knn", k=knn_k)
+        else:  # cosine_centroids
+            scores = detector_norm.score(val_emb, method=method)
+        val_scores[method] = scores
+        thresholds[method] = calibrate_ood_threshold(scores, target_id_fpr=target_fpr)
+
+    # 3. Tính điểm trên ID test
+    test_emb = np.asarray(test_id_data["fused_embeddings"], dtype=np.float64)
+    test_emb_raw = np.asarray(test_id_data.get("fused_embeddings_raw", test_emb), dtype=np.float64)
+    test_logits = np.asarray(test_id_data["logits"], dtype=np.float64)
+
+    test_id_scores: dict[str, np.ndarray] = {}
+    for method in methods:
+        if method == "mahalanobis_centroid":
+            scores = detector_raw.score(test_emb_raw, method=method)
+        elif method == "entropy":
+            scores = OODDetector().score(test_logits, method="entropy")
+        elif method == "knn":
+            scores = detector_norm.score(test_emb, method="knn", k=knn_k)
+        else:
+            scores = detector_norm.score(test_emb, method=method)
+        test_id_scores[method] = scores
+
+    # 4. Đánh giá từng kịch bản OOD
+    scenario_results: dict[str, dict[str, Any]] = {}
+    for sc in scenarios:
+        archive = SCENARIO_ARCHIVES[sc]
+        ood_data = feature_dict[archive]
+        ood_emb = np.asarray(ood_data["fused_embeddings"], dtype=np.float64)
+        ood_emb_raw = np.asarray(ood_data.get("fused_embeddings_raw", ood_emb), dtype=np.float64)
+        ood_logits = np.asarray(ood_data["logits"], dtype=np.float64)
+
+        method_metrics: dict[str, Any] = {}
+        for method in methods:
+            if method == "mahalanobis_centroid":
+                ood_scores = detector_raw.score(ood_emb_raw, method=method)
+            elif method == "entropy":
+                ood_scores = OODDetector().score(ood_logits, method="entropy")
+            elif method == "knn":
+                ood_scores = detector_norm.score(ood_emb, method="knn", k=knn_k)
+            else:
+                ood_scores = detector_norm.score(ood_emb, method=method)
+
+            in_scores = test_id_scores[method]
+            threshold = thresholds[method]
+
+            # Đánh giá bằng src/utils/ood.py
+            eval_metrics = evaluate_ood(in_scores, ood_scores, threshold)
+            bootstrap_res = bootstrap_ood_metrics(in_scores, ood_scores, n_bootstrap=500)
+
+            method_metrics[method] = {
+                "auroc_ood": float(eval_metrics["auroc_ood"]),
+                "aupr_out": float(eval_metrics["aupr_out"]),
+                "fpr_at_95tpr": float(eval_metrics["fpr_at_95tpr"]),
+                "threshold": float(threshold),
+                "bootstrap_ci": bootstrap_res,
+            }
+        scenario_results[sc] = method_metrics
+
+    return scenario_results
 
 
-def _aggregate_payloads(payloads: dict[int, dict[str, Any]], field: str) -> dict[str, Any]:
-    """Tổng hợp payloads cho bước xử lý hiện tại.
+def aggregate_seeds_results(
+    seed_results: dict[int, dict[str, dict[str, Any]]],
+    scenarios: list[str],
+    methods: list[str],
+) -> dict[str, dict[str, dict[str, float]]]:
+    """Tổng hợp giá trị trung bình và độ lệch chuẩn (Mean ± Std) qua các hạt giống.
 
     Parameters
     ----------
-    payloads : dict[int, dict[str, Any]]
-        Giá trị ``payloads`` được sử dụng trong phép xử lý.
-    field : str
-        Giá trị ``field`` được sử dụng trong phép xử lý.
+    seed_results : dict[int, dict[str, dict[str, Any]]]
+        Kết quả đánh giá chi tiết theo từng hạt giống.
+    scenarios : list[str]
+        Danh sách kịch bản OOD.
+    methods : list[str]
+        Danh sách phương pháp phát hiện OOD.
 
     Returns
     -------
-    dict[str, Any]
-        Kết quả được tạo bởi bước xử lý của hàm.
+    dict[str, dict[str, dict[str, float]]]
+        Từ điển thống kê tổng hợp chứa mean và std cho từng độ đo.
     """
-    flattened = {
-        seed: _flatten_numeric(payload.get(field, {}))
-        for seed, payload in payloads.items()
-    }
-    keys = sorted(set().union(*(values.keys() for values in flattened.values())))
-    aggregated = {}
-    for key in keys:
-        values = [items[key] for items in flattened.values() if key in items]
-        aggregated[key] = {
-            "mean": float(np.mean(values)),
-            "std": float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
-            "n": len(values),
-            "per_seed": {
-                str(seed): items[key]
-                for seed, items in flattened.items()
-                if key in items
-            },
-        }
+    aggregated: dict[str, dict[str, dict[str, float]]] = {}
+    metric_keys = ["auroc_ood", "aupr_out", "fpr_at_95tpr"]
+
+    for sc in scenarios:
+        aggregated[sc] = {}
+        for m in methods:
+            aggregated[sc][m] = {}
+            for metric in metric_keys:
+                values = [seed_results[s][sc][m][metric] for s in seed_results]
+                aggregated[sc][m][f"{metric}_mean"] = float(np.mean(values))
+                aggregated[sc][m][f"{metric}_std"] = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+
     return aggregated
 
 
-def _feature_path(seed: int, scenario: str) -> Path:
-    """Thực hiện bước đặc trưng đường dẫn trong quy trình hiện tại.
+def run_experiment_ood_pipeline(
+    experiment: str,
+    seeds: list[int],
+    scenarios: list[str],
+    methods: list[str],
+    *,
+    device: torch.device,
+    knn_k: int = 5,
+    target_fpr: float = 0.05,
+    batch_size: int = 16,
+    num_workers: int = 0,
+    force_recompute: bool = False,
+) -> dict[str, Any]:
+    """Chạy toàn bộ quy trình đánh giá OOD cho một mô hình qua nhiều hạt giống.
 
     Parameters
     ----------
-    seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    Path
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    return analysis_root(seed) / "features" / f"{scenario}.npz"
-
-
-@lru_cache(maxsize=None)
-def _cached_file_sha(path_text: str, size: int, modified_ns: int) -> str:
-    """Thực hiện bước cached file sha trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    path_text : str
-        Đường dẫn tài nguyên được sử dụng.
-    size : int
-        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
-    modified_ns : int
-        Giá trị ``modified_ns`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    str
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    del size, modified_ns
-    return sha256_file(Path(path_text))
-
-
-def _feature_sha(seed: int, scenario: str) -> str:
-    """Thực hiện bước đặc trưng sha trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    str
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    FileNotFoundError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    path = _feature_path(seed, scenario).resolve()
-    if not path.is_file():
-        raise FileNotFoundError(f"Missing feature archive: {path}")
-    stat = path.stat()
-    return _cached_file_sha(str(path), stat.st_size, stat.st_mtime_ns)
-
-
-def _expected_ood_feature_hashes(
-    seed: int,
-    scenario: str,
-) -> dict[str, str]:
-    """Thực hiện bước expected ood đặc trưng hashes trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    dict[str, str]
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    return {
-        "fit": _feature_sha(seed, "ctch_train"),
-        "calibration": _feature_sha(seed, "ctch_val"),
-        "id_test": _feature_sha(seed, "ctch_test"),
-        "ood_test": _feature_sha(seed, OOD_ARCHIVES[scenario]),
-    }
-
-
-def _ood_result_status(
-    payload: dict[str, Any],
-    seed: int,
-    scenario: str,
-) -> tuple[bool, str]:
-    """Thực hiện bước ood kết quả status trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    payload : dict[str, Any]
-        Giá trị ``payload`` được sử dụng trong phép xử lý.
-    seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    tuple[bool, str]
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    if int(payload.get("ood_protocol_version", -1)) != OOD_PROTOCOL_VERSION:
-        return False, "OOD protocol/Mahalanobis definition changed"
-    if payload.get("mahalanobis_score_definition") != MAHALANOBIS_SCORE_DEFINITION:
-        return False, "Mahalanobis score definition changed"
-    if (
-        payload.get("cosine_centroids_score_definition")
-        != COSINE_CENTROIDS_SCORE_DEFINITION
-    ):
-        return False, "cosine-centroid score definition changed"
-    cosine = payload.get("results", {}).get("cosine_centroids", {})
-    if cosine.get("score_definition") != COSINE_CENTROIDS_SCORE_DEFINITION:
-        return False, "cosine-centroid result metadata is stale"
-    mahalanobis = payload.get("results", {}).get("mahalanobis_centroid", {})
-    if mahalanobis.get("score_definition") != MAHALANOBIS_SCORE_DEFINITION:
-        return False, "Mahalanobis result metadata is stale"
-    expected_feature_key = OOD_FEATURE_KEYS[scenario]
-    if payload.get("feature_key") != expected_feature_key:
-        return (
-            False,
-            "OOD representation changed from "
-            f"{payload.get('feature_key')!r} to {expected_feature_key!r}",
-        )
-    if payload.get("feature_keys_by_method") != OOD_METHOD_FEATURE_KEYS:
-        return False, "OOD score input representation changed"
-    recorded_hashes = payload.get("feature_archive_sha256")
-    expected_hashes = _expected_ood_feature_hashes(seed, scenario)
-    if recorded_hashes != expected_hashes:
-        return False, "source feature archive changed"
-    return True, "current"
-
-
-def _ood_output(seed: int, scenario: str) -> Path:
-    """Thực hiện bước ood đầu ra trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    seed : int
-        Hạt giống phục vụ khả năng tái lập.
-    scenario : str
-        Giá trị ``scenario`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    Path
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    return analysis_root(seed) / "ood" / scenario
-
-
-def _print_ood_table(results: dict[str, dict[int, dict[str, Any]]]) -> None:
-    """In ood table cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    results : dict[str, dict[int, dict[str, Any]]]
-        Giá trị ``results`` được sử dụng trong phép xử lý.
-    """
-    print("\nOOD RESULTS (mean +/- std across available seeds)")
-    print(
-        f"{'Scenario':<34} {'Method':<24} {'Role':<10} "
-        f"{'AUROC-OOD':>16} {'AUPR-Out':>16} {'FPR@95%TPR':>16}"
-    )
-    print("-" * 123)
-    for scenario, seed_payloads in results.items():
-        methods = next(iter(seed_payloads.values())).get("results", {}) if seed_payloads else {}
-        for method in methods:
-            if method == "subgroups":
-                continue
-            rows = [payload["results"][method] for payload in seed_payloads.values()]
-            role = "primary" if rows[0].get("primary_analysis", True) else "secondary"
-            values = []
-            for key in ("auroc_ood", "aupr_out", "fpr_at_95tpr"):
-                samples = [row[key] for row in rows]
-                std = np.std(samples, ddof=1) if len(samples) > 1 else 0.0
-                values.append(f"{np.mean(samples):.4f} +/- {std:.4f}")
-            print(
-                f"{scenario:<34} {method:<24} {role:<10} {values[0]:>16} "
-                f"{values[1]:>16} {values[2]:>16}"
-            )
-
-
-def aggregate_existing(seeds: list[int], scenarios: list[str]) -> dict[str, Any]:
-    """Tổng hợp existing cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
+    experiment : str
+        Định danh thí nghiệm mô hình.
     seeds : list[int]
-        Giá trị ``seeds`` được sử dụng trong phép xử lý.
+        Danh sách hạt giống ngẫu nhiên.
     scenarios : list[str]
-        Giá trị ``scenarios`` được sử dụng trong phép xử lý.
+        Danh sách kịch bản OOD.
+    methods : list[str]
+        Danh sách phương pháp dò OOD.
+    device : torch.device
+        Thiết bị thực thi tính toán.
+    knn_k : int, optional
+        Tham số k trong kNN OOD, mặc định 5.
+    target_fpr : float, optional
+        Mức FPR mục tiêu trên tập validation, mặc định 0.05.
+    batch_size : int, optional
+        Kích thước batch trích xuất đặc trưng, mặc định 16.
+    num_workers : int, optional
+        Số luồng nạp dữ liệu, mặc định 0.
+    force_recompute : bool, optional
+        Buộc tính toán lại đặc trưng, mặc định False.
 
     Returns
     -------
     dict[str, Any]
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        Từ điển chứa toàn bộ kết quả từng hạt giống và kết quả tổng hợp của mô hình.
     """
-    ood_results: dict[str, dict[int, dict[str, Any]]] = OrderedDict()
-    explain_results: dict[int, dict[str, Any]] = {}
-    for scenario in scenarios:
-        for seed in seeds:
-            path = _ood_output(seed, scenario) / "ood_metrics.json"
-            if path.is_file():
-                payload = _verified_json(
-                    path, seed, "locked_ctch_ood_evaluation"
-                )
-                current, reason = _ood_result_status(payload, seed, scenario)
-                if not current:
-                    raise RuntimeError(
-                        f"Stale OOD result {path}: {reason}. Re-run the analysis "
-                        "before aggregating."
-                    )
-                ood_results.setdefault(scenario, {})[seed] = payload
-    for seed in seeds:
-        path = analysis_root(seed) / "explainability" / "summary.json"
-        if path.is_file():
-            explain_results[seed] = _verified_json(
-                path, seed, "locked_ctch_explainability_evaluation"
-            )
+    seed_results: dict[int, dict[str, dict[str, Any]]] = {}
 
-    aggregate = {
-        "source_experiment": SOURCE_EXPERIMENT,
-        "seeds_requested": seeds,
-        "ood": {
-            scenario: {
-                "seeds": sorted(payloads),
-                "aggregated": _aggregate_payloads(payloads, "results"),
-            }
-            for scenario, payloads in ood_results.items()
-        },
-        "explainability": {
-            "seeds": sorted(explain_results),
-            "representation_quality": _aggregate_payloads(
-                explain_results, "representation_quality"
-            )
-            if explain_results
-            else {},
-            "explanation_aggregate": _aggregate_payloads(
-                explain_results, "explanation_aggregate"
-            )
-            if explain_results
-            else {},
-            "explanation_subgroups": _aggregate_payloads(
-                explain_results, "explanation_subgroups"
-            )
-            if explain_results
-            else {},
-            "source_role_summary": _aggregate_payloads(
-                explain_results, "source_role_summary"
-            )
-            if explain_results
-            else {},
-        },
+    for seed in seeds:
+        feat_dict = extract_or_load_features(
+            experiment,
+            seed,
+            scenarios,
+            device=device,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            force_recompute=force_recompute,
+        )
+        res = evaluate_single_seed_ood(
+            feat_dict,
+            scenarios,
+            methods,
+            knn_k=knn_k,
+            target_fpr=target_fpr,
+        )
+        seed_results[seed] = res
+
+    aggregated = aggregate_seeds_results(seed_results, scenarios, methods)
+
+    return {
+        "experiment": experiment,
+        "seeds": seeds,
+        "scenarios": scenarios,
+        "methods": methods,
+        "target_fpr": target_fpr,
+        "per_seed": seed_results,
+        "aggregated": aggregated,
     }
-    destination = analysis_root() / "aggregated_results.json"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(aggregate, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    _print_ood_table(ood_results)
-    print(f"Aggregated results: {destination}")
-    return aggregate
+
+
+def format_summary_table(
+    all_experiment_results: list[dict[str, Any]],
+    scenarios: list[str],
+    methods: list[str],
+) -> str:
+    """Tạo bảng kết quả định dạng văn bản tổng hợp trực quan.
+
+    Parameters
+    ----------
+    all_experiment_results : list[dict[str, Any]]
+        Danh sách kết quả của các mô hình đã đánh giá.
+    scenarios : list[str]
+        Danh sách kịch bản OOD.
+    methods : list[str]
+        Danh sách phương pháp phát hiện OOD.
+
+    Returns
+    -------
+    str
+        Bảng văn bản đã được căn lề và định dạng.
+    """
+    rows = []
+
+    for exp_res in all_experiment_results:
+        exp_name = exp_res["experiment"]
+        agg = exp_res["aggregated"]
+
+        for sc in scenarios:
+            sc_label = SCENARIO_LABELS.get(sc, sc)
+            for m in methods:
+                m_data = agg[sc][m]
+                auroc_str = f"{m_data['auroc_ood_mean'] * 100:.2f} ± {m_data['auroc_ood_std'] * 100:.2f}"
+                aupr_str = f"{m_data['aupr_out_mean'] * 100:.2f} ± {m_data['aupr_out_std'] * 100:.2f}"
+                fpr_str = f"{m_data['fpr_at_95tpr_mean'] * 100:.2f} ± {m_data['fpr_at_95tpr_std'] * 100:.2f}"
+                rows.append({
+                    "Mô hình": exp_name,
+                    "Kịch bản OOD": sc_label,
+                    "Phương pháp": m,
+                    "AUROC (%)": auroc_str,
+                    "AUPR-Out (%)": aupr_str,
+                    "FPR@95%TPR (%)": fpr_str,
+                })
+
+    df = pd.DataFrame(rows)
+    return df.to_string(index=False)
 
 
 def main() -> None:
-    """Thực thi điểm vào chính của mô-đun.
+    """Điểm vào chính của công cụ đánh giá OOD."""
+    args = parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() and args.device != "cpu" else "cpu")
 
-    Raises
-    ------
-    FileNotFoundError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    SystemExit
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    ood_cfg = OmegaConf.load(OOD_CONFIG)
-    explain_cfg = OmegaConf.load(EXPLAIN_CONFIG)
-    if (
-        str(ood_cfg.source_experiment) != SOURCE_EXPERIMENT
-        or str(explain_cfg.source_experiment) != SOURCE_EXPERIMENT
-    ):
-        raise RuntimeError("Analysis configs are not locked to the canonical source.")
-    _validate_locked_configs(ood_cfg, explain_cfg)
+    experiments: list[str] = [str(e).strip() for e in args.experiments if str(e).strip()]
+    if not experiments:
+        experiments = [SOURCE_EXPERIMENT]
 
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--seeds", nargs="+", type=int, default=[int(value) for value in ood_cfg.seeds]
-    )
-    parser.add_argument(
-        "--analyses",
-        nargs="+",
-        choices=("ood", "explainability"),
-        default=["ood", "explainability"],
-    )
-    parser.add_argument(
-        "--ood-scenarios",
-        nargs="+",
-        choices=tuple(ood_cfg.scenarios.keys()),
-        default=list(CORE_OOD_SCENARIOS),
-    )
-    parser.add_argument("--allow-incomplete-ood", action="store_true")
-    parser.add_argument("--feature-only", action="store_true")
-    parser.add_argument("--table", action="store_true")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--continue-on-error", action="store_true")
-    parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--n-bootstrap", type=int, default=int(ood_cfg.n_bootstrap))
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    parser.add_argument("--no-strict-fingerprint", action="store_true")
-    args = parser.parse_args()
+    print("=" * 80)
+    print("  XBONE-NET: CHƯƠNG TRÌNH ĐÁNH GIÁ OUT-OF-DISTRIBUTION (OOD) TOÀN DIỆN")
+    print(f"  • Thiết bị thực thi : {device}")
+    print(f"  • Danh sách seeds   : {args.seeds}")
+    print(f"  • Số lượng mô hình  : {len(experiments)}")
+    print(f"  • Kịch bản OOD      : {', '.join(args.scenarios)}")
+    print(f"  • Phương pháp dò    : {', '.join(args.methods)}")
+    print("=" * 80)
 
-    invalid_seeds = sorted(set(args.seeds) - set(SOURCE_SEEDS))
-    if invalid_seeds:
-        raise ValueError(
-            f"Only trained proposed seeds {list(SOURCE_SEEDS)} are allowed; got {invalid_seeds}."
-        )
-    if args.table:
-        aggregate_existing(args.seeds, args.ood_scenarios)
-        if "domain_ood_btxrd" in args.ood_scenarios:
-            _run(
-                [
-                    sys.executable,
-                    str(ROOT / "tools" / "export_btxrd_ood_confusions.py"),
-                    "--seeds",
-                    *[str(seed) for seed in args.seeds],
-                ],
-                "BTXRD OOD CASE AUDIT",
+    all_results: list[dict[str, Any]] = []
+
+    for exp_name in experiments:
+        print(f"\n>>> Đang đánh giá mô hình: {exp_name}")
+        try:
+            exp_res = run_experiment_ood_pipeline(
+                exp_name,
+                args.seeds,
+                args.scenarios,
+                args.methods,
+                device=device,
+                knn_k=args.knn_k,
+                target_fpr=args.target_fpr,
+                batch_size=args.batch_size,
+                num_workers=args.num_workers,
+                force_recompute=args.force_recompute,
             )
+            all_results.append(exp_res)
+        except Exception as e:
+            print(f"  [LỖI] Không thể đánh giá {exp_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    if not all_results:
+        print("\n[Cảnh báo] Không có kết quả nào được tạo thành công.")
         return
 
-    print("+----------------------------------------------------------------+")
-    print("|  CTCH proposed post-hoc OOD + explainability                  |")
-    print("+----------------------------------------------------------------+")
-    print(f"  Source   : {SOURCE_EXPERIMENT}")
-    print(f"  Seeds    : {args.seeds}")
-    print(f"  Analyses : {args.analyses}")
-    print("  Training : disabled (this runner never calls train.py)")
+    # In bảng tổng hợp
+    table_str = format_summary_table(all_results, args.scenarios, args.methods)
+    print("\n" + table_str + "\n")
 
-    failures = []
-    for seed in args.seeds:
-        try:
-            checkpoint = locked_checkpoint_path(seed)
-            if not checkpoint.is_file():
-                raise FileNotFoundError(f"Missing checkpoint: {checkpoint}")
+    # Xuất báo cáo ra file
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = args.output_dir / "ood_benchmark_summary.json"
+    csv_path = args.output_dir / "ood_benchmark_summary.csv"
+    md_path = args.output_dir / "ood_benchmark_summary.md"
 
-            required_features = {"ctch_train", "ctch_test"}
-            if "ood" in args.analyses:
-                required_features.add("ctch_val")
-                required_features.update(
-                    str(ood_cfg.scenarios[scenario].archive)
-                    for scenario in args.ood_scenarios
-                )
-            feature_command = [
-                sys.executable,
-                str(ROOT / "tools" / "export_analysis_features.py"),
-                "--seed",
-                str(seed),
-                "--scenarios",
-                *sorted(required_features),
-                "--batch-size",
-                str(args.batch_size),
-                "--num-workers",
-                str(args.num_workers),
-                "--device",
-                args.device,
-            ]
-            if args.allow_incomplete_ood:
-                feature_command.append("--allow-incomplete-ood")
-            if args.overwrite:
-                feature_command.append("--overwrite")
-            if args.no_strict_fingerprint:
-                feature_command.append("--no-strict-fingerprint")
-            _run(feature_command, f"FEATURES seed={seed}")
-            for scenario in required_features:
-                if not _feature_path(seed, scenario).is_file():
-                    raise FileNotFoundError(
-                        f"Feature export did not create {_feature_path(seed, scenario)}"
-                    )
-            if args.feature_only:
-                continue
+    # 1. JSON
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, indent=2, ensure_ascii=False)
 
-            if "ood" in args.analyses:
-                for scenario in args.ood_scenarios:
-                    scenario_cfg = ood_cfg.scenarios[scenario]
-                    output_dir = _ood_output(seed, scenario)
-                    existing_metrics = output_dir / "ood_metrics.json"
-                    if existing_metrics.is_file() and not args.overwrite:
-                        existing = _verified_json(
-                            existing_metrics,
-                            seed,
-                            "locked_ctch_ood_evaluation",
-                        )
-                        current, reason = _ood_result_status(
-                            existing, seed, scenario
-                        )
-                        if current:
-                            print(
-                                f"[Resume] OOD {scenario} seed={seed}: "
-                                "verified result exists."
-                            )
-                            continue
-                        print(
-                            f"[Refresh] OOD {scenario} seed={seed}: {reason}."
-                        )
-                    command = [
-                        sys.executable,
-                        str(ROOT / "evaluate_ood.py"),
-                        "--seed",
-                        str(seed),
-                        "--scenario",
-                        scenario,
-                        "--train-embeddings",
-                        str(_feature_path(seed, "ctch_train")),
-                        "--calibration-embeddings",
-                        str(_feature_path(seed, "ctch_val")),
-                        "--id-test-embeddings",
-                        str(_feature_path(seed, "ctch_test")),
-                        "--ood-embeddings",
-                        str(_feature_path(seed, str(scenario_cfg.archive))),
-                        "--methods",
-                        *[str(value) for value in ood_cfg.methods],
-                        "--primary-methods",
-                        *[str(value) for value in scenario_cfg.primary_methods],
-                        "--scenario-role",
-                        "primary" if bool(scenario_cfg.primary) else "secondary",
-                        "--target-id-fpr",
-                        str(float(ood_cfg.target_id_fpr)),
-                        "--knn-k",
-                        str(int(ood_cfg.knn_k)),
-                        "--n-bootstrap",
-                        str(args.n_bootstrap),
-                        "--bootstrap-seed",
-                        str(int(ood_cfg.bootstrap_seed) + seed),
-                        "--output-dir",
-                        str(output_dir),
-                    ]
-                    command.append(
-                        "--paired-by-image-id"
-                        if bool(scenario_cfg.get("paired_by_image_id", False))
-                        else "--no-paired-by-image-id"
-                    )
-                    if args.allow_incomplete_ood:
-                        command.append("--allow-incomplete-ood")
-                    _run(command, f"OOD {scenario} seed={seed}")
-                    _verified_json(
-                        output_dir / "ood_metrics.json",
-                        seed,
-                        "locked_ctch_ood_evaluation",
-                    )
+    # 2. Markdown
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write("# BÁO CÁO ĐÁNH GIÁ OUT-OF-DISTRIBUTION (OOD)\n\n")
+        f.write(f"Thời gian xuất: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        f.write(table_str)
+        f.write("\n")
 
-            if "explainability" in args.analyses:
-                output_dir = analysis_root(seed) / "explainability"
-                command = [
-                    sys.executable,
-                    str(ROOT / "tools" / "benchmark" / "explainability_analysis.py"),
-                    "--seed",
-                    str(seed),
-                    "--train-features",
-                    str(_feature_path(seed, str(explain_cfg.train_features))),
-                    "--test-features",
-                    str(_feature_path(seed, str(explain_cfg.test_features))),
-                    "--selection-seed",
-                    str(int(explain_cfg.selection_seed)),
-                    "--ig-steps",
-                    str(int(explain_cfg.integrated_gradients_steps)),
-                    "--random-trials",
-                    str(int(explain_cfg.random_deletion_trials)),
-                    "--stability-repeats",
-                    str(int(explain_cfg.stability_repeats)),
-                    "--stability-steps",
-                    str(int(explain_cfg.stability_steps)),
-                    "--noise-scale",
-                    str(float(explain_cfg.stability_noise_scale)),
-                    "--sanity-samples",
-                    str(int(explain_cfg.classifier_randomization_samples)),
-                    "--render-samples",
-                    str(int(explain_cfg.render_samples)),
-                    "--device",
-                    args.device,
-                    "--output-dir",
-                    str(output_dir),
-                ]
-                if str(explain_cfg.sampling) == "all_test_samples":
-                    command.append("--all-test-samples")
-                else:
-                    command.extend([
-                        "--per-class",
-                        str(int(explain_cfg.per_class)),
-                        "--max-samples",
-                        str(int(explain_cfg.max_samples)),
-                    ])
-                if args.overwrite:
-                    command.append("--overwrite")
-                if args.no_strict_fingerprint:
-                    command.append("--no-strict-fingerprint")
-                _run(command, f"EXPLAIN seed={seed}")
-                _verified_json(
-                    output_dir / "summary.json",
-                    seed,
-                    "locked_ctch_explainability_evaluation",
-                )
-        except Exception as error:
-            failures.append({"seed": seed, "error": str(error)})
-            print(f"[FAIL] seed={seed}: {error}")
-            if not args.continue_on_error:
-                raise
+    # 3. CSV
+    flat_rows = []
+    for exp_res in all_results:
+        exp_name = exp_res["experiment"]
+        agg = exp_res["aggregated"]
+        for sc in args.scenarios:
+            for m in args.methods:
+                m_data = agg[sc][m]
+                flat_rows.append({
+                    "experiment": exp_name,
+                    "scenario": sc,
+                    "method": m,
+                    "auroc_mean": m_data["auroc_ood_mean"],
+                    "auroc_std": m_data["auroc_ood_std"],
+                    "aupr_out_mean": m_data["aupr_out_mean"],
+                    "aupr_out_std": m_data["aupr_out_std"],
+                    "fpr_at_95tpr_mean": m_data["fpr_at_95tpr_mean"],
+                    "fpr_at_95tpr_std": m_data["fpr_at_95tpr_std"],
+                })
+    pd.DataFrame(flat_rows).to_csv(csv_path, index=False, encoding="utf-8-sig")
 
-    aggregate_existing(args.seeds, args.ood_scenarios)
-    if (
-        "ood" in args.analyses
-        and "domain_ood_btxrd" in args.ood_scenarios
-        and not args.feature_only
-    ):
-        _run(
-            [
-                sys.executable,
-                str(ROOT / "tools" / "export_btxrd_ood_confusions.py"),
-                "--seeds",
-                *[str(seed) for seed in args.seeds],
-            ],
-            "BTXRD OOD CASE AUDIT",
-        )
-    if failures:
-        failure_path = analysis_root() / "failures.json"
-        failure_path.write_text(
-            json.dumps(failures, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        raise SystemExit(f"{len(failures)} seed(s) failed; see {failure_path}")
+    print(f"[Thành công] Đã xuất báo cáo JSON tại : {json_path}")
+    print(f"[Thành công] Đã xuất bảng Markdown tại: {md_path}")
+    print(f"[Thành công] Đã xuất bảng CSV tại     : {csv_path}\n")
 
 
 if __name__ == "__main__":

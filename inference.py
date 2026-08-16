@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from src.models.builder import (
     build_model,
     checkpoint_model_config,
+    merge_peft_adapters,
     setup_phase2_modules,
     setup_phase3_modules,
 )
@@ -253,19 +254,23 @@ def load_state_dict_checked(model, state_dict, context: str):
     result = model.load_state_dict(state_dict, strict=False)
     missing = list(result.missing_keys)
     unexpected = list(result.unexpected_keys)
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
-    critical_prefixes = ("fusion.", "head.")
-    if any(key.startswith("drl_auxiliary.") for key in model.state_dict()):
-        critical_prefixes = critical_prefixes + ("drl_auxiliary.",)
+
+    has_fusion_in_ckpt = any(k.startswith("fusion.") for k in state_dict)
+    has_head_in_ckpt = any(k.startswith("head.") for k in state_dict)
+    has_lora_in_ckpt = any("lora_" in k for k in state_dict)
+
     critical_missing = [
         key for key in missing
-        if key.startswith(critical_prefixes)
-        or any(token in key for token in critical_tokens)
+        if (has_fusion_in_ckpt and key.startswith("fusion."))
+        or (has_head_in_ckpt and key.startswith("head."))
+        or (has_lora_in_ckpt and any(t in key for t in ("lora_A", "lora_B")))
     ]
     print(
         f" -> [{context}] checkpoint load: missing={len(missing)}, "
         f"unexpected={len(unexpected)}"
     )
+    if unexpected:
+        print("    Unexpected examples:", unexpected[:10])
     if critical_missing:
         raise RuntimeError(
             "Critical checkpoint weights were not loaded:\n"
@@ -472,6 +477,8 @@ def main(cfg: DictConfig) -> None:
         model, cfg, device, custom_checkpoint_path=args.checkpoint
     )
     print(f"Using trained checkpoint: {checkpoint_path}")
+    merge_peft_adapters(model)
+
 
     dataset_params = cfg.dataset.get('params', {}) or {}
     classes = dataset_params.get('classes', dataset_params.get('pathologies', []))

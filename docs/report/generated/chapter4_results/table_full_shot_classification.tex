@@ -2,29 +2,25 @@
 \centering
 \small
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|l|c|c|c|}
+\begin{tabular}{|l|l|c|c|c|c|c|}
 \hline
-\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Accuracy $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Balanced Accuracy $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-F1 $\uparrow$}} \\ \hline
-\multirow{9}{*}{BTXRD} & BioMedCLIP & $0.8311\pm0.0028$ & $0.6062\pm0.0254$ & $0.5994\pm0.0124$ \\ \cline{2-5}
- & CLIP & $0.8036\pm0.0273$ & $0.5957\pm0.0160$ & $0.5787\pm0.0252$ \\ \cline{2-5}
- & DenseNet-121 & $0.6320\pm0.0013$ & $0.3694\pm0.0150$ & $0.3718\pm0.0173$ \\ \cline{2-5}
- & MedCLIP & $0.8204\pm0.0144$ & $0.6125\pm0.0235$ & $0.6054\pm0.0147$ \\ \cline{2-5}
- & PubMedCLIP & $0.7884\pm0.0285$ & $0.6089\pm0.0342$ & $0.5723\pm0.0577$ \\ \cline{2-5}
- & ResNet-50 & $0.6071\pm0.0140$ & $0.3188\pm0.0136$ & $0.3291\pm0.0102$ \\ \cline{2-5}
- & LoRA-BiomedCLIP & $0.8133\pm0.0035$ & $\mathbf{0.6552\pm0.0244}$ & $0.6225\pm0.0088$ \\ \cline{2-5}
- & LoRA-PubMedCLIP & $\mathbf{0.8347\pm0.0058}$ & $0.6369\pm0.0197$ & $\mathbf{0.6327\pm0.0211}$ \\ \cline{2-5}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.8258\pm0.0034$ & \cellcolor{gray!12}$0.5916\pm0.0116$ & \cellcolor{gray!12}$0.6010\pm0.0034$ \\ \hline
-\multirow{9}{*}{CTCH} & BioMedCLIP & $0.5969\pm0.0253$ & $0.6023\pm0.0234$ & $0.5540\pm0.0080$ \\ \cline{2-5}
- & CLIP & $0.5874\pm0.0209$ & $\mathbf{0.6217\pm0.0359}$ & $\mathbf{0.5633\pm0.0090}$ \\ \cline{2-5}
- & DenseNet-121 & $0.4818\pm0.0052$ & $0.4927\pm0.0461$ & $0.4367\pm0.0238$ \\ \cline{2-5}
- & MedCLIP & $0.5590\pm0.0389$ & $0.5717\pm0.0186$ & $0.5151\pm0.0216$ \\ \cline{2-5}
- & PubMedCLIP & $0.5521\pm0.0234$ & $0.5589\pm0.0614$ & $0.5203\pm0.0264$ \\ \cline{2-5}
- & ResNet-50 & $0.4928\pm0.0017$ & $0.4126\pm0.0106$ & $0.4078\pm0.0051$ \\ \cline{2-5}
- & LoRA-BiomedCLIP & $0.5959\pm0.0212$ & $0.6092\pm0.0243$ & $0.5599\pm0.0220$ \\ \cline{2-5}
- & LoRA-PubMedCLIP & $\mathbf{0.6009\pm0.0305}$ & $0.5699\pm0.0081$ & $0.5538\pm0.0196$ \\ \cline{2-5}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.5725\pm0.0286$ & \cellcolor{gray!12}$0.5844\pm0.0454$ & \cellcolor{gray!12}$0.5558\pm0.0072$ \\ \hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Acc $\uparrow$}} & \multicolumn{1}{c|}{\textbf{BAcc $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-F1 $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-AUROC $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-AUPRC $\uparrow$}} \\ \hline
+\multirow{7}{*}{BTXRD} & BiomedCLIP & $\mathbf{0.8311\pm0.0028}$ & $0.6062\pm0.0254$ & $0.5994\pm0.0124$ & $0.8865\pm0.0165$ & $\mathbf{0.6511\pm0.0104}$ \\ \cline{2-7}
+ & CLIP & $0.8036\pm0.0273$ & $0.5957\pm0.0160$ & $0.5787\pm0.0252$ & $0.8973\pm0.0231$ & $0.6251\pm0.0080$ \\ \cline{2-7}
+ & DenseNet-121 & $0.6320\pm0.0013$ & $0.3694\pm0.0150$ & $0.3718\pm0.0173$ & $0.7717\pm0.0173$ & $0.3831\pm0.0036$ \\ \cline{2-7}
+ & MedCLIP & $0.8204\pm0.0144$ & $\mathbf{0.6125\pm0.0235}$ & $\mathbf{0.6054\pm0.0147}$ & $0.8599\pm0.0330$ & $0.6228\pm0.0253$ \\ \cline{2-7}
+ & PubMedCLIP & $0.7884\pm0.0285$ & $0.6089\pm0.0342$ & $0.5723\pm0.0577$ & $\mathbf{0.9048\pm0.0240}$ & $0.6149\pm0.0245$ \\ \cline{2-7}
+ & ResNet-50 & $0.6071\pm0.0140$ & $0.3188\pm0.0136$ & $0.3291\pm0.0102$ & $0.7236\pm0.0259$ & $0.3338\pm0.0061$ \\ \cline{2-7}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.8160\pm0.0096$ & \cellcolor{gray!12}$0.5668\pm0.0162$ & \cellcolor{gray!12}$0.5755\pm0.0086$ & \cellcolor{gray!12}$0.8917\pm0.0697$ & \cellcolor{gray!12}$0.6017\pm0.0476$ \\ \hline
+\multirow{7}{*}{CTCH} & BiomedCLIP & $\mathbf{0.5969\pm0.0253}$ & $0.6023\pm0.0234$ & $0.5540\pm0.0080$ & $\mathbf{0.9390\pm0.0289}$ & $\mathbf{0.6169\pm0.0090}$ \\ \cline{2-7}
+ & CLIP & $0.5874\pm0.0209$ & $\mathbf{0.6217\pm0.0359}$ & $0.5633\pm0.0090$ & $0.9290\pm0.0387$ & $0.6002\pm0.0400$ \\ \cline{2-7}
+ & DenseNet-121 & $0.4818\pm0.0052$ & $0.4927\pm0.0461$ & $0.4367\pm0.0238$ & $0.9350\pm0.0046$ & $0.4762\pm0.0136$ \\ \cline{2-7}
+ & MedCLIP & $0.5590\pm0.0389$ & $0.5717\pm0.0186$ & $0.5151\pm0.0216$ & $0.9215\pm0.0333$ & $0.5839\pm0.0185$ \\ \cline{2-7}
+ & PubMedCLIP & $0.5521\pm0.0234$ & $0.5589\pm0.0614$ & $0.5203\pm0.0264$ & $0.9279\pm0.0214$ & $0.5888\pm0.0196$ \\ \cline{2-7}
+ & ResNet-50 & $0.4928\pm0.0017$ & $0.4126\pm0.0106$ & $0.4078\pm0.0051$ & $0.9145\pm0.0037$ & $0.4492\pm0.0042$ \\ \cline{2-7}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.5964\pm0.0233$ & \cellcolor{gray!12}$0.5861\pm0.0446$ & \cellcolor{gray!12}$\mathbf{0.5668\pm0.0069}$ & \cellcolor{gray!12}$0.9331\pm0.0290$ & \cellcolor{gray!12}$0.6040\pm0.0200$ \\ \hline
 \end{tabular}
 }
-\caption{Kết quả phân loại khi sử dụng toàn bộ tập huấn luyện}
+\caption{Kết quả phân loại toàn bộ mẫu (Full-shot) trên BTXRD và CTCH}
 \label{tab:classification_full_data}
 \end{table}

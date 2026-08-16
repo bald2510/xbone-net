@@ -18,10 +18,14 @@ from matplotlib import colormaps
 from omegaconf import OmegaConf
 from PIL import Image, ImageFilter
 
-from src.datasets.high_resolution import prepare_high_resolution_inputs
+from src.datasets.high_resolution import (
+    prepare_global_image,
+    prepare_high_resolution_inputs,
+)
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
     analysis_root,
+    load_evaluated_classification_model,
     load_feature_archive,
     load_locked_proposed_model,
     load_proposed_experiment_model,
@@ -594,30 +598,44 @@ def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     cfg = loaded.cfg
-    high_res_cfg = OmegaConf.to_container(
-        cfg.dataset.params.high_res,
-        resolve=True,
+    high_res_cfg = (
+        OmegaConf.to_container(cfg.dataset.params.high_res, resolve=True)
+        if hasattr(cfg.dataset.params, "high_res") and cfg.dataset.params.high_res is not None
+        else {}
     )
-    if not isinstance(high_res_cfg, dict) or not high_res_cfg.get("enabled", False):
-        raise RuntimeError(
-            "The locked proposed checkpoint is expected to use sparse-focal "
-            "high-resolution preprocessing."
+    if isinstance(high_res_cfg, dict) and high_res_cfg.get("enabled", False):
+        fields, selection = prepare_high_resolution_inputs(
+            image.convert("RGB"),
+            loaded.model.backbone.preprocess,
+            high_res_cfg,
+            return_selection=True,
         )
+        pixel_values = fields["pixel_values"].unsqueeze(0).to(loaded.device)
+        tile_values = fields["tile_values"].unsqueeze(0).to(loaded.device)
+        tile_boxes = fields["tile_boxes"].unsqueeze(0).to(loaded.device)
+        tile_mask = torch.ones(
+            tile_values.shape[:2],
+            dtype=torch.long,
+            device=loaded.device,
+        )
+        foreground_box = tuple(selection.foreground_box)
+    else:
+        preprocess_cfg = (
+            OmegaConf.to_container(cfg.dataset.params.preprocess, resolve=True)
+            if hasattr(cfg.dataset.params, "preprocess") and cfg.dataset.params.preprocess is not None
+            else {}
+        )
+        pixel_values = prepare_global_image(
+            image.convert("RGB"),
+            loaded.model.backbone.preprocess,
+            preprocess_cfg,
+        ).unsqueeze(0).to(loaded.device)
+        tile_values = None
+        tile_boxes = None
+        tile_mask = None
+        selection = None
+        foreground_box = (0, 0, image.width, image.height)
 
-    fields, selection = prepare_high_resolution_inputs(
-        image.convert("RGB"),
-        loaded.model.backbone.preprocess,
-        high_res_cfg,
-        return_selection=True,
-    )
-    pixel_values = fields["pixel_values"].unsqueeze(0).to(loaded.device)
-    tile_values = fields["tile_values"].unsqueeze(0).to(loaded.device)
-    tile_boxes = fields["tile_boxes"].unsqueeze(0).to(loaded.device)
-    tile_mask = torch.ones(
-        tile_values.shape[:2],
-        dtype=torch.long,
-        device=loaded.device,
-    )
     input_ids, attention_mask = _tokenize_text(
         loaded.model.backbone.tokenizer_obj,
         clinical_text,
@@ -631,6 +649,7 @@ def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
         "input_ids": input_ids,
         "attention_mask": attention_mask,
         "high_res_selection": selection,
+        "foreground_box": foreground_box,
     }
 
 
@@ -656,14 +675,21 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
     """
     model = loaded.model
     with torch.no_grad():
-        image_tokens, text_tokens = model.backbone(
-            inputs["pixel_values"],
-            inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            tile_values=inputs["tile_values"],
-            tile_mask=inputs["tile_mask"],
-            tile_boxes=inputs["tile_boxes"],
-        )
+        if inputs.get("tile_values") is not None:
+            image_tokens, text_tokens = model.backbone(
+                inputs["pixel_values"],
+                inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                tile_values=inputs["tile_values"],
+                tile_mask=inputs["tile_mask"],
+                tile_boxes=inputs["tile_boxes"],
+            )
+        else:
+            image_tokens, text_tokens = model.backbone(
+                inputs["pixel_values"],
+                inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+            )
         full_image_padding = getattr(
             model.backbone,
             "last_image_key_padding_mask",
@@ -682,26 +708,29 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
             txt_key_padding_mask=text_padding,
             return_attn=True,
         )
-        if not isinstance(fused_output, tuple) or len(fused_output) != 2:
-            raise RuntimeError(
-                "The proposed fusion module did not return (embedding, details)."
-            )
-        fused, _ = fused_output
-        logits = model.head(fused)
+        if isinstance(fused_output, tuple):
+            fused, _ = fused_output
+        else:
+            fused = fused_output
+        logits = model.head(fused) if hasattr(model, "head") else model.classifier(fused)
+
+        global_fg = inputs.get("foreground_box", (0, 0, 224, 224))
+        global_feat = getattr(model.backbone, "last_global_feature", image_tokens[:, 0]).detach()
+        loc_tokens = getattr(model.backbone, "last_local_tokens", image_tokens[:, 1:] if image_tokens.size(1) > 1 else image_tokens).detach()
+        loc_mask = getattr(model.backbone, "last_local_mask", torch.ones((image_tokens.size(0), loc_tokens.size(1)), dtype=torch.bool, device=image_tokens.device)).detach()
+        loc_boxes = getattr(model.backbone, "last_local_token_boxes", torch.zeros((image_tokens.size(0), loc_tokens.size(1), 4), dtype=torch.float32, device=image_tokens.device)).detach()
 
     cached = {
-        "global_feature": model.backbone.last_global_feature.detach(),
+        "global_feature": global_feat,
         "visual_global_embedding": image_tokens[:, 0].detach(),
-        "local_tokens": model.backbone.last_local_tokens.detach(),
-        "local_mask": model.backbone.last_local_mask.detach(),
-        "local_boxes": model.backbone.last_local_token_boxes.detach(),
+        "local_tokens": loc_tokens,
+        "local_mask": loc_mask,
+        "local_boxes": loc_boxes,
         "text_tokens": text_tokens.detach(),
         "text_attention_mask": inputs["attention_mask"],
         "text_input_ids": inputs["input_ids"],
         "global_pixel_values": inputs["pixel_values"].detach(),
-        "global_foreground_box": tuple(
-            inputs["high_res_selection"].foreground_box
-        ),
+        "global_foreground_box": global_fg,
         "text_pad_token_id": resolve_pad_token_id(
             model.backbone.tokenizer_obj
         ),
@@ -881,15 +910,23 @@ class OnlineInferenceEngine:
                 strict_fingerprint=True,
             )
         else:
-            self.loaded = load_proposed_experiment_model(
-                self.experiment_name,
-                self.seed,
-                device=resolved_device,
-            )
+            try:
+                self.loaded = load_proposed_experiment_model(
+                    self.experiment_name,
+                    self.seed,
+                    device=resolved_device,
+                )
+            except (ValueError, FileNotFoundError):
+                self.loaded = load_evaluated_classification_model(
+                    self.experiment_name,
+                    self.seed,
+                    device=resolved_device,
+                )
         for parameter in self.loaded.model.parameters():
             parameter.requires_grad_(False)
         self.loaded.model.eval()
-        self.loaded.model.backbone.explain_mode = True
+        if hasattr(self.loaded.model.backbone, "explain_mode"):
+            self.loaded.model.backbone.explain_mode = True
         self.knn_k = int(knn_k)
         self.confidence_calibration = (
             fit_locked_confidence_calibration(self.loaded)
@@ -1253,13 +1290,22 @@ class OnlineInferenceEngine:
                     "clinical_text": full_probability
                     - float(text_faithfulness["deletion"][-1]),
                 }
-        local_boxes = cached["local_boxes"][0].detach().cpu().numpy()
-        local_scores = ig_scores.detach().cpu().numpy()
-        spatial_boxes, spatial_scores = _spatial_token_subset(
-            self.loaded.model,
-            local_boxes,
-            local_scores,
-        )
+        if hasattr(self.loaded.model.backbone, "local_pool_grid") and cached.get("local_boxes") is not None:
+            local_boxes = cached["local_boxes"][0].detach().cpu().numpy()
+            local_scores = ig_scores.detach().cpu().numpy()
+            try:
+                spatial_boxes, spatial_scores = _spatial_token_subset(
+                    self.loaded.model,
+                    local_boxes,
+                    local_scores,
+                )
+            except Exception:
+                spatial_boxes, spatial_scores = None, None
+        else:
+            local_boxes = None
+            local_scores = None
+            spatial_boxes = None
+            spatial_scores = None
         decoded_tokens, decoded_text_scores = _decoded_text_attribution(
             self.loaded.model.backbone.tokenizer_obj,
             inputs["input_ids"],

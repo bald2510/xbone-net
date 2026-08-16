@@ -6,7 +6,7 @@ Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ cá
 """
 
 from copy import deepcopy
-
+import torch.nn as nn
 from omegaconf import OmegaConf
 
 from .backbone.biomedclip import BiomedCLIPFoundation
@@ -49,6 +49,24 @@ def resolve_phase_enabled(
     run_enabled = bool(params_cfg.get(f"run_{phase_name}", default))
     nested_enabled = bool(phase_cfg.get("enabled", True))
     return run_enabled and nested_enabled
+
+
+def merge_peft_adapters(module: nn.Module, verbose: bool = True) -> nn.Module:
+    """Hợp nhất tất cả các PEFT/LoRA adapters vào trọng số gốc của bộ mã hóa để tối ưu suy luận."""
+    try:
+        from peft import PeftModel
+    except ImportError:
+        return module
+
+    for name, child in list(module.named_children()):
+        if isinstance(child, PeftModel):
+            if verbose:
+                print(f"[*] Hợp nhất (Merging) PEFT adapter tại: {name}...")
+            merged_child = child.merge_and_unload()
+            setattr(module, name, merged_child)
+        else:
+            merge_peft_adapters(child, verbose=verbose)
+    return module
 
 
 def uses_merged_phase1_checkpoint(cfg: dict) -> bool:

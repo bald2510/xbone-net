@@ -37,69 +37,50 @@ Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại 
 \section{Nhánh biểu diễn ảnh}
 \label{sec:ch3_image_branch}
 
-\subsection{Tiền xử lý ảnh X-quang và xử lý độ phân giải cao}
-\label{subsec:ch3_high_resolution}
+\subsection{Tiền xử lý ảnh X-quang theo kỹ thuật Letterbox}
+\label{subsec:ch3_image_preprocessing}
 
-Ảnh X-quang đầu vào $x_i^{\mathrm{img}}$ có kích thước và tỷ lệ khung hình khác nhau, trong khi bộ mã hóa thị giác của BiomedCLIP nhận ảnh vuông $224\times224$. Để giữ đồng thời bố cục chung và chi tiết cục bộ, mỗi ảnh được chuyển thành một ảnh toàn cục $x_i^{\mathrm{img},g}$ và bốn ảnh cục bộ $\{x_{i,m}^{\mathrm{img},\ell}\}_{m=1}^{4}$. Việc chọn vùng chỉ sử dụng giá trị điểm ảnh, không sử dụng nhãn, bệnh sử hoặc chú thích tổn thương.
-
-Hình~\ref{fig:ch3_high_resolution_preprocessing} minh họa quy trình tạo ảnh toàn cục và bốn ảnh cục bộ từ ảnh X-quang đầu vào.
+Ảnh X-quang đầu vào $x_i^{\mathrm{img}}$ thu thập trong thực tế lâm sàng thường có độ phân giải cao và tỷ lệ khung hình không vuông (ví dụ ảnh chụp xương dài, bàn tay hay cẳng chân có dạng hình chữ nhật đứng), trong khi bộ mã hóa thị giác của BiomedCLIP \cite{BiomedCLIP} yêu cầu đầu vào kích thước chuẩn $224\times224$. Để bảo toàn nguyên vẹn cấu trúc giải phẫu học và không làm méo hình thái xương, XBone-Net áp dụng quy trình tiền xử lý gồm 3 bước tuần tự như minh họa tại Hình~\ref{fig:ch3_letterbox_preprocessing}.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{images/ImagePreprocess.png}
-    \caption{Quy trình tạo ảnh toàn cục và bốn ảnh cục bộ từ ảnh X-quang}
-    \label{fig:ch3_high_resolution_preprocessing}
+    \includegraphics[width=\textwidth]{images/imagePreprocess.png}
+    \caption{Quy trình tiền xử lý ảnh X-quang}
+    \label{fig:ch3_letterbox_preprocessing}
 \end{figure}
 
-\subsubsection{Xác định vùng nội dung và tạo ảnh toàn cục}
+\subsubsection{Các bước thực hiện tiền xử lý}
 
-Ảnh X-quang đầu vào có thể chứa các vùng nền hoặc dải biên không mang nhiều thông tin giải phẫu. Vì vậy, ảnh được chuyển sang thang xám và chuẩn hóa cường độ. Mức nền được ước lượng từ vùng biên ảnh; những điểm ảnh có cường độ khác biệt rõ so với nền được xem là vùng nội dung. Từ đó, hệ thống xác định một hộp bao quanh phần giải phẫu chính và mở rộng nhẹ để tránh cắt mất các cấu trúc nằm sát biên.
+Quy trình tiền xử lý được chuẩn hóa qua các bước tính toán hình học và nội suy số học cụ thể như sau:
 
-Để hạn chế sai sót khi vùng nội dung được xác định không đầy đủ, hệ thống giữ lại toàn bộ ảnh nếu vùng được phát hiện quá nhỏ hoặc không chứa đủ thông tin tương phản. Vùng ảnh cuối cùng được thu phóng nhưng vẫn giữ nguyên tỷ lệ, sau đó đệm thành ảnh vuông và chuẩn hóa theo yêu cầu đầu vào của BiomedCLIP. Kết quả thu được là ảnh toàn cục $x_i^{\mathrm{img},g}$ với kích thước $224\times224$, thể hiện bố cục giải phẫu chung của ảnh X-quang.
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Ảnh đầu vào}: Ảnh chụp X-quang gốc $x_i^{\mathrm{img}}$ có kích thước ban đầu $W \times H$ (ví dụ: $1213\times1713$ điểm ảnh).
+    
+    \item \textbf{Bước 1 -- Tính toán tỷ lệ và giảm kích thước}: Nhằm bảo toàn tỷ lệ khung hình thực tế, hệ thống xác định hệ số thu phóng $s$ theo cạnh dài nhất hướng tới kích thước mục tiêu $S_{\mathrm{target}} = 224$:
+    \begin{equation}
+        s = \min\left(\frac{S_{\mathrm{target}}}{W}, \frac{S_{\mathrm{target}}}{H}\right).
+        \label{eq:ch3_letterbox_scale}
+    \end{equation}
+    Kích thước mới của ảnh được xác định bởi $W' = \operatorname{round}(W \cdot s)$ và $H' = \operatorname{round}(H \cdot s)$. Với ảnh kích thước $1213\times1713$, ảnh được giảm kích thước về $159\times224$, đảm bảo cạnh dài nhất vừa khít $224$ điểm ảnh mà không làm co giãn méo hình.
 
-\subsubsection{Sinh và lựa chọn vùng cục bộ}
+    \item \textbf{Bước 2 -- Nội suy bậc ba (Bicubic Resampling)}: Các điểm ảnh tại kích thước mới $(W', H')$ được tái tạo giá trị thông qua phép nội suy bậc ba hai chiều. Thuật toán sử dụng hàm đa thức bậc ba trên lân cận $16$ điểm ảnh ($4\times4$) xung quanh:
+    \begin{equation}
+        I(x, y) = \sum_{j=0}^{3} \sum_{k=0}^{3} a_{jk} x^j y^k.
+        \label{eq:ch3_bicubic_formula}
+    \end{equation}
+    Phép nội suy bậc ba giúp duy trì độ sắc nét cao của các đường bờ viền xương, đường nứt gãy và cấu trúc bè xương, đồng thời khử triệt để hiện tượng răng cưa hay mờ nhòe vốn thường gặp ở các phép nội suy lân cận gần nhất hoặc song tuyến tính.
 
-Vùng nội dung được thu nhỏ sao cho cạnh dài không vượt quá $896$ điểm ảnh mà không phóng lớn ảnh nhỏ. Trên ảnh trung gian, các cửa sổ $224\times224$ được sinh với bước dịch chuyển $168$ điểm ảnh, đồng thời vị trí cuối mỗi trục được bổ sung để phủ phần biên. Các cửa sổ có tỷ lệ tiền cảnh từ $60\%$ trở lên được ưu tiên xem xét. Mặt nạ tại bước này được tính lại với mức nền là khoảng cường độ xuất hiện nhiều nhất tại biên.
+    \item \textbf{Bước 3 -- Thêm vùng đệm (Letterbox Padding)}: Hệ thống khởi tạo một khung ảnh vuông kích thước $224\times224$ với giá trị màu đệm là màu đen $(0, 0, 0)$. Ảnh sau khi nội suy được dán vào chính giữa Canvas tại các khoảng bù tọa độ:
+    \begin{equation}
+        \Delta x = \left\lfloor\frac{S_{\mathrm{target}} - W'}{2}\right\rfloor, \quad \Delta y = \left\lfloor\frac{S_{\mathrm{target}} - H'}{2}\right\rfloor.
+        \label{eq:ch3_letterbox_padding}
+    \end{equation}
+    Khoảng trống ở hai bên (hoặc trên/dưới) được lấp đầy bằng màu đen đồng nhất, tạo ra ảnh vuông $x_i^{\mathrm{img},g} \in \mathbb{R}^{224\times224\times3}$.
+\end{itemize}
 
-Mỗi cửa sổ $b$ được đánh giá bằng lượng biến thiên cục bộ, entropy mức xám và tỷ lệ tiền cảnh. Đáp ứng Laplacian làm nổi bật biến thiên cường độ và biên ảnh \cite{Marr1980EdgeDetection}. Các độ đo dựa trên Laplacian cũng thường được sử dụng để đánh giá lượng chi tiết hoặc độ sắc nét cục bộ \cite{Pertuz2013FocusMeasures}. Với lân cận bốn hướng, năng lượng Laplacian của cửa sổ được tính bởi:
+\subsubsection{So sánh với cơ chế tiền xử lý của BiomedCLIP gốc}
 
-\begin{equation}
-\begin{aligned}
-\Delta x_i^{\mathrm{gray}}(u,v)
-&=4x_i^{\mathrm{gray}}(u,v)
--x_i^{\mathrm{gray}}(u-1,v)-x_i^{\mathrm{gray}}(u+1,v)\\
-&\quad-x_i^{\mathrm{gray}}(u,v-1)-x_i^{\mathrm{gray}}(u,v+1),\\
-E_i(b)
-&=\frac{1}{|b|}\sum_{(u,v)\in b}
-\left|\Delta x_i^{\mathrm{gray}}(u,v)\right|.
-\end{aligned}
-\label{eq:ch3_laplacian_energy}
-\end{equation}
-
-Entropy Shannon mô tả mức độ đa dạng của phân bố cường độ \cite{Shannon1948Information}. Với histogram gồm $32$ khoảng mức xám và $\pi_{i,k}(b)$ là tỷ lệ điểm ảnh của cửa sổ $b$ thuộc khoảng thứ $k$, entropy chuẩn hóa được xác định bởi:
-
-\begin{equation}
-H_i(b)
-=-\frac{1}{\log_2 32}
-\sum_{k:\,\pi_{i,k}(b)>0}
-\pi_{i,k}(b)\log_2\pi_{i,k}(b).
-\label{eq:ch3_gray_entropy}
-\end{equation}
-
-Hai đại lượng trên được chuẩn hóa min--max trong phạm vi các cửa sổ của cùng ảnh. Nếu mọi giá trị bằng nhau thì kết quả chuẩn hóa được đặt bằng $0$. Điểm tổng hợp của mỗi cửa sổ được xác định bởi:
-
-\begin{equation}
-q_i(b) = 0{,}55\,\widehat{E}_i(b) + 0{,}35\,\widehat{H}_i(b) + 0{,}10\,r_i(b),
-\label{eq:ch3_candidate_score}
-\end{equation}
-
-trong đó $\widehat{E}_i$ và $\widehat{H}_i$ lần lượt là năng lượng Laplacian và entropy đã chuẩn hóa, còn $r_i$ là tỷ lệ tiền cảnh. Bộ trọng số phản ánh mức ưu tiên giảm dần theo tính trực tiếp của tín hiệu đối với tổn thương xương. Năng lượng Laplacian nhận trọng số cao nhất vì phản ánh trực tiếp biến thiên cường độ tại đường gãy và bờ u. Entropy bổ sung thông tin về độ phức tạp kết cấu nhưng cũng nhạy với nhiễu nền nên nhận trọng số trung bình. Cuối cùng, tỷ lệ tiền cảnh chỉ đóng vai trò phạt nhẹ vùng nền vì hai thành phần kia đã ngầm ưu tiên vùng có cấu trúc. Tổng bộ ba trọng số bằng $1{,}00$ để điểm nằm trong khoảng $[0,1]$.
-
-Bốn cửa sổ được chia thành hai vai trò. Hai cửa sổ bao phủ được chọn gần các vị trí phân bố trên trục dài của vùng nội dung và ưu tiên vùng chứa nhiều tiền cảnh. Hai cửa sổ tiêu điểm ưu tiên điểm tổng hợp $q_i$ cao, đồng thời được khuyến khích cách xa các vùng đã chọn với trọng số đa dạng $0{,}35$. Các ứng viên có mức giao trên hợp lớn hơn $0{,}30$ bị loại. Ngưỡng này nằm trong khoảng $[0{,}30;\,0{,}50]$ thường dùng trong loại bỏ trùng lặp để khuyến khích các vùng phân tán không gian, phù hợp với đặc thù ảnh X-quang xương có vùng quan tâm trải dài hơn là tập trung. Nếu số ứng viên hợp lệ không đủ, quy trình lần lượt mở rộng sang toàn bộ lưới, bỏ ràng buộc chồng lấp và lặp vùng theo thứ tự xác định để luôn tạo bốn đầu vào cục bộ.
-
-Toàn bộ các giá trị trọng số và ngưỡng trên được chọn theo nguyên tắc thiết kế và giữ cố định cho mọi thí nghiệm. Chúng không được tối ưu trên tập xác thực, còn việc khảo sát có hệ thống được xác định là hướng phát triển tương lai.
-
-Các cửa sổ được ánh xạ ngược về ảnh gốc trước khi cắt để không lấy chi tiết từ ảnh trung gian đã thu nhỏ. Mỗi vùng được giữ tỷ lệ, đệm bằng màu biên, chuyển thành ảnh vuông $224\times224$ và chuẩn hóa giống ảnh toàn cục. Kết quả tiền xử lý gồm ảnh toàn cục $x_i^{\mathrm{img},g}$, bốn ảnh cục bộ $\{x_{i,m}^{\mathrm{img},\ell}\}_{m=1}^{4}$ và tọa độ hộp tương ứng được chuẩn hóa theo kích thước ảnh gốc.
+Trong mô hình BiomedCLIP gốc, cơ chế cắt trung tâm vốn được thiết kế cho các ảnh y tế tổng quát hoặc ảnh chụp ngực tiêu chuẩn. Tuy nhiên, đối với ảnh X-quang cơ xương khớp (vốn có tỷ lệ chiều dọc lớn như xương đùi, xương cẳng tay, khớp bàn tay), phép cắt trung tâm làm mất đi phần lớn các đầu xương và khớp nằm ở phía trên hoặc phía dưới của khung hình. Kỹ thuật tiền xử lý của XBone-Net khắc phục điểm này bằng cách đưa toàn bộ bức ảnh vào vùng nhìn của mạng nơ-ron.
 
 \subsection{Bộ mã hóa thị giác BiomedCLIP}
 \label{subsec:ch3_visual_encoder}

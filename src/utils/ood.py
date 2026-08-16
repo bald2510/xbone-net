@@ -581,8 +581,6 @@ def evaluate_ood(
     aupr_out = float(average_precision_score(labels, scores))
 
     # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
     fpr_id, tpr_id, _ = roc_curve(1 - labels, -scores, pos_label=1)
     eligible = np.flatnonzero(tpr_id >= 0.95)
     if eligible.size:

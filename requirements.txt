@@ -12,7 +12,6 @@ open-clip-torch==2.23.0
 pandas==3.0.2
 peft==0.19.1
 pillow==12.2.0
-PyYAML==6.0.3
 requests==2.33.1
 scikit-learn==1.8.0
 scipy==1.17.1

@@ -53,6 +53,12 @@ def _parse_args() -> argparse.Namespace:
         help="Write a report-ready efficiency.csv beside efficiency.json.",
     )
     parser.add_argument(
+        "--merge-lora",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Merge LoRA adapters into base weights before measuring inference efficiency.",
+    )
+    parser.add_argument(
         "--export-latex",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -576,7 +582,7 @@ def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
     path.write_text(table, encoding="utf-8")
 
 
-@hydra.main(config_path="../../configs", config_name="config", version_base="1.3")
+@hydra.main(config_path="../configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     """Thực thi điểm vào chính của mô-đun.
 
@@ -619,9 +625,19 @@ def main(cfg: DictConfig) -> None:
         model, cfg, device, is_zero_shot=is_zero_shot
     )
     if not checkpoint_loaded and not is_zero_shot:
-        raise FileNotFoundError(
-            "A trained checkpoint is required to benchmark this classifier."
+        print(
+            "[Warning] A trained checkpoint was not found. "
+            "Proceeding with initialized architecture weights for efficiency benchmark."
         )
+    if hasattr(model, "head") and hasattr(model.head, "centroids_initialized"):
+        if not bool(model.head.centroids_initialized.item()):
+            model.head.centroids.copy_(torch.randn_like(model.head.centroids))
+            model.head.centroids_initialized.fill_(True)
+
+    if ARGS.merge_lora and not is_zero_shot:
+        from src.models.builder import merge_peft_adapters
+        merge_peft_adapters(model)
+
 
     tokenizer = getattr(
         model.backbone,

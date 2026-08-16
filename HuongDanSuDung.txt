@@ -3,285 +3,165 @@ HƯỚNG DẪN SỬ DỤNG XBONE-NET
 
 1. ĐIỀU KIỆN TRƯỚC KHI CHẠY
 ---------------------------
-- Đã cài môi trường theo HuongDanCaiDat.txt.
-- Đã kích hoạt môi trường:
+- Đã cài đặt môi trường và các thư viện theo hướng dẫn trong HuongDanCaiDat.txt.
+- Đã kích hoạt môi trường nghiên cứu:
 
     conda activate Thesis
 
-- Terminal đang ở thư mục MaDeTai/src.
-- Dữ liệu đã được đặt đúng cấu trúc hoặc đường dẫn trong config đã được cập
-  nhật.
-- Đánh giá/suy luận cần checkpoint phù hợp; checkpoint không nằm trong gói mã
-  nguồn.
+- Terminal đang đứng tại thư mục gốc của chương trình: MaDeTai/src.
+- Dữ liệu đã được bố trí đúng cấu trúc trong thư mục data/.
+- Các checkpoint huấn luyện đặt tại thư mục checkpoints/ (hoặc demo/artifacts/).
 
 
-2. BIÊN DỊCH VÀ KIỂM TRA CÚ PHÁP
---------------------------------
-XBone-Net viết bằng Python nên không cần biên dịch thành file thực thi như
-C/C++. Có thể kiểm tra cú pháp bằng:
+2. KIỂM TRA CÚ PHÁP VÀ HỆ THỐNG
+-------------------------------
+Kiểm tra cú pháp toàn bộ mã nguồn:
 
   python -m compileall -q train.py evaluate.py evaluate_ood.py inference.py src tools benchmark demo data
 
-Lệnh thành công sẽ không in lỗi. Python có thể sinh thư mục __pycache__ trên
-máy chạy; đây là cache tạm và có thể xóa an toàn trước khi đóng gói/nộp lại.
-
-Kiểm tra dependency manifest:
+Kiểm tra danh mục thư viện đồng bộ:
 
   python tools/generate_requirement.py --check
 
 
 3. TIỀN XỬ LÝ DỮ LIỆU
 ----------------------
-Không chạy lại bước này nếu đã có các split CSV và report đúng giao thức dùng
-trong thí nghiệm.
+(Bỏ qua bước này nếu đã có sẵn các file split CSV và thư mục reports)
 
-3.1. CTCH
+3.1. Tập dữ liệu CTCH:
+Đặt file data_labeled_full_selected_cleaned.xlsx, images/ và labels.txt trong data/CTCH, sau đó chạy:
 
-Đặt data_labeled_full_selected_cleaned.xlsx, images_no_implants/ và labels.txt
-trong data/CTCH, sau đó chạy từ MaDeTai/src:
+  python data/CTCH/preprocess_ctch.py --step all
 
-  python data/CTCH/preprocess_ctch.py --step prepare --dry-run
-  python data/CTCH/preprocess_ctch.py --step prepare
-  python data/CTCH/preprocess_ctch.py --step translate
-  python data/CTCH/preprocess_ctch.py --step validate
+3.2. Tập dữ liệu BTXRD:
+Đặt dataset.csv và ảnh vào data/BTXRD, sau đó chạy:
 
-Có thể dùng --step all để chạy prepare, translate, validate và analyze. Các mẫu
-được đánh dấu OOD được đưa vào manifest riêng; không trộn vào train/val/test ID.
+  python data/BTXRD/preprocess_btxrd.py
+  python data/BTXRD/generate_clinical_reports.py
 
-3.2. BTXRD
+3.3. Tập dữ liệu FracAtlas (Domain OOD):
+Đặt dữ liệu vào data/FracAtlas, sau đó chạy:
 
-Đặt dataset.csv trong data/BTXRD. Vì hai script đọc đường dẫn tương đối, chạy:
-
-Windows PowerShell:
-
-  Push-Location data/BTXRD
-  python preprocess_btxrd.py
-  python generate_clinical_reports.py
-  Pop-Location
-
-Linux:
-
-  cd data/BTXRD
-  python preprocess_btxrd.py
-  python generate_clinical_reports.py
-  cd ../..
-
-Hai script tạo btxrd-split.csv, btxrd-labels.csv và các báo cáo tiền sử đã khử
-rò rỉ nhãn trong reports/clinical_v2/.
-
-3.3. FracAtlas cho domain OOD
-
-Đặt dataset.csv, ảnh và COCO annotation trong data/FracAtlas. Chạy các script
-từ chính thư mục này vì chúng dùng đường dẫn tương đối:
-
-Windows PowerShell:
-
-  Push-Location data/FracAtlas
-  python preprocess.py
-  python generate_reports.py
-  Pop-Location
-
-Linux:
-
-  cd data/FracAtlas
-  python preprocess.py
-  python generate_reports.py
-  cd ../..
+  python data/FracAtlas/preprocess.py
+  python data/FracAtlas/generate_reports.py
 
 
-4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT
-------------------------------
-BTXRD:
-
-  python train.py +experiment=btxrd/proposed/ours_xbone_net
-
-CTCH:
+4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT (XBONE-NET)
+-----------------------------------------
+Huấn luyện XBone-Net trên CTCH (mặc định seed 42):
 
   python train.py +experiment=ctch/proposed/ours_xbone_net
 
-Chỉ định seed:
+Huấn luyện XBone-Net trên BTXRD:
+
+  python train.py +experiment=btxrd/proposed/ours_xbone_net
+
+Chỉ định seed khác (ví dụ: seed 123, seed 456):
 
   python train.py +experiment=ctch/proposed/ours_xbone_net ++seed=123
 
-Giảm VRAM sử dụng bằng Hydra override:
+Tối ưu bộ nhớ GPU (giảm batch size):
 
   python train.py +experiment=ctch/proposed/ours_xbone_net dataset.batch_size=4 model.tile_encode_chunk_size=8
 
-Checkpoint mặc định:
-
-  checkpoints/<dataset>/<nhom_thi_nghiem>/<ten_thi_nghiem>/seed_<seed>/
-
-Các checkpoint chính là best_phase1.pth và best_phase2.pth. Việc chọn checkpoint
-dựa trên validation metric trong config, không dựa trên test set.
+Trọng số tốt nhất của 2 giai đoạn huấn luyện sẽ được lưu tự động tại:
+  checkpoints/<dataset>/proposed/ours_xbone_net/seed_<seed>/best_phase1.pth
+  checkpoints/<dataset>/proposed/ours_xbone_net/seed_<seed>/best_phase2.pth
 
 
-5. ĐÁNH GIÁ PHÂN LOẠI
----------------------
-BTXRD:
-
-  python evaluate.py +experiment=btxrd/proposed/ours_xbone_net
-
-CTCH:
+5. ĐÁNH GIÁ PHÂN LOẠI MÔ HÌNH
+-----------------------------
+Đánh giá trên tập kiểm thử CTCH:
 
   python evaluate.py +experiment=ctch/proposed/ours_xbone_net
 
-Đánh giá kèm bootstrap CI 95% và lưu embedding:
+Đánh giá kèm khoảng tin cậy Bootstrap 95% và trích xuất embedding:
 
   python evaluate.py +experiment=ctch/proposed/ours_xbone_net --bootstrap --n-bootstrap 10000 --save-embeddings
 
-Chỉ định thư mục kết quả:
 
-  python evaluate.py +experiment=ctch/proposed/ours_xbone_net --output-dir results/ctch/proposed/ours_xbone_net/seed_42
+6. SUY LUẬN TRÊN MỘT MẪU ĐƠN LẺ (CLI)
+--------------------------------------
+Chạy dự đoán cho 1 cặp ảnh X-quang và tiền sử lâm sàng:
 
-
-6. SUY LUẬN MỘT MẪU
---------------------
-BTXRD:
-
-  python inference.py +experiment=btxrd/proposed/ours_xbone_net --image data/BTXRD/images/<TEN_ANH> --clinical-text "<TIEN_SU_LAM_SANG>" --checkpoint checkpoints/btxrd/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
-
-CTCH:
-
-  python inference.py +experiment=ctch/proposed/ours_xbone_net --image data/CTCH/images/<TEN_ANH> --clinical-text "<TIEN_SU_LAM_SANG>" --checkpoint checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
-
-Đổi --device cuda thành --device cpu nếu không có GPU. Không dùng nội dung kết
-luận X-quang làm clinical-text trong pipeline đề xuất vì có nguy cơ label
-leakage.
+  python inference.py +experiment=ctch/proposed/ours_xbone_net --image data/CTCH/images/<TEN_FILE_ANH.jpg> --clinical-text "<NOI_DUNG_TIEN_SU_LAM_SANG>" --checkpoint checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
 
 
-7. CHẠY BASELINE, FEW-SHOT VÀ ABLATION
--------------------------------------
-Mỗi thí nghiệm được chọn bằng đường dẫn dưới configs/experiment, bỏ đuôi .yaml.
-Ví dụ:
-
-Zero-shot:
+7. CHẠY CÁC THỰC NGHIỆM ĐỐI CHỨNG (BASELINES & ABLATION)
+--------------------------------------------------------
+Zero-shot VLM Baseline:
 
   python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot
 
-Few-shot:
+Full Fine-Tuning Baseline:
+
+  python train.py +experiment=ctch/baselines/full_finetuned/fft_biomedclip
+
+Few-Shot Learning (10-shot, 20-shot):
 
   python train.py +experiment=ctch/few_shot/10_shot/ours_xbone_net
 
-Ablation:
+Ablation Study (Ví dụ bỏ Letterbox / bỏ High-Res):
 
-  python train.py +experiment=ctch/ablation_study/architecture/preprocess/xbone_nohighres
+  python train.py +experiment=ctch/ablation_study/architecture/preprocess/xbone_letterbox
 
 
-8. CHẠY NHIỀU SEED HOẶC TOÀN BỘ THÍ NGHIỆM
--------------------------------------------
-Một config với ba seed:
+8. CHẠY NHIỀU SEED HOẶC TỰ ĐỘNG HÓA HÀNG LOẠT
+----------------------------------------------
+Chạy huấn luyện và đánh giá trên 3 seed (42, 123, 456):
 
   python tools/training.py --group ctch/proposed/ours_xbone_net --seeds 42 123 456
 
-Các experiment đang được bật trong tools/experiments.txt:
-
-  python tools/training.py --seeds 42 123 456 --bootstrap
-
-Chỉ train:
-
-  python tools/training.py --group ctch/proposed/ours_xbone_net --seeds 42 123 456 --train-only
-
-Chỉ evaluate checkpoint đã có:
-
-  python tools/training.py --group ctch/proposed/ours_xbone_net --seeds 42 123 456 --eval-only
-
-Chỉ tổng hợp bảng kết quả:
+Tổng hợp bảng so sánh kết quả tự động:
 
   python tools/training.py --table --group ctch/proposed/ours_xbone_net
 
-Liệt kê config và xem trước hàng đợi mà không chạy:
 
-  python tools/training.py --list-configs
-  python tools/training.py --dry-run
-
-Trên Windows có thể dùng launcher tương đương:
-
-  scripts\train.bat --group ctch/proposed/ours_xbone_net --seeds 42 123 456
-  scripts\eval.bat --group ctch/proposed/ours_xbone_net --seeds 42 123 456
-
-Khi so sánh training time, các mô hình phải chạy trên cùng GPU, precision,
-physical batch size và gradient accumulation protocol.
-
-
-9. OOD VÀ EXPLAINABILITY
-------------------------
-Pipeline này được khóa cho mô hình proposed huấn luyện bằng CTCH và ba seed 42,
-123, 456. Sau khi có đủ checkpoint, chạy:
-
-  python benchmark/ood_analysis.py
-
-Chỉ OOD:
+9. ĐÁNH GIÁ OOD VÀ TRỰC QUAN HÓA GIẢI THÍCH MÔ HÌNH
+----------------------------------------------------
+9.1. Đánh giá phát hiện Out-of-Distribution (OOD):
 
   python benchmark/ood_analysis.py --analyses ood --device cuda
 
-Chỉ explainability:
+9.2. Xuất hình ảnh Integrated Gradients (IG Attribution) đa phương thức:
 
-  python benchmark/ood_analysis.py --analyses explainability --device cuda
+  python tools/visualize/render_multimodal_ig.py --image-id 3021_img-84263-00001.jpg --device cuda --output results/visualization/multimodal_ig_sample.png
 
-Chỉ export feature:
+9.3. Xuất hình ảnh Chú ý chéo hai chiều (Cross-Modal Attention):
 
-  python benchmark/ood_analysis.py --feature-only --device cuda
-
-Chỉ dựng lại bảng từ kết quả hiện có:
-
-  python benchmark/ood_analysis.py --table
-
-Pipeline fit detector bằng CTCH train, hiệu chỉnh ngưỡng trên CTCH validation và
-đánh giá CTCH test cùng các scenario OOD đã khóa trong configs/analysis/ctch/.
-Các phương pháp gồm cosine centroid, Mahalanobis theo tâm lớp, cosine-KNN và
-entropy. Không dùng evaluate_ood.py trực tiếp với checkpoint BTXRD hoặc protocol
-tự tạo.
-
-Integrated Gradients được tính cho mẫu ID trên logit của lớp dự đoán và hiển
-thị attribution cho ảnh global, local sparse-focal token và token văn bản. Mẫu
-bị cảnh báo OOD không tạo IG theo lớp.
+  python tools/visualize/attention.py --image-id 3021_img-84263-00001.jpg --device cuda
 
 
-10. ĐO HIỆU QUẢ TÍNH TOÁN
--------------------------
-Đo proposed model với batch size 1:
+10. ĐO HIỆU QUẢ TÍNH TOÁN (BENCHMARK)
+-------------------------------------
+Đo GFLOPs, Throughput, Latency và VRAM tiêu thụ:
 
   python benchmark/efficiency.py +experiment=ctch/proposed/ours_xbone_net ++seed=42 --device cuda --precision fp32 --batch-size 1 --num-batches 20 --warmup 10 --repeats 10
 
-Chỉ so sánh latency/training time giữa các mô hình khi GPU, precision, physical
-batch size, gradient accumulation và môi trường phần mềm giống nhau.
 
+11. TRỰC QUAN HÓA BỔ TRỢ
+-------------------------
+Trực quan hóa quy trình tiền xử lý ảnh Letterbox Square:
 
-11. TRỰC QUAN HÓA
------------------
-Trực quan hóa preprocessing:
+  python tools/visualize/preprocessing.py --image data/CTCH/images/<TEN_FILE_ANH.jpg>
 
-  python tools/visualize/preprocessing.py --image data/CTCH/images/<TEN_ANH> --output results/visualization/preprocessing.png
+Trực quan hóa phân bố tâm lớp (Empirical Centroids):
 
-Trực quan hóa empirical centroids sau khi đã export embeddings:
-
-  python evaluate.py +experiment=ctch/proposed/ours_xbone_net ++seed=42 --save-embeddings
   python tools/visualize/centroids.py --experiment ctch/proposed/ours_xbone_net --seed 42 --split test
 
-Xem TensorBoard:
 
-  tensorboard --logdir runs
-
-
-12. CHẠY ỨNG DỤNG STREAMLIT
----------------------------
-Sau khi có checkpoint CTCH proposed và feature archive dùng để hiệu chỉnh OOD:
+12. KHỞI CHẠY ỨNG DỤNG WEB DEMO (STREAMLIT)
+-------------------------------------------
+Để chạy giao diện trực quan hóa tương tác hoàn chỉnh cho người dùng:
 
   streamlit run demo/streamlit_app.py
 
-Ứng dụng nhận ảnh cùng tiền sử lâm sàng, hiển thị preprocessing, xác suất 22
-lớp, confidence, điểm OOD/ngưỡng, các ảnh CTCH gần nhất và Integrated Gradients
-cho ảnh global, vùng local và văn bản. Đây là demo nghiên cứu, không phải thiết
-bị y tế và không thay thế đánh giá của bác sĩ.
+Chi tiết cách sử dụng các tính năng giao diện xem tại tệp: HuongDanSuDungDemo.txt.
 
 
-13. VỊ TRÍ FILE SINH RA KHI CHẠY
---------------------------------
-- checkpoints/: trọng số Phase 1 và Phase 2.
-- results/: metric, embedding, OOD, explainability và bảng tổng hợp.
-- runs/: log TensorBoard/CSV.
-- outputs/: cấu hình và log do Hydra tạo.
-
-Các thư mục này được sinh trong quá trình chạy và không thuộc gói mã nguồn cần
-nộp. Trước khi đóng gói lại, loại bỏ __pycache__, *.pyc, outputs, runs, results
-và checkpoint nếu quy định nộp bài không yêu cầu các artifact đó.
+13. QUẢN LÝ CÁC THƯ MỤC VÀ TỆP SINH RA
+--------------------------------------
+- checkpoints/: Lưu các trọng số mô hình đã huấn luyện (.pth).
+- results/: Chứa các bảng metric (.json), hình ảnh trực quan hóa (.png) và kết quả OOD.
+- runs/: Lưu log theo dõi quá trình huấn luyện của TensorBoard.
+- outputs/: Chứa cấu hình và log thực thi do Hydra tự động sinh ra.

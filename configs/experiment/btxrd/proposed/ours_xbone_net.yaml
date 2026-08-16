@@ -17,63 +17,17 @@ seed: 42
 model:
   backbone_type: biomedclip
   freeze_backbone: true
-  # Four sparse-focal tiles each contribute one pretrained CLS token and a 2x2
-  # pooled patch grid, preserving more local spatial detail (5 x 4 = 20 tokens).
   num_visual_tokens: 20
-  local_pool_grid: 2
-  include_local_cls_token: true
-  contrastive_local_weight: 0.25
-  # Start from exact mean pooling, then learn global-guided local attention.
-  contrastive_pooling: attention
-  contrastive_attention_hidden_dim: 128
-  tile_encode_chunk_size: 32
-  # Let Phase-1/2 losses update visual LoRA through local tiles. Recompute tile
-  # activations during backward to keep memory bounded.
-  local_tile_grad_enabled: true
-  local_tile_gradient_checkpointing: true
-  visual_resampler:
-    aggregation: passthrough
-    use_spatial_coordinates: true
-    spatial_coordinate_scale_init: 0.1
-  classifier:
-    params:
-      # Retain empirical-centroid geometry while learning class-specific
-      # decision offsets; all biases start at zero.
-      use_class_bias: true
+  single_view_pool_shape: [4, 5]
 
 dataset:
   params:
     high_res:
-      enabled: true
-      strategy: sparse_focal
-      # BiomedCLIP still receives only fixed 224x224 inputs: one global view
-      # plus exactly four image-only local views.
-      global_size: 224
-      tile_size: 224
-      canonical_long_side: 896
-      allow_upsample: false
-      candidate_stride: 168
-      num_tiles: 4
-      coverage_tiles: 2
-      # Cache only source-space crop coordinates, never image tensors/features.
-      cache_selection: true
-      min_foreground_ratio: 0.60
-      nms_iou: 0.30
-      focal_diversity_weight: 0.35
-      pad_value: border_median
-      border_fraction: 0.04
-      min_contrast: 0.035
-      foreground:
-        margin: 0.04
-        border_fraction: 0.04
-        min_contrast: 0.035
-        min_axis_coverage: 0.01
-        min_run_ratio: 0.03
-        # Fall back to the complete image when the pixel mask is uncertain.
-        min_dimension_ratio: 0.35
-        min_area_ratio: 0.20
-        min_energy_retained: 0.95
-        mask_max_side: 512
+      enabled: false
+    preprocess:
+      strategy: letterbox
+      target_size: 224
+      pad_value: black
 
 params:
   run_phase1: true
