@@ -68,7 +68,7 @@ Chiến lược học tương phản là hướng tiếp cận được ứng d�
 \label{tab:VLMPretrainingMethodPropose}
 \end{table}
 
-ConVIRT \cite{ConVIRT} là nghiên cứu tiên phong áp dụng học tương phản cho dữ liệu y khoa, sử dụng ResNet50 và BERT để tối ưu bộ mã hóa ảnh và văn bản, đạt độ chính xác 90,3\% trên bộ dữ liệu COVIDx. GLoRIA \cite{GLoRIA} mở rộng hướng tiếp cận này bằng cách kết hợp hai hàm mất mát toàn cục và cục bộ, cho phép căn chỉnh chi tiết giữa các vùng trong ảnh và các từ trong câu. MedCLIP \cite{MedCLIP} đề xuất cơ chế tách cặp và trích xuất tri thức cùng hàm mất mát khớp ngữ nghĩa nhằm giải quyết vấn đề âm tính giả khi các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý. BiomedCLIP \cite{BiomedCLIP} kế thừa kiến trúc CLIP với bộ mã hóa ViT-Base và PubMedBERT, được tiền huấn luyện trên 15 triệu cặp dữ liệu từ tập PMC-15M, đạt độ chính xác phân lớp 83\%, giúp mô hình có độ phủ và khả năng tổng quát tốt với nhiều nguồn dữ liệu và tác vụ y khoa.
+ConVIRT \cite{ConVIRT} là nghiên cứu tiên phong áp dụng học tương phản cho dữ liệu y khoa, sử dụng ResNet50 và BERT để tối ưu bộ mã hóa ảnh và văn bản, đạt độ chính xác 90,3\% trên bộ dữ liệu COVIDx. GLoRIA \cite{GLoRIA} mở rộng hướng tiếp cận này bằng cách kết hợp hai hàm mất mát toàn cục và cục bộ, cho phép căn chỉnh chi tiết giữa các vùng trong ảnh và các từ trong câu. MedCLIP \cite{MedCLIP} đề xuất cơ chế tách cặp và trích xuất tri thức cùng hàm mất mát khớp ngữ nghĩa nhằm giải quyết vấn đề âm tính giả khi các cặp dữ liệu bị ghép nhầm dù chúng có chung đặc điểm bệnh lý. BiomedCLIP \cite{BiomedCLIP} kế thừa kiến trúc CLIP \cite{CLIP} với bộ mã hóa ViT-Base và PubMedBERT, được tiền huấn luyện trên 15 triệu cặp dữ liệu từ tập PMC-15M, đạt độ chính xác phân lớp 83\%, giúp mô hình có độ phủ và khả năng tổng quát tốt với nhiều nguồn dữ liệu và tác vụ y khoa.
 
 Ngoài học tương phản, các hướng tiếp cận khác bao gồm học có che giấu và tích hợp tri thức y khoa. Tuy nhiên, các phương pháp này thường phụ thuộc vào nguồn dữ liệu ghép cặp sẵn hoặc đồ thị tri thức chuyên biệt, hạn chế khả năng ứng dụng trên các bài toán không có sẵn nguồn tri thức ngoài. Song song với các mô hình ngôn ngữ trực quan y khoa, sự phát triển của các mô hình ngôn ngữ lớn đa phương thức như Med-Flamingo \cite{moor_2023_medflamingo}, LLaVA-Med \cite{li_2023_llavamed} hay Med-PaLM M \cite{MED-PALM-M} đã cho thấy tiềm năng trong các tác vụ hội thoại và hỗ trợ ra quyết định y khoa. Tuy nhiên, các mô hình này thường có quy mô rất lớn, chi phí huấn luyện và suy luận cao, đồng thời vẫn tồn tại nguy cơ tạo ra thông tin không chính xác. Do đó, đối với các bài toán phân lớp chuyên biệt như phân lớp ảnh X-quang xương, việc sử dụng các mô hình ngôn ngữ - thị giác chuyên dụng kết hợp tinh chỉnh hiệu quả tham số thường phù hợp và hiệu quả hơn.
 
@@ -104,51 +104,6 @@ p(y=k\mid x)
 \end{equation}
 
 trong đó $\tau$ là hệ số nhiệt độ. Lớp có xác suất lớn nhất được chọn làm kết quả dự đoán. Cơ chế này cho phép BiomedCLIP chuyển giao tri thức đã học sang các tập nhãn mới mà không cần cập nhật tham số. Tuy nhiên, hiệu quả phụ thuộc đáng kể vào mức độ tương đồng giữa dữ liệu tiền huấn luyện và dữ liệu đích, cách xây dựng câu nhắc, cũng như khả năng biểu diễn các dấu hiệu bệnh lý chuyên biệt của bộ mã hóa.
-
-\section{Biểu diễn ảnh độ phân giải cao và thông tin không gian}
-
-Ảnh y khoa thường có độ phân giải cao để ghi nhận được các dấu hiệu bệnh lý nhỏ, trong khi các bộ mã hóa thị giác tiền huấn luyện thường yêu cầu kích thước đầu vào cố định ở kích thước nhỏ. Việc co toàn bộ ảnh về kích thước nhỏ giúp giảm chi phí tính toán nhưng có thể làm mất các chi tiết cục bộ. Ngược lại, xử lý trực tiếp ảnh độ phân giải cao làm tăng bộ nhớ cần sử dụng và chi phí tính toán cao của cơ chế chú ý. Bảng \ref{tab:ch2_high_resolution} tổng hợp về các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính được trình bày. FPT \cite{FPT} giải quyết sự đánh đổi này bằng cách lựa chọn một phần đơn vị biểu diễn kết hợp với mạng nhánh, cho thấy việc thích nghi mô hình nền tảng cho ảnh y khoa cần đồng thời bảo toàn chi tiết và kiểm soát bộ nhớ.
-
-Trong các mô hình ngôn ngữ trực quan tổng quát, LLaVA-NeXT \cite{LLaVANeXTAblations2024} đề xuất AnyRes, trong đó ảnh được biểu diễn bởi một ảnh toàn cục và nhiều ô ảnh cục bộ theo lưới thích nghi. Phiên bản Higher-AnyRes mở rộng số ô ảnh để hỗ trợ đầu vào có độ phân giải lớn hơn, đồng thời giới hạn tổng số đơn vị biểu diễn bằng phép nội suy đặc trưng. Các thí nghiệm cho thấy tăng độ phân giải quan sát thường cải thiện các tác vụ phụ thuộc vào chi tiết, trong khi tăng mạnh số đơn vị biểu diễn hoặc phóng lớn ảnh một cách cưỡng bức làm tăng chi phí nhưng không luôn đem lại hiệu quả tương ứng. Kết quả này nhấn mạnh rằng mục tiêu chính là giữ lại thông tin cục bộ hữu ích trong một ngân sách đơn vị biểu diễn phù hợp.
-
-\begin{table}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|l|l|l|}
-\hline
-\multicolumn{1}{|c|}{\textbf{Chiến lược}} &
-  \multicolumn{1}{c|}{\textbf{Đặc điểm}} &
-  \multicolumn{1}{c|}{\textbf{Khả năng đáp ứng}} &
-  \multicolumn{1}{c|}{\textbf{Hạn chế cần xem xét}} \\ \hline
-Co giãn ảnh toàn cục &
-  \begin{tabular}[c]{@{}l@{}}Một ảnh được đưa về \\ kích thước cố định\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Chi phí thấp và duy \\ trì bố cục tổng thể\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Có thể làm mất các \\ dấu hiệu nhỏ hoặc \\ khu trú.\end{tabular} \\ \hline
-\begin{tabular}[c]{@{}l@{}}Xử lý trực tiếp \\ ảnh độ phân giải cao\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Tăng kích thước ảnh \\ hoặc số lượng patch\end{tabular} &
-        \begin{tabular}[c]{@{}l@{}}Giữ lại nhiều chi tiết \\ hơn. FPT \cite{FPT} \\ xem xét sự đánh đổi \\ giữa khả năng bảo toàn \\ chi tiết và chi phí bộ \\ nhớ trong ảnh y khoa\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Số lượng đơn vị biểu \\ diễn và chi phí của cơ \\ chế chú ý tăng nhanh.\end{tabular} \\ \hline
-\begin{tabular}[c]{@{}l@{}}AnyRes và \\ Higher-AnyRes\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Kết hợp ảnh toàn cục \\ với các vùng ảnh theo \\ lưới thích nghi và giới \\ hạn số đơn vị biểu diễn \\ bằng phép nội suy\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Tăng độ phủ không \\ gian và cải thiện các \\ tác vụ phụ thuộc vào \\ chi tiết \cite{LLaVANeXTAblations2024}\end{tabular} &
-        \begin{tabular}[c]{@{}l@{}}Lưới đều có thể xử lý \\ nhiều vùng không liên \\ quan. Bằng chứng thực \\ nghiệm chủ yếu đến từ \\ dữ liệu phi y khoa.\end{tabular} \\ \hline
-Latent resampling &
-  \begin{tabular}[c]{@{}l@{}}Nén tập đơn vị biểu diễn \\ đầu vào thành một số \\ lượng latent cố định\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Kiểm soát độ dài \\ chuỗi và chi phí kết \\ nối đa phương thức\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Có nguy cơ làm mất \\ các tín hiệu nhỏ và phụ \\ thuộc vào khả năng tối \\ ưu các truy vấn học \\ được \cite{Jaegle2021Perceiver,Alayrac2022Flamingo}.\end{tabular} \\ \hline
-\begin{tabular}[c]{@{}l@{}}Toàn cục-cục bộ \\ đa góc nhìn\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Kết hợp ảnh toàn cục \\ với nhiều vùng cục bộ \\ được trích xuất từ ảnh gốc\end{tabular} &
-        \begin{tabular}[c]{@{}l@{}}Phù hợp với các dấu \\ hiệu bệnh lý nhỏ và \\ khu trú. MedBridge \cite{Li2026MedBridge} \\ cho thấy hiệu quả trên \\ ảnh X-quang ngực\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Làm tăng chi phí khi \\ sử dụng mô hình nền \\ tảng nhiều lần, hiệu \\ quả phụ thuộc vào \\ cách lựa chọn vùng \\ và chưa được kiểm \\ chứng trực tiếp trên \\ ảnh X-quang xương.\end{tabular} \\ \hline
-\end{tabular}%
-}
-\caption{Các chiến lược xử lý ảnh độ phân giải cao và sự đánh đổi chính}
-\label{tab:ch2_high_resolution}
-\end{table}
-
-Đối với ảnh y khoa, MedBridge \cite{Li2026MedBridge} áp dụng chiến lược đa góc nhìn gồm một ảnh toàn cục và nhiều vùng cục bộ được lấy từ ảnh X-quang độ phân giải cao. Cách biểu diễn này duy trì ngữ cảnh giải phẫu của toàn ảnh, đồng thời giúp các dấu hiệu bệnh lý khu trú được quan sát ở độ phân giải phù hợp với bộ mã hóa. Kết quả loại bỏ thành phần cho thấy việc không sử dụng lấy mẫu đa góc nhìn làm hiệu năng giảm, qua đó cung cấp bằng chứng thực nghiệm cho lợi ích của biểu diễn toàn cục-cục bộ trên ảnh X-quang. Tuy nhiên, nghiên cứu được thực hiện chủ yếu trên X-quang ngực và kết hợp thêm các mô-đun thích nghi khác, nên hiệu quả trên X-quang xương vẫn cần được kiểm chứng riêng.
-
-Ngoài phương pháp chia vùng, Perceiver \cite{Jaegle2021Perceiver} và Flamingo \cite{Alayrac2022Flamingo} sử dụng tập truy vấn hoặc latent có kích thước cố định để nén số lượng lớn đặc trưng thị giác. Hướng tiếp cận này giúp kiểm soát độ dài chuỗi, nhưng việc nén quá mạnh có thể làm mất các tín hiệu nhỏ. Nhìn chung, các nghiên cứu hiện nay cho thấy biểu diễn ảnh độ phân giải cao cần cân bằng ba yếu tố: ngữ cảnh toàn cục, chi tiết cục bộ và chi phí tính toán. Đây là cơ sở cho việc nghiên cứu chiến lược toàn cục-cục bộ với ngân sách đơn vị biểu diễn cố định trong bài toán phân lớp ảnh X-quang xương.
 
 \section{Các kỹ thuật tinh chỉnh hiệu quả tham số}
 

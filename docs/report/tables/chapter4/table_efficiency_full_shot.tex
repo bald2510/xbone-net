@@ -1,38 +1,31 @@
-\begin{table}[htbp]
+\begin{table}[H]
 \centering
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{|c|l|c|c|c|}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
 \hline
-\textbf{Dữ liệu} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \textbf{Tổng tham số} & \textbf{Tham số huấn luyện} & \textbf{Tỷ lệ (\%)} \\ \hline
-\multirow{3}{*}{BTXRD} & LoRA-BiomedCLIP              & 201,447,179                    & 5,544,458                    & 2.75\%                    \\ \cline{2-5} 
-                       & LoRA-PubMedCLIP              & 155,052,299                    & 3,774,986                    & 2.43\%                    \\ \cline{2-5} 
-                       & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,308 & \cellcolor{gray!12}8,632,587 & \cellcolor{gray!12}4.22\% \\ \hline
-\multirow{3}{*}{CTCH}  & LoRA-BiomedCLIP              & 201,453,335                    & 5,550,614                    & 2.76\%                    \\ \cline{2-5} 
-                       & LoRA-PubMedCLIP              & 155,058,455                    & 3,781,142                    & 2.44\%                    \\ \cline{2-5} 
-                       & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,535,320 & \cellcolor{gray!12}8,632,599 & \cellcolor{gray!12}4.22\% \\ \hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline
+\multirow{2}{*}{BTXRD} & BiomedCLIP (FFT) & 196,433,675 & 196,433,675 & 100.00\% \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,342,539 & \cellcolor{gray!12}8,439,818 & \cellcolor{gray!12}4.13\% \\ \hline
+\multirow{2}{*}{CTCH} & BiomedCLIP (FFT) & 196,439,831 & 196,439,831 & 100.00\% \\ \cline{2-5}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,348,695 & \cellcolor{gray!12}8,445,974 & \cellcolor{gray!12}4.13\% \\ \hline
 \end{tabular}%
 }
 \caption{Đánh giá số lượng tham số của các mô hình khi sử dụng toàn bộ dữ liệu}
 \label{tab:efficiency_full_shot_params}
 \end{table}
 
-\begin{table}[htbp]
+\begin{table}[H]
 \centering
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{|c|l|c|c|c|c|}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|}
 \hline
-\textbf{Dữ liệu} &
-  \multicolumn{1}{c|}{\textbf{Mô hình}} &
-  \textbf{GFLOPs} &
-  \textbf{Thông lượng} &
-  \textbf{\begin{tabular}[c]{@{}c@{}}Độ trễ \\ trung bình\end{tabular}} &
-  \textbf{\begin{tabular}[c]{@{}c@{}}Bộ nhớ GPU \\ cực đại\end{tabular}} \\ \hline
-\multirow{3}{*}{BTXRD} & LoRA-BiomedCLIP              & 83.321                     & 30.6                    & 36.25                    & 792.6                    \\ \cline{2-6} 
-                       & LoRA-PubMedCLIP              & 15.198                     & 33.3                    & 43.87                    & 603.6                    \\ \cline{2-6} 
-                       & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}17.7 & \cellcolor{gray!12}64.92 & \cellcolor{gray!12}835.5 \\ \hline
-\multirow{3}{*}{CTCH}  & LoRA-BiomedCLIP              & 83.321                     & 38.3                    & 30.16                    & 792.6                    \\ \cline{2-6} 
-                       & LoRA-PubMedCLIP              & 15.198                     & 37.7                    & 34.56                    & 603.6                    \\ \cline{2-6} 
-                       & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}229.020 & \cellcolor{gray!12}13.4 & \cellcolor{gray!12}87.15 & \cellcolor{gray!12}835.6 \\ \hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ GPU}} \\ \hline
+\multirow{2}{*}{BTXRD} & BiomedCLIP (FFT) & 81.032 & 64.7 & 15.48 & 770.7 \\ \cline{2-6}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}82.318 & \cellcolor{gray!12}68.2 & \cellcolor{gray!12}15.26 & \cellcolor{gray!12}782.4 \\ \hline
+\multirow{2}{*}{CTCH} & BiomedCLIP (FFT) & 81.032 & 75.6 & 13.77 & 770.7 \\ \cline{2-6}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}82.318 & \cellcolor{gray!12}64.1 & \cellcolor{gray!12}16.17 & \cellcolor{gray!12}782.5 \\ \hline
 \end{tabular}%
 }
 \caption{Đánh giá chi phí tính toán và tốc độ suy luận của các mô hình khi sử dụng toàn bộ dữ liệu}

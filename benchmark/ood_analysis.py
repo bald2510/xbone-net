@@ -44,6 +44,7 @@ from src.utils.analysis import (
     sha256_file,
 )
 from src.utils.ood import (
+    MultimodalEnsembleOODDetector,
     OODDetector,
     bootstrap_ood_metrics,
     calibrate_ood_threshold,
@@ -89,8 +90,18 @@ SCENARIO_LABELS = {
     "report_mismatch_same_class": "Mâu thuẫn bệnh sử cùng lớp",
 }
 
-ALL_METHODS = ["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"]
-DEFAULT_METHODS = ["cosine_centroids", "mahalanobis_centroid"]
+ALL_METHODS = [
+    "cosine_centroids",
+    "mahalanobis_centroid",
+    "knn",
+    "entropy",
+    "multimodal_ensemble",
+]
+DEFAULT_METHODS = [
+    "cosine_centroids",
+    "mahalanobis_centroid",
+    "multimodal_ensemble",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -337,6 +348,9 @@ def evaluate_single_seed_ood(
     train_embeddings_raw = np.asarray(train_data.get("fused_embeddings_raw", train_embeddings), dtype=np.float64)
     train_labels = np.asarray(train_data["labels"], dtype=np.int64)
 
+    train_vis = np.asarray(train_data.get("visual_global_embeddings", train_embeddings), dtype=np.float64)
+    train_txt = np.asarray(train_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in train_data else None
+
     detector_norm = OODDetector().fit(train_embeddings, train_labels)
     detector_raw = OODDetector().fit(train_embeddings_raw, train_labels)
 
@@ -344,6 +358,24 @@ def evaluate_single_seed_ood(
     val_emb = np.asarray(val_data["fused_embeddings"], dtype=np.float64)
     val_emb_raw = np.asarray(val_data.get("fused_embeddings_raw", val_emb), dtype=np.float64)
     val_logits = np.asarray(val_data["logits"], dtype=np.float64)
+    val_vis = np.asarray(val_data.get("visual_global_embeddings", val_emb), dtype=np.float64)
+    val_txt = np.asarray(val_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in val_data else None
+
+    multimodal_detector = None
+    if "multimodal_ensemble" in methods:
+        multimodal_detector = MultimodalEnsembleOODDetector(
+            knn_k=knn_k,
+            knn_reduction=knn_reduction,
+            knn_metric=knn_metric,
+        ).fit(
+            visual_embeddings=train_vis,
+            labels=train_labels,
+            text_embeddings=train_txt,
+            logits=train_data.get("logits"),
+            val_visual_embeddings=val_vis,
+            val_text_embeddings=val_txt,
+            val_logits=val_logits,
+        )
 
     val_scores: dict[str, np.ndarray] = {}
     thresholds: dict[str, float] = {}
@@ -361,6 +393,12 @@ def evaluate_single_seed_ood(
                 reduction=knn_reduction,
                 metric=knn_metric,
             )
+        elif method == "multimodal_ensemble":
+            scores = multimodal_detector.score(
+                visual_embeddings=val_vis,
+                text_embeddings=val_txt,
+                logits=val_logits,
+            )
         else:  # cosine_centroids
             scores = detector_norm.score(val_emb, method=method)
         val_scores[method] = scores
@@ -370,6 +408,8 @@ def evaluate_single_seed_ood(
     test_emb = np.asarray(test_id_data["fused_embeddings"], dtype=np.float64)
     test_emb_raw = np.asarray(test_id_data.get("fused_embeddings_raw", test_emb), dtype=np.float64)
     test_logits = np.asarray(test_id_data["logits"], dtype=np.float64)
+    test_vis = np.asarray(test_id_data.get("visual_global_embeddings", test_emb), dtype=np.float64)
+    test_txt = np.asarray(test_id_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in test_id_data else None
 
     test_id_scores: dict[str, np.ndarray] = {}
     for method in methods:
@@ -385,6 +425,12 @@ def evaluate_single_seed_ood(
                 reduction=knn_reduction,
                 metric=knn_metric,
             )
+        elif method == "multimodal_ensemble":
+            scores = multimodal_detector.score(
+                visual_embeddings=test_vis,
+                text_embeddings=test_txt,
+                logits=test_logits,
+            )
         else:
             scores = detector_norm.score(test_emb, method=method)
         test_id_scores[method] = scores
@@ -397,6 +443,8 @@ def evaluate_single_seed_ood(
         ood_emb = np.asarray(ood_data["fused_embeddings"], dtype=np.float64)
         ood_emb_raw = np.asarray(ood_data.get("fused_embeddings_raw", ood_emb), dtype=np.float64)
         ood_logits = np.asarray(ood_data["logits"], dtype=np.float64)
+        ood_vis = np.asarray(ood_data.get("visual_global_embeddings", ood_emb), dtype=np.float64)
+        ood_txt = np.asarray(ood_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in ood_data else None
 
         method_metrics: dict[str, Any] = {}
         for method in methods:
@@ -411,6 +459,12 @@ def evaluate_single_seed_ood(
                     k=knn_k,
                     reduction=knn_reduction,
                     metric=knn_metric,
+                )
+            elif method == "multimodal_ensemble":
+                ood_scores = multimodal_detector.score(
+                    visual_embeddings=ood_vis,
+                    text_embeddings=ood_txt,
+                    logits=ood_logits,
                 )
             else:
                 ood_scores = detector_norm.score(ood_emb, method=method)

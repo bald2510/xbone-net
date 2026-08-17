@@ -1,40 +1,32 @@
 # Phân loại tài liệu tham khảo dạng PDF
 
-Các tệp PDF được phân loại dựa trên cây nội dung đang hoạt động của
-`main.tex`. Mỗi bài chỉ được lưu tại một vị trí để tránh trùng lặp.
+Các tệp PDF được phân loại dựa trên cây nội dung chính thức của luận văn (`main.tex`). Mỗi bài báo được lưu trữ duy nhất tại một vị trí tương ứng với vai trò của nó trong khóa luận.
 
-## `Selected`
+## 1. Thư mục `Selected`
 
-Thư mục này chỉ chứa các tài liệu được trích dẫn trực tiếp trong Chương 3 -
-Phương pháp đề xuất. Các citation hiện có gồm: `[5]`, `[8]`, `[13]`, `[20]`,
-`[21]`, `[28]`, `[32]`, `[38]`, `[39]`, `[40]`, `[43]` và `[47]`.
+Thư mục này chứa đúng **8 tài liệu** được trích dẫn trực tiếp trong **Chương 3 (Phương pháp đề xuất)**, đóng vai trò là các thành phần cốt lõi của hệ thống XBone-Net:
+- `[41]` BiomedCLIP: Mô hình nền tảng ngôn ngữ-thị giác y sinh.
+- `[14]` LoRA: Kỹ thuật thích nghi tham số hiệu quả hạng thấp.
+- `[8]` Vision Transformer (ViT-B/16): Bộ mã hóa thị giác toàn cục và cục bộ.
+- `[37]` MedCLIP: Hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss) cho Pha 1.
+- `[4]` Class-Balanced Loss: Xử lý mất cân bằng lớp hiệu dụng cho Pha 2.
+- `[32]` Prototypical Networks: Bộ phân lớp dựa trên tâm lớp thực nghiệm.
+- `[33]` Deep Nearest Neighbors (kNN): Phát hiện dữ liệu ngoài phân phối (Multi-modal Ensemble OOD).
+- `[34]` Integrated Gradients (IG): Phương pháp giải thích và gán quyền đặc trưng đa phương thức.
 
-Các tài liệu này tương ứng với hàm mất mát cân bằng lớp, Vision Transformer,
-LoRA, ước lượng hiệp phương sai Ledoit-Wolf, Mahalanobis OOD, Laplacian và độ
-sắc nét cục bộ, entropy Shannon, mạng nguyên mẫu, Integrated Gradients,
-MedCLIP và BiomedCLIP.
+## 2. Thư mục `ByCitation`
 
-## `ByCitation`
+Chứa các tài liệu tham khảo được trích dẫn trong các chương còn lại (Chương 1, 2, 4 và Phụ lục), phân chia thành các nhóm chủ đề:
+- **`Dataset`** (2 PDF): Bộ dữ liệu và công cụ gán nhãn (`russell2008labelme`, `Yao2025`).
+- **`Med-VLMs`** (10 PDF): Các mô hình thị giác-ngôn ngữ y khoa và thích nghi nền tảng (`ConVIRT`, `GLoRIA`, `PLIP`, `BioViL`, `CLIPath`, `FTB`, `LCBB`, `BiomedCoOp`, `CLIP`, `PubMedCLIP`).
+- **`Med-MLLLM`** (3 PDF): Mô hình ngôn ngữ lớn đa phương thức y khoa (`moor_2023_medflamingo`, `li_2023_llavamed`, `MED-PALM-M`).
+- **`OOD Detection`** (5 PDF): Phương pháp phát hiện OOD và hàm mất mát tâm lớp (`Hendrycks2017MSP`, `Liang2018ODIN`, `Liu2020EnergyOOD`, `Lee2018MahalanobisOOD`, `CenterLoss`).
+- **`Explainable AI`** (2 PDF): Mô hình chú ý và gióng hàng giải thích (`TieNet`, `IRENE`).
+- **`Scratch`** (3 PDF): Mạng tích chập nền tảng và mô hình xây dựng từ đầu (`ResNet`, `DenseNet`, `XMei`).
+- **`Metrics`** (7 PDF): Độ đo, hiệu chỉnh, xếp hạng và benchmark (`Brodersen2010BalancedAcc`, `Canziani2017PracticalDNN`, `Davis2006PR`, `Fawcett2006ROC`, `Guo2017Calibration`, `Reddi2020MLPerfInference`, `Rousseeuw1987Silhouettes`).
 
-- `Scratch`: mô hình huấn luyện từ đầu, kiến trúc nền, dataset và công cụ chú
-  thích không thuộc các nhóm chuyên biệt.
-- `Med-VLMs`: mô hình thị giác-ngôn ngữ y khoa và các phương pháp thích nghi
-  mô hình nền tảng cho tác vụ y khoa.
-- `Med-MLLLM`: mô hình ngôn ngữ lớn đa phương thức y khoa và các kiến trúc nền
-  trực tiếp cho nhóm mô hình này.
-- `OOD Detection`: phát hiện dữ liệu ngoài phân phối, hiệu chỉnh độ tin cậy và
-  hình học biểu diễn phục vụ đánh giá OOD.
-- `Explainable AI`: mô hình dùng attention hoặc gióng hàng đa phương thức để
-  hỗ trợ giải thích dự đoán.
-- `Metrics`: tài liệu định nghĩa hoặc phân tích các độ đo, hiệu chỉnh xác suất,
-  benchmark hiệu quả và chỉ số đánh giá hình học biểu diễn.
+## 3. Tệp danh mục
 
-Mỗi bài chỉ được lưu ở một nhóm. Các chương có citation và lý do phân loại
-được ghi trong `classification.csv`.
-
-## Tệp danh mục
-
-- `classification.csv`: nhóm, đường dẫn mới và các chương đang cite từng bài.
-- `sources.csv`: URL nguồn và metadata của 46 PDF đã tải.
-- `missing.csv`: tài liệu chưa lấy được PDF hợp lệ; hiện là citation `[6]`.
-- `selection_summary.json`: số lượng PDF theo từng nhóm.
+- `classification.csv`: Danh mục phân loại chi tiết 44 tài liệu theo số thứ tự trích dẫn, nhóm, đường dẫn tệp và lý do phân loại.
+- `missing.csv`: Danh sách tài liệu dạng tài nguyên trực tuyến hoặc bài báo đóng (`Davies1979ClusterSeparation`, `DeepTranslator`, `OpenAI2024GPT4oSystemCard`, `ParaphraseMultilingualMiniLM`).
+- `selection_summary.json`: Tóm tắt thống kê số lượng PDF theo từng nhóm.

@@ -1,55 +1,44 @@
-\begin{table}[htbp]
+\begin{table}[H]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{L{1.70cm}L{2.50cm}C{1.0cm}C{1.0cm}C{1.0cm}*{3}{C{1.60cm}}}
-\toprule
-\textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
-\midrule
-OOD CTCH & Cosine theo tâm lớp & 42 & 669 & 44 & 0{,}5856 & 0{,}1040 & 0{,}8864 \\
-\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 42 & 669 & 44 & 0{,}6112 & 0{,}1134 & 0{,}8409 \\
-OOD CTCH & kNN & 42 & 669 & 44 & 0{,}6094 & 0{,}1212 & 0{,}8636 \\
-OOD CTCH & Entropy & 42 & 669 & 44 & 0{,}5969 & 0{,}1237 & 0{,}8409 \\
-OOD CTCH & Cosine theo tâm lớp & 123 & 669 & 44 & 0{,}6061 & 0{,}0941 & 0{,}8864 \\
-\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 123 & 669 & 44 & 0{,}6278 & 0{,}0953 & 0{,}9091 \\
-OOD CTCH & kNN & 123 & 669 & 44 & 0{,}6267 & 0{,}1014 & 0{,}8864 \\
-OOD CTCH & Entropy & 123 & 669 & 44 & 0{,}5595 & 0{,}0983 & 0{,}8864 \\
-OOD CTCH & Cosine theo tâm lớp & 456 & 669 & 44 & 0{,}6102 & 0{,}0916 & 0{,}8864 \\
-\rowcolor{gray!12}OOD CTCH & Mahalanobis theo tâm lớp & 456 & 669 & 44 & 0{,}6467 & 0{,}1014 & 0{,}9091 \\
-OOD CTCH & kNN & 456 & 669 & 44 & 0{,}6445 & 0{,}1023 & 0{,}8864 \\
-OOD CTCH & Entropy & 456 & 669 & 44 & 0{,}5550 & 0{,}0936 & 0{,}9091 \\
-\bottomrule
+\begin{tabular}{|L{2.05cm}|L{2.55cm}|C{1.0cm}|C{1.0cm}|C{1.0cm}|*{3}{C{1.55cm}|}}
+\hline
+\textbf{Kịch bản} & \textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\ \hline
+\multirow{9}{*}{OOD CTCH} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}7135 & \cellcolor{gray!12}0{,}1559 & \cellcolor{gray!12}0{,}7308 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}123 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}7666 & \cellcolor{gray!12}0{,}1395 & \cellcolor{gray!12}0{,}7308 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}456 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}6950 & \cellcolor{gray!12}0{,}1399 & \cellcolor{gray!12}0{,}6538 \\ \cline{2-8}
+ & Chỉ pha 2 & 42 & 669 & 26 & 0{,}7589 & 0{,}1946 & 0{,}6538 \\ \cline{2-8}
+ & Chỉ pha 2 & 123 & 669 & 26 & 0{,}7097 & 0{,}2039 & 0{,}6154 \\ \cline{2-8}
+ & Chỉ pha 2 & 456 & 669 & 26 & 0{,}7033 & 0{,}1949 & 0{,}7692 \\ \cline{2-8}
+ & Nối đặc trưng & 42 & 669 & 26 & 0{,}7321 & 0{,}1166 & 0{,}7308 \\ \cline{2-8}
+ & Nối đặc trưng & 123 & 669 & 26 & 0{,}7484 & 0{,}1285 & 0{,}7308 \\ \cline{2-8}
+ & Nối đặc trưng & 456 & 669 & 26 & 0{,}7212 & 0{,}1046 & 0{,}6923 \\ \hline
 \end{tabular}%
 }
-\caption{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản OOD CTCH}
+\caption{Kết quả cảnh báo OOD của từng hạt giống trên kịch bản OOD CTCH bằng điểm tổ hợp đa phương thức}
 \label{tab:appendix-ood-seeds}
 \end{table}
 
-\begin{table}[htbp]
-\ContinuedFloat
+\begin{table}[H]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{L{1.70cm}L{2.50cm}C{1.0cm}C{1.0cm}C{1.0cm}*{3}{C{1.60cm}}}
-\toprule
-\textbf{Kịch bản} & \textbf{Phương pháp} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\
-\midrule
-BTXRD & Cosine theo tâm lớp & 42 & 669 & 750 & 0{,}8052 & 0{,}7974 & 0{,}7307 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 42 & 669 & 750 & 0{,}8762 & 0{,}8591 & 0{,}6307 \\
-BTXRD & kNN & 42 & 669 & 750 & 0{,}8544 & 0{,}8379 & 0{,}6573 \\
-BTXRD & Entropy & 42 & 669 & 750 & 0{,}7325 & 0{,}7583 & 0{,}7453 \\
-BTXRD & Cosine theo tâm lớp & 123 & 669 & 750 & 0{,}6379 & 0{,}6751 & 0{,}8160 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 123 & 669 & 750 & 0{,}6982 & 0{,}7377 & 0{,}7600 \\
-BTXRD & kNN & 123 & 669 & 750 & 0{,}6654 & 0{,}6979 & 0{,}8067 \\
-BTXRD & Entropy & 123 & 669 & 750 & 0{,}5931 & 0{,}6203 & 0{,}8680 \\
-BTXRD & Cosine theo tâm lớp & 456 & 669 & 750 & 0{,}7471 & 0{,}7079 & 0{,}8400 \\
-\rowcolor{gray!12}BTXRD & Mahalanobis theo tâm lớp & 456 & 669 & 750 & 0{,}8381 & 0{,}8058 & 0{,}7307 \\
-BTXRD & kNN & 456 & 669 & 750 & 0{,}7977 & 0{,}7564 & 0{,}8373 \\
-BTXRD & Entropy & 456 & 669 & 750 & 0{,}7498 & 0{,}7313 & 0{,}8640 \\
-\bottomrule
+\begin{tabular}{|L{2.05cm}|L{2.55cm}|C{1.0cm}|C{1.0cm}|C{1.0cm}|*{3}{C{1.55cm}|}}
+\hline
+\textbf{Kịch bản} & \textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\ \hline
+\multirow{9}{*}{BTXRD} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9142 & \cellcolor{gray!12}0{,}8873 & \cellcolor{gray!12}0{,}4773 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}123 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9490 & \cellcolor{gray!12}0{,}9214 & \cellcolor{gray!12}0{,}2520 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}456 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9330 & \cellcolor{gray!12}0{,}9069 & \cellcolor{gray!12}0{,}3520 \\ \cline{2-8}
+ & Chỉ pha 2 & 42 & 669 & 750 & 0{,}9536 & 0{,}9250 & 0{,}2693 \\ \cline{2-8}
+ & Chỉ pha 2 & 123 & 669 & 750 & 0{,}9553 & 0{,}9361 & 0{,}2307 \\ \cline{2-8}
+ & Chỉ pha 2 & 456 & 669 & 750 & 0{,}9450 & 0{,}9256 & 0{,}2427 \\ \cline{2-8}
+ & Nối đặc trưng & 42 & 669 & 750 & 0{,}9336 & 0{,}9054 & 0{,}4347 \\ \cline{2-8}
+ & Nối đặc trưng & 123 & 669 & 750 & 0{,}9422 & 0{,}9094 & 0{,}4867 \\ \cline{2-8}
+ & Nối đặc trưng & 456 & 669 & 750 & 0{,}9418 & 0{,}9096 & 0{,}3653 \\ \hline
 \end{tabular}%
 }
-\caption[]{Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản BTXRD}
+\caption{Kết quả cảnh báo OOD của từng hạt giống trên kịch bản BTXRD bằng điểm tổ hợp đa phương thức}
 \end{table}

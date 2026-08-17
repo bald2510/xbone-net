@@ -1,77 +1,53 @@
 HƯỚNG DẪN CÀI ĐẶT XBONE-NET
 ============================
 
-1. PHẠM VI GÓI MÃ NGUỒN
------------------------
-Gói mã nguồn có cấu trúc:
+1. THƯ MỤC GỐC CỦA CHƯƠNG TRÌNH
+--------------------------------
+Trong tài liệu này, <XBONE_ROOT> là thư mục chứa trực tiếp các tệp train.py,
+evaluate.py, inference.py và requirements.txt. Mọi lệnh phải chạy tại đây.
 
-  MaDeTai/
-  |-- src/                      Mã nguồn và cấu hình có thể thực thi
-  |-- HuongDanCaiDat.txt        Tài liệu hướng dẫn cài đặt môi trường
-  |-- HuongDanSuDung.txt        Hướng dẫn chạy huấn luyện, đánh giá & benchmark
-  `-- HuongDanSuDungDemo.txt    Hướng dẫn sử dụng ứng dụng Web Demo (Streamlit)
+Windows PowerShell hoặc CMD:
 
-Thư mục MaDeTai/src là thư mục gốc của chương trình (nơi chứa train.py, evaluate.py,
-requirements.txt). Bên trong gồm các entrypoint chính: train.py, evaluate.py,
-inference.py; package Python src/; cấu hình Hydra configs/;
-benchmark/; ứng dụng demo Streamlit trong demo/; công cụ tools/; launcher Windows
-trong scripts/; và mã tiền xử lý dữ liệu trong data/.
+  cd <DUONG_DAN_DEN_XBONE_ROOT>
 
-Gói KHÔNG chứa thư viện bên thứ ba, môi trường Python đã build sẵn, dữ liệu bệnh nhân,
-pretrained weights, checkpoint, kết quả log, cache hay file trung gian.
-Tệp requirements.txt cung cấp danh sách phiên bản chuẩn hóa để cài đặt toàn diện toàn bộ
-chức năng hệ thống (bao gồm cả giao diện demo Streamlit).
+Linux:
+
+  cd <DUONG_DAN_DEN_XBONE_ROOT>
+
+Không chạy lệnh bên trong package Python <XBONE_ROOT>/src.
 
 
 2. YÊU CẦU HỆ THỐNG
 -------------------
-- Hệ điều hành: Windows 10/11 64-bit hoặc Linux 64-bit.
-- Phiên bản Python: 3.11 (khuyến nghị Python 3.11.15).
-- Công cụ quản lý môi trường: Miniconda hoặc Anaconda.
-- GPU: NVIDIA GPU có hỗ trợ CUDA (khuyến nghị VRAM >= 8GB khi huấn luyện).
-- CPU: Có thể dùng để kiểm tra cú pháp, suy luận đơn mẫu hoặc chạy demo (tốc độ chậm hơn).
-- Dung lượng đĩa: Tối thiểu 10GB trống cho dữ liệu, cache pretrained weights và checkpoints.
-- Kết nối Internet: Cần thiết trong lần đầu để tải các pretrained model foundation.
+- Windows 10/11 64-bit hoặc Linux 64-bit.
+- Python 3.11; môi trường đã kiểm tra dùng Python 3.11.15.
+- Miniconda hoặc Anaconda.
+- NVIDIA GPU và CUDA được khuyến nghị. Demo có thể chạy CPU nhưng tải model và
+  tính Integrated Gradients sẽ chậm.
+- Ít nhất 10 GB dung lượng trống.
+- Kết nối Internet trong lần đầu để pip và OpenCLIP tải pretrained BiomedCLIP.
 
 
-3. MỞ THƯ MỤC CHƯƠNG TRÌNH
---------------------------
-Mọi lệnh huấn luyện, đánh giá, suy luận và khởi chạy demo phải thực thi tại MaDeTai/src
-để các đường dẫn tương đối và cấu hình Hydra được phân giải chính xác.
-
-Windows PowerShell/CMD:
-
-  cd <DUONG_DAN_DEN_GOI_NOP>\MaDeTai\src
-
-Linux:
-
-  cd <DUONG_DAN_DEN_GOI_NOP>/MaDeTai/src
-
-
-4. TẠO VÀ KÍCH HOẠT MÔI TRƯỜNG PYTHON
--------------------------------------
+3. TẠO MÔI TRƯỜNG PYTHON
+------------------------
   conda create -n Thesis python=3.11.15 -y
   conda activate Thesis
   python -m pip install --upgrade pip setuptools wheel
 
-Kiểm tra môi trường hiện tại:
-
-  python --version
+Kiểm tra đúng môi trường:
 
 Windows:
-
+  python --version
   where.exe python
 
 Linux:
-
+  python --version
   which python
 
 
-5. CÀI ĐẶT PYTORCH
-------------------
-Môi trường nghiên cứu sử dụng PyTorch 2.11.0 và torchvision 0.26.0:
-
-NVIDIA GPU (CUDA 12.8 / 12.x):
+4. CÀI PYTORCH VÀ CÁC THƯ VIỆN
+------------------------------
+NVIDIA GPU, CUDA 12.8:
 
   python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
 
@@ -79,67 +55,91 @@ Chỉ dùng CPU:
 
   python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cpu
 
-
-6. CÀI ĐẶT CÁC THƯ VIỆN CỦA DỰ ÁN
----------------------------------
-Tại thư mục MaDeTai/src, thực thi:
+Cài phần còn lại tại <XBONE_ROOT>:
 
   python -m pip install -r requirements.txt
 
-Tệp requirements.txt đã tích hợp đồng bộ toàn bộ thư viện cần thiết cho toàn bộ quy trình:
-- Huấn luyện & Đánh giá: accelerate, evaluate, hydra-core, omegaconf, peft, timm, transformers.
-- Thị giác & Xử lý ngôn ngữ: open-clip-torch, Pillow, nltk, deep-translator.
-- Phân tích & Đồ họa: matplotlib, numpy, pandas, scikit-learn, scipy, tensorboard, tqdm, wget.
-- Giao diện người dùng: streamlit.
-
-Lưu ý khi chạy baseline MedCLIP (nếu có):
-Chỉ khi cần chạy thực nghiệm so sánh với baseline MedCLIP, cài bổ sung bằng lệnh:
+MedCLIP chỉ cần cho baseline MedCLIP, không cần để chạy demo:
 
   python -m pip install --no-deps MedCLIP==0.0.3
 
 
-7. PRETRAINED FOUNDATION WEIGHTS
---------------------------------
-Pretrained weights của các mô hình nền tảng (BiomedCLIP, CLIP, PubMedCLIP) sẽ được
-tự động tải về từ Hugging Face / OpenCLIP khi cấu hình tương ứng được khởi tạo lần đầu.
-Nếu chạy trong môi trường ngoại tuyến, cần cho máy kết nối Internet một lần để nạp cache.
+5. TÀI NGUYÊN BẮT BUỘC CỦA DEMO
+-------------------------------
+Bản phát hành demo phải giữ nguyên cấu trúc:
+
+  demo/model/
+  |-- best_phase2.pth
+  |-- metrics.json
+  |-- manifest.json
+  `-- features/
+      |-- ctch_train.npz
+      `-- ctch_val.npz
+
+Đây là checkpoint seed 42 của ctch/proposed/ours_xbone_net cùng các feature
+archive được trích xuất từ chính checkpoint đó. Ứng dụng tự phát hiện thư mục
+demo/model; không cần đặt biến môi trường khi dùng cấu trúc mặc định.
+
+Kiểm tra checksum và kiến trúc trước khi chạy:
+
+  python tools/verify_demo_artifacts.py
+
+Kết quả đúng phải có dòng:
+
+  Demo artifacts: OK
+
+Nếu đặt tài nguyên ở thư mục khác, khai báo trước khi chạy.
+
+Windows PowerShell:
+  $env:XBONE_DEMO_ARTIFACT_ROOT="D:\duong-dan\model"
+
+Windows CMD:
+  set XBONE_DEMO_ARTIFACT_ROOT=D:\duong-dan\model
+
+Linux:
+  export XBONE_DEMO_ARTIFACT_ROOT=/duong-dan/model
 
 
-8. CHUẨN BỊ DỮ LIỆU
---------------------
-Đặt dữ liệu vào thư mục data/ theo cấu trúc chuẩn:
+6. DỮ LIỆU CHO HUẤN LUYỆN VÀ ẢNH THAM CHIẾU
+--------------------------------------------
+Checkpoint và feature archive trong demo/model đủ để nạp model, hiệu chỉnh
+confidence và OOD. Để giao diện hiển thị ảnh CTCH-train tương tự, cần thêm ảnh
+theo đúng image_id tại:
 
-  MaDeTai/src/data/
-  |-- BTXRD/
-  |   |-- images/
-  |   |-- reports/clinical/
-  |   |-- btxrd-split.csv
-  |   `-- btxrd-labels.csv
-  |-- CTCH/
-      |-- images/
-      |-- reports/xray/
-      |-- reports/clinical/
-      |-- ctch-split.csv
-      |-- ctch-labels.csv
-      |-- ctch-ood.csv
-      `-- labels.txt
+  data/CTCH/images/
+
+Nếu không phân phối ảnh CTCH do giới hạn quyền sử dụng dữ liệu, demo vẫn dự
+đoán, phát hiện OOD và tính IG; vùng ảnh tương tự sẽ báo không tìm thấy tệp.
+
+Để huấn luyện lại, cần chuẩn bị thêm:
+
+  data/CTCH/ctch-split.csv
+  data/CTCH/ctch-labels.csv
+  data/CTCH/images/
+  data/CTCH/reports/clinical/
+
+Dữ liệu bệnh nhân không được đưa vào kho mã nguồn công khai nếu chưa được phép.
 
 
+7. KIỂM TRA CÀI ĐẶT
+-------------------
+Chạy lần lượt tại <XBONE_ROOT>:
 
-9. KIỂM TRA TÍNH HỢP LỆ CỦA CÀI ĐẶT
-------------------------------------
-Tại MaDeTai/src, chạy lần lượt các lệnh sau:
-
-  python -c "import torch; print('PyTorch:', torch.__version__, '| CUDA Available:', torch.cuda.is_available())"
-  python -c "import hydra, numpy, pandas, sklearn, streamlit, transformers; print('Core Libraries: OK')"
+  python -c "import torch; print('PyTorch:', torch.__version__, '| CUDA:', torch.cuda.is_available())"
+  python -c "import hydra, numpy, pandas, sklearn, streamlit, transformers; print('Core libraries: OK')"
   python tools/generate_requirement.py --check
-  python tools/training.py --dry-run
+  python tools/verify_demo_artifacts.py
+  python -m compileall -q train.py evaluate.py inference.py src tools benchmark demo
 
 
-10. XỬ LÝ SỰ CỐ CÀI ĐẶT THƯỜNG GẶP
------------------------------------
-- Lỗi ModuleNotFoundError: Đảm bảo đã kích hoạt conda environment (conda activate Thesis)
-  và terminal đang đứng tại đúng thư mục MaDeTai/src.
-- Lỗi CUDA không nhận: Chạy lệnh nvidia-smi kiểm tra driver GPU và cài đặt đúng bản PyTorch CUDA.
-- Lỗi xung đột MedCLIP: Luôn cài requirements.txt trước, sau đó cài MedCLIP với cờ --no-deps.
-- Lỗi hết bộ nhớ GPU (OOM): Giảm batch size thông qua Hydra override (dataset.batch_size=4).
+8. LỖI THƯỜNG GẶP
+-----------------
+- ModuleNotFoundError: kích hoạt lại bằng "conda activate Thesis" và kiểm tra
+  terminal đang đứng tại <XBONE_ROOT>.
+- Missing demo artifact: kiểm tra đủ bốn tệp được liệt kê trong manifest.json.
+- Sai SHA-256: không trộn checkpoint và feature archive từ các lần huấn luyện
+  khác nhau; đóng gói lại theo HuongDanSuDung.txt.
+- Không tải được BiomedCLIP: kiểm tra Internet và cache Hugging Face/OpenCLIP.
+- CUDA out of memory: chọn CPU trong demo hoặc giảm số bước IG.
+- MedCLIP dependency conflict: cài requirements.txt trước, sau đó cài MedCLIP
+  với --no-deps.

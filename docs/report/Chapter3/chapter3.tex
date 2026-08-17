@@ -575,66 +575,53 @@ Hình~\ref{fig:ch3_online} minh họa quy trình suy luận trực tuyến và p
     \label{fig:ch3_online}
 \end{figure}
 
-Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó tâm cụm thực nghiệm tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Bước phân lớp và tính điểm ngoài phân phối không tính đạo hàm, đồng thời không cập nhật tâm lớp từ mẫu mới. Kết quả trên cho biết lớp nào gần mẫu nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự phù hợp với phân bố huấn luyện hay không.
+Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó bộ phân lớp tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Bước phân lớp và tính điểm ngoài phân phối không tính đạo hàm, đồng thời không cập nhật tâm lớp từ mẫu mới. Kết quả phân loại cho biết lớp nào phù hợp nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự thuộc phân bố huấn luyện hay không.
 
-Vì vậy, ngoài kết quả phân lớp, hệ thống sử dụng khoảng cách Mahalanobis đến lớp gần nhất làm điểm phát hiện ngoài phân phối \cite{Lee2018MahalanobisOOD}. Gọi $\boldsymbol{\mu}_{k}$ là trung bình đặc trưng của lớp $k$ và $\boldsymbol{\Sigma}$ là ma trận hiệp phương sai chung được ước lượng từ tập huấn luyện ID. Ma trận hiệp phương sai được điều chuẩn bằng phương pháp Ledoit--Wolf để tăng tính ổn định trong không gian nhiều chiều \cite{LedoitWolf2004}. Khoảng cách Mahalanobis và điểm OOD được xác định bởi:
+Để phát hiện mẫu ngoài phân phối (OOD), việc chỉ dựa vào không gian biểu diễn sau khi dung hợp ($\boldsymbol{z}_{\mathrm{fused}}$) có thể gặp hạn chế do mô-đun chú ý chéo có xu hướng ép các đặc trưng dị biệt vào cấu trúc không gian lớp nội tại để tối ưu phân loại, làm suy giảm độ nhạy phát hiện bất thường ở từng phương thức riêng lẻ. Vì vậy, hệ thống xây dựng cơ chế \textbf{Multi-Modal Modality-Decoupled Ensemble OOD Detection} bằng cách tách rời hai phương thức, áp dụng phương pháp khoảng cách $k$-láng giềng gần nhất ($k\mathrm{NN}$) trên từng không gian biểu diễn đơn phương thức, chuẩn hóa $Z$-score trên tập xác thực ID và hợp nhất bằng toán tử $\max$:
 
+\begin{enumerate}
+    \item \textbf{Khoảng cách $k\mathrm{NN}$ đơn phương thức tách rời:} Gọi $\mathcal{D}_{\mathrm{ID}}^{\mathrm{train}}$ là tập biểu diễn tham chiếu trong phân phối đã được chuẩn hóa $L_2$. Với mỗi mẫu kiểm thử có biểu diễn ảnh $\boldsymbol{z}_{\mathrm{img}}$ và biểu diễn văn bản $\boldsymbol{z}_{\mathrm{txt}}$, điểm bất thường đơn phương thức được tính bằng khoảng cách Euclid tới láng giềng thứ $k$ gần nhất \cite{Sun2022KNN}:
+    \begin{equation}
+    s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{img}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{img}}^{\mathrm{train}}\right),
+    \label{eq:ch3_ood_knn_vis}
+    \end{equation}
+    \begin{equation}
+    s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{txt}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{txt}}^{\mathrm{train}}\right).
+    \label{eq:ch3_ood_knn_txt}
+    \end{equation}
+
+    \item \textbf{Chuẩn hóa $Z$-score trên tập ID Validation:} Do thang đo khoảng cách trên không gian ảnh và không gian văn bản có thể khác biệt, hệ thống ước lượng giá trị kỳ vọng và độ lệch chuẩn của từng phương thức trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ($\mu_{\mathrm{vis}}^{\mathrm{val}}, \sigma_{\mathrm{vis}}^{\mathrm{val}}$ và $\mu_{\mathrm{txt}}^{\mathrm{val}}, \sigma_{\mathrm{txt}}^{\mathrm{val}}$) để đưa các điểm số về phân phối chuẩn hóa không thứ nguyên:
+    \begin{equation}
+    \widetilde{s}_{\mathrm{vis}} = \frac{s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) - \mu_{\mathrm{vis}}^{\mathrm{val}}}{\sigma_{\mathrm{vis}}^{\mathrm{val}} + \epsilon}, \qquad \widetilde{s}_{\mathrm{txt}} = \frac{s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) - \mu_{\mathrm{txt}}^{\mathrm{val}}}{\sigma_{\mathrm{txt}}^{\mathrm{val}} + \epsilon}.
+    \label{eq:ch3_ood_zscore}
+    \end{equation}
+
+    \item \textbf{Hợp nhất bằng toán tử $\max$ (Max-pooling Fusion):} Điểm ngoài phân phối tổng hợp được xác định theo nguyên lý phòng vệ nghiêm ngặt (worst-case anomaly):
+    \begin{equation}
+    s_{\mathrm{OOD}}(\boldsymbol{x}) = \max\left(\widetilde{s}_{\mathrm{vis}},\,\widetilde{s}_{\mathrm{txt}}\right).
+    \label{eq:ch3_ood_max_fusion}
+    \end{equation}
+    Theo cơ chế này, chỉ cần một trong hai phương thức (ảnh hoặc văn bản lâm sàng) có mức độ bất thường vượt trội so với phân phối huấn luyện, toàn bộ ca bệnh sẽ lập tức được nhận diện và cảnh báo là dữ liệu ngoài phân phối.
+\end{enumerate}
+
+Ngưỡng cảnh báo $\tau_{\mathrm{alert}}$ được hiệu chỉnh trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ở mức tỷ lệ cảnh báo giả mục tiêu $\alpha = 0{,}05$:
 \begin{equation}
-\begin{aligned}
-d_M\!\left(\boldsymbol{z},\boldsymbol{\mu}_{k}\right)
-&=
-\sqrt{
-\left(\boldsymbol{z}-\boldsymbol{\mu}_{k}\right)^{\mathsf T}
-\boldsymbol{\Sigma}^{-1}
-\left(\boldsymbol{z}-\boldsymbol{\mu}_{k}\right)
-},\\
-s_{\mathrm{OOD}}(\boldsymbol{z})
-&=
-\min_{k\in\mathcal{Y}}
-d_M\!\left(\boldsymbol{z},\boldsymbol{\mu}_{k}\right).
-\end{aligned}
-\label{eq:ch3_ood_score}
-\end{equation}
-
-Điểm $s_{\mathrm{OOD}}(\boldsymbol{z})$ là khoảng cách nhỏ nhất từ biểu diễn của mẫu mới đến các lớp đã biết. Giá trị càng lớn cho thấy mẫu càng xa toàn bộ phân bố lớp ID. Sau khi các tâm lớp và ma trận hiệp phương sai được ước lượng trên tập huấn luyện, các đại lượng này được cố định để tính điểm cho tập xác thực ID. Gọi $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ là tập xác thực và $\boldsymbol{z}_{i}$ là biểu diễn của mẫu $\boldsymbol{x}_{i}$, ngưỡng cảnh báo được xác định bởi:
-
-\begin{equation}
-\tau_{\mathrm{alert}}
-=
-Q_{1-\alpha}^{+}
-\!\left(
-\left\{
-s_{\mathrm{OOD}}(\boldsymbol{z}_{i})
-\mid
-\boldsymbol{x}_{i}\in\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}
-\right\}
-\right),
-\qquad \alpha=0{,}05,
+\tau_{\mathrm{alert}} = Q_{1-\alpha}^{+}\!\left(\left\{s_{\mathrm{OOD}}(\boldsymbol{x}_{i}) \mid \boldsymbol{x}_{i}\in\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}\right\}\right), \qquad \alpha=0{,}05,
 \label{eq:ch3_ood_threshold}
 \end{equation}
-
-trong đó $Q_{q}^{+}$ là phân vị thực nghiệm phía trên ở mức $q$. Cách chọn này nhằm giới hạn tỷ lệ mẫu ID bị cảnh báo trên tập xác thực ở khoảng $5\%$, tương ứng với việc giữ lại ít nhất khoảng $95\%$ mẫu ID. Tập kiểm thử ID và các tập OOD không tham gia ước lượng thống kê tham chiếu hoặc xác định ngưỡng. Ngưỡng vận hành $\tau_{\mathrm{alert}}$ cũng được tách biệt với ngưỡng suy ra từ đường ROC của tập kiểm thử khi báo cáo độ đo FPR@95\%TPR. Quy tắc đầu ra dự đoán của hệ thống bao gồm hai thành phần độc lập:
-
+trong đó $Q_{q}^{+}$ là phân vị thực nghiệm phía trên ở mức $q$, nhằm bảo đảm giữ lại ít nhất $95\%$ mẫu trong phân phối. Quy tắc đưa ra cảnh báo OOD độc lập với kết quả phân lớp:
 \begin{equation}
 \begin{aligned}
-\widehat{y}
-&=
-\operatorname*{arg\,max}_{k\in\mathcal{Y}}
-p\left(y=k\mid\boldsymbol{z}\right),
-\\[6pt]
-\omega_{\mathrm{OOD}}
-&=
-\begin{cases}
-1,
-& \text{nếu }s_{\mathrm{OOD}}(\boldsymbol{z})>\tau_{\mathrm{alert}},\\[4pt]
-0,
-& \text{ngược lại}.
+\widehat{y} &= \operatorname*{arg\,max}_{k\in\mathcal{Y}} p(y=k\mid\boldsymbol{x}), \\[6pt]
+\omega_{\mathrm{OOD}} &= \begin{cases}
+1, & \text{nếu } s_{\mathrm{OOD}}(\boldsymbol{x}) > \tau_{\mathrm{alert}}, \\[4pt]
+0, & \text{ngược lại}.
 \end{cases}
 \end{aligned}
 \label{eq:ch3_ood_decision}
 \end{equation}
 
-Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net. Nó cung cấp thêm một tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ về mức độ phù hợp của mẫu với phân bố đã quan sát. Vì vậy, đầu ra phân lớp $\widehat{y}$ và cảnh báo ngoài phân phối $\omega_{\mathrm{OOD}}$ có hai vai trò khác nhau: đầu ra thứ nhất chọn lớp gần nhất trong tập lớp đã biết, còn đầu ra thứ hai đánh giá liệu quyết định đó có được thực hiện trên một mẫu đủ quen thuộc hay không.
+Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net mà cung cấp thêm tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ khi mẫu đầu vào có dấu hiệu bất thường về thị giác hoặc bất thường về nội dung văn bản lâm sàng.
 
 Bên cạnh hai thành phần dự đoán trên, đối với mẫu không bị cảnh báo ngoài phân phối, quá trình suy luận còn có thể cung cấp thông tin hỗ trợ giải thích bằng phương pháp tích phân gradient \cite{Sundararajan2017IntegratedGradients}. Thành phần này được thực hiện như một lượt tính riêng khi cần giải thích. Các tham số mô hình vẫn được cố định, còn đạo hàm chỉ được tính đối với đầu vào hoặc biểu diễn cần khảo sát và không được dùng để cập nhật mô hình.
 

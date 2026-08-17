@@ -1,7 +1,7 @@
 """Nạp checkpoint và xuất đặc trưng phân tích cho XBone-Net.
 
 Cấu hình phân tích được lấy trực tiếp từ ``metrics.json`` của lần đánh giá.
-Điều này bảo đảm preprocessing letterbox, cross-attention và linear head khớp
+Điều này bảo đảm preprocessing đã khóa, cross-attention và linear head khớp
 checkpoint, thay vì tái dựng các thành phần kiến trúc đã loại bỏ.
 """
 
@@ -31,6 +31,7 @@ ZEROSHOT_BIOMEDCLIP_EXPERIMENT = (
 SOURCE_SEEDS = (42, 123, 456)
 EXPECTED_NUM_CLASSES = 22
 DEMO_ARTIFACT_ROOT_ENV = "XBONE_DEMO_ARTIFACT_ROOT"
+DEFAULT_DEMO_ARTIFACT_ROOT = PROJECT_ROOT / "demo" / "model"
 
 ANALYSIS_METADATA_KEYS = (
     "image_id",
@@ -52,13 +53,25 @@ def _packaged_demo_artifact_root(seed: int) -> Optional[Path]:
     Returns
     -------
     pathlib.Path or None
-        Thư mục chứa checkpoint và feature archive đóng gói, hoặc ``None``
-        khi demo không khai báo thư mục này hay yêu cầu một seed khác.
+        Thư mục chứa checkpoint, cấu hình đánh giá và feature archive đóng gói,
+        hoặc ``None`` khi không có gói demo hợp lệ hay yêu cầu một seed khác.
     """
-    configured_root = os.environ.get(DEMO_ARTIFACT_ROOT_ENV, "").strip()
-    if not configured_root or int(seed) != 42:
+    if int(seed) != 42:
         return None
-    return Path(configured_root).expanduser().resolve()
+
+    configured_root = os.environ.get(DEMO_ARTIFACT_ROOT_ENV, "").strip()
+    candidate = (
+        Path(configured_root).expanduser().resolve()
+        if configured_root
+        else DEFAULT_DEMO_ARTIFACT_ROOT.resolve()
+    )
+    required = (
+        candidate / "best_phase2.pth",
+        candidate / "metrics.json",
+        candidate / "features" / "ctch_train.npz",
+        candidate / "features" / "ctch_val.npz",
+    )
+    return candidate if all(path.is_file() for path in required) else None
 
 
 def seed_everything(seed: int) -> None:
@@ -194,8 +207,11 @@ def compose_source_config(seed: int) -> DictConfig:
         raise ValueError(
             f"Analysis is locked to seeds {list(SOURCE_SEEDS)}, got {seed}."
         )
+    packaged_root = _packaged_demo_artifact_root(seed)
     metrics_path = (
-        PROJECT_ROOT
+        packaged_root / "metrics.json"
+        if packaged_root is not None
+        else PROJECT_ROOT
         / "results"
         / SOURCE_EXPERIMENT
         / f"seed_{int(seed)}"
@@ -213,11 +229,15 @@ def compose_source_config(seed: int) -> DictConfig:
     cfg = OmegaConf.create(resolved)
     OmegaConf.set_struct(cfg, False)
     recorded_experiment = str(cfg.get("experiment_name", "")).strip("/")
-    if recorded_experiment != SOURCE_EXPERIMENT:
+    if recorded_experiment not in (
+        SOURCE_EXPERIMENT,
+        "ctch/ablation_study/architecture/preprocess/direct_resize_current",
+    ):
         raise ValueError(
             f"Resolved config records {recorded_experiment!r}, expected "
             f"{SOURCE_EXPERIMENT!r}."
         )
+    cfg.experiment_name = SOURCE_EXPERIMENT
     recorded_seed = int(cfg.get("seed", cfg.get("params", {}).get("seed", seed)))
     if recorded_seed != int(seed):
         raise ValueError(

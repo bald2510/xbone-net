@@ -6,13 +6,13 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
 
 ## 1. Key Features
 
-- **Letterbox image path:** Resize each radiograph with its aspect ratio intact, pad it on a black 224×224 canvas, then apply the original BiomedCLIP transform and visual encoder.
+- **Canonical image path:** Pass each radiograph directly to the original BiomedCLIP resize/crop/normalization transform (`direct_resize` in the locked experiment config); no high-resolution tile branch or visual resampler is used.
 - **Two-stage training:**
   - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
   - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention and a 512-to-class linear head using class-weighted cross-entropy.
 - **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
-- **Post-hoc OOD detection:** Supports cosine distance to empirical class centroids, class-centroid Mahalanobis distance, cosine-KNN, and predictive entropy. Detectors are fitted on CTCH train features and thresholds are calibrated on CTCH validation-ID data.
-- **Explainability:** Provides end-to-end Integrated Gradients for the letterboxed image and clinical-text embeddings, together with perturbation-based faithfulness analysis.
+- **Post-hoc OOD detection:** Supports cosine distance to empirical class centroids, class-centroid Mahalanobis distance, cosine-KNN, predictive entropy, and a multimodal ensemble. Detectors are fitted on CTCH train features and thresholds are calibrated on CTCH validation-ID data.
+- **Explainability:** Provides end-to-end Integrated Gradients for the image tensor produced by the locked preprocessing config and for clinical-text embeddings, together with perturbation-based faithfulness analysis.
 
 ---
 
@@ -180,26 +180,18 @@ python tools/training.py --table --table-selected-only
 
 ### 5.5. Canonical Pipeline and Ablations
 
-BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on CTCH under `configs/experiment/ctch/ablation_study/`. Every current-architecture ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides one decision, such as direct resize instead of letterbox, phase-2-only training, concatenation instead of cross-attention, or a different classifier head. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split.
+BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on CTCH under `configs/experiment/ctch/ablation_study/`. Every current-architecture ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides one decision, such as phase-2-only training, concatenation or one-way attention instead of bidirectional cross-attention, or a classifier/loss option. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split.
 
 The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
 
-### 5.6. CTCH Few-Shot Experiments
+### 5.6. Streamlit Research Demo
 
-CTCH follows the same per-class sampling rule as BTXRD: retain at most `k_shot` training samples from each available class with deterministic sampling by `seed`; validation and test remain unchanged. Configurations are provided for 1, 10, and 20 shots with LoRA-BiomedCLIP, LoRA-PubMedCLIP, and XBone-Net. For example:
-
-```bash
-python train.py +experiment=ctch/few_shot/1_shot/ours_xbone_net
-python train.py +experiment=ctch/few_shot/10_shot/lora_biomedclip
-python train.py +experiment=ctch/few_shot/20_shot/lora_pubmedclip
-```
-
-### 5.7. Streamlit Research Demo
-
-After preparing the canonical CTCH proposed checkpoint and OOD reference
-features, launch the local interface with:
+The release demo automatically loads the locked seed-42 package under
+`demo/model/`. Verify the checkpoint, resolved config, and OOD feature archives,
+then launch the local interface:
 
 ```bash
+python tools/verify_demo_artifacts.py
 streamlit run demo/streamlit_app.py
 ```
 
@@ -207,3 +199,7 @@ The app displays preprocessing, class probabilities, maximum-softmax
 confidence, the OOD score and threshold, nearest CTCH reference images, and
 image/text Integrated Gradients. It is a research demonstration and not
 a medical device.
+
+See [`HuongDanSuDungDemo.txt`](HuongDanSuDungDemo.txt) for the required artifact
+layout, checksum verification, optional `XBONE_DEMO_ARTIFACT_ROOT` override, and
+the command used to repackage a newly trained canonical checkpoint.

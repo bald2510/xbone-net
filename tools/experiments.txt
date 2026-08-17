@@ -3,18 +3,11 @@
 
 [enabled]
 btxrd/proposed/ours_xbone_net
-
-[disabled]
-# Mô hình tham chiếu và các baseline đã đủ ba seed.
 ctch/proposed/ours_xbone_net_v2
 ctch/proposed/ours_xbone_net_v3
-ctch/ablation_study/architecture/phase/phase2_only_current
-ctch/ablation_study/architecture/fusion/concat_current
-ctch/ablation_study/architecture/preprocess/direct_resize_current
+ctch/ablation_study/architecture/phase/phase2_only
+ctch/ablation_study/architecture/fusion/concat
 ctch/proposed/ours_xbone_net
-ctch/ablation_study/architecture/fusion/gated_linear_t2i
-ctch/ablation_study/architecture/fusion/gated_residual
-ctch/ablation_study/architecture/classifier/empirical_centroid_current
 
 ctch/baselines/full_finetuned/fft_biomedclip
 ctch/baselines/full_finetuned/fft_clip
@@ -28,3 +21,5 @@ btxrd/baselines/full_finetuned/fft_densenet
 btxrd/baselines/full_finetuned/fft_medclip
 btxrd/baselines/full_finetuned/fft_pubmedclip
 btxrd/baselines/full_finetuned/fft_resnet50
+
+[disabled]
