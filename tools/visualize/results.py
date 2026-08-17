@@ -21,7 +21,10 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEFAULT_RESULTS_ROOT = ROOT / "results"
+DEFAULT_DOCS_ROOT = ROOT / "docs" / "report"
 DEFAULT_PROPOSED_EMBEDDINGS = (
     DEFAULT_RESULTS_ROOT / "ctch/proposed/ours_xbone_net/seed_42/embeddings.npz"
 )
@@ -3735,7 +3738,26 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not prefix class labels with their one-based display index.",
     )
-    aggregate_confusion.add_argument("--output", type=Path, required=True)
+    fst = subparsers.add_parser(
+        "full-shot-tables",
+        help="Generate the two separate full-shot tables: classification metrics (Acc, BAcc, Macro-F1) and ranking metrics (AUROC, AUPRC).",
+    )
+    fst.add_argument(
+        "--input",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "run_all_table.csv",
+    )
+    fst.add_argument(
+        "--classification-output",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "classification" / "table_full_shot_classification.tex",
+    )
+    fst.add_argument(
+        "--ranking-output",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT / "summary" / "classification" / "table_full_shot_ranking.tex",
+    )
+    fst.add_argument("--precision", type=int, default=4)
 
     eff = subparsers.add_parser(
         "efficiency",
@@ -3951,6 +3973,53 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     leave_one_out.add_argument("--precision", type=int, default=4)
 
+    ablation_ood = subparsers.add_parser(
+        "ablation-ood",
+        help="Generate the OOD comparison table across ablation variants.",
+    )
+    ablation_ood.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+    )
+    ablation_ood.add_argument(
+        "--output",
+        type=Path,
+        default=(
+            DEFAULT_DOCS_ROOT
+            / "tables"
+            / "chapter4"
+            / "table_ablation_ood.tex"
+        ),
+    )
+    ablation_ood.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[42, 123, 456],
+    )
+
+    ablation_exp = subparsers.add_parser(
+        "ablation-explainability",
+        help="Generate the explainability comparison table across ablation variants.",
+    )
+    ablation_exp.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+    )
+    ablation_exp.add_argument(
+        "--output",
+        type=Path,
+        default=(
+            DEFAULT_DOCS_ROOT
+            / "tables"
+            / "chapter4"
+            / "table_ablation_explainability.tex"
+        ),
+    )
+    ablation_exp.add_argument("--seed", type=int, default=42)
+
     ablation_statistics = subparsers.add_parser(
         "ablation-statistics",
         help=(
@@ -4059,6 +4128,91 @@ def _load_efficiency_json(exp_dir: str, seed: int = 42) -> dict | None:
         return json.load(f)
 
 
+def generate_full_shot_classification_tables(
+    input_file: Path,
+    classification_output: Path,
+    ranking_output: Path,
+    precision: int = 4,
+) -> tuple[Path, Path]:
+    """Sinh hai bảng phân loại full-shot: Bảng 1 (độ đo phân loại Acc, BAcc, Macro-F1) và Bảng 2 (độ đo xếp hạng AUROC, AUPRC)."""
+    frame = load_frame(input_file)
+    models = [
+        "fft_resnet50",
+        "fft_densenet",
+        "fft_medclip",
+        "fft_clip",
+        "fft_pubmedclip",
+        "fft_biomedclip",
+        "ours_xbone_net",
+    ]
+    frame = frame[
+        frame["config"].isin(models)
+        & frame["category"].isin(["Baselines / Full fine-tuning", "Proposed"])
+    ].copy()
+
+    # 1. Bảng phân loại: Acc, BAcc, Macro-F1
+    cls_cols = ["dataset", "config", "accuracy_mean", "balanced_accuracy_mean", "f1_macro_mean"]
+    cls_std = {
+        "accuracy_mean": "accuracy_std",
+        "balanced_accuracy_mean": "balanced_accuracy_std",
+        "f1_macro_mean": "f1_macro_std",
+    }
+    cls_lbls = {
+        "dataset": "Dữ liệu",
+        "config": "Mô hình",
+        "accuracy_mean": r"Acc $\uparrow$",
+        "balanced_accuracy_mean": r"BAcc $\uparrow$",
+        "f1_macro_mean": r"Macro-F1 $\uparrow$",
+    }
+    latex_cls = generate_latex_table(
+        frame,
+        cls_cols,
+        value_columns=["accuracy_mean", "balanced_accuracy_mean", "f1_macro_mean"],
+        std_columns=cls_std,
+        column_labels=cls_lbls,
+        bold_within=["dataset"],
+        multirow_columns=["dataset"],
+        precision=precision,
+        position="H",
+        resize_to_textwidth=True,
+        caption="Kết quả phân loại toàn bộ mẫu (Full-shot) trên BTXRD và CTCH",
+        label="tab:classification_full_data",
+    )
+    classification_output.parent.mkdir(parents=True, exist_ok=True)
+    classification_output.write_text(latex_cls + "\n", encoding="utf-8")
+
+    # 2. Bảng xếp hạng: Macro-AUROC, Macro-AUPRC
+    rank_cols = ["dataset", "config", "auroc_macro_mean", "auprc_macro_mean"]
+    rank_std = {
+        "auroc_macro_mean": "auroc_macro_std",
+        "auprc_macro_mean": "auprc_macro_std",
+    }
+    rank_lbls = {
+        "dataset": "Dữ liệu",
+        "config": "Mô hình",
+        "auroc_macro_mean": r"Macro-AUROC $\uparrow$",
+        "auprc_macro_mean": r"Macro-AUPRC $\uparrow$",
+    }
+    latex_rank = generate_latex_table(
+        frame,
+        rank_cols,
+        value_columns=["auroc_macro_mean", "auprc_macro_mean"],
+        std_columns=rank_std,
+        column_labels=rank_lbls,
+        bold_within=["dataset"],
+        multirow_columns=["dataset"],
+        precision=precision,
+        position="H",
+        resize_to_textwidth=True,
+        caption="Các độ đo xếp hạng xác suất khi sử dụng toàn bộ tập huấn luyện",
+        label="tab:classification_full_data_ranking",
+    )
+    ranking_output.parent.mkdir(parents=True, exist_ok=True)
+    ranking_output.write_text(latex_rank + "\n", encoding="utf-8")
+
+    return classification_output, ranking_output
+
+
 def generate_full_shot_efficiency_table(output_file: Path) -> None:
     """Sinh full shot efficiency table cho bước xử lý hiện tại.
 
@@ -4068,11 +4222,9 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         Đường dẫn tài nguyên được sử dụng.
     """
     targets = [
-        ("BTXRD", "btxrd/baselines/peft_finetuned/lora_biomedclip", "LoRA-BiomedCLIP"),
-        ("BTXRD", "btxrd/baselines/peft_finetuned/lora_pubmedclip", "LoRA-PubMedCLIP"),
+        ("BTXRD", "btxrd/baselines/full_finetuned/fft_biomedclip", "BiomedCLIP (FFT)"),
         ("BTXRD", "btxrd/proposed/ours_xbone_net", "XBone-Net"),
-        ("CTCH", "ctch/baselines/peft_finetuned/lora_biomedclip", "LoRA-BiomedCLIP"),
-        ("CTCH", "ctch/baselines/peft_finetuned/lora_pubmedclip", "LoRA-PubMedCLIP"),
+        ("CTCH", "ctch/baselines/full_finetuned/fft_biomedclip", "BiomedCLIP (FFT)"),
         ("CTCH", "ctch/proposed/ours_xbone_net", "XBone-Net"),
     ]
 
@@ -4116,15 +4268,15 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         print("[ERROR] No full-shot efficiency data found. Please run efficiency.py benchmark first.")
         return
 
-    # Thiết lập trạng thái và thống kê các tham số mô hình.
+    # 1. Bảng số lượng tham số
     lines_params = [
-        r"\begin{table}[!htbp]",
+        r"\begin{table}[H]",
         r"\centering",
         r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|C{1.50cm}|L{3.15cm}|C{2.75cm}|C{3.05cm}|C{1.55cm}|}",
+        r"\begin{tabular}{|l|l|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|C{1.50cm}|}{\textbf{Dữ liệu}} & \multicolumn{1}{C{3.15cm}|}{\textbf{Mô hình}} & \multicolumn{1}{C{2.75cm}|}{\textbf{Tổng tham số}} & \multicolumn{1}{C{3.05cm}|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{C{1.55cm}|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -4135,7 +4287,7 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         span = len(items)
         for i, item in enumerate(items):
             ds_prefix = (
-                f"\\multirow[c]{{{span}}}{{=}}{{\\centering {ds}}}"
+                f"\\multirow{{{span}}}{{*}}{{{ds}}}"
                 if i == 0
                 else ""
             )
@@ -4153,23 +4305,22 @@ def generate_full_shot_efficiency_table(output_file: Path) -> None:
         r"\end{table}",
     ])
 
-    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
+    # 2. Bảng chi phí tính toán và suy luận (không có đại lượng đo)
     lines_compute = [
-        r"\begin{table}[!htbp]",
+        r"\begin{table}[H]",
         r"\centering",
         r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|C{1.55cm}|L{2.55cm}|C{1.90cm}|C{1.85cm}|C{2.15cm}|C{2.05cm}|}",
+        r"\begin{tabular}{|l|l|c|c|c|c|}",
         r"\hline",
-        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{C{1.90cm}|}{\textbf{GFLOPs}} & \multicolumn{1}{C{1.85cm}|}{\textbf{Thông lượng}} & \multicolumn{1}{C{2.15cm}|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{C{2.05cm}|}{\textbf{Bộ nhớ GPU cực đại}} \\",
-        r" & & \multicolumn{1}{C{1.90cm}|}{\textbf{\makecell{(GFLOP/\\mẫu)}}} & \multicolumn{1}{C{1.85cm}|}{\textbf{(mẫu/s)}} & \multicolumn{1}{C{2.15cm}|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{C{2.05cm}|}{\textbf{(MiB)}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ GPU}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
         span = len(items)
         for i, item in enumerate(items):
             ds_prefix = (
-                f"\\multirow[c]{{{span}}}{{=}}{{\\centering {ds}}}"
+                f"\\multirow{{{span}}}{{*}}{{{ds}}}"
                 if i == 0
                 else ""
             )
@@ -4262,15 +4413,15 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         print("[ERROR] No few-shot efficiency data found. Please run efficiency.py benchmark first.")
         return
 
-    # Thiết lập trạng thái và thống kê các tham số mô hình.
+    # 1. Bảng số lượng tham số
     lines_params = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\footnotesize",
+        r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|C{1.30cm}|C{1.35cm}|L{2.50cm}|C{2.40cm}|C{2.65cm}|C{1.20cm}|}",
+        r"\begin{tabular}{|l|l|l|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|C{1.30cm}|}{\textbf{Dữ liệu}} & \multicolumn{1}{C{1.35cm}|}{\textbf{Kịch bản}} & \multicolumn{1}{C{2.50cm}|}{\textbf{Mô hình}} & \multicolumn{1}{C{2.40cm}|}{\textbf{Tổng tham số}} & \multicolumn{1}{C{2.65cm}|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{C{1.20cm}|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline",
     ]
 
     ds_groups = {}
@@ -4288,12 +4439,12 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
             cat_span = len(cat_items)
             for cat_item_idx, item in enumerate(cat_items):
                 ds_prefix = (
-                    f"\\multirow[c]{{{ds_span}}}{{=}}{{\\centering {ds}}}"
+                    f"\\multirow{{{ds_span}}}{{*}}{{{ds}}}"
                     if item_counter == 0
                     else ""
                 )
                 cat_prefix = (
-                    f"\\multirow[c]{{{cat_span}}}{{=}}{{\\centering {cat}}}"
+                    f"\\multirow{{{cat_span}}}{{*}}{{{cat}}}"
                     if cat_item_idx == 0
                     else ""
                 )
@@ -4322,16 +4473,15 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
         r"\end{table}",
     ])
 
-    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
+    # 2. Bảng chi phí tính toán và suy luận (không có đại lượng đo)
     lines_compute = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\footnotesize",
+        r"\small",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|C{1.35cm}|C{1.25cm}|L{2.20cm}|C{1.75cm}|C{1.45cm}|C{1.75cm}|C{1.65cm}|}",
+        r"\begin{tabular}{|l|l|l|c|c|c|c|}",
         r"\hline",
-        r"\multirow[c]{2}{=}{\centering\textbf{Dữ liệu}} & \multirow[c]{2}{=}{\centering\textbf{Kịch bản}} & \multirow[c]{2}{=}{\centering\textbf{Mô hình}} & \multicolumn{1}{C{1.75cm}|}{\textbf{GFLOPs}} & \multicolumn{1}{C{1.45cm}|}{\textbf{Thông lượng}} & \multicolumn{1}{C{1.75cm}|}{\textbf{Độ trễ trung bình}} & \multicolumn{1}{C{1.65cm}|}{\textbf{Bộ nhớ GPU cực đại}} \\",
-        r" & & & \multicolumn{1}{C{1.75cm}|}{\textbf{\makecell{(GFLOP/\\mẫu)}}} & \multicolumn{1}{C{1.45cm}|}{\textbf{(mẫu/s)}} & \multicolumn{1}{C{1.75cm}|}{\textbf{(ms/mẫu)}} & \multicolumn{1}{C{1.65cm}|}{\textbf{(MiB)}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ GPU}} \\ \hline",
     ]
 
     for ds, items in ds_groups.items():
@@ -4345,12 +4495,12 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
             cat_span = len(cat_items)
             for cat_item_idx, item in enumerate(cat_items):
                 ds_prefix = (
-                    f"\\multirow[c]{{{ds_span}}}{{=}}{{\\centering {ds}}}"
+                    f"\\multirow{{{ds_span}}}{{*}}{{{ds}}}"
                     if item_counter == 0
                     else ""
                 )
                 cat_prefix = (
-                    f"\\multirow[c]{{{cat_span}}}{{=}}{{\\centering {cat}}}"
+                    f"\\multirow{{{cat_span}}}{{*}}{{{cat}}}"
                     if cat_item_idx == 0
                     else ""
                 )
@@ -4370,7 +4520,6 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
                     f"{ds_prefix} & {cat_prefix} & {cell_bg}{item['model']} & {cell_bg}{item['gflops']} & {cell_bg}{item['throughput']} & {cell_bg}{item['latency_mean']} & {cell_bg}{item['peak_memory']}{row_end}"
                 )
                 item_counter += 1
-
 
     lines_compute.extend([
         r"\end{tabular}%",
@@ -4590,45 +4739,23 @@ LEAVE_ONE_OUT_CONFIGS = (
     {
         "experiment": "ctch/proposed/ours_xbone_net",
         "label": "XBone-Net",
-        "components": (True, True, True, True, True),
-    },
-    {
-        "experiment": (
-            "ctch/ablation_study/architecture/preprocess/direct_resize_current"
-        ),
-        "label": "Không dùng letterbox",
-        "components": (False, None, True, True, True),
-    },
-    {
-        "experiment": (
-            "ctch/ablation_study/architecture/preprocess/xbone_mean_pooling"
-        ),
-        "label": "Gộp trung bình",
-        "components": (True, False, True, True, True),
+        "components": (True, True),
     },
     {
         "experiment": "ctch/ablation_study/architecture/phase/phase2_only",
         "label": "Chỉ pha 2",
-        "components": (True, True, False, True, True),
+        "components": (False, True),
     },
     {
         "experiment": "ctch/ablation_study/architecture/fusion/concat",
         "label": "Nối đặc trưng",
-        "components": (True, True, True, False, True),
-    },
-    {
-        "experiment": "ctch/ablation_study/architecture/classifier/linear",
-        "label": "Đầu tuyến tính",
-        "components": (True, True, True, True, False),
+        "components": (True, False),
     },
 )
 
 LEAVE_ONE_OUT_COMPONENT_LABELS = (
-    "Nhánh ảnh độ phân giải cao",
-    "Gộp chú ý cục bộ",
     "Huấn luyện pha 1",
     "Chú ý chéo hai chiều",
-    "Tâm lớp thực nghiệm",
 )
 
 LEAVE_ONE_OUT_METRICS = (
@@ -4642,7 +4769,6 @@ LEAVE_ONE_OUT_METRICS = (
     ("Macro-F1", "f1_macro_mean", "f1_macro_std", False),
     ("Macro-AUROC", "auroc_macro_mean", "auroc_macro_std", False),
     ("Macro-AUPRC", "auprc_macro_mean", "auprc_macro_std", False),
-    ("ECE", "ece_15_mean", "ece_15_std", True),
 )
 
 
@@ -4661,13 +4787,17 @@ def _leave_one_out_number(value: float, precision: int) -> str:
     str
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    return f"{float(value):.{precision}f}".replace(".", "{.}")
+    return f"{float(value):.{precision}f}"
 
 
 def generate_ablation_leave_one_out_table(
-    input_file: str | Path,
-    output_file: str | Path,
-    *,
+    aggregated_results_file: Union[str, Path],
+    output_file: Union[str, Path] = (
+        DEFAULT_DOCS_ROOT
+        / "tables"
+        / "chapter4"
+        / "table_ablation_leave_one_out_classification.tex"
+    ),
     precision: int = 4,
 ) -> Path:
     """Sinh ablation leave one out table cho bước xử lý hiện tại.
@@ -4749,26 +4879,25 @@ def generate_ablation_leave_one_out_table(
             if np.isclose(value, optimum, rtol=1e-9, atol=1e-12)
         }
 
-    column_definition = (
-        r"L{3.20cm}>{\columncolor{gray!12}}C{3.15cm}*{5}{C{3.15cm}}"
-    )
+    n_other = len(LEAVE_ONE_OUT_CONFIGS) - 1
+    gray_bg = r">{\columncolor{gray!12}}"
+    tabular_spec = f"L{{5.0cm}}{gray_bg}C{{3.8cm}}*{{{n_other}}}{{C{{3.8cm}}}}"
     lines = [
-        r"\begin{landscape}",
         r"\begin{table}[H]",
         r"\centering",
         r"\small",
         r"\renewcommand{\arraystretch}{1.15}",
         r"\resizebox{\textwidth}{!}{%",
-        rf"\begin{{tabular}}{{{column_definition}}}",
+        rf"\begin{{tabular}}{{{tabular_spec}}}",
         r"\toprule",
-        r"\multicolumn{1}{C{3.20cm}}{\textbf{Thành phần hoặc độ đo}} &",
+        r"\multicolumn{1}{C{5.0cm}}{\textbf{Thành phần hoặc độ đo}} &",
     ]
     header_cells = [
         (
-            rf"\multicolumn{{1}}{{>{{\columncolor{{gray!12}}}}C{{3.15cm}}}}"
+            rf"\multicolumn{{1}}{{>{{\columncolor{{gray!12}}}}C{{3.8cm}}}}"
             rf"{{\textbf{{{_latex_escape(specification['label'])}}}}}"
             if index == 0
-            else rf"\multicolumn{{1}}{{C{{3.15cm}}}}{{\textbf{{{_latex_escape(specification['label'])}}}}}"
+            else rf"\multicolumn{{1}}{{C{{3.8cm}}}}{{\textbf{{{_latex_escape(specification['label'])}}}}}"
         )
         for index, specification in enumerate(LEAVE_ONE_OUT_CONFIGS)
     ]
@@ -4782,11 +4911,12 @@ def generate_ablation_leave_one_out_table(
         for specification in LEAVE_ONE_OUT_CONFIGS:
             state = specification["components"][component_index]
             cells.append(
-                r"$\checkmark$" if state is True else "--" if state is None else ""
+                r"$\checkmark$" if state is True else ""
             )
         lines.append(" & ".join(cells) + r" \\")
 
     lines.append(r"\midrule")
+
     for metric_label, mean_column, std_column, minimize in LEAVE_ONE_OUT_METRICS:
         direction = r"\downarrow" if minimize else r"\uparrow"
         cells = [rf"{metric_label} ${direction}$"]
@@ -4812,15 +4942,307 @@ def generate_ablation_leave_one_out_table(
             r"\bottomrule",
             r"\end{tabular}%",
             r"}",
-            (
-                r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net "
-                r"trên CTCH. Kết quả được trình bày "
-                rf"dưới dạng trung bình $\pm$ độ lệch chuẩn trên {seed_count} hạt "
-                r"giống; chữ đậm biểu thị kết quả tốt nhất theo từng độ đo.}"
-            ),
+            r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net trên CTCH}",
             r"\label{tab:ablation_leave_one_out_classification}",
             r"\end{table}",
-            r"\end{landscape}",
+            "",
+        ]
+    )
+
+    destination = resolve_path(output_file)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text("\n".join(lines), encoding="utf-8")
+    return destination
+
+
+def generate_ablation_ood_table(
+    results_root: Union[str, Path] = DEFAULT_RESULTS_ROOT,
+    output_file: Union[str, Path] = (
+        DEFAULT_DOCS_ROOT
+        / "tables"
+        / "chapter4"
+        / "table_ablation_ood.tex"
+    ),
+    seeds: Sequence[int] = (42, 123, 456),
+) -> Path:
+    """Sinh bảng đối sánh hiệu năng phát hiện OOD giữa các biến thể ablation theo định dạng chuẩn."""
+    from src.utils.ood import MultimodalEnsembleOODDetector, evaluate_ood
+
+    root_path = resolve_path(results_root)
+    experiments = [
+        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net (Đề xuất)"},
+        {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
+        {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
+    ]
+    scenarios = [
+        {"name": "OOD CTCH (26 ca ngoại lai)", "file": "ctch_ood.npz"},
+        {"name": "BTXRD", "file": "btxrd_test.npz"},
+    ]
+
+    data: dict[str, dict[str, list[dict[str, float]]]] = {
+        sc["name"]: {item["label"]: [] for item in experiments}
+        for sc in scenarios
+    }
+
+    for item in experiments:
+        exp = item["exp"]
+        label = item["label"]
+        for seed in seeds:
+            feat_dir = root_path / f"{exp}/seed_{seed}/analysis/features"
+            if not feat_dir.exists():
+                feat_dir = root_path / f"analysis/{exp}/seed_{seed}/features"
+
+            train = np.load(feat_dir / "ctch_train.npz", allow_pickle=True)
+            val = np.load(feat_dir / "ctch_val.npz", allow_pickle=True)
+            test_id = np.load(feat_dir / "ctch_test.npz", allow_pickle=True)
+
+            detector = MultimodalEnsembleOODDetector(
+                knn_k=10, knn_reduction="kth"
+            ).fit(
+                visual_embeddings=train["visual_global_embeddings"],
+                labels=train["labels"],
+                text_embeddings=train.get("text_global_embeddings"),
+                val_visual_embeddings=val["visual_global_embeddings"],
+                val_text_embeddings=val.get("text_global_embeddings"),
+            )
+            id_scores = detector.score(
+                test_id["visual_global_embeddings"],
+                test_id.get("text_global_embeddings"),
+            )
+
+            for sc in scenarios:
+                ood = np.load(feat_dir / sc["file"], allow_pickle=True)
+                ood_scores = detector.score(
+                    ood["visual_global_embeddings"],
+                    ood.get("text_global_embeddings"),
+                )
+                m = evaluate_ood(id_scores, ood_scores)
+                data[sc["name"]][label].append(
+                    {
+                        "auroc": m["auroc_ood"],
+                        "aupr": m["aupr_out"],
+                        "fpr": m["fpr_at_95tpr"],
+                    }
+                )
+
+    lines = [
+        r"\begin{table}[H]",
+        r"\centering",
+        r"\small",
+        r"\resizebox{\columnwidth}{!}{%",
+        r"\begin{tabular}{|l|l|c|c|c|}",
+        r"\hline",
+        r"\multicolumn{1}{|c|}{\textbf{Kịch bản}} & "
+        r"\multicolumn{1}{c|}{\textbf{Biểu diễn}} & "
+        r"\textbf{AUROC-OOD $\uparrow$} & "
+        r"\textbf{AUPR-Out $\uparrow$} & "
+        r"\textbf{FPR@95\%TPR $\downarrow$} \\ \hline",
+    ]
+
+    for sc_idx, sc in enumerate(scenarios):
+        sc_name = sc["name"]
+        sc_data = data[sc_name]
+
+        aurocs = [
+            float(np.mean([x["auroc"] for x in sc_data[item["label"]]]))
+            for item in experiments
+        ]
+        auprs = [
+            float(np.mean([x["aupr"] for x in sc_data[item["label"]]]))
+            for item in experiments
+        ]
+        fprs = [
+            float(np.mean([x["fpr"] for x in sc_data[item["label"]]]))
+            for item in experiments
+        ]
+
+        best_auroc = np.max(aurocs)
+        best_aupr = np.max(auprs)
+        best_fpr = np.min(fprs)
+
+        for exp_idx, item in enumerate(experiments):
+            label = item["label"]
+            res = sc_data[label]
+            m_auroc, s_auroc = float(np.mean([x["auroc"] for x in res])), float(
+                np.std([x["auroc"] for x in res], ddof=1)
+            )
+            m_aupr, s_aupr = float(np.mean([x["aupr"] for x in res])), float(
+                np.std([x["aupr"] for x in res], ddof=1)
+            )
+            m_fpr, s_fpr = float(np.mean([x["fpr"] for x in res])), float(
+                np.std([x["fpr"] for x in res], ddof=1)
+            )
+
+            str_auroc = f"{m_auroc:.4f}\\pm{s_auroc:.4f}"
+            if np.isclose(m_auroc, best_auroc):
+                str_auroc = f"\\mathbf{{{str_auroc}}}"
+            str_auroc = f"${str_auroc}$"
+
+            str_aupr = f"{m_aupr:.4f}\\pm{s_aupr:.4f}"
+            if np.isclose(m_aupr, best_aupr):
+                str_aupr = f"\\mathbf{{{str_aupr}}}"
+            str_aupr = f"${str_aupr}$"
+
+            str_fpr = f"{m_fpr:.4f}\\pm{s_fpr:.4f}"
+            if np.isclose(m_fpr, best_fpr):
+                str_fpr = f"\\mathbf{{{str_fpr}}}"
+            str_fpr = f"${str_fpr}$"
+
+            sc_prefix = (
+                rf"\multirow{{{len(experiments)}}}{{*}}{{{sc_name}}}"
+                if exp_idx == 0
+                else ""
+            )
+            cell_bg = r"\cellcolor{gray!12}" if "XBone-Net" in label else ""
+            clean_label = label.replace(" (Đề xuất)", "")
+            
+            row_end = r" \\ \hline" if exp_idx == len(experiments) - 1 else r" \\ \cline{2-5}"
+            lines.append(
+                f"{sc_prefix} & {cell_bg}{clean_label} & {cell_bg}{str_auroc} & "
+                f"{cell_bg}{str_aupr} & {cell_bg}{str_fpr}{row_end}"
+            )
+
+    lines.extend(
+        [
+            r"\end{tabular}%",
+            r"}",
+            r"\caption{Đánh giá khả năng phát hiện OOD (Multi-modal Ensemble) giữa các biến thể kiến trúc}",
+            r"\label{tab:ablation_ood}",
+            r"\end{table}",
+            "",
+        ]
+    )
+
+    destination = resolve_path(output_file)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text("\n".join(lines), encoding="utf-8")
+    return destination
+
+
+def generate_ablation_explainability_table(
+    results_root: Union[str, Path] = DEFAULT_RESULTS_ROOT,
+    output_file: Union[str, Path] = (
+        DEFAULT_DOCS_ROOT
+        / "tables"
+        / "chapter4"
+        / "table_ablation_explainability.tex"
+    ),
+    seed: int = 42,
+) -> Path:
+    """Sinh bảng so sánh chỉ số giải thích tích phân gradient giữa các biến thể ablation theo định dạng chuẩn."""
+    root_path = resolve_path(results_root)
+    experiments = [
+        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net (Đề xuất)"},
+        {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
+        {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
+    ]
+
+    summaries: dict[str, dict[str, Any]] = {}
+    for item in experiments:
+        p = root_path / f"{item['exp']}/seed_{seed}/analysis/explainability/summary.json"
+        with open(p, "r", encoding="utf-8") as f:
+            summaries[item["label"]] = json.load(f)
+
+    lines = [
+        r"\begin{table}[H]",
+        r"\centering",
+        r"\small",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{|l|l|c|c|c|}",
+        r"\hline",
+        r"\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} & "
+        r"\multicolumn{1}{c|}{\textbf{Chỉ số}} & "
+        r"\multicolumn{1}{c|}{\cellcolor{gray!12}\textbf{XBone-Net}} & "
+        r"\multicolumn{1}{c|}{\textbf{Chỉ pha 2}} & "
+        r"\multicolumn{1}{c|}{\textbf{Nối đặc trưng}} \\ \hline",
+    ]
+
+    # Group 1: Text Faithfulness
+    lines.append(
+        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\Văn bản lâm sàng\end{tabular}} & "
+        r"AUC Khôi phục theo IG $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
+        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ & "
+        rf"${summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & $\Delta\text{AUC}$ (Ngẫu nhiên $-$ IG) $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{+{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
+        rf"$\mathbf{{+{summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
+        rf"$+{summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & AUC Loại bỏ theo IG $\downarrow$ & "
+        rf"\cellcolor{{gray!12}}${summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
+    )
+
+    # Group 2: Image Faithfulness
+    lines.append(
+        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\Ảnh X-quang\end{tabular}} & "
+        r"AUC Khôi phục theo IG $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
+        rf"$\mathbf{{{summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
+        rf"${summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & $\Delta\text{AUC}$ (Ngẫu nhiên $-$ IG) $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{+{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
+        rf"$+{summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ & "
+        rf"$+{summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & AUC Loại bỏ theo IG $\downarrow$ & "
+        rf"\cellcolor{{gray!12}}${summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
+    )
+
+    # Group 3: Source Intervention
+    drop_img_xbone = summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
+    drop_img_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
+    drop_img_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
+
+    drop_txt_xbone = summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
+    drop_txt_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
+    drop_txt_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
+
+    dom_xbone = summaries['XBone-Net (Đề xuất)']['source_role_summary']['dominant_source_counts']
+    dom_p2 = summaries['Chỉ pha 2']['source_role_summary']['dominant_source_counts']
+    dom_concat = summaries['Nối đặc trưng']['source_role_summary']['dominant_source_counts']
+
+    pct_img_xbone = dom_xbone['global_image'] / (dom_xbone['global_image'] + dom_xbone['clinical_text']) * 100
+    pct_img_p2 = dom_p2['global_image'] / (dom_p2['global_image'] + dom_p2['clinical_text']) * 100
+    pct_img_concat = dom_concat['global_image'] / (dom_concat['global_image'] + dom_concat['clinical_text']) * 100
+
+    lines.append(
+        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\thông tin\end{tabular}} & "
+        r"Mức giảm xác suất khi che Ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_img_xbone:.4f}}}$ (${drop_img_xbone*100:.2f}\%$) & "
+        rf"${drop_img_p2:.4f}$ (${drop_img_p2*100:.2f}\%$) & "
+        rf"${drop_img_concat:.4f}$ (${drop_img_concat*100:.2f}\%$) \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & Mức giảm xác suất khi che Văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_txt_xbone:.4f}}}$ (${drop_txt_xbone*100:.2f}\%$) & "
+        rf"${drop_txt_p2:.4f}$ (${drop_txt_p2*100:.2f}\%$) & "
+        rf"${drop_txt_concat:.4f}$ (${drop_txt_concat*100:.2f}\%$) \\ \cline{{2-5}}"
+    )
+    lines.append(
+        r" & Tỷ lệ ca có Ảnh chi phối lớn nhất & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{pct_img_xbone:.2f}\%}}$ (${dom_xbone['global_image']}/44$) & "
+        rf"${pct_img_p2:.2f}\%$ (${dom_p2['global_image']}/44$) & "
+        rf"${pct_img_concat:.2f}\%$ (${dom_concat['global_image']}/44$) \\ \hline"
+    )
+
+    lines.extend(
+        [
+            r"\end{tabular}%",
+            r"}",
+            r"\caption{Đánh giá độ trung thực giải thích (IG) và can thiệp nguồn giữa các biến thể kiến trúc}",
+            r"\label{tab:ablation_explainability}",
+            r"\end{table}",
             "",
         ]
     )
@@ -8343,6 +8765,24 @@ def main() -> None:
         print(f"Leave-one-out LaTeX table saved to: {output}")
         return
 
+    if args.command == "ablation-ood":
+        output = generate_ablation_ood_table(
+            results_root=args.results_root,
+            output_file=args.output,
+            seeds=args.seeds,
+        )
+        print(f"Ablation OOD LaTeX table saved to: {output}")
+        return
+
+    if args.command == "ablation-explainability":
+        output = generate_ablation_explainability_table(
+            results_root=args.results_root,
+            output_file=args.output,
+            seed=args.seed,
+        )
+        print(f"Ablation explainability LaTeX table saved to: {output}")
+        return
+
     if args.command == "ablation-statistics":
         outputs = run_leave_one_out_statistical_analysis(
             args.results_root,
@@ -8381,6 +8821,17 @@ def main() -> None:
         )
         for name, output in outputs.items():
             print(f"{name} saved to: {output}")
+        return
+
+    if args.command == "full-shot-tables":
+        cls_out, rank_out = generate_full_shot_classification_tables(
+            args.input,
+            args.classification_output,
+            args.ranking_output,
+            precision=args.precision,
+        )
+        print(f"Classification table saved to: {cls_out}")
+        print(f"Ranking table saved to: {rank_out}")
         return
 
     if args.command == "latex":

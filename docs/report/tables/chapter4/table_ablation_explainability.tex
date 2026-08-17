@@ -1,0 +1,58 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+% \usepackage{graphicx}
+\begin{table}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} &
+  \multicolumn{1}{c|}{\textbf{Chỉ số}} &
+  \cellcolor{gray!12}\textbf{XBone-Net} &
+  \textbf{Chỉ pha 2} &
+  \textbf{Nối đặc trưng} \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ văn bản lâm sàng\end{tabular}} &
+  AUC Khôi phục theo IG $\uparrow$ &
+  \cellcolor{gray!12}$\mathbf{0.4232}$ &
+  $0.3895$ &
+  $0.3231$ \\ \cline{2-5} 
+ &
+ AUC Loại bỏ theo IG $\downarrow$ &
+  \cellcolor{gray!12}$0.2704$ &
+  $0.2292$ &
+  $\mathbf{0.2026}$ \\ \hline
+\begin{tabular}[c]{@{}l@{}}Đối chứng ngẫu nhiên\\ văn bản lâm sàng\end{tabular} &
+  AUC ngẫu nhiên $-$ AUC theo IG $\uparrow$ &
+  \cellcolor{gray!12}$0.0767$ &
+  $\mathbf{0.0781}$ &
+  $0.0622$ \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực \\ ảnh X-quang\end{tabular}} &
+  AUC Khôi phục theo IG $\uparrow$ &
+  \cellcolor{gray!12}$0.3755$ &
+  $\mathbf{0.3756}$ &
+  $0.3172$ \\ \cline{2-5} 
+ &
+  AUC Loại bỏ theo IG $\downarrow$ &
+  \cellcolor{gray!12}$0.2869$ &
+  $0.2723$ &
+  $\mathbf{0.2329}$ \\ \hline
+\begin{tabular}[c]{@{}l@{}}Đối chứng ngẫu nhiên\\ ảnh X-quang\end{tabular} &
+  AUC ngẫu nhiên $-$ AUC theo IG $\uparrow$ &
+  \cellcolor{gray!12}$\mathbf{0.0374}$ &
+  $0.0300$ &
+  $0.0131$ \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\ thông tin\end{tabular}} &
+  \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Ảnh ($\Delta p_{\mathrm{img}}$)\end{tabular} &
+  \cellcolor{gray!12}$\mathbf{0.3654}$ &
+  $0.3100$ &
+  $0.2737$ \\ \cline{2-5} 
+ &
+  \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Văn bản ($\Delta p_{\mathrm{txt}}$)\end{tabular} &
+  \cellcolor{gray!12}$\mathbf{0.2874}$ &
+  $0.2581$ &
+  $0.2571$ \\ \hline
+\end{tabular}%
+}
+\caption{Đánh giá IG và can thiệp nguồn của XBone-Net và hai biến thể trên 44 mẫu ở hạt giống 42}
+\label{tab:ablation_explainability}
+\end{table}

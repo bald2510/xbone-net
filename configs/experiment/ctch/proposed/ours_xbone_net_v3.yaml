@@ -23,8 +23,7 @@ model:
 dataset:
   params:
     preprocess:
-      strategy: letterbox
-      pad_value: black
+      strategy: direct_resize
 
 params:
   model_dir: checkpoints/${experiment_name}/seed_${seed}/

@@ -1,71 +1,41 @@
-\begin{landscape}
 \begin{table}[H]
 \centering
 \small
 \renewcommand{\arraystretch}{1.15}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{L{3.20cm}>{\columncolor{gray!12}}C{3.15cm}*{5}{C{3.15cm}}}
+\begin{tabular}{L{5.0cm}>{\columncolor{gray!12}}C{3.8cm}*{2}{C{3.8cm}}}
 \toprule
-\multicolumn{1}{C{3.20cm}}{\textbf{Thành phần hoặc độ đo}} &
-\multicolumn{1}{>{\columncolor{gray!12}}C{3.15cm}}{\textbf{XBone-Net}} &
-\multicolumn{1}{C{3.15cm}}{\textbf{Không dùng ảnh độ phân giải cao}} &
-\multicolumn{1}{C{3.15cm}}{\textbf{Gộp trung bình}} &
-\multicolumn{1}{C{3.15cm}}{\textbf{Chỉ pha 2}} &
-\multicolumn{1}{C{3.15cm}}{\textbf{Nối đặc trưng}} &
-\multicolumn{1}{C{3.15cm}}{\textbf{Đầu tuyến tính}} \\
+\multicolumn{1}{C{5.0cm}}{\textbf{Thành phần hoặc độ đo}} &
+\multicolumn{1}{>{\columncolor{gray!12}}C{3.8cm}}{\textbf{XBone-Net}} &
+\multicolumn{1}{C{3.8cm}}{\textbf{Chỉ pha 2}} &
+\multicolumn{1}{C{3.8cm}}{\textbf{Nối đặc trưng}} \\
 \midrule
-Nhánh ảnh độ phân giải cao & $\checkmark$ &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
-Gộp chú ý cục bộ & $\checkmark$ & -- &  & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
-Huấn luyện pha 1 & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ & $\checkmark$ \\
-Chú ý chéo hai chiều & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  & $\checkmark$ \\
-Tâm lớp thực nghiệm & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ &  \\
+Huấn luyện pha 1 & $\checkmark$ &  & $\checkmark$ \\
+Chú ý chéo hai chiều & $\checkmark$ & $\checkmark$ &  \\
 \midrule
 Accuracy $\uparrow$ &
-$0{.}5725\pm0{.}0286$ &
-$0{.}6074\pm0{.}0204$ &
-$0{.}5790\pm0{.}0139$ &
-$0{.}6173\pm0{.}0119$ &
-$0{.}5924\pm0{.}0085$ &
-$\mathbf{0{.}6263\pm0{.}0060}$ \\
+$\mathbf{0.6183\pm0.0203}$ &
+$0.6099\pm0.0143$ &
+$0.5780\pm0.0156$ \\
 Balanced Accuracy $\uparrow$ &
-$0{.}5844\pm0{.}0454$ &
-$0{.}5571\pm0{.}0104$ &
-$\mathbf{0{.}6049\pm0{.}0459}$ &
-$0{.}5572\pm0{.}0239$ &
-$0{.}5668\pm0{.}0276$ &
-$0{.}5779\pm0{.}0396$ \\
+$0.5935\pm0.0134$ &
+$0.5861\pm0.0231$ &
+$\mathbf{0.6199\pm0.0184}$ \\
 Macro-F1 $\uparrow$ &
-$0{.}5558\pm0{.}0072$ &
-$0{.}5553\pm0{.}0136$ &
-$0{.}5736\pm0{.}0251$ &
-$0{.}5753\pm0{.}0175$ &
-$0{.}5425\pm0{.}0130$ &
-$\mathbf{0{.}5889\pm0{.}0251}$ \\
+$0.5727\pm0.0193$ &
+$\mathbf{0.5728\pm0.0111}$ &
+$0.5622\pm0.0108$ \\
 Macro-AUROC $\uparrow$ &
-$0{.}9473\pm0{.}0246$ &
-$0{.}9148\pm0{.}0223$ &
-$\mathbf{0{.}9577\pm0{.}0082}$ &
-$0{.}9144\pm0{.}0198$ &
-$0{.}9566\pm0{.}0046$ &
-$0{.}9080\pm0{.}0099$ \\
+$0.9020\pm0.0095$ &
+$0.9215\pm0.0130$ &
+$\mathbf{0.9394\pm0.0101}$ \\
 Macro-AUPRC $\uparrow$ &
-$0{.}6189\pm0{.}0145$ &
-$0{.}5990\pm0{.}0073$ &
-$\mathbf{0{.}6312\pm0{.}0277}$ &
-$0{.}6268\pm0{.}0170$ &
-$0{.}6019\pm0{.}0139$ &
-$0{.}6076\pm0{.}0218$ \\
-ECE $\downarrow$ &
-$0{.}1032\pm0{.}0303$ &
-$0{.}1743\pm0{.}0634$ &
-$0{.}1506\pm0{.}0564$ &
-$0{.}1868\pm0{.}0724$ &
-$\mathbf{0{.}0789\pm0{.}0148}$ &
-$0{.}0882\pm0{.}0153$ \\
+$0.5904\pm0.0224$ &
+$0.6082\pm0.0101$ &
+$\mathbf{0.6201\pm0.0036}$ \\
 \bottomrule
 \end{tabular}%
 }
 \caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net trên CTCH}
 \label{tab:ablation_leave_one_out_classification}
 \end{table}
-\end{landscape}

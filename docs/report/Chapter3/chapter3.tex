@@ -689,3 +689,52 @@ Với mỗi mẫu, lớp đích được chọn là lớp do mô hình dự đo�
 trong đó $\beta\in[0,1]$ xác định một điểm trên đường thẳng từ mốc tham chiếu đến đầu vào. Trong phần đánh giá thực nghiệm, tích phân được xấp xỉ bằng quy tắc hình thang tại 24 điểm cách đều. Đối với ảnh toàn cục, mốc tham chiếu là tenxơ bằng không trong không gian đầu vào đã chuẩn hóa. Đối với các đơn vị ảnh cục bộ, mốc tham chiếu là biểu diễn ảnh toàn cục được lặp lại theo số đơn vị. Đối với bệnh sử, các từ nội dung được nội suy từ biểu diễn của ký hiệu đệm, trong khi các ký hiệu đặc biệt được giữ nguyên.
 
 Để thu được mức liên quan của từng điểm ảnh, đơn vị ảnh cục bộ hoặc từ, các quy đóng theo chiều biểu diễn được cộng lại và chỉ giữ phần dương. Nếu tổng phần dương gần bằng không, tổng trị tuyệt đối được sử dụng làm phương án dự phòng. Bản đồ và điểm liên quan thu được phản ánh mức đóng góp của từng thành phần đối với logit của lớp dự đoán trong lân cận đường nội suy, do đó được sử dụng như thông tin hỗ trợ diễn giải thay vì một kết luận nhân quả.
+
+
+Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó bộ phân lớp tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Bước phân lớp và tính điểm ngoài phân phối không tính đạo hàm, đồng thời không cập nhật tâm lớp từ mẫu mới. Kết quả phân loại cho biết lớp nào phù hợp nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự thuộc phân bố huấn luyện hay không.
+
+Để phát hiện mẫu ngoài phân phối (OOD), việc chỉ dựa vào không gian biểu diễn sau khi dung hợp ($\boldsymbol{z}_{\mathrm{fused}}$) có thể gặp hạn chế do mô-đun chú ý chéo có xu hướng ép các đặc trưng dị biệt vào cấu trúc không gian lớp nội tại để tối ưu phân loại, làm suy giảm độ nhạy phát hiện bất thường ở từng phương thức riêng lẻ. Vì vậy, hệ thống xây dựng cơ chế \textbf{Multi-Modal Modality-Decoupled Ensemble OOD Detection} bằng cách tách rời hai phương thức, áp dụng phương pháp khoảng cách $k$-láng giềng gần nhất ($k\mathrm{NN}$) trên từng không gian biểu diễn đơn phương thức, chuẩn hóa $Z$-score trên tập xác thực ID và hợp nhất bằng toán tử $\max$:
+
+\begin{enumerate}
+    \item \textbf{Khoảng cách $k\mathrm{NN}$ đơn phương thức tách rời:} Gọi $\mathcal{D}_{\mathrm{ID}}^{\mathrm{train}}$ là tập biểu diễn tham chiếu trong phân phối đã được chuẩn hóa $L_2$. Với mỗi mẫu kiểm thử có biểu diễn ảnh $\boldsymbol{z}_{\mathrm{img}}$ và biểu diễn văn bản $\boldsymbol{z}_{\mathrm{txt}}$, điểm bất thường đơn phương thức được tính bằng khoảng cách Euclid tới láng giềng thứ $k$ gần nhất \cite{Sun2022KNN}:
+    \begin{equation}
+    s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{img}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{img}}^{\mathrm{train}}\right),
+    \label{eq:ch3_ood_knn_vis}
+    \end{equation}
+    \begin{equation}
+    s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{txt}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{txt}}^{\mathrm{train}}\right).
+    \label{eq:ch3_ood_knn_txt}
+    \end{equation}
+
+    \item \textbf{Chuẩn hóa $Z$-score trên tập ID Validation:} Do thang đo khoảng cách trên không gian ảnh và không gian văn bản có thể khác biệt, hệ thống ước lượng giá trị kỳ vọng và độ lệch chuẩn của từng phương thức trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ($\mu_{\mathrm{vis}}^{\mathrm{val}}, \sigma_{\mathrm{vis}}^{\mathrm{val}}$ và $\mu_{\mathrm{txt}}^{\mathrm{val}}, \sigma_{\mathrm{txt}}^{\mathrm{val}}$) để đưa các điểm số về phân phối chuẩn hóa không thứ nguyên:
+    \begin{equation}
+    \widetilde{s}_{\mathrm{vis}} = \frac{s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) - \mu_{\mathrm{vis}}^{\mathrm{val}}}{\sigma_{\mathrm{vis}}^{\mathrm{val}} + \epsilon}, \qquad \widetilde{s}_{\mathrm{txt}} = \frac{s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) - \mu_{\mathrm{txt}}^{\mathrm{val}}}{\sigma_{\mathrm{txt}}^{\mathrm{val}} + \epsilon}.
+    \label{eq:ch3_ood_zscore}
+    \end{equation}
+
+    \item \textbf{Hợp nhất bằng toán tử $\max$ (Max-pooling Fusion):} Điểm ngoài phân phối tổng hợp được xác định theo nguyên lý phòng vệ nghiêm ngặt (worst-case anomaly):
+    \begin{equation}
+    s_{\mathrm{OOD}}(\boldsymbol{x}) = \max\left(\widetilde{s}_{\mathrm{vis}},\,\widetilde{s}_{\mathrm{txt}}\right).
+    \label{eq:ch3_ood_max_fusion}
+    \end{equation}
+    Theo cơ chế này, chỉ cần một trong hai phương thức (ảnh hoặc văn bản lâm sàng) có mức độ bất thường vượt trội so với phân phối huấn luyện, toàn bộ ca bệnh sẽ lập tức được nhận diện và cảnh báo là dữ liệu ngoài phân phối.
+\end{enumerate}
+
+Ngưỡng cảnh báo $\tau_{\mathrm{alert}}$ được hiệu chỉnh trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ở mức tỷ lệ cảnh báo giả mục tiêu $\alpha = 0{,}05$:
+\begin{equation}
+\tau_{\mathrm{alert}} = Q_{1-\alpha}^{+}\!\left(\left\{s_{\mathrm{OOD}}(\boldsymbol{x}_{i}) \mid \boldsymbol{x}_{i}\in\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}\right\}\right), \qquad \alpha=0{,}05,
+\label{eq:ch3_ood_threshold}
+\end{equation}
+trong đó $Q_{q}^{+}$ là phân vị thực nghiệm phía trên ở mức $q$, nhằm bảo đảm giữ lại ít nhất $95\%$ mẫu trong phân phối. Quy tắc đưa ra cảnh báo OOD độc lập với kết quả phân lớp:
+\begin{equation}
+\begin{aligned}
+\widehat{y} &= \operatorname*{arg\,max}_{k\in\mathcal{Y}} p(y=k\mid\boldsymbol{x}), \\[6pt]
+\omega_{\mathrm{OOD}} &= \begin{cases}
+1, & \text{nếu } s_{\mathrm{OOD}}(\boldsymbol{x}) > \tau_{\mathrm{alert}}, \\[4pt]
+0, & \text{ngược lại}.
+\end{cases}
+\end{aligned}
+\label{eq:ch3_ood_decision}
+\end{equation}
+
+Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net mà cung cấp thêm tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ khi mẫu đầu vào có dấu hiệu bất thường về thị giác hoặc bất thường về nội dung văn bản lâm sàng.

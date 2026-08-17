@@ -58,53 +58,11 @@ echo [1/6] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
 if not exist "%REPORT_TABLE%" mkdir "%REPORT_TABLE%"
 copy /Y "%CLASS%\table_zero_shot.tex" "%REPORT_TABLE%\table_zero_shot.tex" >nul
 
-"%PYTHON%" "%VIS%" latex ^
+"%PYTHON%" "%VIS%" full-shot-tables ^
   --input "%RUN_ALL%" ^
-  --where-in "category=Baselines / Full fine-tuning|Proposed" ^
-  --where-in "config=fft_resnet50|fft_densenet|fft_medclip|fft_clip|fft_pubmedclip|fft_biomedclip|ours_xbone_net" ^
-  --columns dataset config accuracy_mean balanced_accuracy_mean f1_macro_mean auroc_macro_mean auprc_macro_mean ^
-  --value-columns accuracy_mean balanced_accuracy_mean f1_macro_mean auroc_macro_mean auprc_macro_mean ^
-  --std-map accuracy_mean=accuracy_std ^
-  --std-map balanced_accuracy_mean=balanced_accuracy_std ^
-  --std-map f1_macro_mean=f1_macro_std ^
-  --std-map auroc_macro_mean=auroc_macro_std ^
-  --std-map auprc_macro_mean=auprc_macro_std ^
-  --column-label "dataset=Dữ liệu" ^
-  --column-label "config=Mô hình" ^
-  --column-label "accuracy_mean=Acc $\uparrow$" ^
-  --column-label "balanced_accuracy_mean=BAcc $\uparrow$" ^
-  --column-label "f1_macro_mean=Macro-F1 $\uparrow$" ^
-  --column-label "auroc_macro_mean=Macro-AUROC $\uparrow$" ^
-  --column-label "auprc_macro_mean=Macro-AUPRC $\uparrow$" ^
-  --bold-within dataset ^
-  --multirow dataset ^
-  --precision 4 ^
-  --position H ^
-  --resize-to-textwidth ^
-  --caption "Kết quả phân loại khi sử dụng toàn bộ tập huấn luyện" ^
-  --label tab:classification_full_data ^
-  --output "%CLASS%\table_full_shot_classification.tex"
-
-
-"%PYTHON%" "%VIS%" latex ^
-  --input "%RUN_ALL%" ^
-  --where-in "category=Baselines / Full fine-tuning|Baselines / PEFT|Proposed" ^
-  --where-in "config=fft_biomedclip|fft_clip|fft_densenet|fft_medclip|fft_pubmedclip|fft_resnet50|lora_biomedclip|lora_pubmedclip|ours_xbone_net" ^
-  --columns dataset config auroc_macro_mean auprc_macro_mean ^
-  --value-columns auroc_macro_mean auprc_macro_mean ^
-  --std-map auroc_macro_mean=auroc_macro_std ^
-  --std-map auprc_macro_mean=auprc_macro_std ^
-  --column-label "dataset=Dữ liệu" ^
-  --column-label "config=Mô hình" ^
-  --column-label "auroc_macro_mean=Macro-AUROC $\uparrow$" ^
-  --column-label "auprc_macro_mean=Macro-AUPRC $\uparrow$" ^
-  --bold-within dataset ^
-  --multirow dataset ^
-  --precision 4 ^
-  --position H ^
-  --caption "Các độ đo xếp hạng xác suất khi sử dụng toàn bộ tập huấn luyện" ^
-  --label tab:classification_full_data_ranking ^
-  --output "%CLASS%\table_full_shot_ranking.tex"
+  --classification-output "%CLASS%\table_full_shot_classification.tex" ^
+  --ranking-output "%CLASS%\table_full_shot_ranking.tex" ^
+  --precision 4
 
 "%PYTHON%" "%VIS%" latex ^
   --input "%RUN_ALL%" ^

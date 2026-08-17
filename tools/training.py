@@ -139,10 +139,11 @@ RESEARCH_GROUPS = OrderedDict({
         "btxrd/ablation_study/modality/text_only",
         "btxrd/ablation_study/modality/shuffled_report",
     ),
-    "rq2_visual_encoding": _registered_group(
+    "rq1_ctch_modality": _registered_group(
         "ctch/proposed/ours_xbone_net",
-        "ctch/ablation_study/architecture/preprocess/direct_resize_current",
-        "ctch/ablation_study/architecture/preprocess/xbone_letterbox_mlp_classifier",
+        "ctch/ablation_study/modality/image_only",
+        "ctch/ablation_study/modality/text_only",
+        "ctch/ablation_study/modality/shuffled_report",
     ),
     "rq2_training_strategy": _registered_group(
         "ctch/proposed/ours_xbone_net",
@@ -176,7 +177,6 @@ RESEARCH_GROUPS = OrderedDict({
 RESEARCH_GROUPS["rq2_all_components"] = list(dict.fromkeys(
     experiment
     for group_name in (
-        "rq2_visual_encoding",
         "rq2_training_strategy",
         "rq2_fusion",
         "rq2_classifier",

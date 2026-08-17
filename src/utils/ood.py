@@ -538,11 +538,162 @@ class OODDetector:
             )
         if method == "entropy":
             return self.score_entropy(kwargs["logits"])
+        if method == "multimodal_ensemble":
+            ensemble_detector = kwargs.get("ensemble_detector")
+            if ensemble_detector is not None:
+                return ensemble_detector.score(
+                    test_embeddings,
+                    text_embeddings=kwargs.get("text_embeddings"),
+                    logits=kwargs.get("logits"),
+                )
+            raise ValueError("ensemble_detector must be provided for method 'multimodal_ensemble'.")
         raise ValueError(
             "Unknown OOD method: "
             f"{method}. Choose cosine_centroids, mahalanobis_centroid, "
-            "knn, or entropy."
+            "knn, entropy, or multimodal_ensemble."
         )
+
+
+class MultimodalEnsembleOODDetector:
+    """Bộ phát hiện Multi-Modal Modality-Decoupled Ensemble OOD Detection.
+
+    Nguyên lý hoạt động:
+    1. Modality-Decoupled (Tách rời phương thức):
+       Tuyệt đối không sử dụng fused_embedding (vốn có thể bị mạng chú ý chéo ép khớp vào
+       không gian phân loại nội tại làm lu mờ tín hiệu OOD đơn lẻ). Thay vào đó, mô-đun
+       sử dụng trực tiếp hai biểu diễn đơn phương thức đã chuẩn hóa L2:
+       - Biểu diễn ảnh toàn cục (visual_global_embeddings)
+       - Biểu diễn văn bản toàn cục (text_global_embeddings)
+
+    2. Phương pháp kNN đơn phương thức:
+       - Điểm bất thường thị giác: s_vis = score_knn(z_img, k=k)
+       - Điểm bất thường văn bản: s_txt = score_knn(z_txt, k=k)
+
+    3. Chuẩn hóa Z-score trên tập Validation ID:
+       Tính trung bình mu_val và độ lệch chuẩn sigma_val trên tập xác thực ID (val_data):
+       - z_vis = (s_vis - mu_vis_val) / (sigma_vis_val + eps)
+       - z_txt = (s_txt - mu_txt_val) / (sigma_txt_val + eps)
+
+    4. Hợp nhất bằng toán tử Max (Max-pooling Fusion):
+       s_OOD = max(z_vis, z_txt)
+       Nguyên tắc: Chỉ cần một trong hai phương thức (ảnh hoặc văn bản) có dấu hiệu
+       bất thường vượt trội so với phân phối ID thì toàn bộ mẫu sẽ được đánh giá là OOD.
+    """
+
+    def __init__(
+        self,
+        knn_k: int = 10,
+        knn_reduction: str = "kth",
+        knn_metric: str = "euclidean",
+    ):
+        """Khởi tạo bộ phát hiện MultimodalEnsembleOODDetector."""
+        self.knn_k = knn_k
+        self.knn_reduction = knn_reduction
+        self.knn_metric = knn_metric
+        self.visual_detector = OODDetector()
+        self.text_detector = OODDetector()
+        self.scalers: dict[str, tuple[float, float]] = {}
+        self._fitted = False
+
+    def fit(
+        self,
+        visual_embeddings: np.ndarray,
+        labels: np.ndarray,
+        text_embeddings: Optional[np.ndarray] = None,
+        logits: Optional[np.ndarray] = None,
+        val_visual_embeddings: Optional[np.ndarray] = None,
+        val_text_embeddings: Optional[np.ndarray] = None,
+        val_logits: Optional[np.ndarray] = None,
+    ):
+        """Huấn luyện các bộ dò kNN đơn phương thức và chuẩn hóa z-score trên tập validation ID."""
+        visual_embeddings = _embedding_matrix(visual_embeddings, "visual_embeddings")
+        labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+
+        # 1. Huấn luyện bộ dò kNN trên tập huấn luyện tham chiếu ID
+        self.visual_detector.fit(visual_embeddings, labels)
+
+        if text_embeddings is not None and len(text_embeddings) == len(labels):
+            text_embeddings = _embedding_matrix(text_embeddings, "text_embeddings")
+            self.text_detector.fit(text_embeddings, labels)
+
+        # 2. Cân chỉnh z-score scalers trên tập ID validation (hoặc train fallback)
+        val_vis = val_visual_embeddings if val_visual_embeddings is not None else visual_embeddings
+        val_txt = val_text_embeddings if val_text_embeddings is not None else text_embeddings
+
+        # kNN score trên validation ảnh
+        s_vis_val = self.visual_detector.score_knn(
+            val_vis,
+            k=self.knn_k,
+            reduction=self.knn_reduction,
+            metric=self.knn_metric,
+        )
+        self.scalers["vis"] = (
+            float(np.mean(s_vis_val)),
+            float(np.std(s_vis_val) + 1e-8),
+        )
+
+        # kNN score trên validation văn bản
+        if val_txt is not None:
+            s_txt_val = self.text_detector.score_knn(
+                val_txt,
+                k=self.knn_k,
+                reduction=self.knn_reduction,
+                metric=self.knn_metric,
+            )
+            self.scalers["txt"] = (
+                float(np.mean(s_txt_val)),
+                float(np.std(s_txt_val) + 1e-8),
+            )
+
+        self._fitted = True
+        return self
+
+    def score(
+        self,
+        visual_embeddings: np.ndarray,
+        text_embeddings: Optional[np.ndarray] = None,
+        logits: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Tính điểm OOD bằng kNN tách rời phương thức, chuẩn hóa Z-score và hợp nhất bằng toán tử Max."""
+        if not self._fitted:
+            raise RuntimeError(
+                "MultimodalEnsembleOODDetector must be fitted before scoring."
+            )
+
+        visual_embeddings = _embedding_matrix(visual_embeddings, "visual_embeddings")
+        n_samples = len(visual_embeddings)
+
+        # 1. Điểm kNN ảnh và chuẩn hóa z-score
+        s_vis = self.visual_detector.score_knn(
+            visual_embeddings,
+            k=self.knn_k,
+            reduction=self.knn_reduction,
+            metric=self.knn_metric,
+        )
+        mean_vis, std_vis = self.scalers["vis"]
+        z_vis = (s_vis - mean_vis) / std_vis
+
+        # 2. Điểm kNN văn bản và chuẩn hóa z-score
+        if text_embeddings is not None and "txt" in self.scalers:
+            text_embeddings = _embedding_matrix(text_embeddings, "text_embeddings")
+            s_txt = self.text_detector.score_knn(
+                text_embeddings,
+                k=self.knn_k,
+                reduction=self.knn_reduction,
+                metric=self.knn_metric,
+            )
+            mean_txt, std_txt = self.scalers["txt"]
+            z_txt = (s_txt - mean_txt) / std_txt
+
+            # 3. Hợp nhất bằng toán tử Max (Max-pooling Fusion)
+            ensemble_score = np.maximum(z_vis, z_txt)
+        else:
+            ensemble_score = z_vis
+
+        return ensemble_score
+
+
+MultimodalDecoupledEnsembleOODDetector = MultimodalEnsembleOODDetector
 
 
 def calibrate_ood_threshold(

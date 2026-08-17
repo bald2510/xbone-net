@@ -1,9 +1,9 @@
-"""Backbone BiomedCLIP dùng một ảnh letterbox và văn bản lâm sàng.
+"""Backbone BiomedCLIP dùng một ảnh đã qua preprocessing và văn bản lâm sàng.
 
 Backbone giữ nguyên bộ mã hóa ảnh và văn bản của BiomedCLIP. Trong pha căn
 chỉnh, mô hình trả về embedding toàn cục; trong pha phân loại có cross-attention,
 mô hình trả về chuỗi patch token ảnh và token văn bản gốc. Không có nhánh ảnh
-nhánh ảnh bổ sung hoặc phép gom token trung gian.
+bổ sung hoặc phép gom token trung gian.
 """
 
 from __future__ import annotations
@@ -146,7 +146,7 @@ class BiomedCLIPFoundation(nn.Module):
         Parameters
         ----------
         images : torch.Tensor or None
-            Batch ảnh letterbox đã qua transform của BiomedCLIP.
+            Batch ảnh đã qua preprocessing và transform của BiomedCLIP.
         input_ids : torch.Tensor or None
             Batch token văn bản lâm sàng.
         attention_mask : torch.Tensor or None

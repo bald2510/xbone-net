@@ -177,11 +177,11 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Để đạt được các mục tiêu đã đề ra, nghiên cứu tập trung trả lời các câu hỏi sau:
 
 \begin{itemize}
-\item \textbf{Câu hỏi nghiên cứu 1:} Trong các thiết lập ít mẫu và toàn bộ dữ liệu, XBone-Net đạt mức hiệu năng phân lớp nào so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận?
+\item \textbf{Câu hỏi nghiên cứu 1:} Trong tác vụ phân loại, XBone-Net đạt mức hiệu năng phân lớp nào so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận?
 
-\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện, cách mã hóa và tiền xử lý ảnh, cơ chế dung hợp cùng đầu phân lớp, ảnh hưởng như thế nào đến quyết định lớp, chất lượng xếp hạng và hiệu chuẩn?
+\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện và cơ chế dung hợp, ảnh hưởng như thế nào đến quyết định lớp và chất lượng xếp hạng?
 
-\item \textbf{Câu hỏi nghiên cứu 3:} Các điểm bất thường hậu xử lý trên không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước ở mức nào, và giới hạn của cảnh báo này khác nhau ra sao giữa dịch chuyển gần miền và dịch chuyển khác bộ dữ liệu?
+\item \textbf{Câu hỏi nghiên cứu 3:} Điểm cảnh báo hậu xử lý được xây dựng từ không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước ở mức nào, và giới hạn của cảnh báo này khác nhau ra sao giữa dịch chuyển gần miền và dịch chuyển khác bộ dữ liệu?
 
 \item \textbf{Câu hỏi nghiên cứu 4:} Tích phân gradient kết hợp với can thiệp đầu vào phản ánh mức phụ thuộc của dự đoán XBone-Net vào thông tin hình ảnh và văn bản như thế nào, và thứ tự quy đóng có làm thay đổi đầu ra rõ hơn đối chứng ngẫu nhiên hay không?
 
@@ -189,18 +189,22 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 
 \section{Đóng góp chính của đề tài}
 
-Các đóng góp chính của đề tài bao gồm:
+Các đóng góp của đề tài tập trung vào quy trình thích nghi, cách đánh giá các lựa chọn do khóa luận đề xuất và phân tích giới hạn của hệ thống. Đồng thời, việc sử dụng kết hợp ảnh và văn bản không được xem là một đóng góp cần chứng minh lại. Cụ thể:
+
+\clearpage
 
 \begin{enumerate}
-\item \textbf{Phương pháp XBone-Net:} Xây dựng quy trình thích nghi BioMedCLIP cho phân lớp X-quang xương bằng LoRA, huấn luyện hai giai đoạn và mô-đun dung hợp ảnh--văn bản. CTCH sử dụng bệnh sử có sẵn trong bệnh án, còn BTXRD sử dụng văn bản tổng hợp từ siêu dữ liệu; hai nguồn được diễn giải riêng do không có mức độ xác thực lâm sàng tương đương.
+\item \textbf{Quy trình thích nghi XBone-Net:} Đề xuất và hiện thực hóa quy trình thích nghi BioMedCLIP cho phân lớp X-quang xương bằng LoRA, huấn luyện hai pha và chú ý chéo hai chiều, nhằm hạn chế số tham số cần cập nhật trong khi khai thác biểu diễn ảnh--văn bản. CTCH sử dụng bệnh sử có sẵn trong bệnh án, trong khi BTXRD sử dụng văn bản tổng hợp từ siêu dữ liệu. Vì hai nguồn văn bản không có mức độ xác thực lâm sàng tương đương nên kết quả trên từng bộ dữ liệu được diễn giải riêng.
 
-\item \textbf{Bằng chứng thực nghiệm về hiệu năng và đánh đổi:} Đánh giá XBone-Net với các mô hình đối chứng trong thiết lập ít mẫu và toàn bộ dữ liệu; thực hiện loại bỏ thành phần; đồng thời đo số tham số cập nhật, số phép toán, thông lượng, độ trễ và bộ nhớ. Kết quả được dùng để xác định hiệu năng cạnh tranh và các đánh đổi của phương pháp, không nhằm chứng minh rằng việc có thêm phương thức đầu vào tự thân luôn tốt hơn.
+\item \textbf{Bằng chứng về hiệu năng, thành phần và chi phí:} Đánh giá XBone-Net với các mô hình đối chứng trong thiết lập sử dụng toàn bộ dữ liệu, khảo sát riêng vai trò của quy trình huấn luyện hai pha và cơ chế dung hợp, đồng thời đo số tham số cập nhật, số phép toán, thông lượng, độ trễ và bộ nhớ GPU cực đại. Qua đó, phân tích làm rõ mức hiệu năng phân lớp cạnh tranh, lợi ích về tham số cập nhật và phần chi phí suy luận phải đánh đổi.
 
-\item \textbf{Phân tích cảnh báo dữ liệu ngoài phân phối:} Xây dựng quy trình hậu xử lý và đánh giá các điểm bất thường dựa trên khoảng cách đến tâm lớp, Mahalanobis, kNN và entropy dự đoán trong hai kịch bản dịch chuyển đã xác định. Kết quả được sử dụng để khảo sát khả năng và giới hạn của cảnh báo bổ trợ, không được xem là cơ chế bảo đảm phát hiện hoặc từ chối tự động.
+\item \textbf{Đánh giá cảnh báo dữ liệu ngoài phân phối:} Xây dựng điểm cảnh báo hậu xử lý từ biểu diễn ảnh và văn bản, sau đó đánh giá trong hai kịch bản được xác định trước: dịch chuyển gần miền trên CTCH và dịch chuyển khác bộ dữ liệu sang BTXRD. Đây là tín hiệu bổ trợ, không phải cơ chế bảo đảm phát hiện hoặc từ chối dự đoán tự động.
 
-\item \textbf{Phân tích nguồn phụ thuộc của dự đoán:} Kết hợp tích phân gradient, can thiệp đầu vào và đối chứng thứ tự ngẫu nhiên để khảo sát mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản ở cấp độ tập dữ liệu và trường hợp. Phân tích này hỗ trợ truy vết đầu ra nhưng không xác lập đóng góp nhân quả, khả năng định vị tổn thương hoặc độ đúng lâm sàng.
+\item \textbf{Truy vết nguồn phụ thuộc của dự đoán:} Kết hợp tích phân gradient với can thiệp đầu vào để khảo sát mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản. Phân tích cung cấp bằng chứng thăm dò về độ trung thực của thứ tự quy đóng và hỗ trợ truy vết đầu ra, nhưng không xác lập đóng góp nhân quả, khả năng định vị tổn thương hoặc độ đúng lâm sàng.
 
 \end{enumerate}
+
+\clearpage
 
 \section{Bố cục khóa luận}
 

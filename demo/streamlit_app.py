@@ -1,4 +1,4 @@
-"""Giao diện Streamlit cho XBone-Net dùng letterbox và linear head.
+"""Giao diện Streamlit cho XBone-Net dùng preprocessing đã khóa và linear head.
 
 Ứng dụng hiển thị đúng ba đầu ra của mô hình nghiên cứu: phân loại CTCH,
 cảnh báo OOD và Integrated Gradients cho ảnh/văn bản.
@@ -42,6 +42,7 @@ METHOD_LABELS = {
     "cosine_centroids": "Cosine–centroid",
     "knn": "Cosine kNN (k=5)",
     "entropy": "Entropy dự đoán",
+    "multimodal_ensemble": "Multi-modal ensemble",
 }
 
 TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
@@ -418,30 +419,41 @@ def analysis_signature(
     return digest.hexdigest()
 
 
-def show_preprocessing(image: Image.Image) -> None:
-    """Hiển thị ảnh trước và sau phép letterbox 224 x 224.
+def show_preprocessing(image: Image.Image, engine: OnlineInferenceEngine) -> None:
+    """Hiển thị bước tiền xử lý đúng với config của checkpoint.
 
     Parameters
     ----------
     image : Image.Image
         Ảnh hoặc biểu diễn ảnh đầu vào.
+    engine : OnlineInferenceEngine
+        Engine đang giữ config đã khóa của checkpoint.
     """
 
+    preprocess_cfg = getattr(engine.loaded.cfg.dataset.params, "preprocess", {})
+    strategy = str(getattr(preprocess_cfg, "strategy", "letterbox")).lower()
     with st.expander("Xem các bước preprocessing", expanded=False):
-        st.caption(
-            "Ảnh được đổi kích thước nhưng giữ nguyên tỷ lệ, sau đó đệm màu "
-            "đen thành 224×224 trước transform chuẩn hóa của BiomedCLIP."
-        )
-        source_column, letterbox_column = st.columns(2)
+        source_column, processed_column = st.columns(2)
         source_column.image(
             bounded_image(image, 360, 280),
             caption=f"1. Ảnh gốc · {image.width}×{image.height} px",
         )
-        letterbox = letterbox_square(image, size=224, pad_value="black")
-        letterbox_column.image(
-            letterbox,
-            caption="2. Letterbox · 224×224 px",
-        )
+        if strategy == "letterbox":
+            processed = letterbox_square(image, size=224, pad_value="black")
+            caption = "2. Letterbox · 224×224 px"
+            description = (
+                "Ảnh giữ nguyên tỷ lệ và được đệm đen thành 224×224 trước "
+                "transform chuẩn hóa của BiomedCLIP."
+            )
+        else:
+            processed = image.convert("RGB").resize((224, 224), Image.Resampling.BICUBIC)
+            caption = "2. Minh họa direct resize · 224×224 px"
+            description = (
+                "Checkpoint hiện dùng direct_resize: ảnh gốc được chuyển trực tiếp "
+                "cho transform resize/crop/normalize của BiomedCLIP, không letterbox."
+            )
+        st.caption(description)
+        processed_column.image(processed, caption=caption)
 
 
 def show_reproducibility(result, engine: OnlineInferenceEngine) -> None:
@@ -874,7 +886,7 @@ def main() -> None:
         try:
             with st.spinner("Đang tải checkpoint và detector CTCH-ID..."):
                 engine = load_engine(int(seed), str(device))
-            with st.spinner("Đang letterbox ảnh và suy luận..."):
+            with st.spinner("Đang tiền xử lý ảnh và suy luận..."):
                 result = engine.predict(
                     image,
                     clinical_text,
@@ -910,7 +922,7 @@ def main() -> None:
             result = analysis["result"]
             result_image = analysis["image"]
             engine = analysis["engine"]
-            show_preprocessing(result_image)
+            show_preprocessing(result_image, engine)
             show_classification_and_ood(result)
             if result.is_ood:
                 show_similar_images(result, show_labels=False)

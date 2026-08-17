@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "experiment": "ctch/proposed/ours_xbone_net",
+  "seed": 42,
+  "architecture": {
+    "backbone": "biomedclip",
+    "preprocessing": "direct_resize",
+    "peft": "lora_r16_alpha32",
+    "fusion": "bidirectional_cross_attention",
+    "classifier": "linear_22_classes"
+  },
+  "files": {
+    "best_phase2.pth": {
+      "bytes": 817818997,
+      "sha256": "2ce605100136e0f2dd6ddc4a0b70ecd3f813f3c0de0bcc4a2bbafe89eded1f64"
+    },
+    "metrics.json": {
+      "bytes": 18135,
+      "sha256": "67986d1979a605e60d8d9bb5d02ec30797f5c7eeba8f5bf4d157af82d0b954bb"
+    },
+    "features/ctch_train.npz": {
+      "bytes": 17582486,
+      "sha256": "dcf57e792fdceca6b35ae785468d3d13118ba823baced0f3b41e40236fa222b1"
+    },
+    "features/ctch_val.npz": {
+      "bytes": 2454711,
+      "sha256": "36794e2b1bc797518f0cc09b8509515164bc174f2d4af85818fc117d9c714505"
+    }
+  }
+}

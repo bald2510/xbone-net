@@ -1,30 +1,26 @@
 \begin{table}[H]
 \centering
-\small
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|l|c|c|}
 \hline
 \multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Macro-AUROC $\uparrow$}} & \multicolumn{1}{c|}{\textbf{Macro-AUPRC $\uparrow$}} \\ \hline
-\multirow{9}{*}{BTXRD} & BioMedCLIP & $0.8865\pm0.0165$ & $0.6511\pm0.0104$ \\ \cline{2-4}
+\multirow{7}{*}{BTXRD} & BiomedCLIP & $0.8865\pm0.0165$ & $\mathbf{0.6511\pm0.0104}$ \\ \cline{2-4}
  & CLIP & $0.8973\pm0.0231$ & $0.6251\pm0.0080$ \\ \cline{2-4}
  & DenseNet-121 & $0.7717\pm0.0173$ & $0.3831\pm0.0036$ \\ \cline{2-4}
  & MedCLIP & $0.8599\pm0.0330$ & $0.6228\pm0.0253$ \\ \cline{2-4}
- & PubMedCLIP & $0.9048\pm0.0240$ & $0.6149\pm0.0245$ \\ \cline{2-4}
+ & PubMedCLIP & $\mathbf{0.9048\pm0.0240}$ & $0.6149\pm0.0245$ \\ \cline{2-4}
  & ResNet-50 & $0.7236\pm0.0259$ & $0.3338\pm0.0061$ \\ \cline{2-4}
- & LoRA-BiomedCLIP & $0.9102\pm0.0319$ & $0.6343\pm0.0209$ \\ \cline{2-4}
- & LoRA-PubMedCLIP & $0.9039\pm0.0063$ & $\mathbf{0.6592\pm0.0341}$ \\ \cline{2-4}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$\mathbf{0.9243\pm0.0298}$ & \cellcolor{gray!12}$0.6301\pm0.0211$ \\ \hline
-\multirow{9}{*}{CTCH} & BioMedCLIP & $0.9390\pm0.0289$ & $0.6169\pm0.0090$ \\ \cline{2-4}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.8045\pm0.0159$ & \cellcolor{gray!12}$0.5865\pm0.0110$ \\ \hline
+\multirow{7}{*}{CTCH} & BiomedCLIP & $\mathbf{0.9390\pm0.0289}$ & $\mathbf{0.6169\pm0.0090}$ \\ \cline{2-4}
  & CLIP & $0.9290\pm0.0387$ & $0.6002\pm0.0400$ \\ \cline{2-4}
  & DenseNet-121 & $0.9350\pm0.0046$ & $0.4762\pm0.0136$ \\ \cline{2-4}
  & MedCLIP & $0.9215\pm0.0333$ & $0.5839\pm0.0185$ \\ \cline{2-4}
  & PubMedCLIP & $0.9279\pm0.0214$ & $0.5888\pm0.0196$ \\ \cline{2-4}
  & ResNet-50 & $0.9145\pm0.0037$ & $0.4492\pm0.0042$ \\ \cline{2-4}
- & LoRA-BiomedCLIP & $0.9334\pm0.0216$ & $0.6045\pm0.0204$ \\ \cline{2-4}
- & LoRA-PubMedCLIP & $0.9366\pm0.0202$ & $0.6087\pm0.0072$ \\ \cline{2-4}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$\mathbf{0.9473\pm0.0246}$ & \cellcolor{gray!12}$\mathbf{0.6189\pm0.0145}$ \\ \hline
-\end{tabular}%
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.9020\pm0.0095$ & \cellcolor{gray!12}$0.5904\pm0.0224$ \\ \hline
+\end{tabular}
 }
 \caption{Các độ đo xếp hạng xác suất khi sử dụng toàn bộ tập huấn luyện}
 \label{tab:classification_full_data_ranking}
 \end{table}
+

@@ -1,163 +1,129 @@
 HƯỚNG DẪN SỬ DỤNG XBONE-NET
 ===========================
 
-1. ĐIỀU KIỆN TRƯỚC KHI CHẠY
----------------------------
-- Đã cài đặt môi trường và các thư viện theo hướng dẫn trong HuongDanCaiDat.txt.
-- Đã kích hoạt môi trường nghiên cứu:
-
-    conda activate Thesis
-
-- Terminal đang đứng tại thư mục gốc của chương trình: MaDeTai/src.
-- Dữ liệu đã được bố trí đúng cấu trúc trong thư mục data/.
-- Checkpoint huấn luyện đặt tại thư mục checkpoints/ và phải khớp config trong results/.
+1. ĐIỀU KIỆN CHUNG
+------------------
+- Đã cài môi trường theo HuongDanCaiDat.txt.
+- Đã chạy "conda activate Thesis".
+- Terminal đang đứng tại thư mục chứa train.py.
+- Để chạy demo, phải có gói demo/model hợp lệ.
+- Để huấn luyện/đánh giá, phải có dữ liệu CTCH hoặc BTXRD tương ứng.
 
 
-2. KIỂM TRA CÚ PHÁP VÀ HỆ THỐNG
--------------------------------
-Kiểm tra cú pháp toàn bộ mã nguồn:
-
-  python -m compileall -q train.py evaluate.py inference.py src tools benchmark demo data
-
-Kiểm tra danh mục thư viện đồng bộ:
-
+2. KIỂM TRA MÃ NGUỒN VÀ DEMO
+----------------------------
+  python -m compileall -q train.py evaluate.py inference.py src tools benchmark demo
   python tools/generate_requirement.py --check
+  python tools/training.py --list-configs
+  python tools/verify_demo_artifacts.py
 
 
-3. TIỀN XỬ LÝ DỮ LIỆU
-----------------------
-(Bỏ qua bước này nếu đã có sẵn các file split CSV và thư mục reports)
+3. CHẠY DEMO
+------------
+  python -m streamlit run demo/streamlit_app.py
 
-3.1. Tập dữ liệu CTCH:
-Đặt file data_labeled_full_selected_cleaned.xlsx, images/ và labels.txt trong data/CTCH, sau đó chạy:
-
-  python data/CTCH/preprocess_ctch.py --step all
-
-3.2. Tập dữ liệu BTXRD:
-Đặt dataset.csv và ảnh vào data/BTXRD, sau đó chạy:
-
-  python data/BTXRD/preprocess_btxrd.py
-  python data/BTXRD/generate_clinical_reports.py
-
-4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT (XBONE-NET)
------------------------------------------
-Huấn luyện XBone-Net trên CTCH (mặc định seed 42):
-
-  python train.py +experiment=ctch/proposed/ours_xbone_net
-
-Huấn luyện XBone-Net trên BTXRD:
-
-  python train.py +experiment=btxrd/proposed/ours_xbone_net
-
-Chỉ định seed khác (ví dụ: seed 123, seed 456):
-
-  python train.py +experiment=ctch/proposed/ours_xbone_net seed=123
-
-Tối ưu bộ nhớ GPU (giảm batch size):
-
-  python train.py +experiment=ctch/proposed/ours_xbone_net dataset.batch_size=4
-
-Trọng số tốt nhất của 2 giai đoạn huấn luyện sẽ được lưu tự động tại:
-  checkpoints/<dataset>/proposed/ours_xbone_net/seed_<seed>/best_phase1.pth
-  checkpoints/<dataset>/proposed/ours_xbone_net/seed_<seed>/best_phase2.pth
+Chi tiết đầu vào, đầu ra, OOD, IG và xử lý lỗi xem HuongDanSuDungDemo.txt.
 
 
-5. ĐÁNH GIÁ PHÂN LOẠI MÔ HÌNH
------------------------------
-Đánh giá trên tập kiểm thử CTCH:
+4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT
+------------------------------
+CTCH, seed 42:
 
-  python evaluate.py +experiment=ctch/proposed/ours_xbone_net
+  python train.py +experiment=ctch/proposed/ours_xbone_net seed=42
 
-Đánh giá kèm khoảng tin cậy Bootstrap 95% và trích xuất embedding:
+BTXRD, seed 42:
 
-  python evaluate.py +experiment=ctch/proposed/ours_xbone_net --bootstrap --n-bootstrap 10000 --save-embeddings
+  python train.py +experiment=btxrd/proposed/ours_xbone_net seed=42
 
+Giảm batch size khi thiếu VRAM:
 
-6. SUY LUẬN TRÊN MỘT MẪU ĐƠN LẺ (CLI)
---------------------------------------
-Chạy dự đoán cho 1 cặp ảnh X-quang và tiền sử lâm sàng:
+  python train.py +experiment=ctch/proposed/ours_xbone_net seed=42 dataset.batch_size=4
 
-  python inference.py +experiment=ctch/proposed/ours_xbone_net --image data/CTCH/images/<TEN_FILE_ANH.jpg> --clinical-text "<NOI_DUNG_TIEN_SU_LAM_SANG>" --checkpoint checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth --device cuda
+Checkpoint được lưu tại:
 
-
-7. CHẠY CÁC THỰC NGHIỆM ĐỐI CHỨNG (BASELINES & ABLATION)
---------------------------------------------------------
-Zero-shot VLM Baseline:
-
-  python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot
-
-Full Fine-Tuning Baseline:
-
-  python train.py +experiment=ctch/baselines/full_finetuned/fft_biomedclip
-
-Few-Shot Learning (10-shot, 20-shot):
-
-  python train.py +experiment=ctch/few_shot/10_shot/ours_xbone_net
-
-Ablation tiền xử lý (resize trực tiếp thay cho letterbox):
-
-  python train.py +experiment=ctch/ablation_study/architecture/preprocess/direct_resize_current
+  checkpoints/<experiment_name>/seed_<seed>/best_phase1.pth
+  checkpoints/<experiment_name>/seed_<seed>/best_phase2.pth
 
 
-8. CHẠY NHIỀU SEED HOẶC TỰ ĐỘNG HÓA HÀNG LOẠT
-----------------------------------------------
-Chạy huấn luyện và đánh giá trên 3 seed (42, 123, 456):
+5. ĐÁNH GIÁ PHÂN LOẠI
+---------------------
+  python evaluate.py +experiment=ctch/proposed/ours_xbone_net seed=42
 
-  python tools/training.py --group ctch/proposed/ours_xbone_net --seeds 42 123 456
+Bootstrap 95% và lưu embedding:
 
-Tổng hợp bảng so sánh kết quả tự động:
+  python evaluate.py +experiment=ctch/proposed/ours_xbone_net seed=42 --bootstrap --n-bootstrap 10000 --save-embeddings
+
+Kết quả mặc định nằm tại:
+
+  results/ctch/proposed/ours_xbone_net/seed_42/metrics.json
+
+
+6. CHẠY BA SEED
+---------------
+tools/experiments.txt có thể disable một config đã hoàn tất. Để lệnh trực tiếp
+không bị danh sách disable chặn, luôn dùng --ignore-experiment-file:
+
+  python tools/training.py --group ctch/proposed/ours_xbone_net --ignore-experiment-file --seeds 42 123 456
+
+Xem trước hàng đợi mà không huấn luyện:
+
+  python tools/training.py --group ctch/proposed/ours_xbone_net --ignore-experiment-file --seeds 42 123 456 --dry-run
+
+Tổng hợp kết quả đã có, không huấn luyện lại:
 
   python tools/training.py --table --group ctch/proposed/ours_xbone_net
 
 
-9. ĐÁNH GIÁ OOD VÀ TRỰC QUAN HÓA GIẢI THÍCH MÔ HÌNH
-----------------------------------------------------
-9.1. Đánh giá phát hiện Out-of-Distribution (OOD):
+7. BASELINE VÀ ABLATION HIỆN CÓ
+------------------------------
+Liệt kê config thực tế trước khi chạy:
 
-  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 123 456 --device cuda
+  python tools/training.py --list-configs
 
-Đánh giá IG end-to-end trên ảnh letterbox và văn bản (cần feature archive train/test):
+Ví dụ:
 
-  python benchmark/explainability_analysis.py --experiment ctch/proposed/ours_xbone_net --seed 42 --train-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz --test-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_test.npz --output-dir results/ctch/proposed/ours_xbone_net/seed_42/analysis/explainability --device cuda
+  python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot
+  python train.py +experiment=ctch/baselines/full_finetuned/fft_biomedclip seed=42
+  python train.py +experiment=ctch/ablation_study/architecture/fusion/concat seed=42
+  python train.py +experiment=ctch/ablation_study/architecture/phase/phase2_only seed=42
 
-9.2. Xuất hình ảnh Integrated Gradients (IG Attribution) đa phương thức:
-
-  python tools/visualize/render_multimodal_ig.py --image-id 3021_img-84263-00001.jpg --device cuda --output results/visualization/multimodal_ig_sample.png
-
-9.3. Xuất hình ảnh Chú ý chéo hai chiều (Cross-Modal Attention):
-
-  python tools/visualize/attention.py --image-id 3021_img-84263-00001.jpg --device cuda
+Không sử dụng các lệnh few-shot hoặc config đã bị xóa khỏi --list-configs.
 
 
-10. ĐO HIỆU QUẢ TÍNH TOÁN (BENCHMARK)
--------------------------------------
-Đo GFLOPs, Throughput, Latency và VRAM tiêu thụ:
+8. OOD VÀ EXPLAINABILITY
+------------------------
+Trích xuất feature và đánh giá OOD cho seed 42:
 
-  python benchmark/efficiency.py +experiment=ctch/proposed/ours_xbone_net ++seed=42 --device cuda --precision fp32 --batch-size 1 --num-batches 20 --warmup 10 --repeats 10
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device auto
 
+Đánh giá IG trên feature train/test:
 
-11. TRỰC QUAN HÓA BỔ TRỢ
--------------------------
-Trực quan hóa quy trình tiền xử lý ảnh Letterbox Square:
+  python benchmark/explainability_analysis.py --experiment ctch/proposed/ours_xbone_net --seed 42 --train-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz --test-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_test.npz --output-dir results/ctch/proposed/ours_xbone_net/seed_42/analysis/explainability --device auto
 
-  python tools/visualize/preprocessing.py --image data/CTCH/images/<TEN_FILE_ANH.jpg>
+Xuất một hình IG:
 
-Mô hình đề xuất hiện dùng linear head; công cụ tâm lớp chỉ áp dụng cho các
-checkpoint ablation dùng empirical centroid, không áp dụng cho ours_xbone_net.
+  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device auto --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
 
 
-12. KHỞI CHẠY ỨNG DỤNG WEB DEMO (STREAMLIT)
--------------------------------------------
-Để chạy giao diện trực quan hóa tương tác hoàn chỉnh cho người dùng:
-
-  streamlit run demo/streamlit_app.py
-
-Chi tiết cách sử dụng các tính năng giao diện xem tại tệp: HuongDanSuDungDemo.txt.
+9. ĐO CHI PHÍ SUY LUẬN
+----------------------
+  python benchmark/efficiency.py +experiment=ctch/proposed/ours_xbone_net ++seed=42 --device auto --precision fp32 --batch-size 1 --num-batches 20 --warmup 10 --repeats 10
 
 
-13. QUẢN LÝ CÁC THƯ MỤC VÀ TỆP SINH RA
---------------------------------------
-- checkpoints/: Lưu các trọng số mô hình đã huấn luyện (.pth).
-- results/: Chứa các bảng metric (.json), hình ảnh trực quan hóa (.png) và kết quả OOD.
-- runs/: Lưu log theo dõi quá trình huấn luyện của TensorBoard.
-- outputs/: Chứa cấu hình và log thực thi do Hydra tự động sinh ra.
+10. CẬP NHẬT GÓI MODEL CHO DEMO
+--------------------------------
+Sau khi huấn luyện và chạy OOD để tạo ctch_train.npz/ctch_val.npz:
+
+  python tools/package_demo_artifacts.py
+  python tools/verify_demo_artifacts.py
+
+Công cụ chỉ chấp nhận checkpoint canonical seed 42 với direct_resize,
+cross-attention và linear head. Gói đầu ra nằm tại demo/model.
+
+
+11. THƯ MỤC ĐẦU RA
+------------------
+- checkpoints/: checkpoint huấn luyện.
+- results/: metrics, feature archive, OOD, IG và efficiency.
+- outputs/: log/config do Hydra sinh ra.
+- demo/model/: gói checkpoint và feature tối thiểu để phát hành demo.

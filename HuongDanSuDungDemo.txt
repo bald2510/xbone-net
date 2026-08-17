@@ -1,125 +1,128 @@
 HƯỚNG DẪN SỬ DỤNG DEMO XBONE-NET (STREAMLIT)
 ================================================
 
-1. PHẠM VI CỦA DEMO
--------------------
-Demo nhận một ảnh X-quang và một đoạn bệnh sử, sau đó hiển thị:
+1. PHẠM VI
+----------
+Demo nhận một ảnh X-quang và một đoạn bệnh sử, sau đó cung cấp:
 
-- cảnh báo ID/OOD;
-- nhãn dự đoán và confidence đã hiệu chỉnh nếu mẫu được chấp nhận là ID;
-- các ảnh CTCH-train gần ảnh đầu vào nhất;
-- Integrated Gradients (IG) cho ảnh và các token bệnh sử nếu mẫu là ID.
+- cảnh báo ID/OOD bằng detector post-hoc;
+- nhãn dự đoán và confidence đã hiệu chỉnh đối với mẫu ID;
+- các mẫu CTCH-train gần nhất nếu có ảnh tham chiếu cục bộ;
+- Integrated Gradients (IG) cho ảnh và token bệnh sử đối với mẫu ID.
 
-Mô hình hiện tại dùng đúng một ảnh letterbox 224 x 224, backbone BiomedCLIP,
-cross-attention hai chiều và linear head 22 lớp. Không có nhánh ảnh phụ hoặc
-bộ gom token ảnh trung gian.
+Checkpoint hiện tại dùng BiomedCLIP, LoRA r=16/alpha=32, direct_resize theo
+transform gốc BiomedCLIP, cross-attention hai chiều và linear head 22 lớp.
+Không còn sparse-focal high-resolution, local tile, visual resampler hoặc
+empirical-centroid classifier.
 
-Demo chỉ phục vụ nghiên cứu và minh họa luận văn, không phải thiết bị y tế và
-không thay thế kết luận của bác sĩ. Không tải dữ liệu định danh người bệnh lên
-máy chủ công khai.
+Demo chỉ phục vụ nghiên cứu, không phải thiết bị y tế.
 
 
-2. CHUẨN BỊ MÔI TRƯỜNG
-----------------------
-Từ thư mục gốc chứa train.py:
+2. KIỂM TRA TRƯỚC KHI KHỞI CHẠY
+-------------------------------
+Mở terminal tại thư mục chứa train.py:
 
   conda activate Thesis
-  python -m pip install -r requirements.txt
+  python tools/verify_demo_artifacts.py
 
-Kiểm tra Streamlit và CUDA:
+Chỉ tiếp tục khi nhận được "Demo artifacts: OK". Tài nguyên mặc định là:
 
-  python -c "import streamlit, torch; print(streamlit.__version__, torch.cuda.is_available())"
+  demo/model/best_phase2.pth
+  demo/model/metrics.json
+  demo/model/manifest.json
+  demo/model/features/ctch_train.npz
+  demo/model/features/ctch_val.npz
 
-
-3. TÀI NGUYÊN BẮT BUỘC
-----------------------
-Demo mặc định sử dụng checkpoint và feature archive chính thức tại:
-
-  checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth
-  results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz
-  results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_val.npz
-
-Checkpoint và feature archive phải được tạo từ cùng một kiến trúc/config và có
-checksum khớp nhau. Nếu chưa có feature archive hoặc vừa huấn luyện lại model,
-trích xuất lại bằng:
-
-  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device cuda --force-recompute
-
-Không tái sử dụng thư mục demo/model cũ nếu checksum checkpoint khác checkpoint
-hiện tại; loader chủ động từ chối feature archive không cùng nguồn.
+Ứng dụng tự nhận demo/model. Chỉ đặt XBONE_DEMO_ARTIFACT_ROOT khi chủ động di
+chuyển toàn bộ gói model sang thư mục khác.
 
 
-4. KHỞI CHẠY
+3. KHỞI CHẠY
 ------------
-Tại thư mục gốc dự án, chạy:
-
   python -m streamlit run demo/streamlit_app.py
 
-Sau đó mở địa chỉ Streamlit in trên terminal, mặc định:
+Mở địa chỉ Streamlit in trên terminal, mặc định:
 
   http://localhost:8501
 
-Nếu cổng 8501 đang bận:
+Nếu cổng 8501 bận:
 
   python -m streamlit run demo/streamlit_app.py --server.port 8502
 
+Lần đầu có thể chậm vì OpenCLIP tải pretrained BiomedCLIP. Không đóng terminal
+trong quá trình tải.
 
-5. THAO TÁC TRÊN GIAO DIỆN
---------------------------
 
-5.1. Sidebar
+4. THAO TÁC
+-----------
+4.1. Sidebar
 
-- Checkpoint seed: bản demo hiện khóa ở seed 42.
-- Thiết bị: auto, cuda hoặc cpu; auto ưu tiên CUDA nếu khả dụng.
-- Phương pháp OOD: Mahalanobis-centroid, cosine-centroid, cosine-kNN hoặc entropy.
-- Số bước IG: tăng số bước làm phép xấp xỉ mượt hơn nhưng chậm hơn.
-- Số ảnh tương tự: số mẫu CTCH-train được truy xuất để tham chiếu.
+- Checkpoint seed được khóa ở seed 42.
+- Thiết bị "auto" ưu tiên CUDA; chọn "cpu" nếu GPU không đủ bộ nhớ.
+- Phương pháp OOD gồm cosine-centroid, Mahalanobis-centroid, cosine-kNN,
+  predictive entropy và multi-modal ensemble.
+- Tăng số bước IG cho xấp xỉ mượt hơn nhưng thời gian chạy lâu hơn.
 
-5.2. Đầu vào
+4.2. Đầu vào
 
-- Tải một ảnh PNG/JPG/JPEG/BMP/TIF/TIFF.
-- Nhập bệnh sử lâm sàng; không để trống vì checkpoint là mô hình đa phương thức.
+- Chọn ảnh PNG, JPG, JPEG, BMP, TIF hoặc TIFF.
+- Nhập bệnh sử lâm sàng không chứa chẩn đoán đích nếu muốn mô phỏng đúng giao
+  thức nghiên cứu.
+- Không để trống bệnh sử vì checkpoint là mô hình đa phương thức.
 - Nhấn "Phân tích".
 
-5.3. Preprocessing
+4.3. Preprocessing
 
-Mở "Xem các bước preprocessing" để đối chiếu ảnh gốc và ảnh letterbox. Ảnh
-được resize bicubic, giữ nguyên tỷ lệ, đệm đen thành 224 x 224, rồi mới đi qua
-transform chuẩn hóa gốc của BiomedCLIP.
+Checkpoint đóng gói hiện dùng direct_resize: ảnh nguồn được chuyển trực tiếp
+cho transform resize/crop/normalize của BiomedCLIP, không letterbox. Mục "Xem
+các bước preprocessing" trên giao diện đọc chiến lược từ config của chính
+checkpoint, không dùng mô tả cố định.
 
-5.4. Kết quả ID/OOD
+4.4. ID/OOD và kết quả
 
-- Nếu là ID: demo hiển thị nhãn, confidence hiệu chỉnh, OOD score/ngưỡng và
-  bảng softmax 22 lớp.
-- Nếu là OOD: demo không công bố nhãn, confidence hay IG theo lớp; chỉ hiển thị
-  cảnh báo và các ảnh CTCH-train gần nhất.
+- Nếu là ID: hiển thị nhãn, confidence sau temperature scaling, bảng xác suất,
+  ảnh tương tự và IG.
+- Nếu là OOD: không công bố nhãn/confidence/IG theo lớp; chỉ cảnh báo và hiển
+  thị mẫu gần nhất nếu có.
+- Ngưỡng OOD được hiệu chỉnh trên CTCH validation-ID của đúng checkpoint.
 
-Ngưỡng OOD là phân vị 95% của score trên CTCH validation-ID. Đây là cơ chế
-post-hoc và không bảo đảm phát hiện mọi ca ngoài phân phối.
+OOD là cơ chế post-hoc và không bảo đảm phát hiện mọi mẫu ngoài phân phối.
 
-5.5. Integrated Gradients
+4.5. Integrated Gradients
 
-- IG ảnh: attribution được tính end-to-end trên tensor ảnh letterbox và chiếu
-  lại về kích thước ảnh nguồn.
-- IG văn bản: màu cam biểu thị đóng góp ủng hộ, màu xanh biểu thị đóng góp phản
-  đối logit của lớp dự đoán.
+- IG ảnh được tính end-to-end trên tensor ảnh đã qua preprocessing.
+- IG văn bản biểu diễn đóng góp của token đối với logit lớp dự đoán.
+- Heatmap không phải segmentation, không chứng minh quan hệ nhân quả hoặc tính
+  đúng đắn lâm sàng.
 
-Heatmap giải thích phản ứng của model; nó không phải segmentation tổn thương,
-không chứng minh quan hệ nhân quả và không bảo đảm đúng lâm sàng.
+
+5. ĐÓNG GÓI LẠI SAU KHI HUẤN LUYỆN
+-----------------------------------
+Sau khi có checkpoint, metrics.json và feature archive mới của seed 42, chạy:
+
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device auto --force-recompute
+  python tools/package_demo_artifacts.py
+  python tools/verify_demo_artifacts.py
+
+package_demo_artifacts.py thay checkpoint, metrics và hai feature archive trong
+demo/model, sau đó sinh lại manifest SHA-256. Không sao chép thủ công một phần
+gói vì sẽ làm checkpoint và feature archive không tương thích.
 
 
 6. XUẤT HÌNH IG KHÔNG QUA STREAMLIT
 -----------------------------------
-Ví dụ với ảnh 3021:
+  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device auto --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
 
-  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device cuda --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
+Lệnh này cần ảnh và metadata CTCH cục bộ, ngoài gói model của demo.
 
 
 7. XỬ LÝ SỰ CỐ
 --------------
-- "Feature archive ... not found": chạy lại lệnh trích xuất ở Mục 3.
-- "checksum differs" hoặc "config differs": checkpoint và feature archive
-  không cùng lần chạy; dùng --force-recompute để tạo lại feature.
-- "CUDA out of memory": chọn cpu hoặc giảm số bước IG.
-- Không có IG: kiểm tra mẫu có bị cảnh báo OOD hay không.
-- Không tìm thấy ảnh tương tự: kiểm tra data/CTCH/images và ctch_train.npz.
+- "Missing evaluated configuration": thiếu demo/model/metrics.json.
+- "Missing trained checkpoint": thiếu demo/model/best_phase2.pth hoặc ứng
+  dụng không đứng trong đúng repository.
+- "Feature archive ... not found": thiếu thư mục demo/model/features.
+- "checkpoint differs": chạy lại package_demo_artifacts.py; không trộn file.
+- Không thấy ảnh tương tự: đặt ảnh CTCH được phép sử dụng tại data/CTCH/images.
+- CUDA out of memory: chọn CPU hoặc giảm số bước IG.
+- Không có IG: kiểm tra mẫu có bị detector đánh dấu OOD hay không.

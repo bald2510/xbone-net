@@ -1,15 +1,16 @@
 {
-  "cited_entries": 49,
-  "paper_entries": 47,
-  "downloaded_pdfs": 46,
-  "missing_pdfs": 1,
-  "classification": {
-    "Selected/Direct_Method": 12,
-    "ByCitation/Scratch": 5,
-    "ByCitation/Med-VLMs": 11,
-    "ByCitation/Med-MLLLM": 5,
-    "ByCitation/OOD Detection": 4,
-    "ByCitation/Explainable AI": 2,
-    "ByCitation/Metrics": 7
-  }
+  "total_citations": 44,
+  "total_pdfs_present": 40,
+  "selected_chapter3_methods": 8,
+  "by_citation_groups": {
+    "Dataset": 2,
+    "Explainable AI": 2,
+    "Med-MLLLM": 3,
+    "Med-VLMs": 10,
+    "Metrics": 7,
+    "OOD Detection": 5,
+    "Scratch": 3
+  },
+  "online_resources": 3,
+  "missing_pdfs": 1
 }

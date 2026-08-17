@@ -1,4 +1,4 @@
-"""Dataset CTCH với ảnh letterbox và hai loại báo cáo lâm sàng."""
+"""Dataset CTCH với preprocessing theo config và báo cáo lâm sàng."""
 
 import os
 import torch

@@ -59,7 +59,7 @@ class XBoneMultiModalModel(nn.Module):
         input_ids=None,
         attention_mask=None,
     ):
-        """Mã hóa ảnh letterbox và chuỗi token lâm sàng.
+        """Mã hóa ảnh đã qua preprocessing và chuỗi token lâm sàng.
 
         Parameters
         ----------

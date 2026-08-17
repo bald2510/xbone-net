@@ -1,0 +1,32 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+% \usepackage{graphicx}
+\begin{table}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Kịch bản}} &
+  \multicolumn{1}{c|}{\textbf{Cấu hình}} &
+  \textbf{AUROC-OOD $\uparrow$} &
+  \textbf{AUPR-Out $\uparrow$} &
+  \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
+\multirow{3}{*}{OOD CTCH} &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}$0.7250\pm0.0372$ &
+  \cellcolor{gray!12}$0.1451\pm0.0093$ &
+  \cellcolor{gray!12}$0.7051\pm0.0444$ \\ \cline{2-5} 
+ & Chỉ pha 2     & $0.7240\pm0.0304$          & $\mathbf{0.1978\pm0.0053}$ & $\mathbf{0.6795\pm0.0801}$ \\ \cline{2-5} 
+ & Nối đặc trưng & $\mathbf{0.7339\pm0.0137}$ & $0.1166\pm0.0120$          & $0.7179\pm0.0222$          \\ \hline
+\multirow{3}{*}{BTXRD} &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}$0.9321\pm0.0174$ &
+  \cellcolor{gray!12}$0.9052\pm0.0171$ &
+  \cellcolor{gray!12}$0.3604\pm0.1129$ \\ \cline{2-5} 
+ & Chỉ pha 2     & $0.9513\pm0.0055$          & $0.9289\pm0.0062$          & $0.2476\pm0.0198$          \\ \cline{2-5} 
+ & Nối đặc trưng & $0.9392\pm0.0049$          & $0.9082\pm0.0024$          & $0.4289\pm0.0609$          \\ \hline
+\end{tabular}%
+}
+\caption{Đánh giá cảnh báo OOD hậu xử lý của XBone-Net và hai biến thể}
+\label{tab:ablation_ood}
+\end{table}
