@@ -13,7 +13,7 @@ Gói mã nguồn có cấu trúc:
 
 Thư mục MaDeTai/src là thư mục gốc của chương trình (nơi chứa train.py, evaluate.py,
 requirements.txt). Bên trong gồm các entrypoint chính: train.py, evaluate.py,
-evaluate_ood.py, inference.py; package Python src/; cấu hình Hydra configs/;
+inference.py; package Python src/; cấu hình Hydra configs/;
 benchmark/; ứng dụng demo Streamlit trong demo/; công cụ tools/; launcher Windows
 trong scripts/; và mã tiền xử lý dữ liệu trong data/.
 
@@ -117,9 +117,11 @@ Nếu chạy trong môi trường ngoại tuyến, cần cho máy kết nối In
   |   `-- btxrd-labels.csv
   |-- CTCH/
       |-- images/
+      |-- reports/xray/
       |-- reports/clinical/
       |-- ctch-split.csv
       |-- ctch-labels.csv
+      |-- ctch-ood.csv
       `-- labels.txt
 
 

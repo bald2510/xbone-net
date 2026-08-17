@@ -1,9 +1,4 @@
-"""Thực hiện benchmark efficiency cho quy trình nghiên cứu XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Đo tham số, FLOPs, latency, throughput và peak GPU của một experiment."""
 
 from __future__ import annotations
 
@@ -320,9 +315,6 @@ def _build_forward(
                 images=batch["pixel_values"],
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                tile_values=batch.get("tile_values"),
-                tile_mask=batch.get("tile_mask"),
-                tile_boxes=batch.get("tile_boxes"),
             )
 
         return forward, attention_mask
@@ -401,11 +393,6 @@ def _aggregate_input_profile(batch_profiles: list[dict[str, Any]]) -> dict[str, 
     dict[str, Any]
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    valid_tiles = [
-        value
-        for profile in batch_profiles
-        for value in profile.get("valid_tiles_per_sample", [])
-    ]
     valid_text = [
         value
         for profile in batch_profiles
@@ -416,8 +403,6 @@ def _aggregate_input_profile(batch_profiles: list[dict[str, Any]]) -> dict[str, 
         "samples": sum(profile["batch_size"] for profile in batch_profiles),
         "observed_batches": batch_profiles,
     }
-    if valid_tiles:
-        result["valid_tiles_per_sample"] = summarize_measurements(valid_tiles)
     if valid_text:
         result["valid_text_tokens_per_sample"] = summarize_measurements(valid_text)
     return result
@@ -472,6 +457,15 @@ def _report_row(result: dict[str, Any]) -> dict[str, Any]:
         "batch_size": result["protocol"]["batch_size_requested"],
         "parameters_total": result["parameters"]["total"],
         "parameters_trainable": result["parameters"]["trainable"],
+        "parameters_trainable_percent": result["parameters"]["trainable_percent"],
+        "parameters_lora_trainable": result["parameters"]["lora"]["trainable"],
+        "parameters_fusion_trainable": result["parameters"]["by_module"]
+        .get("fusion", {})
+        .get("trainable", 0),
+        "parameters_head_trainable": result["parameters"]["by_module"]
+        .get("head", {})
+        .get("trainable", 0),
+        "inference_parameters_total": result["inference_parameters"]["total"],
         "gflops_per_sample": None if flops is None else flops["mean"],
         "latency_ms_mean": result["latency_ms_per_sample"]["mean"],
         "latency_ms_p95": result["latency_ms_per_sample"]["p95"],
@@ -552,13 +546,16 @@ def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
         return "--" if value is None else f"{float(value):.{digits}f}"
 
     columns = (
-        "Experiment & Params & GFLOPs/sample & Latency (ms) & "
-        "Throughput (sample/s) & Peak GPU (MiB)"
+        "Experiment & Total params & Trainable params & Trainable (\\%) & "
+        "GFLOPs/sample & Latency (ms) & Throughput (sample/s) & "
+        "Peak GPU (MiB)"
     )
     values = " & ".join(
         [
             _latex_escape(row["experiment"]),
             f"{int(row['parameters_total']):,}",
+            f"{int(row['parameters_trainable']):,}",
+            number("parameters_trainable_percent", 2),
             number("gflops_per_sample", 3),
             number("latency_ms_mean", 3),
             number("throughput_samples_s", 2),
@@ -570,7 +567,7 @@ def _write_latex_report(path: Path, row: dict[str, Any]) -> None:
         "\\centering\n"
         "\\caption{Inference efficiency benchmark.}\n"
         "\\label{tab:efficiency}\n"
-        "\\begin{tabular}{lrrrrr}\n"
+        "\\begin{tabular}{lrrrrrrr}\n"
         "\\toprule\n"
         f"{columns} \\\\\n"
         "\\midrule\n"
@@ -634,10 +631,13 @@ def main(cfg: DictConfig) -> None:
             model.head.centroids.copy_(torch.randn_like(model.head.centroids))
             model.head.centroids_initialized.fill_(True)
 
+    # Đếm trên graph huấn luyện trước khi merge để LoRA A/B không bị hấp thụ
+    # vào backbone và biến mất khỏi thống kê tham số có thể huấn luyện.
+    training_parameters = parameter_summary(model)
     if ARGS.merge_lora and not is_zero_shot:
         from src.models.builder import merge_peft_adapters
         merge_peft_adapters(model)
-
+    inference_parameters = parameter_summary(model)
 
     tokenizer = getattr(
         model.backbone,
@@ -729,8 +729,7 @@ def main(cfg: DictConfig) -> None:
             cuda_memory_profiles.append(memory)
         print(
             f"  batch {batch_index}/{ARGS.num_batches}: "
-            f"latency={sum(timings) / len(timings):.3f} ms, "
-            f"tiles={profile.get('valid_tiles_per_sample', 'n/a')}"
+            f"latency={sum(timings) / len(timings):.3f} ms"
         )
 
     if not input_profiles:
@@ -745,7 +744,8 @@ def main(cfg: DictConfig) -> None:
             "classifier_type": str(classifier_type),
             "zero_shot": bool(is_zero_shot),
         },
-        "parameters": parameter_summary(model),
+        "parameters": training_parameters,
+        "inference_parameters": inference_parameters,
         "input_profile": _aggregate_input_profile(input_profiles),
         "latency_ms_per_batch": summarize_measurements(latency_per_batch),
         "latency_ms_per_sample": summarize_measurements(latency_per_sample),
@@ -776,6 +776,15 @@ def main(cfg: DictConfig) -> None:
             "num_batches_requested": ARGS.num_batches,
             "warmup_per_batch": ARGS.warmup,
             "repeats_per_batch": ARGS.repeats,
+            "lora_merged_for_inference": bool(
+                ARGS.merge_lora and not is_zero_shot
+            ),
+            "parameter_scope": (
+                "pre-merge training graph; includes trainable LoRA, fusion and head"
+            ),
+            "inference_parameter_scope": (
+                "graph used for FLOPs, latency, throughput and peak GPU memory"
+            ),
             "latency_scope": "model forward only; excludes dataloader and H2D transfer",
             "zero_shot_prompt_precomputation_included": False,
             "flop_definition": (
@@ -799,9 +808,26 @@ def main(cfg: DictConfig) -> None:
         _write_latex_report(latex_path, report_row)
 
     params = result["parameters"]
+    inference_params = result["inference_parameters"]
     latency = result["latency_ms_per_sample"]
     print("\nEfficiency benchmark complete")
-    print(f"  Parameters: {params['total']:,} total, {params['trainable']:,} trainable")
+    print(
+        "  Training graph parameters: "
+        f"{params['total']:,} total, {params['trainable']:,} trainable "
+        f"({params['trainable_percent']:.3f}%)"
+    )
+    print(f"    LoRA trainable: {params['lora']['trainable']:,}")
+    print(
+        "    Fusion trainable: "
+        f"{params['by_module'].get('fusion', {}).get('trainable', 0):,}; "
+        "head trainable: "
+        f"{params['by_module'].get('head', {}).get('trainable', 0):,}"
+    )
+    print(
+        "  Inference graph parameters: "
+        f"{inference_params['total']:,} total "
+        f"(LoRA merged={result['protocol']['lora_merged_for_inference']})"
+    )
     if result["supported_gflops_per_sample"] is not None:
         print(
             "  Supported GFLOPs/sample: "

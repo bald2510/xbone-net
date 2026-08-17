@@ -48,7 +48,7 @@ ABLATION_VARIANTS = (
     ("XBone-Net", "proposed/ours_xbone_net"),
     (
         "Không dùng ảnh độ phân giải cao",
-        "ablation_study/architecture/preprocess/xbone_nohighres",
+        "ablation_study/architecture/preprocess/direct_resize_current",
     ),
     (
         "Gộp trung bình",

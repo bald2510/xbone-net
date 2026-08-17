@@ -18,7 +18,7 @@ import torch.nn as nn
 
 
 def parameter_summary(model: nn.Module) -> dict[str, Any]:
-    """Thực hiện bước parameter summary trong quy trình hiện tại.
+    """Đếm tham số của graph hiện tại, gồm cả adapter LoRA nếu còn tồn tại.
 
     Parameters
     ----------
@@ -30,10 +30,22 @@ def parameter_summary(model: nn.Module) -> dict[str, Any]:
     dict[str, Any]
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    total = sum(parameter.numel() for parameter in model.parameters())
+    named_parameters = list(model.named_parameters())
+    total = sum(parameter.numel() for _, parameter in named_parameters)
     trainable = sum(
         parameter.numel()
-        for parameter in model.parameters()
+        for _, parameter in named_parameters
+        if parameter.requires_grad
+    )
+    lora_parameters = [
+        parameter
+        for name, parameter in named_parameters
+        if "lora_A" in name or "lora_B" in name
+    ]
+    lora_total = sum(parameter.numel() for parameter in lora_parameters)
+    lora_trainable = sum(
+        parameter.numel()
+        for parameter in lora_parameters
         if parameter.requires_grad
     )
     modules = {}
@@ -54,6 +66,10 @@ def parameter_summary(model: nn.Module) -> dict[str, Any]:
         "trainable": int(trainable),
         "frozen": int(total - trainable),
         "trainable_percent": 100.0 * trainable / max(total, 1),
+        "lora": {
+            "total": int(lora_total),
+            "trainable": int(lora_trainable),
+        },
         "by_module": modules,
     }
 
@@ -283,17 +299,6 @@ def batch_metadata(
         "batch_size": int(images.shape[0]),
         "global_image_shape": [int(value) for value in images.shape[1:]],
     }
-
-    tiles = batch.get("tile_values")
-    tile_mask = batch.get("tile_mask")
-    if tiles is not None:
-        metadata["tile_shape"] = [int(value) for value in tiles.shape[2:]]
-        metadata["padded_tiles_per_sample"] = int(tiles.shape[1])
-        if tile_mask is None:
-            valid_tiles = [int(tiles.shape[1])] * int(tiles.shape[0])
-        else:
-            valid_tiles = [int(value) for value in tile_mask.sum(dim=1).tolist()]
-        metadata["valid_tiles_per_sample"] = valid_tiles
 
     if attention_mask is not None:
         metadata["padded_text_length"] = int(attention_mask.shape[1])

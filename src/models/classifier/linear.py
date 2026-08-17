@@ -1,27 +1,13 @@
-"""Cung cấp đầu phân lớp linear cho XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Đầu phân loại tuyến tính dùng trong cấu hình XBone-Net hiện tại."""
 
 import torch.nn as nn
 
 
-# ============================================================
-# Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
-# ============================================================
-
 class LinearHead(nn.Module):
-    """Cung cấp đầu phân lớp bằng lớp ``LinearHead``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Ánh xạ embedding dung hợp sang logits của các lớp đích."""
 
     def __init__(self, feature_dim: int = 512, num_classes: int = 10):
-        """Thực hiện bước init trong quy trình hiện tại.
+        """Khởi tạo phép chiếu ``feature_dim -> num_classes``.
 
         Parameters
         ----------
@@ -35,7 +21,7 @@ class LinearHead(nn.Module):
         self.classifier = nn.Linear(feature_dim, num_classes)
 
     def forward(self, x):
-        """Thực hiện lượt lan truyền xuôi của mô hình.
+        """Tính logits chưa chuẩn hóa cho một batch embedding.
 
         Parameters
         ----------
@@ -44,7 +30,7 @@ class LinearHead(nn.Module):
 
         Returns
         -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
+        torch.Tensor
+            Logits có dạng ``[batch_size, num_classes]``.
         """
         return self.classifier(x)

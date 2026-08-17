@@ -6,13 +6,13 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
 
 ## 1. Key Features
 
-- **High-resolution image path:** Conservatively crop scanner padding, retain an aspect-preserving 224-pixel global view, and select exactly four 224-pixel local views using image-only coverage and focal texture scores. Each local view contributes one pretrained CLS token and a pooled `2×2` patch grid, producing 20 local visual tokens without changing the BiomedCLIP input resolution.
+- **Letterbox image path:** Resize each radiograph with its aspect ratio intact, pad it on a black 224×224 canvas, then apply the original BiomedCLIP transform and visual encoder.
 - **Two-stage training:**
   - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
-  - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention. Classification uses cosine similarity to empirical class centroids recomputed from the training embeddings and effective-number weighted cross-entropy.
+  - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention and a 512-to-class linear head using class-weighted cross-entropy.
 - **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
 - **Post-hoc OOD detection:** Supports cosine distance to empirical class centroids, class-centroid Mahalanobis distance, cosine-KNN, and predictive entropy. Detectors are fitted on CTCH train features and thresholds are calibrated on CTCH validation-ID data.
-- **Explainability:** Provides Integrated Gradients for the global image, sparse-focal local tokens and clinical-text tokens, together with perturbation-based faithfulness analysis.
+- **Explainability:** Provides end-to-end Integrated Gradients for the letterboxed image and clinical-text embeddings, together with perturbation-based faithfulness analysis.
 
 ---
 
@@ -33,7 +33,6 @@ xbone-net/
 ├── tools/                  # Experiment orchestration, exports and visualizations
 ├── train.py                # Two-stage training entry point
 ├── evaluate.py             # Classification evaluation entry point
-├── evaluate_ood.py         # OOD evaluation stage
 ├── inference.py            # Single-sample inference entry point
 ├── HuongDanCaiDat.txt      # Vietnamese installation guide
 └── HuongDanSuDung.txt      # Vietnamese execution guide
@@ -137,10 +136,9 @@ train/validation data, and evaluates all configured scenarios for three seeds:
 python benchmark/ood_analysis.py
 ```
 
-See Section 9 of [`HuongDanSuDung.txt`](HuongDanSuDung.txt) for feature-only,
-OOD-only, explainability-only and table-generation commands. `evaluate_ood.py`
-is an internal stage of this locked workflow and should not be invoked with
-unrelated BTXRD checkpoints.
+See Section 9 of [`HuongDanSuDung.txt`](HuongDanSuDung.txt) for the OOD and
+explainability commands. Feature extraction, calibration and scoring are
+coordinated by `benchmark/ood_analysis.py`.
 
 ### 5.4. Running the Entire Experiment Suite
 `tools/training.py` discovers every YAML under `configs/experiment/`; the Python
@@ -182,7 +180,7 @@ python tools/training.py --table --table-selected-only
 
 ### 5.5. Canonical Pipeline and Ablations
 
-BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on the real-world CTCH dataset under `configs/experiment/ctch/ablation_study/` and are organized into `modality`, `finetune`, and `architecture` (`preprocess`, `phase`, `fusion`, and `classifier`). Every ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides only the component being tested. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split. The `xbone_nohighres` and `xbone_letterbox` controls use one encoder view while preserving the proposed fusion interface of one global token plus 20 pooled visual tokens.
+BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on CTCH under `configs/experiment/ctch/ablation_study/`. Every current-architecture ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides one decision, such as direct resize instead of letterbox, phase-2-only training, concatenation instead of cross-attention, or a different classifier head. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split.
 
 The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
 
@@ -207,5 +205,5 @@ streamlit run demo/streamlit_app.py
 
 The app displays preprocessing, class probabilities, maximum-softmax
 confidence, the OOD score and threshold, nearest CTCH reference images, and
-global/local/text Integrated Gradients. It is a research demonstration and not
+image/text Integrated Gradients. It is a research demonstration and not
 a medical device.

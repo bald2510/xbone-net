@@ -396,13 +396,13 @@ Các kết quả gồm phân loại khi sử dụng toàn bộ dữ liệu, phâ
 
 Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-full-shot-seeds-ctch} trình bày năm độ đo phân loại của từng mô hình tại từng hạt giống. Việc giữ đồng thời Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC và Macro-AUPRC cho phép kiểm tra liệu thứ hạng trung bình trong Chương~\ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo cụ thể.
 
-\input{generated/appendix_seed_results/table_full_shot_per_seed}
+\input{tables/appendix/table_full_shot_per_seed}
 
 Hình~\ref{fig:appendix-full-shot-f1-seeds} tập trung vào XBone-Net và hai mô hình cơ sở PEFT gần nhất để minh họa biến thiên Macro-F1 mà không lặp lại toàn bộ thông tin trong hai bảng. Trên BTXRD, đường trung bình quan sát của XBone-Net nằm dưới hai mô hình cơ sở PEFT ở một số hạt giống; tuy nhiên, khoảng tin cậy và p-value ghép cặp trong Chương~4 không cho thấy khác biệt Macro-F1 nhất quán. Trên CTCH, ba đường giao nhau giữa các hạt giống và kết quả kiểm định cũng cho thấy Macro-F1 của XBone-Net cạnh tranh với hai mô hình này.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{generated/appendix_seed_results/full_shot_macro_f1_by_seed.png}
+\includegraphics[width=\textwidth]{images/appendix/full_shot_macro_f1_by_seed.png}
 \caption{Macro-F1 khi sử dụng toàn bộ dữ liệu của XBone-Net và hai mô hình cơ sở PEFT tại từng hạt giống trên BTXRD và CTCH}
 \label{fig:appendix-full-shot-f1-seeds}
 \end{figure}
@@ -411,28 +411,28 @@ Hình~\ref{fig:appendix-full-shot-f1-seeds} chỉ trình bày điểm Macro-F1 t
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/full_shot_forest_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
 \label{fig:appendix-full-shot-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_balanced_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/full_shot_forest_balanced_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
 \label{fig:appendix-full-shot-balanced-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_auroc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/full_shot_forest_auroc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
 \label{fig:appendix-full-shot-auroc-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/full_shot_forest_auprc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/full_shot_forest_auprc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC giữa XBone-Net và các mô hình cơ sở trong thiết lập toàn bộ dữ liệu}
 \label{fig:appendix-full-shot-auprc-forest}
 \end{figure}
@@ -441,34 +441,34 @@ Hình~\ref{fig:appendix-full-shot-f1-seeds} chỉ trình bày điểm Macro-F1 t
 
 Bảng~\ref{tab:appendix-few-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-few-shot-seeds-ctch} báo cáo kết quả tại từng hạt giống cho các mức ngân sách tối đa 1, 10 và 20 mẫu trên mỗi lớp. Khi số mẫu huấn luyện của một lớp thấp hơn ngân sách, toàn bộ mẫu hiện có được giữ lại và không lấy lặp; vì vậy mức 20 mẫu của CTCH sử dụng 19 mẫu cho lớp gãy xương thuyền và 16 mẫu cho lớp gãy xương vùng chậu. Các giá trị này bổ sung cho biểu đồ trung bình trong Chương~\ref{Chapter4}, đồng thời cho phép nhận diện trường hợp chênh lệch trung bình nhỏ hơn mức dao động giữa các lần huấn luyện.
 
-\input{generated/appendix_seed_results/table_few_shot_per_seed}
+\input{tables/appendix/table_few_shot_per_seed}
 
 Forest plot Macro-F1 của thiết lập ít mẫu được giữ trong phần kết quả chính tại Hình~\ref{fig:few_shot_f1_forest}. Các forest plot bổ sung ở Hình~\ref{fig:appendix-few-shot-accuracy-forest}--\ref{fig:appendix-few-shot-auprc-forest} sử dụng khoảng Student-t 95\% và p-value thô của kiểm định t ghép cặp trên ba hạt giống chung. Do chỉ có ba cặp hạt giống, các kết quả này được diễn giải như bằng chứng thăm dò.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/few_shot_forest_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy trong thiết lập ít mẫu}
 \label{fig:appendix-few-shot-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_balanced_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/few_shot_forest_balanced_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy trong thiết lập ít mẫu}
 \label{fig:appendix-few-shot-balanced-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_auroc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/few_shot_forest_auroc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC trong thiết lập ít mẫu}
 \label{fig:appendix-few-shot-auroc-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/few_shot_forest_auprc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/few_shot_forest_auprc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC trong thiết lập ít mẫu}
 \label{fig:appendix-few-shot-auprc-forest}
 \end{figure}
@@ -477,34 +477,34 @@ Forest plot Macro-F1 của thiết lập ít mẫu được giữ trong phần k
 
 Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net và năm biến thể loại bỏ từng thành phần tại từng hạt giống trên CTCH. Một biến thể có giá trị trung bình cao hơn nhưng thay đổi dấu chênh lệch giữa các hạt giống không được xem là bằng chứng về ưu thế ổn định.
 
-\input{generated/appendix_seed_results/table_ablation_per_seed}
+\input{tables/appendix/table_ablation_per_seed}
 
 Forest plot Macro-F1 của nghiên cứu thành phần được giữ trong phần kết quả chính tại Hình~\ref{fig:ablation_f1_forest}. Các khoảng trong bốn forest plot bổ sung ở Hình~\ref{fig:appendix-ablation-accuracy-forest}--\ref{fig:appendix-ablation-auprc-forest} được tính bằng 10.000 lần tái lấy mẫu bắt cặp; hai cận là phân vị $2{,}5\%$ và $97{,}5\%$ của phân bố chênh lệch XBone-Net trừ biến thể. Trong mỗi lần, người bệnh được tái lấy mẫu theo cụm và phân tầng theo lớp, đồng thời ba hạt giống huấn luyện được tái lấy mẫu có hoàn lại. Cùng một mẫu tái lập được áp dụng cho cấu hình tham chiếu và biến thể. P-value thô được tính bằng kiểm định hoán vị ghép cặp và không được hiệu chỉnh cho nhiều phép so sánh. Khác biệt chỉ được xem là nhất quán khi khoảng tin cậy không chứa 0 và đồng thời $p<0{,}05$.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/ablation_forest_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Accuracy giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
 \label{fig:appendix-ablation-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_balanced_accuracy.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/ablation_forest_balanced_accuracy.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Balanced Accuracy giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
 \label{fig:appendix-ablation-balanced-accuracy-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_auroc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/ablation_forest_auroc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUROC giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
 \label{fig:appendix-ablation-auroc-forest}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{generated/chapter4_results/ablation_forest_auprc_macro.png}
+\includegraphics[width=0.94\textwidth,height=0.72\textheight,keepaspectratio]{images/appendix/ablation_forest_auprc_macro.png}
 \caption{Khoảng tin cậy 95\% và p-value thô của chênh lệch Macro-AUPRC giữa XBone-Net và từng biến thể loại bỏ thành phần trên CTCH}
 \label{fig:appendix-ablation-auprc-forest}
 \end{figure}
@@ -515,13 +515,13 @@ Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt gi�
 
 Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản OOD ngữ nghĩa sử dụng đủ 44 mẫu trong danh sách đánh giá và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối; không mẫu nào bị bỏ qua trong các tệp kết quả được tổng hợp. Tuy nhiên, AUPR-Out và FPR@95\%TPR vẫn chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ mẫu trong--ngoài phân phối giữa hai kịch bản, vì vậy cần được đọc cùng AUROC-OOD và cỡ mẫu ghi trong bảng.
 
-\input{generated/appendix_seed_results/table_ood_per_seed}
+\input{tables/appendix/table_ood_per_seed}
 
 Hình~\ref{fig:appendix-ood-mahalanobis-seeds} biểu diễn riêng phương pháp Mahalanobis theo tâm lớp vì đây là phương pháp được nhấn mạnh trong phần kết quả chính. Khoảng biến thiên lớn hơn trên BTXRD, đặc biệt ở AUROC-OOD, cho thấy kết quả liên bộ dữ liệu nhạy với trạng thái biểu diễn được học ở từng hạt giống. Kịch bản OOD ngữ nghĩa có AUROC-OOD ổn định hơn nhưng FPR@95\%TPR vẫn cao ở cả ba lần chạy.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{generated/appendix_seed_results/ood_mahalanobis_by_seed.png}
+\includegraphics[width=\textwidth]{images/appendix/ood_mahalanobis_by_seed.png}
 \caption{Các độ đo OOD của phương pháp Mahalanobis theo tâm lớp tại từng hạt giống trên kịch bản OOD ngữ nghĩa và BTXRD}
 \label{fig:appendix-ood-mahalanobis-seeds}
 \end{figure}

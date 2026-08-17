@@ -164,24 +164,8 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         backbone = OpenCLIPFoundation(model_key=backbone_type, freeze_base=freeze_base)
         print(f"[Builder] {backbone_type} backbone (frozen={freeze_base})")
     elif backbone_type == "biomedclip":
-        num_visual_tokens = cfg.get('num_visual_tokens', 0)
         backbone = BiomedCLIPFoundation(
             freeze_base=freeze_base,
-            num_visual_tokens=num_visual_tokens,
-            resampler_cfg=cfg.get('visual_resampler', {}),
-            local_pool_grid=cfg.get('local_pool_grid', 2),
-            single_view_pool_shape=cfg.get('single_view_pool_shape', None),
-            include_local_cls_token=cfg.get('include_local_cls_token', False),
-            contrastive_local_weight=cfg.get('contrastive_local_weight', 0.25),
-            contrastive_pooling=cfg.get('contrastive_pooling', 'mean'),
-            contrastive_attention_hidden_dim=cfg.get(
-                'contrastive_attention_hidden_dim', 128
-            ),
-            tile_encode_chunk_size=cfg.get('tile_encode_chunk_size', 32),
-            local_tile_grad_enabled=cfg.get('local_tile_grad_enabled', True),
-            local_tile_gradient_checkpointing=cfg.get(
-                'local_tile_gradient_checkpointing', True
-            ),
         )
         print(f"[Builder] BiomedCLIP backbone (frozen={freeze_base})")
     else:
@@ -313,22 +297,6 @@ def build_model(cfg: dict) -> XBoneMultiModalModel:
         else:
             raise ValueError(f"Unknown PEFT type: {peft_type}")
 
-    if backbone_type == "biomedclip" and hasattr(backbone, "visual_resampler"):
-        trainable_visual = sum(
-            parameter.numel()
-            for parameter in backbone.model.visual.parameters()
-            if parameter.requires_grad
-        )
-        local_grad_active = (
-            backbone.local_tile_grad_enabled and trainable_visual > 0
-        )
-        print(
-            "[Builder] High-res local tile gradients: "
-            f"{'enabled' if local_grad_active else 'disabled'} "
-            f"(checkpointing={backbone.local_tile_gradient_checkpointing}, "
-            f"trainable_visual={trainable_visual:,})"
-        )
-        
     # --- Khởi tạo mô-đun dung hợp và đầu phân lớp ---
     fusion_cfg = cfg.get('fusion', {'type': 'none', 'params': {}})
     classifier_cfg = cfg.get('classifier', {'type': 'none', 'params': {}})
@@ -472,12 +440,15 @@ def setup_phase2_modules(model, cfg: dict, device):
     )
 
     # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
-    if hasattr(model.backbone, 'return_local'):
-        model.backbone.return_local = fusion_type in {
+    if hasattr(model.backbone, "return_tokens"):
+        model.backbone.return_tokens = fusion_type in {
             "cross_attention",
             "gated_cross_attention",
         }
-        print(f"[Builder] Set backbone return_local = {model.backbone.return_local}")
+        print(
+            f"[Builder] Set backbone return_tokens = "
+            f"{model.backbone.return_tokens}"
+        )
 
     model.use_image_in_fusion = use_image_in_p2
 

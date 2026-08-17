@@ -1,127 +1,125 @@
-HƯỚNG DẪN SỬ DỤNG ỨNG DỤNG DEMO XBONE-NET (STREAMLIT)
-====================================================
+HƯỚNG DẪN SỬ DỤNG DEMO XBONE-NET (STREAMLIT)
+================================================
 
-1. TỔNG QUAN ỨNG DỤNG
----------------------
-Ứng dụng Web Demo XBone-Net (xây dựng trên nền tảng Streamlit) là hệ thống hỗ trợ
-chẩn đoán đa phương thức thông minh cho ảnh X-quang cơ xương khớp kết hợp tiền sử
-bệnh lý lâm sàng. Ứng dụng tích hợp đầy đủ các tính năng an toàn y tế và giải
-thích quyết định của mô hình AI:
+1. PHẠM VI CỦA DEMO
+-------------------
+Demo nhận một ảnh X-quang và một đoạn bệnh sử, sau đó hiển thị:
 
-- Phân loại bệnh lý đa phương thức (22 nhóm bệnh lý trên CTCH hoặc 10 nhóm u xương BTXRD).
-- Tiền xử lý ảnh thông minh theo kỹ thuật Letterbox Square (bảo toàn 100% tỷ lệ giải phẫu).
-- Cổng an toàn phát hiện dữ liệu bất thường Out-of-Distribution (OOD Detection) với các
-  phương pháp: Cosine Centroids, Mahalanobis Centroids, KNN và Entropy.
-- Hiệu chỉnh độ tự tin (Confidence Calibration) qua Temperature Scaling trên tập Validation.
-- Giải thích quyết định chẩn đoán đa phương thức (Multimodal Explainability):
-  + Integrated Gradients trên ảnh X-quang toàn cục (Heatmap dải màu Turbo).
-  + Integrated Gradients trên từng từ ngữ bệnh sử lâm sàng (Mã màu Cam - Ủng hộ / Xanh - Phản đối).
-  + Trọng số Chú ý chéo hai chiều (Cross-Modal Attention Map & Token Ranking).
-- Truy xuất các ca bệnh tham chiếu gần nhất từ tập huấn luyện (Similar Training Cases).
+- cảnh báo ID/OOD;
+- nhãn dự đoán và confidence đã hiệu chỉnh nếu mẫu được chấp nhận là ID;
+- các ảnh CTCH-train gần ảnh đầu vào nhất;
+- Integrated Gradients (IG) cho ảnh và các token bệnh sử nếu mẫu là ID.
 
-LƯU Ý QUAN TRỌNG:
-Demo chỉ phục vụ mục đích nghiên cứu học thuật và minh họa công nghệ, KHÔNG phải
-thiết bị y tế và KHÔNG thay thế cho chẩn đoán chính thức của bác sĩ chuyên khoa.
-KHÔNG tải thông tin nhận dạng cá nhân hoặc ảnh bệnh nhân thật lên môi trường công cộng.
+Mô hình hiện tại dùng đúng một ảnh letterbox 224 x 224, backbone BiomedCLIP,
+cross-attention hai chiều và linear head 22 lớp. Không có nhánh ảnh phụ hoặc
+bộ gom token ảnh trung gian.
+
+Demo chỉ phục vụ nghiên cứu và minh họa luận văn, không phải thiết bị y tế và
+không thay thế kết luận của bác sĩ. Không tải dữ liệu định danh người bệnh lên
+máy chủ công khai.
 
 
-2. ĐIỀU KIỆN TIÊN QUYẾT & CÀI ĐẶT
----------------------------------
-Demo dùng chung toàn bộ môi trường và file requirements.txt của dự án tại thư mục gốc:
+2. CHUẨN BỊ MÔI TRƯỜNG
+----------------------
+Từ thư mục gốc chứa train.py:
 
-2.1. Kích hoạt môi trường Python:
   conda activate Thesis
-
-2.2. Cài đặt các thư viện cần thiết (nếu chưa cài):
   python -m pip install -r requirements.txt
 
-  (Đã bao gồm streamlit==1.60.0, torch, torchvision, open-clip-torch, transformers,...)
+Kiểm tra Streamlit và CUDA:
 
-2.3. Chuẩn bị Trọng số mô hình (Checkpoint) và Dữ liệu đặc trưng:
-Mặc định ứng dụng sẽ tự động tải các tài nguyên đóng gói sẵn trong thư mục demo/artifacts/
-(hoặc checkpoints/ctch/proposed/ours_xbone_net/seed_42/):
-  + Checkpoint mô hình: demo/artifacts/best_phase2.pth (hoặc checkpoints/.../best_phase2.pth)
-  + Feature archive tập Train: demo/artifacts/features/ctch_train.npz
-  + Feature archive tập Val: demo/artifacts/features/ctch_val.npz
+  python -c "import streamlit, torch; print(streamlit.__version__, torch.cuda.is_available())"
 
 
-3. KHỞI CHẠY ỨNG DỤNG DEMO
---------------------------
-Từ thư mục gốc của dự án (nơi chứa train.py và requirements.txt), thực thi một trong hai lệnh:
+3. TÀI NGUYÊN BẮT BUỘC
+----------------------
+Demo mặc định sử dụng checkpoint và feature archive chính thức tại:
 
-  streamlit run demo/streamlit_app.py
+  checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth
+  results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz
+  results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_val.npz
 
-hoặc:
+Checkpoint và feature archive phải được tạo từ cùng một kiến trúc/config và có
+checksum khớp nhau. Nếu chưa có feature archive hoặc vừa huấn luyện lại model,
+trích xuất lại bằng:
+
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device cuda --force-recompute
+
+Không tái sử dụng thư mục demo/model cũ nếu checksum checkpoint khác checkpoint
+hiện tại; loader chủ động từ chối feature archive không cùng nguồn.
+
+
+4. KHỞI CHẠY
+------------
+Tại thư mục gốc dự án, chạy:
 
   python -m streamlit run demo/streamlit_app.py
 
-Sau khi khởi chạy thành công, giao diện web sẽ tự động mở trên trình duyệt tại địa chỉ:
-  http://localhost:8501 (hoặc cổng mạng nội bộ được chỉ định).
+Sau đó mở địa chỉ Streamlit in trên terminal, mặc định:
+
+  http://localhost:8501
+
+Nếu cổng 8501 đang bận:
+
+  python -m streamlit run demo/streamlit_app.py --server.port 8502
 
 
-4. HƯỚNG DẪN THAO TÁC TRÊN GIAO DIỆN
-------------------------------------
+5. THAO TÁC TRÊN GIAO DIỆN
+--------------------------
 
-4.1. Bảng điều khiển bên trái (Sidebar):
-- Chọn Thiết bị tính toán (Device): CUDA (GPU) hoặc CPU (nếu không có card rời).
-- Cấu hình OOD Safety Gate: Bật/tắt kiểm tra OOD và chọn phương thức phát hiện
-  (Khuyến nghị: Mahalanobis Centroid hoặc Cosine Centroids, ngưỡng FPR 5%).
-- Chọn Mẫu thử nghiệm có sẵn (Preset Samples) để kiểm tra nhanh các ca bệnh điển hình:
-  + Mẫu bệnh lý trong phân phối (In-Distribution): Gãy xương, Thoái hóa, Viêm khớp,...
-  + Mẫu dị biệt / bất thường (OOD Sample): Mâu thuẫn giữa ảnh và bệnh sử, ảnh ngoài miền.
-- Hoặc tải lên ảnh X-quang tùy chỉnh (PNG, JPG, JPEG) và nhập đoạn tiền sử bệnh lý vào ô nhập liệu.
+5.1. Sidebar
 
-4.2. Khối 1 - Tiền xử lý dữ liệu (Preprocessing Pipeline):
-- Xem hình ảnh gốc cùng kích thước ban đầu.
-- Xem kết quả tiền xử lý Letterbox Square (Resize Bicubic + Black Canvas Padding 224x224).
-- Kiểm tra các vùng chú ý trọng tâm (Sparse Focal Tiles) nếu sử dụng kiến trúc phân giải cao.
+- Checkpoint seed: bản demo hiện khóa ở seed 42.
+- Thiết bị: auto, cuda hoặc cpu; auto ưu tiên CUDA nếu khả dụng.
+- Phương pháp OOD: Mahalanobis-centroid, cosine-centroid, cosine-kNN hoặc entropy.
+- Số bước IG: tăng số bước làm phép xấp xỉ mượt hơn nhưng chậm hơn.
+- Số ảnh tương tự: số mẫu CTCH-train được truy xuất để tham chiếu.
 
-4.3. Khối 2 - Kết quả Chẩn đoán & Độ tự tin (Diagnostic Prediction):
-- Trường hợp mẫu đạt chuẩn In-Distribution (ID):
-  + Hiển thị nhãn bệnh lý dự đoán có xác suất cao nhất (kèm tên tiếng Việt chuẩn hóa).
-  + Mức độ tự tin đã hiệu chỉnh (Calibrated Confidence %).
-  + Biểu đồ phân bổ xác suất Softmax trên toàn bộ 22 nhóm bệnh lý CTCH.
-- Trường hợp mẫu bị cảnh báo OOD:
-  + Hệ thống kích hoạt cảnh báo an toàn màu vàng/đỏ: "DỮ LIỆU BẤT THƯỜNG / NGOÀI PHÂN PHỐI".
-  + Từ chối đưa ra chẩn đoán cưỡng ép để tránh sai sót y khoa.
-  + Hiển thị các ca bệnh CTCH có đặc trưng gần nhất để bác sĩ đối chiếu.
+5.2. Đầu vào
 
-4.4. Khối 3 - Giải thích mô hình (Multimodal Explainability):
-- Tích phân Gradient trên ảnh (Global Integrated Gradients):
-  Bản đồ nhiệt Turbo chỉ ra chính xác vị trí ổ tổn thương trên xương/khớp.
-- Tích phân Gradient trên văn bản (Text Attribution):
-  Các từ ngữ trong bệnh sử được tô màu trực quan:
-  * Màu Cam: Từ ngữ củng cố, ủng hộ chẩn đoán (Positive Attribution).
-  * Màu Xanh: Từ ngữ phản đối, giảm xác suất của bệnh lý (Negative Attribution).
-- Trọng số Chú ý chéo (Cross-Modal Attention):
-  Thể hiện luồng liên kết ngữ nghĩa giữa từ khóa bệnh sử và vùng ảnh X-quang.
+- Tải một ảnh PNG/JPG/JPEG/BMP/TIF/TIFF.
+- Nhập bệnh sử lâm sàng; không để trống vì checkpoint là mô hình đa phương thức.
+- Nhấn "Phân tích".
 
-4.5. Khối 4 - Ca bệnh tham chiếu (Reference Cases):
-- Trình bày 3-5 ca bệnh tương đồng nhất từ tập huấn luyện (ảnh X-quang + bệnh sử gốc)
-  giúp bác sĩ có thêm căn cứ thẩm định lâm sàng.
+5.3. Preprocessing
 
+Mở "Xem các bước preprocessing" để đối chiếu ảnh gốc và ảnh letterbox. Ảnh
+được resize bicubic, giữ nguyên tỷ lệ, đệm đen thành 224 x 224, rồi mới đi qua
+transform chuẩn hóa gốc của BiomedCLIP.
 
-5. CÁC TÙY CHỌN NÂNG CAO VÀ DÒNG LỆNH (CLI)
--------------------------------------------
-Ngoài giao diện Streamlit, bạn có thể xuất trực tiếp hình ảnh giải thích Integrated Gradients
-hoặc Cross-Attention cho từng ca bệnh độc lập ra file ảnh bằng các công cụ dòng lệnh:
+5.4. Kết quả ID/OOD
 
-5.1. Xuất hình ảnh Integrated Gradients đa phương thức chuẩn luận văn:
-  python tools/visualize/render_multimodal_ig.py --image-id 3021_img-84263-00001.jpg --device cuda --output results/visualization/multimodal_ig_sample.png
+- Nếu là ID: demo hiển thị nhãn, confidence hiệu chỉnh, OOD score/ngưỡng và
+  bảng softmax 22 lớp.
+- Nếu là OOD: demo không công bố nhãn, confidence hay IG theo lớp; chỉ hiển thị
+  cảnh báo và các ảnh CTCH-train gần nhất.
 
-5.2. Xuất hình ảnh Chú ý chéo (Cross-Attention Map):
-  python tools/visualize/attention.py --image-id 3021_img-84263-00001.jpg --device cuda
+Ngưỡng OOD là phân vị 95% của score trên CTCH validation-ID. Đây là cơ chế
+post-hoc và không bảo đảm phát hiện mọi ca ngoài phân phối.
 
-Tất cả hình ảnh và file JSON phân tích chi tiết sẽ được tự động lưu vào thư mục results/visualization/.
+5.5. Integrated Gradients
+
+- IG ảnh: attribution được tính end-to-end trên tensor ảnh letterbox và chiếu
+  lại về kích thước ảnh nguồn.
+- IG văn bản: màu cam biểu thị đóng góp ủng hộ, màu xanh biểu thị đóng góp phản
+  đối logit của lớp dự đoán.
+
+Heatmap giải thích phản ứng của model; nó không phải segmentation tổn thương,
+không chứng minh quan hệ nhân quả và không bảo đảm đúng lâm sàng.
 
 
-6. KHẮC PHỤC SỰ CỐ THƯỜNG GẶP
-------------------------------
-- Lỗi "Port 8501 is already in use":
-  Chạy trên cổng khác: streamlit run demo/streamlit_app.py --server.port 8502
-- Lỗi "CUDA out of memory":
-  Chuyển sang CPU trên Sidebar hoặc chạy với đối số: streamlit run demo/streamlit_app.py -- --device cpu
-- Không hiển thị bản đồ nhiệt IG:
-  Kiểm tra mẫu có bị gắn cờ OOD không (khi OOD, hệ thống chủ động khóa phân giải IG để tránh suy diễn sai).
-- Thiếu tệp feature archive (.npz):
-  Chạy lệnh tạo feature archive: python benchmark/ood_analysis.py --feature-only --device cuda
+6. XUẤT HÌNH IG KHÔNG QUA STREAMLIT
+-----------------------------------
+Ví dụ với ảnh 3021:
+
+  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device cuda --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
+
+
+7. XỬ LÝ SỰ CỐ
+--------------
+- "Feature archive ... not found": chạy lại lệnh trích xuất ở Mục 3.
+- "checksum differs" hoặc "config differs": checkpoint và feature archive
+  không cùng lần chạy; dùng --force-recompute để tạo lại feature.
+- "CUDA out of memory": chọn cpu hoặc giảm số bước IG.
+- Không có IG: kiểm tra mẫu có bị cảnh báo OOD hay không.
+- Không tìm thấy ảnh tương tự: kiểm tra data/CTCH/images và ctch_train.npz.

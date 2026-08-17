@@ -1,8 +1,7 @@
-"""Cung cấp tiện ích explainability cho huấn luyện, đánh giá và phân tích XBone-Net.
+"""Các phép giải thích cho token BiomedCLIP và đầu vào ảnh/văn bản.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Mọi phép forward tái sử dụng trực tiếp chuỗi CLS + patch token của encoder ảnh
+gốc. Không tái tạo đặc trưng qua một bộ gom token trung gian.
 """
 
 from __future__ import annotations
@@ -63,8 +62,8 @@ def fusion_from_tokens(
     text_features = fusion.txt_proj(fusion.txt_input_norm(text_tokens))
     image_global = fusion.norm_img_global(image_features[:, :1])
     text_global = fusion.norm_txt_global(text_features[:, :1])
-    image_local = image_features[:, 1:]
-    text_local = text_features[:, 1:]
+    image_patches = image_features[:, 1:]
+    text_content = text_features[:, 1:]
     text_padding = text_attention_mask[:, 1:] == 0
     image_padding = getattr(model.backbone, "last_image_key_padding_mask", None)
     image_padding = image_padding[:, 1:] if image_padding is not None else None
@@ -74,8 +73,8 @@ def fusion_from_tokens(
     if direction in {"bidirectional", "image_to_text"}:
         context, _ = fusion.img_to_txt_attn(
             query=image_global,
-            key=text_local,
-            value=text_local,
+            key=text_content,
+            value=text_content,
             key_padding_mask=text_padding,
             need_weights=False,
         )
@@ -87,8 +86,8 @@ def fusion_from_tokens(
     if direction in {"bidirectional", "text_to_image"}:
         context, _ = fusion.txt_to_img_attn(
             query=text_global,
-            key=image_local,
-            value=image_local,
+            key=image_patches,
+            value=image_patches,
             key_padding_mask=image_padding,
             need_weights=False,
         )
@@ -119,15 +118,14 @@ def fusion_from_tokens(
     return model.head(fused), components
 
 
-def forward_from_local(
+def forward_from_tokens(
     model,
     cached: dict[str, torch.Tensor],
-    local_tokens: Optional[torch.Tensor] = None,
+    image_tokens: Optional[torch.Tensor] = None,
     text_tokens: Optional[torch.Tensor] = None,
     component_mask: Optional[torch.Tensor] = None,
-    global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Thực hiện bước forward from local trong quy trình hiện tại.
+    """Chạy fusion/head từ chuỗi token ảnh và văn bản đã cache.
 
     Parameters
     ----------
@@ -135,45 +133,31 @@ def forward_from_local(
         Mô hình hoặc thành phần mô hình cần xử lý.
     cached : dict[str, torch.Tensor]
         Giá trị ``cached`` được sử dụng trong phép xử lý.
-    local_tokens : Optional[torch.Tensor]
-        Chuỗi token hoặc biểu diễn token đầu vào.
+    image_tokens : torch.Tensor, optional
+        Chuỗi CLS + patch token ảnh thay thế.
     text_tokens : Optional[torch.Tensor]
         Chuỗi token hoặc biểu diễn token đầu vào.
     component_mask : Optional[torch.Tensor]
         Giá trị ``component_mask`` được sử dụng trong phép xử lý.
-    global_feature : Optional[torch.Tensor]
-        Biểu diễn đặc trưng cần xử lý.
-
     Returns
     -------
     tuple[torch.Tensor, torch.Tensor, torch.Tensor]
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    local = cached["local_tokens"] if local_tokens is None else local_tokens
+    image = cached["image_tokens"] if image_tokens is None else image_tokens
     text = cached["text_tokens"] if text_tokens is None else text_tokens
-    global_image = (
-        cached["global_feature"]
-        if global_feature is None
-        else global_feature
-    )
-    image_tokens = model.backbone.visual_resampler(
-        global_image,
-        local,
-        cached["local_mask"],
-        cached["local_boxes"],
-    )
     logits, components = fusion_from_tokens(
         model,
-        image_tokens,
+        image,
         text,
         cached["text_attention_mask"],
         component_mask=component_mask,
     )
-    return logits, components, image_tokens
+    return logits, components, image
 
 
-def encode_global_image(model, pixel_values: torch.Tensor) -> torch.Tensor:
-    """Mã hóa global ảnh cho bước xử lý hiện tại.
+def encode_image_tokens(model, pixel_values: torch.Tensor) -> torch.Tensor:
+    """Mã hóa ảnh thành chuỗi CLS + patch token BiomedCLIP gốc.
 
     Parameters
     ----------
@@ -188,8 +172,7 @@ def encode_global_image(model, pixel_values: torch.Tensor) -> torch.Tensor:
         Kết quả được tạo bởi bước xử lý của hàm.
     """
 
-    feature = model.backbone.model.encode_image(pixel_values)
-    return F.normalize(feature, dim=-1)
+    return model.backbone._encode_visual_tokens(pixel_values)
 
 
 def integrated_gradients_global_image(
@@ -245,11 +228,11 @@ def integrated_gradients_global_image(
         interpolated = (
             baseline + alpha * (pixels - baseline)
         ).detach().requires_grad_(True)
-        global_feature = encode_global_image(model, interpolated)
-        logits, _, _ = forward_from_local(
+        image_tokens = encode_image_tokens(model, interpolated)
+        logits, _, _ = forward_from_tokens(
             model,
             cached,
-            global_feature=global_feature,
+            image_tokens=image_tokens,
         )
         gradient = torch.autograd.grad(
             logits[0, target_class],
@@ -289,14 +272,14 @@ def branch_ablation(
         Kết quả được tạo bởi bước xử lý của hàm.
     """
     with torch.no_grad():
-        full_logits, _, _ = forward_from_local(model, cached)
+        full_logits, _, _ = forward_from_tokens(model, cached)
         full_probability = torch.softmax(full_logits, dim=-1)[0, target_class]
         full_logit = full_logits[0, target_class]
         logit_drops, probability_drops = [], []
         for index in range(len(COMPONENT_NAMES)):
             mask = torch.ones(len(COMPONENT_NAMES), device=full_logits.device)
             mask[index] = 0
-            logits, _, _ = forward_from_local(
+            logits, _, _ = forward_from_tokens(
                 model, cached, component_mask=mask
             )
             probability = torch.softmax(logits, dim=-1)[0, target_class]
@@ -345,23 +328,23 @@ def integrated_gradients(
     """
     if steps < 2:
         raise ValueError("Integrated gradients requires at least two steps.")
-    local = cached["local_tokens"].detach()
+    image = cached["image_tokens"].detach()
     baseline = (
-        cached["global_feature"].unsqueeze(1).expand_as(local).detach()
+        torch.zeros_like(image)
         if baseline is None
         else baseline.detach()
     )
-    if baseline.shape != local.shape:
-        raise ValueError("Integrated-gradients baseline shape differs from local tokens.")
-    gradient_sum = torch.zeros_like(local)
+    if baseline.shape != image.shape:
+        raise ValueError("Integrated-gradients baseline shape differs from image tokens.")
+    gradient_sum = torch.zeros_like(image)
     for index, alpha in enumerate(
-        torch.linspace(0.0, 1.0, steps, device=local.device)
+        torch.linspace(0.0, 1.0, steps, device=image.device)
     ):
         interpolated = (
-            baseline + alpha * (local - baseline)
+            baseline + alpha * (image - baseline)
         ).detach().requires_grad_(True)
-        logits, _, _ = forward_from_local(
-            model, cached, local_tokens=interpolated
+        logits, _, _ = forward_from_tokens(
+            model, cached, image_tokens=interpolated
         )
         gradient = torch.autograd.grad(
             logits[0, target_class], interpolated, retain_graph=False
@@ -369,7 +352,7 @@ def integrated_gradients(
         gradient_sum += gradient * (
             0.5 if index in (0, steps - 1) else 1.0
         )
-    attribution = (local - baseline) * gradient_sum / (steps - 1)
+    attribution = (image - baseline) * gradient_sum / (steps - 1)
     signed = attribution.sum(dim=-1)
     relevance = torch.relu(signed)
     if float(relevance.detach().sum()) <= 1e-10:
@@ -430,7 +413,7 @@ def integrated_gradients_text(
             interpolated,
             cached["text_attention_mask"],
         )
-        logits, _, _ = forward_from_local(
+        logits, _, _ = forward_from_tokens(
             model,
             cached,
             text_tokens=text_tokens,
@@ -587,14 +570,14 @@ def gradient_visual_relevance(
     torch.Tensor
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    local = cached["local_tokens"].detach().requires_grad_(True)
-    logits, _, _ = forward_from_local(model, cached, local_tokens=local)
+    image = cached["image_tokens"].detach().requires_grad_(True)
+    logits, _, _ = forward_from_tokens(model, cached, image_tokens=image)
     gradient = torch.autograd.grad(
-        logits[0, target_class], local, retain_graph=False
+        logits[0, target_class], image, retain_graph=False
     )[0]
-    relevance = torch.relu((local * gradient).sum(dim=-1))
+    relevance = torch.relu((image * gradient).sum(dim=-1))
     if float(relevance.detach().sum()) <= 1e-10:
-        relevance = (local * gradient).abs().sum(dim=-1)
+        relevance = (image * gradient).abs().sum(dim=-1)
     return relevance[0].detach()
 
 
@@ -620,8 +603,8 @@ def gradient_text_relevance(
         Kết quả được tạo bởi bước xử lý của hàm.
     """
     text = cached["text_tokens"].detach().requires_grad_(True)
-    local_cache = {**cached, "text_tokens": text}
-    logits, _, _ = forward_from_local(model, local_cache)
+    token_cache = {**cached, "text_tokens": text}
+    logits, _, _ = forward_from_tokens(model, token_cache)
     gradient = torch.autograd.grad(
         logits[0, target_class], text, retain_graph=False
     )[0]
@@ -636,10 +619,9 @@ def gradient_text_relevance(
 def _target_outputs(
     model,
     cached: dict[str, torch.Tensor],
-    local_tokens: Optional[torch.Tensor],
+    image_tokens: Optional[torch.Tensor],
     target_class: int,
     text_tokens: Optional[torch.Tensor] = None,
-    global_feature: Optional[torch.Tensor] = None,
 ) -> tuple[float, float, float]:
     """Thực hiện bước target outputs trong quy trình hiện tại.
 
@@ -649,27 +631,23 @@ def _target_outputs(
         Mô hình hoặc thành phần mô hình cần xử lý.
     cached : dict[str, torch.Tensor]
         Giá trị ``cached`` được sử dụng trong phép xử lý.
-    local_tokens : Optional[torch.Tensor]
-        Chuỗi token hoặc biểu diễn token đầu vào.
+    image_tokens : torch.Tensor, optional
+        Chuỗi CLS + patch token ảnh thay thế.
     target_class : int
         Nhãn hoặc chỉ số lớp liên quan.
     text_tokens : Optional[torch.Tensor]
         Chuỗi token hoặc biểu diễn token đầu vào.
-    global_feature : Optional[torch.Tensor]
-        Biểu diễn đặc trưng cần xử lý.
-
     Returns
     -------
     tuple[float, float, float]
         Kết quả được tạo bởi bước xử lý của hàm.
     """
     with torch.no_grad():
-        logits, _, _ = forward_from_local(
+        logits, _, _ = forward_from_tokens(
             model,
             cached,
-            local_tokens=local_tokens,
+            image_tokens=image_tokens,
             text_tokens=text_tokens,
-            global_feature=global_feature,
         )
         probabilities = torch.softmax(logits, dim=-1)[0]
         target_logit = logits[0, target_class]
@@ -800,13 +778,12 @@ def global_image_perturbation_curves(
             Kết quả được tạo bởi bước xử lý của hàm.
         """
         with torch.no_grad():
-            global_feature = encode_global_image(model, current_pixels)
+            image_tokens = encode_image_tokens(model, current_pixels)
         return _target_outputs(
             model,
             cached,
-            None,
+            image_tokens,
             target_class,
-            global_feature=global_feature,
         )
 
     for fraction in fractions:
@@ -912,20 +889,17 @@ def perturbation_curves(
         if fractions is None
         else np.asarray(fractions, dtype=np.float64)
     )
-    local = cached["local_tokens"].detach()
-    # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
-    # Bước hỗ trợ để thực hiện xử lý ``perturbation_curves`` trong quy trình hiện tại.
-    # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
-    baseline = cached["global_feature"].unsqueeze(1).expand_as(local).detach()
-    token_count = local.size(1)
+    image = cached["image_tokens"].detach()
+    baseline = torch.zeros_like(image)
+    token_count = image.size(1)
     descending = torch.argsort(relevance, descending=True)
     ascending = descending.flip(0)
-    generator = torch.Generator(device=local.device).manual_seed(int(seed))
+    generator = torch.Generator(device=image.device).manual_seed(int(seed))
     random_orders = [
         torch.randperm(
             token_count,
             generator=generator,
-            device=local.device,
+            device=image.device,
         )
         for _ in range(random_trials)
     ]
@@ -934,13 +908,13 @@ def perturbation_curves(
     top_margins, low_margins, random_margins, insertion_margins = [], [], [], []
     for fraction in fractions:
         count = min(token_count, int(round(float(fraction) * token_count)))
-        top_tokens = local.clone()
-        low_tokens = local.clone()
+        top_tokens = image.clone()
+        low_tokens = image.clone()
         inserted = baseline.clone()
         if count:
             top_tokens[:, descending[:count]] = baseline[:, descending[:count]]
             low_tokens[:, ascending[:count]] = baseline[:, ascending[:count]]
-            inserted[:, descending[:count]] = local[:, descending[:count]]
+            inserted[:, descending[:count]] = image[:, descending[:count]]
         top_output = _target_outputs(model, cached, top_tokens, target_class)
         low_output = _target_outputs(model, cached, low_tokens, target_class)
         insertion_output = _target_outputs(model, cached, inserted, target_class)
@@ -956,7 +930,7 @@ def perturbation_curves(
 
         trials = []
         for random_order in random_orders:
-            random_tokens = local.clone()
+            random_tokens = image.clone()
             if count:
                 indices = random_order[:count]
                 random_tokens[:, indices] = baseline[:, indices]

@@ -20,5 +20,3 @@ dataset:
   params:
     # Avoid reading images while retaining a collatable placeholder.
     text_only: true
-    high_res:
-      enabled: false

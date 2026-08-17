@@ -1,8 +1,8 @@
-"""Cung cấp tiện ích analysis cho huấn luyện, đánh giá và phân tích XBone-Net.
+"""Nạp checkpoint và xuất đặc trưng phân tích cho XBone-Net.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Cấu hình phân tích được lấy trực tiếp từ ``metrics.json`` của lần đánh giá.
+Điều này bảo đảm preprocessing letterbox, cross-attention và linear head khớp
+checkpoint, thay vì tái dựng các thành phần kiến trúc đã loại bỏ.
 """
 
 from __future__ import annotations
@@ -30,8 +30,6 @@ ZEROSHOT_BIOMEDCLIP_EXPERIMENT = (
 )
 SOURCE_SEEDS = (42, 123, 456)
 EXPECTED_NUM_CLASSES = 22
-EXPECTED_TOTAL_PARAMETERS = 204_535_320
-EXPECTED_TRAINABLE_PARAMETERS = 8_632_599
 DEMO_ARTIFACT_ROOT_ENV = "XBONE_DEMO_ARTIFACT_ROOT"
 
 ANALYSIS_METADATA_KEYS = (
@@ -338,11 +336,11 @@ def _load_checkpoint_payload(path: Path, device: torch.device) -> dict[str, Any]
     return payload
 
 
-def _validate_checkpoint_state(
+def _validate_linear_checkpoint_state(
     state_dict: dict[str, torch.Tensor],
     expected_num_classes: int = EXPECTED_NUM_CLASSES,
 ) -> None:
-    """Kiểm tra tính hợp lệ của checkpoint state cho bước xử lý hiện tại.
+    """Xác nhận checkpoint chứa đúng trọng số linear head 22 lớp.
 
     Parameters
     ----------
@@ -350,45 +348,42 @@ def _validate_checkpoint_state(
         Giá trị ``state_dict`` được sử dụng trong phép xử lý.
 
     expected_num_classes : int, optional
-        Số lớp dự kiến của tensor tâm lớp.
+        Số lớp dự kiến của ma trận phân loại.
 
     Raises
     ------
     RuntimeError
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
-    centroid_items = [
+    weight_items = [
         (key, value)
         for key, value in state_dict.items()
-        if key.endswith("head.centroids") or key == "head.centroids"
+        if key.endswith("head.classifier.weight")
     ]
-    if len(centroid_items) != 1:
+    if len(weight_items) != 1:
         raise RuntimeError(
-            "Canonical Phase-2 checkpoint must contain exactly one head.centroids tensor."
+            "Phase-2 checkpoint must contain exactly one linear-head weight tensor."
         )
-    key, centroids = centroid_items[0]
+    key, weights = weight_items[0]
     expected = (int(expected_num_classes), 512)
-    if tuple(centroids.shape) != expected:
+    if tuple(weights.shape) != expected:
         raise RuntimeError(
-            f"Checkpoint {key} has shape {tuple(centroids.shape)}, expected {expected}."
+            f"Checkpoint {key} has shape {tuple(weights.shape)}, expected {expected}."
         )
-    initialized = [
-        value
+    bias_items = [
+        (key, value)
         for key, value in state_dict.items()
-        if key.endswith("head.centroids_initialized")
+        if key.endswith("head.classifier.bias")
     ]
-    if initialized and not bool(initialized[0].item()):
-        raise RuntimeError("Checkpoint empirical centroids are not initialized.")
+    if len(bias_items) != 1 or tuple(bias_items[0][1].shape) != (
+        int(expected_num_classes),
+    ):
+        raise RuntimeError("Phase-2 checkpoint has an invalid linear-head bias.")
 
 
 @dataclass(frozen=True)
 class LoadedAnalysisModel:
-    """Đóng gói hành vi của thành phần ``LoadedAnalysisModel``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Model đã nạp kèm cấu hình, checksum và thông tin nguồn."""
     model: torch.nn.Module
     cfg: DictConfig
     checkpoint: Path
@@ -441,8 +436,6 @@ def load_locked_proposed_model(
         raise RuntimeError(f"Unexpected source experiment: {cfg.experiment_name}")
     if str(cfg.model.backbone_type) != "biomedclip":
         raise RuntimeError("CTCH analysis requires the BiomedCLIP proposed backbone.")
-    if str(cfg.model.visual_resampler.aggregation) != "passthrough":
-        raise RuntimeError("CTCH analysis requires the passthrough visual resampler.")
 
     checkpoint = locked_checkpoint_path(seed).resolve()
     if not checkpoint.is_file():
@@ -455,12 +448,12 @@ def load_locked_proposed_model(
         model, cfg, device
     )
     if (classifier_type, fusion_type, int(num_classes)) != (
-        "empirical_centroid",
+        "linear",
         "cross_attention",
         EXPECTED_NUM_CLASSES,
     ):
         raise RuntimeError(
-            "Canonical architecture mismatch: expected empirical_centroid + "
+            "Canonical architecture mismatch: expected linear + "
             f"cross_attention + 22 classes, got {classifier_type} + "
             f"{fusion_type} + {num_classes}."
         )
@@ -470,9 +463,9 @@ def load_locked_proposed_model(
     if not isinstance(state_dict, dict):
         raise TypeError("Checkpoint model_state_dict must be a mapping.")
     state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
-    _validate_checkpoint_state(state_dict)
+    _validate_linear_checkpoint_state(state_dict)
     result = model.load_state_dict(state_dict, strict=False)
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_tokens = ("lora_A", "lora_B")
     critical_prefixes = ("fusion.", "head.")
     critical_missing = [
         key
@@ -500,14 +493,11 @@ def load_locked_proposed_model(
     trainable_parameters = sum(
         parameter.numel() for parameter in model.parameters() if parameter.requires_grad
     )
-    if strict_fingerprint and (
-        total_parameters != EXPECTED_TOTAL_PARAMETERS
-        or trainable_parameters != EXPECTED_TRAINABLE_PARAMETERS
+    if strict_fingerprint and any(
+        key.endswith("head.centroids") for key in state_dict
     ):
         raise RuntimeError(
-            "Model fingerprint differs from the validated CTCH proposed architecture: "
-            f"total={total_parameters:,}, trainable={trainable_parameters:,}; expected "
-            f"{EXPECTED_TOTAL_PARAMETERS:,} and {EXPECTED_TRAINABLE_PARAMETERS:,}."
+            "Checkpoint still contains the removed empirical-centroid head."
         )
 
     model.eval()
@@ -524,7 +514,6 @@ def load_locked_proposed_model(
         "num_classes": int(num_classes),
         "fusion_type": fusion_type,
         "classifier_type": classifier_type,
-        "visual_resampler": str(cfg.model.visual_resampler.aggregation),
         "config_sha256": hashlib.sha256(
             resolved_config_yaml.encode("utf-8")
         ).hexdigest(),
@@ -673,9 +662,9 @@ def load_proposed_experiment_model(
         model, cfg, device
     )
     model, _ = setup_phase3_modules(model, cfg, device)
-    if classifier_type != "empirical_centroid" or int(num_classes) != EXPECTED_NUM_CLASSES:
+    if classifier_type != "linear" or int(num_classes) != EXPECTED_NUM_CLASSES:
         raise RuntimeError(
-            "Proposed comparison requires empirical_centroid with 22 classes; "
+            "Proposed comparison requires a linear head with 22 classes; "
             f"got {classifier_type} with {num_classes}."
         )
     if fusion_type not in {"cross_attention", "gated_cross_attention"}:
@@ -686,9 +675,9 @@ def load_proposed_experiment_model(
     if not isinstance(state_dict, dict):
         raise TypeError("Checkpoint model_state_dict must be a mapping.")
     state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
-    _validate_checkpoint_state(state_dict)
+    _validate_linear_checkpoint_state(state_dict)
     result = model.load_state_dict(state_dict, strict=False)
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_tokens = ("lora_A", "lora_B")
     critical_prefixes = ("fusion.", "head.", "drl_auxiliary.")
     critical_missing = [
         key for key in result.missing_keys
@@ -751,7 +740,6 @@ def load_proposed_experiment_model(
         "num_classes": int(num_classes),
         "fusion_type": fusion_type,
         "classifier_type": classifier_type,
-        "visual_resampler": str(cfg.model.visual_resampler.aggregation),
         "config_sha256": hashlib.sha256(
             resolved_config_yaml.encode("utf-8")
         ).hexdigest(),
@@ -821,11 +809,6 @@ def load_evaluated_ctch_zeroshot_model(
     if str(cfg.dataset.name) != "ctch":
         raise ValueError("Zero-shot OOD baseline must use the CTCH dataset config.")
     _absolute_dataset_paths(cfg)
-    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
-    # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-    # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
-    cfg.dataset.params.high_res = {"enabled": False}
-
     from src.models.builder import build_model, setup_phase2_modules
 
     seed_everything(seed)
@@ -999,13 +982,13 @@ def load_evaluated_classification_model(
     if not isinstance(state_dict, dict):
         raise TypeError("Checkpoint model_state_dict must be a mapping.")
     state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
-    if classifier_type == "empirical_centroid":
-        _validate_checkpoint_state(
+    if classifier_type == "linear":
+        _validate_linear_checkpoint_state(
             state_dict,
             expected_num_classes=expected_num_classes,
         )
     result = model.load_state_dict(state_dict, strict=False)
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_tokens = ("lora_A", "lora_B")
     critical_prefixes = ("fusion.", "head.")
     critical_missing = [
         key
@@ -1160,7 +1143,11 @@ def load_evaluated_ctch_model(
     cfg.params.model_dir = str(checkpoint.parent)
     cfg.params.phase2.checkpoint_path = str(checkpoint)
 
-    from src.models.builder import build_model, setup_phase2_modules
+    from src.models.builder import (
+        build_model,
+        merge_peft_adapters,
+        setup_phase2_modules,
+    )
 
     seed_everything(seed)
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -1179,10 +1166,10 @@ def load_evaluated_ctch_model(
     if not isinstance(state_dict, dict):
         raise TypeError("Checkpoint model_state_dict must be a mapping.")
     state_dict = adapt_state_dict_keys(state_dict, model.state_dict().keys())
-    if classifier_type == "empirical_centroid":
-        _validate_checkpoint_state(state_dict)
+    if classifier_type == "linear":
+        _validate_linear_checkpoint_state(state_dict)
     result = model.load_state_dict(state_dict, strict=False)
-    critical_tokens = ("lora_A", "lora_B", "visual_resampler")
+    critical_tokens = ("lora_A", "lora_B")
     critical_prefixes = ("fusion.", "head.")
     critical_missing = [
         key
@@ -1226,6 +1213,10 @@ def load_evaluated_ctch_model(
             f"evaluated={int(expected_trainable):,}."
         )
 
+    # ``evaluate.py`` merges PEFT adapters before inference. Analysis exports,
+    # OOD and explainability must use the same canonical inference graph;
+    # otherwise the reloaded gated model does not reproduce metrics.json.
+    merge_peft_adapters(model, verbose=False)
     model.eval()
     resolved_config_yaml = OmegaConf.to_yaml(cfg, resolve=True, sort_keys=True)
     checkpoint_sha256 = sha256_file(checkpoint)
@@ -1243,9 +1234,6 @@ def load_evaluated_ctch_model(
         "num_classes": int(num_classes),
         "fusion_type": fusion_type,
         "classifier_type": classifier_type,
-        "visual_resampler": str(
-            cfg.model.get("visual_resampler", {}).get("aggregation", "none")
-        ),
         "config_sha256": hashlib.sha256(
             resolved_config_yaml.encode("utf-8")
         ).hexdigest(),
@@ -1547,9 +1535,6 @@ def forward_analysis_batch(
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     images = _to_device(batch["pixel_values"], device)
-    tile_values = _to_device(batch.get("tile_values"), device)
-    tile_mask = _to_device(batch.get("tile_mask"), device)
-    tile_boxes = _to_device(batch.get("tile_boxes"), device)
     prefix = "xray" if report_type == "xray" else "clinical"
     input_ids = _to_device(batch.get(f"{prefix}_input_ids"), device)
     attention_mask = _to_device(batch.get(f"{prefix}_attention_mask"), device)
@@ -1558,53 +1543,50 @@ def forward_analysis_batch(
         images,
         input_ids,
         attention_mask=attention_mask,
-        tile_values=tile_values,
-        tile_mask=tile_mask,
-        tile_boxes=tile_boxes,
     )
     if image_tokens.ndim != 3 or text_tokens is None or text_tokens.ndim != 3:
         raise RuntimeError(
-            "CTCH proposed analysis expects local image and text token sequences."
+            "CTCH analysis expects image patch tokens and text token sequences."
         )
 
     image_padding = getattr(model.backbone, "last_image_key_padding_mask", None)
-    image_local_padding = image_padding[:, 1:] if image_padding is not None else None
-    text_local_padding = attention_mask[:, 1:] == 0 if attention_mask is not None else None
+    image_patch_padding = image_padding[:, 1:] if image_padding is not None else None
+    text_token_padding = attention_mask[:, 1:] == 0 if attention_mask is not None else None
     fused, details = model.fusion(
         image_tokens,
         text_tokens,
-        img_key_padding_mask=image_local_padding,
-        txt_key_padding_mask=text_local_padding,
+        img_key_padding_mask=image_patch_padding,
+        txt_key_padding_mask=text_token_padding,
         return_attn=True,
     )
     logits = model.head(fused)
 
     text_attention_stats = _attention_distribution_statistics(
-        details.get("attn_img_to_txt"), text_local_padding
+        details.get("attn_img_to_txt"), text_token_padding
     )
     visual_attention_stats = _attention_distribution_statistics(
-        details.get("attn_txt_to_img"), image_local_padding
+        details.get("attn_txt_to_img"), image_patch_padding
     )
 
     if image_tokens.size(1) > 1:
-        local = image_tokens[:, 1:]
-        if image_local_padding is None:
-            visual_local_summary = local.mean(dim=1)
+        patches = image_tokens[:, 1:]
+        if image_patch_padding is None:
+            visual_patch_summary = patches.mean(dim=1)
         else:
-            valid = (~image_local_padding).unsqueeze(-1).to(local.dtype)
-            visual_local_summary = (local * valid).sum(dim=1) / valid.sum(
+            valid = (~image_patch_padding).unsqueeze(-1).to(patches.dtype)
+            visual_patch_summary = (patches * valid).sum(dim=1) / valid.sum(
                 dim=1
             ).clamp_min(1.0)
     else:
-        visual_local_summary = image_tokens[:, 0]
+        visual_patch_summary = image_tokens[:, 0]
 
     output = {
         "fused_embeddings_raw": fused,
         "fused_embeddings": F.normalize(fused, dim=-1),
         "label_discriminative_embeddings": F.normalize(fused, dim=-1),
         "visual_global_embeddings": F.normalize(image_tokens[:, 0], dim=-1),
-        "visual_local_summary_embeddings": F.normalize(
-            visual_local_summary, dim=-1
+        "visual_patch_summary_embeddings": F.normalize(
+            visual_patch_summary, dim=-1
         ),
         "text_global_embeddings": F.normalize(text_tokens[:, 0], dim=-1),
         "image_from_text_embeddings": F.normalize(
@@ -1623,7 +1605,7 @@ def forward_analysis_batch(
             image_tokens,
             text_tokens,
             fused,
-            image_local_padding_mask=image_local_padding,
+            image_local_padding_mask=image_patch_padding,
             return_details=True,
         )
         output.update({

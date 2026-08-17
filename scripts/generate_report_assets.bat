@@ -19,9 +19,11 @@ set "OOD=%SUMMARY%\ood"
 set "ATTN=%SUMMARY%\attention"
 set "ABL=%SUMMARY%\ablation"
 set "RUN_ALL=%SUMMARY%\run_all_table.csv"
-set "REPORT=docs\report\generated\chapter4_results"
+set "REPORT_TABLE=docs\report\tables\chapter4"
+set "REPORT_IMG=docs\report\images\chapter4"
 set "APPENDIX_SUMMARY=%SUMMARY%\appendix_seed_results"
-set "APPENDIX_REPORT=docs\report\generated\appendix_seed_results"
+set "APPENDIX_TABLE=docs\report\tables\appendix"
+set "APPENDIX_IMG=docs\report\images\appendix"
 
 if not exist "%RUN_ALL%" (
     echo [ERROR] Khong tim thay "%RUN_ALL%".
@@ -53,8 +55,8 @@ echo [1/6] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
   --label tab:ch4draft_zeroshot ^
   --output "%CLASS%\table_zero_shot.tex"
 
-if not exist docs\report\generated\chapter4_draft mkdir docs\report\generated\chapter4_draft
-copy /Y "%CLASS%\table_zero_shot.tex" docs\report\generated\chapter4_draft\table_zero_shot.tex >nul
+if not exist "%REPORT_TABLE%" mkdir "%REPORT_TABLE%"
+copy /Y "%CLASS%\table_zero_shot.tex" "%REPORT_TABLE%\table_zero_shot.tex" >nul
 
 "%PYTHON%" "%VIS%" latex ^
   --input "%RUN_ALL%" ^
@@ -283,9 +285,9 @@ echo [4/6] Tao hinh Integrated Gradients...
   --ig-steps 24 ^
   --output "%ATTN%\attention_case_3021_img-84263-00001.png"
 
-if not exist docs\report\generated\explainability mkdir docs\report\generated\explainability
-copy /Y "%ATTN%\attention_case_2842_img-33484-00001.png" docs\report\generated\explainability\attention_case_2842_img-33484-00001.png >nul
-copy /Y "%ATTN%\attention_case_3021_img-84263-00001.png" docs\report\generated\explainability\attention_case_3021_img-84263-00001.png >nul
+if not exist "%REPORT_IMG%" mkdir "%REPORT_IMG%"
+copy /Y "%ATTN%\attention_case_2842_img-33484-00001.png" "%REPORT_IMG%\attention_case_2842_img-33484-00001.png" >nul
+copy /Y "%ATTN%\attention_case_3021_img-84263-00001.png" "%REPORT_IMG%\attention_case_3021_img-84263-00001.png" >nul
 
 echo.
 echo [5/6] Tao bang leave-one-out va forest plot khoang tin cay...
@@ -350,34 +352,24 @@ if not exist "%ABL%\statistics_auc\paired_bootstrap_results.csv" goto :missing_s
   --dpi 300 ^
   --output "%ABL%\statistics_auc\forest_auprc_macro.png"
 
-if not exist "%REPORT%" mkdir "%REPORT%"
+if not exist "%REPORT_TABLE%" mkdir "%REPORT_TABLE%"
+if not exist "%REPORT_IMG%" mkdir "%REPORT_IMG%"
 
-copy /Y "%CLASS%\table_zero_shot.tex" "%REPORT%\table_zero_shot.tex" >nul
-copy /Y "%CLASS%\table_full_shot_classification.tex" "%REPORT%\table_full_shot_classification.tex" >nul
-copy /Y "%CLASS%\table_full_shot_ranking.tex" "%REPORT%\table_full_shot_ranking.tex" >nul
-copy /Y "%CLASS%\table_few_shot_classification.tex" "%REPORT%\table_few_shot_classification.tex" >nul
-copy /Y "%CLASS%\table_few_shot_ranking.tex" "%REPORT%\table_few_shot_ranking.tex" >nul
-copy /Y "%CLASS%\table_calibration_results.tex" "%REPORT%\table_calibration_results.tex" >nul
-copy /Y "%CLASS%\table_efficiency_full_shot.tex" "%REPORT%\table_efficiency_full_shot.tex" >nul
-copy /Y "%CLASS%\table_efficiency_few_shot.tex" "%REPORT%\table_efficiency_few_shot.tex" >nul
-copy /Y "%ABL%\table_ablation_leave_one_out_classification.tex" "%REPORT%\table_ablation_leave_one_out_classification.tex" >nul
-copy /Y "%OOD%\table_ood_semantic_btxrd.tex" "%REPORT%\table_ood_semantic_btxrd.tex" >nul
+copy /Y "%CLASS%\table_zero_shot.tex" "%REPORT_TABLE%\table_zero_shot.tex" >nul
+copy /Y "%CLASS%\table_full_shot_classification.tex" "%REPORT_TABLE%\table_full_shot_classification.tex" >nul
+copy /Y "%CLASS%\table_full_shot_ranking.tex" "%REPORT_TABLE%\table_full_shot_ranking.tex" >nul
+copy /Y "%CLASS%\table_few_shot_classification.tex" "%REPORT_TABLE%\table_few_shot_classification.tex" >nul
+copy /Y "%CLASS%\table_few_shot_ranking.tex" "%REPORT_TABLE%\table_few_shot_ranking.tex" >nul
+copy /Y "%CLASS%\table_calibration_results.tex" "%REPORT_TABLE%\table_calibration_results.tex" >nul
+copy /Y "%CLASS%\table_efficiency_full_shot.tex" "%REPORT_TABLE%\table_efficiency_full_shot.tex" >nul
+copy /Y "%CLASS%\table_efficiency_few_shot.tex" "%REPORT_TABLE%\table_efficiency_few_shot.tex" >nul
+copy /Y "%ABL%\table_ablation_leave_one_out_classification.tex" "%REPORT_TABLE%\table_ablation_leave_one_out_classification.tex" >nul
+copy /Y "%OOD%\table_ood_semantic_btxrd.tex" "%REPORT_TABLE%\table_ood_semantic_btxrd.tex" >nul
 
-copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_confusion_matrix_3seed.png" "%REPORT%\ctch_xbone_net_confusion_matrix_3seed.png" >nul
-copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_pr_3seed.png" "%REPORT%\ctch_xbone_net_pr_3seed.png" >nul
-copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_roc_3seed.png" "%REPORT%\ctch_xbone_net_roc_3seed.png" >nul
-copy /Y "%CLASS%\full_shot_comparison.png" "%REPORT%\full_shot_comparison.png" >nul
-copy /Y "%CLASS%\few_shot_btxrd_f1_bar.png" "%REPORT%\few_shot_btxrd_f1_bar.png" >nul
-copy /Y "%CLASS%\few_shot_ctch_f1_bar.png" "%REPORT%\few_shot_ctch_f1_bar.png" >nul
-copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_calibration_3seed.png" "%REPORT%\ctch_xbone_net_calibration_3seed.png" >nul
-copy /Y "%OOD%\mahalanobis_semantic_btxrd_metrics.png" "%REPORT%\mahalanobis_semantic_btxrd_metrics.png" >nul
-copy /Y "%ABL%\statistics\forest_accuracy.png" "%REPORT%\forest_accuracy.png" >nul
-copy /Y "%ABL%\statistics\forest_balanced_accuracy.png" "%REPORT%\forest_balanced_accuracy.png" >nul
-copy /Y "%ABL%\statistics\forest_f1_macro.png" "%REPORT%\forest_f1_macro.png" >nul
-copy /Y "%ABL%\statistics_auc\forest_auroc_macro.png" "%REPORT%\forest_auroc_macro.png" >nul
-copy /Y "%ABL%\statistics_auc\forest_auprc_macro.png" "%REPORT%\forest_auprc_macro.png" >nul
-copy /Y "%ATTN%\attention_case_2842_img-33484-00001.png" "%REPORT%\attention_case_2842_img-33484-00001.png" >nul
-copy /Y "%ATTN%\attention_case_3021_img-84263-00001.png" "%REPORT%\attention_case_3021_img-84263-00001.png" >nul
+copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_confusion_matrix_3seed.png" "%REPORT_IMG%\ctch_xbone_net_confusion_matrix_3seed.png" >nul
+copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_pr_3seed.png" "%REPORT_IMG%\ctch_xbone_net_pr_3seed.png" >nul
+copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_roc_3seed.png" "%REPORT_IMG%\ctch_xbone_net_roc_3seed.png" >nul
+copy /Y "%CLASS%\curves_3seed\ctch_xbone_net_calibration_3seed.png" "%REPORT_IMG%\ctch_xbone_net_calibration_3seed.png" >nul
 
 echo.
 echo [6/6] Tao bang va bieu do ket qua chi tiet theo tung hat giong...
@@ -388,14 +380,15 @@ echo [6/6] Tao bang va bieu do ket qua chi tiet theo tung hat giong...
   --dpi 300
 if errorlevel 1 goto :error
 
-if not exist "%APPENDIX_REPORT%" mkdir "%APPENDIX_REPORT%"
-copy /Y "%APPENDIX_SUMMARY%\table_full_shot_per_seed.tex" "%APPENDIX_REPORT%\table_full_shot_per_seed.tex" >nul
-copy /Y "%APPENDIX_SUMMARY%\table_few_shot_per_seed.tex" "%APPENDIX_REPORT%\table_few_shot_per_seed.tex" >nul
-copy /Y "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex" "%APPENDIX_REPORT%\table_ablation_per_seed.tex" >nul
-copy /Y "%APPENDIX_SUMMARY%\table_ood_per_seed.tex" "%APPENDIX_REPORT%\table_ood_per_seed.tex" >nul
-copy /Y "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png" "%APPENDIX_REPORT%\full_shot_macro_f1_by_seed.png" >nul
-copy /Y "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png" "%APPENDIX_REPORT%\ood_mahalanobis_by_seed.png" >nul
-copy /Y "%APPENDIX_SUMMARY%\manifest.json" "%APPENDIX_REPORT%\manifest.json" >nul
+if not exist "%APPENDIX_TABLE%" mkdir "%APPENDIX_TABLE%"
+if not exist "%APPENDIX_IMG%" mkdir "%APPENDIX_IMG%"
+copy /Y "%APPENDIX_SUMMARY%\table_full_shot_per_seed.tex" "%APPENDIX_TABLE%\table_full_shot_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_few_shot_per_seed.tex" "%APPENDIX_TABLE%\table_few_shot_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex" "%APPENDIX_TABLE%\table_ablation_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\table_ood_per_seed.tex" "%APPENDIX_TABLE%\table_ood_per_seed.tex" >nul
+copy /Y "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png" "%APPENDIX_IMG%\full_shot_macro_f1_by_seed.png" >nul
+copy /Y "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png" "%APPENDIX_IMG%\ood_mahalanobis_by_seed.png" >nul
+copy /Y "%APPENDIX_SUMMARY%\manifest.json" "%APPENDIX_TABLE%\manifest.json" >nul
 
 set "MISSING=0"
 for %%F in (

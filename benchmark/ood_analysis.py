@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import os
 import sys
 from collections import OrderedDict
 from pathlib import Path
@@ -36,10 +35,13 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8")
 
 from src.utils.analysis import (
+    AnalysisDataCollator,
     SOURCE_EXPERIMENT,
     SOURCE_SEEDS,
+    load_feature_archive,
     load_evaluated_classification_model,
     save_feature_archive,
+    sha256_file,
 )
 from src.utils.ood import (
     OODDetector,
@@ -63,15 +65,32 @@ SCENARIO_ARCHIVES = OrderedDict(
     ]
 )
 
+
+def _ctch_ood_case_count() -> int | None:
+    """Return the number of rows in the current CTCH OOD manifest."""
+    manifest_path = ROOT / "data" / "CTCH" / "ctch-ood.csv"
+    try:
+        return int(len(pd.read_csv(manifest_path)))
+    except (OSError, ValueError, pd.errors.ParserError):
+        return None
+
+
+CTCH_OOD_CASE_COUNT = _ctch_ood_case_count()
+CTCH_OOD_SCENARIO_LABEL = (
+    f"CTCH Semantic OOD ({CTCH_OOD_CASE_COUNT} ca ngoại vi)"
+    if CTCH_OOD_CASE_COUNT is not None
+    else "CTCH Semantic OOD (manifest hiện hành)"
+)
+
 SCENARIO_LABELS = {
-    "semantic_ood": "CTCH Semantic OOD (44 ca ngoại vi)",
+    "semantic_ood": CTCH_OOD_SCENARIO_LABEL,
     "domain_ood_btxrd": "BTXRD Dataset (Dịch chuyển miền)",
     "report_mismatch_cross_class": "Mâu thuẫn bệnh sử chéo lớp",
     "report_mismatch_same_class": "Mâu thuẫn bệnh sử cùng lớp",
 }
 
 ALL_METHODS = ["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"]
-DEFAULT_METHODS = ["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"]
+DEFAULT_METHODS = ["cosine_centroids", "mahalanobis_centroid"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -88,7 +107,7 @@ def parse_args() -> argparse.Namespace:
         "--experiment",
         nargs="+",
         default=[SOURCE_EXPERIMENT],
-        help="Một hoặc nhiều định danh thí nghiệm cần đánh giá (ví dụ: ctch/proposed/ours_xbone_net ctch/ablation_study/architecture/preprocess/xbone_letterbox)",
+        help="Một hoặc nhiều định danh thí nghiệm cần đánh giá (ví dụ: ctch/proposed/ours_xbone_net ctch/baselines/full_finetuned/fft_biomedclip)",
     )
     parser.add_argument(
         "--seeds",
@@ -111,7 +130,19 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_METHODS,
         help="Các phương pháp phát hiện OOD cần đánh giá",
     )
-    parser.add_argument("--knn-k", type=int, default=5, help="Tham số k lân cận cho kNN OOD")
+    parser.add_argument("--knn-k", type=int, default=10, help="Tham số k lân cận cho kNN OOD (mặc định: 10 theo Sun et al.)")
+    parser.add_argument(
+        "--knn-reduction",
+        choices=["kth", "mean"],
+        default="kth",
+        help="Quy tắc điểm kNN OOD: 'kth' (khoảng cách tới lân cận thứ k theo Sun et al.) hoặc 'mean' (trung bình k lân cận)",
+    )
+    parser.add_argument(
+        "--knn-metric",
+        choices=["euclidean", "cosine"],
+        default="euclidean",
+        help="Hàm khoảng cách kNN OOD: 'euclidean' (trên vector chuẩn hóa L2) hoặc 'cosine'",
+    )
     parser.add_argument("--target-fpr", type=float, default=0.05, help="Mức FPR mục tiêu trên tập validation (mặc định 0.05 cho 95%% TPR)")
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--batch-size", type=int, default=16)
@@ -124,23 +155,6 @@ def parse_args() -> argparse.Namespace:
         help="Thư mục lưu báo cáo JSON và bảng tổng hợp",
     )
     return parser.parse_args()
-
-
-def _load_features(archive_path: Path) -> dict[str, np.ndarray]:
-    """Nạp file đặc trưng .npz an toàn từ bộ nhớ đĩa.
-
-    Parameters
-    ----------
-    archive_path : Path
-        Đường dẫn tới tệp nén đặc trưng .npz.
-
-    Returns
-    -------
-    dict[str, np.ndarray]
-        Từ điển chứa các mảng đặc trưng đã trích xuất.
-    """
-    with np.load(archive_path, allow_pickle=False) as npz:
-        return {k: npz[k] for k in npz.files if k != "provenance_json"}
 
 
 def extract_or_load_features(
@@ -177,7 +191,9 @@ def extract_or_load_features(
     dict[str, dict[str, np.ndarray]]
         Từ điển ánh xạ tên kịch bản sang các mảng đặc trưng tương ứng.
     """
-    feature_dir = ROOT / "results" / experiment / f"seed_{seed}" / "analysis_features"
+    feature_dir = (
+        ROOT / "results" / experiment / f"seed_{seed}" / "analysis" / "features"
+    )
     required_archives = {"ctch_train", "ctch_val", "ctch_test"}
     for sc in scenarios:
         if sc in SCENARIO_ARCHIVES:
@@ -185,14 +201,37 @@ def extract_or_load_features(
 
     feature_dict: dict[str, dict[str, np.ndarray]] = {}
     missing_archives = set()
+    checkpoint_path = (
+        ROOT
+        / "checkpoints"
+        / experiment
+        / f"seed_{seed}"
+        / "best_phase2.pth"
+    )
+    current_checkpoint_sha = (
+        sha256_file(checkpoint_path) if checkpoint_path.is_file() else None
+    )
 
     if not force_recompute and feature_dir.is_dir():
         for archive in required_archives:
             archive_path = feature_dir / f"{archive}.npz"
             if archive_path.is_file():
                 try:
-                    data = _load_features(archive_path)
-                    if "fused_embeddings" in data or "logits" in data:
+                    data, provenance = load_feature_archive(
+                        archive_path,
+                        expected_source_experiment=experiment,
+                    )
+                    provenance_matches = (
+                        int(provenance.get("seed", -1)) == int(seed)
+                        and (
+                            current_checkpoint_sha is None
+                            or provenance.get("checkpoint_sha256")
+                            == current_checkpoint_sha
+                        )
+                    )
+                    if provenance_matches and (
+                        "fused_embeddings" in data or "logits" in data
+                    ):
                         feature_dict[archive] = data
                     else:
                         missing_archives.add(archive)
@@ -210,32 +249,49 @@ def extract_or_load_features(
         feature_dir.mkdir(parents=True, exist_ok=True)
 
         for archive in sorted(missing_archives):
-            scenario_name = next((k for k, v in SCENARIO_ARCHIVES.items() if v == archive), archive)
-            dataset, mismatch_seed = build_scenario_dataset(
-                scenario_name,
+            scenario_name = next(
+                (key for key, value in SCENARIO_ARCHIVES.items() if value == archive),
+                archive,
+            )
+            dataset, scenario_metadata = build_scenario_dataset(
+                archive,
                 loaded,
-                allow_incomplete_ood=True,
+                # Thesis results must use the complete manifest. Abort instead
+                # of silently reporting metrics on fewer than the current 26 cases.
+                allow_incomplete_ood=False,
             )
             loader = torch.utils.data.DataLoader(
                 dataset,
                 batch_size=batch_size,
                 shuffle=False,
                 num_workers=num_workers,
+                collate_fn=AnalysisDataCollator(
+                    loaded.model.backbone.tokenizer_obj
+                ),
             )
             if is_zeroshot:
                 arrays = _collect_zeroshot_feature_batches(loaded, loader)
             else:
                 arrays = _collect_fused_feature_batches(loaded, loader)
 
-            save_feature_archive(
-                feature_dir / f"{archive}.npz",
-                arrays,
-                provenance={
+            provenance = dict(loaded.provenance)
+            provenance.update(
+                {
+                    "source_experiment": experiment,
                     "experiment": experiment,
                     "seed": seed,
                     "archive": archive,
-                    "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                },
+                    "scenario": scenario_name,
+                    "scenario_metadata": scenario_metadata,
+                    "created_at": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat(),
+                }
+            )
+            save_feature_archive(
+                feature_dir / f"{archive}.npz",
+                arrays,
+                provenance=provenance,
             )
             feature_dict[archive] = arrays
 
@@ -247,7 +303,9 @@ def evaluate_single_seed_ood(
     scenarios: list[str],
     methods: list[str],
     *,
-    knn_k: int = 5,
+    knn_k: int = 10,
+    knn_reduction: str = "kth",
+    knn_metric: str = "euclidean",
     target_fpr: float = 0.05,
 ) -> dict[str, dict[str, Any]]:
     """Đánh giá các độ đo OOD cho 1 seed trên tất cả các kịch bản và phương pháp.
@@ -294,9 +352,15 @@ def evaluate_single_seed_ood(
         if method == "mahalanobis_centroid":
             scores = detector_raw.score(val_emb_raw, method=method)
         elif method == "entropy":
-            scores = OODDetector().score(val_logits, method="entropy")
+            scores = OODDetector.score_entropy(val_logits)
         elif method == "knn":
-            scores = detector_norm.score(val_emb, method="knn", k=knn_k)
+            scores = detector_norm.score(
+                val_emb,
+                method="knn",
+                k=knn_k,
+                reduction=knn_reduction,
+                metric=knn_metric,
+            )
         else:  # cosine_centroids
             scores = detector_norm.score(val_emb, method=method)
         val_scores[method] = scores
@@ -312,9 +376,15 @@ def evaluate_single_seed_ood(
         if method == "mahalanobis_centroid":
             scores = detector_raw.score(test_emb_raw, method=method)
         elif method == "entropy":
-            scores = OODDetector().score(test_logits, method="entropy")
+            scores = OODDetector.score_entropy(test_logits)
         elif method == "knn":
-            scores = detector_norm.score(test_emb, method="knn", k=knn_k)
+            scores = detector_norm.score(
+                test_emb,
+                method="knn",
+                k=knn_k,
+                reduction=knn_reduction,
+                metric=knn_metric,
+            )
         else:
             scores = detector_norm.score(test_emb, method=method)
         test_id_scores[method] = scores
@@ -333,17 +403,25 @@ def evaluate_single_seed_ood(
             if method == "mahalanobis_centroid":
                 ood_scores = detector_raw.score(ood_emb_raw, method=method)
             elif method == "entropy":
-                ood_scores = OODDetector().score(ood_logits, method="entropy")
+                ood_scores = OODDetector.score_entropy(ood_logits)
             elif method == "knn":
-                ood_scores = detector_norm.score(ood_emb, method="knn", k=knn_k)
+                ood_scores = detector_norm.score(
+                    ood_emb,
+                    method="knn",
+                    k=knn_k,
+                    reduction=knn_reduction,
+                    metric=knn_metric,
+                )
             else:
                 ood_scores = detector_norm.score(ood_emb, method=method)
 
             in_scores = test_id_scores[method]
             threshold = thresholds[method]
 
-            # Đánh giá bằng src/utils/ood.py
-            eval_metrics = evaluate_ood(in_scores, ood_scores, threshold)
+            # AUROC, AUPR-Out và FPR@95%TPR được tính từ toàn bộ đường cong
+            # ID/OOD. Ngưỡng hiệu chỉnh trên validation là ngưỡng vận hành
+            # riêng và được lưu bên dưới, không phải đối số của evaluate_ood().
+            eval_metrics = evaluate_ood(in_scores, ood_scores)
             bootstrap_res = bootstrap_ood_metrics(in_scores, ood_scores, n_bootstrap=500)
 
             method_metrics[method] = {
@@ -401,7 +479,9 @@ def run_experiment_ood_pipeline(
     methods: list[str],
     *,
     device: torch.device,
-    knn_k: int = 5,
+    knn_k: int = 10,
+    knn_reduction: str = "kth",
+    knn_metric: str = "euclidean",
     target_fpr: float = 0.05,
     batch_size: int = 16,
     num_workers: int = 0,
@@ -454,6 +534,8 @@ def run_experiment_ood_pipeline(
             scenarios,
             methods,
             knn_k=knn_k,
+            knn_reduction=knn_reduction,
+            knn_metric=knn_metric,
             target_fpr=target_fpr,
         )
         seed_results[seed] = res
@@ -548,6 +630,8 @@ def main() -> None:
                 args.methods,
                 device=device,
                 knn_k=args.knn_k,
+                knn_reduction=args.knn_reduction,
+                knn_metric=args.knn_metric,
                 target_fpr=args.target_fpr,
                 batch_size=args.batch_size,
                 num_workers=args.num_workers,

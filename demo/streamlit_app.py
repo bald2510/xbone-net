@@ -1,15 +1,13 @@
-"""Cung cấp giao diện Streamlit cho suy luận và phân tích XBone-Net.
+"""Giao diện Streamlit cho XBone-Net dùng letterbox và linear head.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Ứng dụng hiển thị đúng ba đầu ra của mô hình nghiên cứu: phân loại CTCH,
+cảnh báo OOD và Integrated Gradients cho ảnh/văn bản.
 """
 
 from __future__ import annotations
 
 import hashlib
 import io
-import os
 import sys
 from html import escape
 from pathlib import Path
@@ -18,27 +16,20 @@ from typing import Any
 import pandas as pd
 from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
-from omegaconf import OmegaConf
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-# Ưu tiên bộ checkpoint và feature archive đã đóng gói cùng demo. Biến môi
-# trường vẫn cho phép người triển khai chủ động trỏ sang một bộ tài nguyên khác.
-DEMO_ARTIFACT_ROOT = Path(__file__).resolve().parent / "artifacts"
-os.environ.setdefault("XBONE_DEMO_ARTIFACT_ROOT", str(DEMO_ARTIFACT_ROOT))
-
 import streamlit as st
 
-from src.datasets.high_resolution import build_sparse_focal_views
+from src.datasets.preprocessing import letterbox_square
 from src.utils.online_inference import (
     OOD_METHODS,
     OnlineInferenceEngine,
     render_global_ig_overlay,
-    render_local_ig_overlay,
 )
 
 
@@ -51,12 +42,6 @@ METHOD_LABELS = {
     "cosine_centroids": "Cosine–centroid",
     "knn": "Cosine kNN (k=5)",
     "entropy": "Entropy dự đoán",
-}
-
-TILE_ROLE_LABELS = {
-    "coverage": "Bao phủ",
-    "focal": "Tiêu điểm",
-    "fallback": "Dự phòng",
 }
 
 TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
@@ -433,125 +418,29 @@ def analysis_signature(
     return digest.hexdigest()
 
 
-def preprocessing_views(engine: OnlineInferenceEngine, image: Image.Image):
-    """Thực hiện bước preprocessing views trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    engine : OnlineInferenceEngine
-        Giá trị ``engine`` được sử dụng trong phép xử lý.
-    image : Image.Image
-        Ảnh hoặc biểu diễn ảnh đầu vào.
-
-    Returns
-    -------
-    object
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-
-    high_res_cfg = OmegaConf.to_container(
-        engine.loaded.cfg.dataset.params.high_res,
-        resolve=True,
-    )
-    if not isinstance(high_res_cfg, dict):
-        raise RuntimeError("Cấu hình high-resolution của checkpoint không hợp lệ.")
-    return build_sparse_focal_views(image.convert("RGB"), high_res_cfg)
-
-
-def source_with_boxes(image: Image.Image, views) -> Image.Image:
-    """Thực hiện bước source with boxes trong quy trình hiện tại.
+def show_preprocessing(image: Image.Image) -> None:
+    """Hiển thị ảnh trước và sau phép letterbox 224 x 224.
 
     Parameters
     ----------
     image : Image.Image
         Ảnh hoặc biểu diễn ảnh đầu vào.
-    views : object
-        Giá trị ``views`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    Image.Image
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-
-    annotated = image.convert("RGB").copy()
-    draw = ImageDraw.Draw(annotated)
-    line_width = max(2, round(min(image.size) / 180))
-    draw.rectangle(views.foreground_box, outline="#F59E0B", width=line_width)
-    for index, box in enumerate(views.tile_boxes, start=1):
-        draw.rectangle(box, outline="#DC2626", width=line_width)
-        draw.text((box[0] + line_width, box[1] + line_width), str(index), fill="#DC2626")
-    return annotated
-
-
-def show_preprocessing(image: Image.Image, views) -> None:
-    """Thực hiện bước show preprocessing trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    image : Image.Image
-        Ảnh hoặc biểu diễn ảnh đầu vào.
-    views : object
-        Giá trị ``views`` được sử dụng trong phép xử lý.
     """
 
     with st.expander("Xem các bước preprocessing", expanded=False):
         st.caption(
-            "Các ảnh dưới đây được tạo bằng đúng cấu hình high-resolution của "
-            "checkpoint đang suy luận. Khung vàng là vùng tiền cảnh; khung đỏ là "
-            "bốn vùng cục bộ được chọn."
+            "Ảnh được đổi kích thước nhưng giữ nguyên tỷ lệ, sau đó đệm màu "
+            "đen thành 224×224 trước transform chuẩn hóa của BiomedCLIP."
         )
-        source_column, box_column, global_column = st.columns(3)
+        source_column, letterbox_column = st.columns(2)
         source_column.image(
             bounded_image(image, 360, 280),
             caption=f"1. Ảnh gốc · {image.width}×{image.height} px",
         )
-        box_column.image(
-            bounded_image(source_with_boxes(image, views), 360, 280),
-            caption="2. Cắt tiền cảnh và chọn local tile",
-        )
-        global_column.image(
-            views.global_image,
-            caption=f"3. Global view · {views.global_image.width}×{views.global_image.height} px",
-        )
-
-        st.markdown("**4. Bốn local tile đưa vào mô hình**")
-        tile_columns = st.columns(len(views.tiles))
-        tile_rows = []
-        for index, (column, tile, role, box) in enumerate(
-            zip(tile_columns, views.tiles, views.tile_roles, views.tile_boxes),
-            start=1,
-        ):
-            role_label = TILE_ROLE_LABELS.get(str(role), str(role))
-            column.image(tile, caption=f"Tile {index} · {role_label}")
-            tile_rows.append(
-                {
-                    "Tile": index,
-                    "Vai trò": role_label,
-                    "Hộp nguồn (x1, y1, x2, y2)": str(tuple(int(v) for v in box)),
-                }
-            )
-        rows = []
-        for tile in tile_rows:
-            rows.append(
-                "<tr>"
-                f"<td>{int(tile['Tile'])}</td>"
-                f"<td>{escape(str(tile['Vai trò']))}</td>"
-                f"<td>{escape(str(tile['Hộp nguồn (x1, y1, x2, y2)']))}</td>"
-                "</tr>"
-            )
-        st.markdown(
-            "<div class='probability-table-wrap'>"
-            "<table class='probability-table'>"
-            "<thead><tr><th>Tile</th><th>Vai trò</th>"
-            "<th>Hộp nguồn (x1, y1, x2, y2)</th></tr></thead>"
-            f"<tbody>{''.join(rows)}</tbody></table></div>",
-            unsafe_allow_html=True,
+        letterbox = letterbox_square(image, size=224, pad_value="black")
+        letterbox_column.image(
+            letterbox,
+            caption="2. Letterbox · 224×224 px",
         )
 
 
@@ -839,7 +728,7 @@ def show_integrated_gradients(image: Image.Image, result) -> None:
         return
 
     st.markdown("#### Integrated Gradients cho ảnh")
-    original_column, global_column, local_column = st.columns(3)
+    original_column, global_column = st.columns(2)
     original_column.image(
         bounded_image(image, 360, 300),
         caption="Ảnh đầu vào",
@@ -852,15 +741,6 @@ def show_integrated_gradients(image: Image.Image, result) -> None:
         )
     else:
         global_column.info("Không có global IG cho mẫu này.")
-
-    if result.local_ig_scores is not None:
-        local_overlay = render_local_ig_overlay(image, result)
-        local_column.image(
-            bounded_image(local_overlay, 360, 300),
-            caption="Local IG · các token sparse-focal",
-        )
-    else:
-        local_column.info("Không có local IG cho mẫu này.")
 
     st.caption(
         "Màu nóng biểu thị vùng có attribution dương lớn hơn cho lớp dự đoán. "
@@ -994,8 +874,7 @@ def main() -> None:
         try:
             with st.spinner("Đang tải checkpoint và detector CTCH-ID..."):
                 engine = load_engine(int(seed), str(device))
-            with st.spinner("Đang tiền xử lý sparse-focal và suy luận..."):
-                views = preprocessing_views(engine, image)
+            with st.spinner("Đang letterbox ảnh và suy luận..."):
                 result = engine.predict(
                     image,
                     clinical_text,
@@ -1007,7 +886,6 @@ def main() -> None:
             st.session_state[ANALYSIS_STATE_KEY] = {
                 "signature": current_signature,
                 "image": image,
-                "views": views,
                 "result": result,
                 "engine": engine,
             }
@@ -1032,7 +910,7 @@ def main() -> None:
             result = analysis["result"]
             result_image = analysis["image"]
             engine = analysis["engine"]
-            show_preprocessing(result_image, analysis["views"])
+            show_preprocessing(result_image)
             show_classification_and_ood(result)
             if result.is_ood:
                 show_similar_images(result, show_labels=False)

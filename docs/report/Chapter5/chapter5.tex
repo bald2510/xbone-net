@@ -2,29 +2,25 @@
 
 \section{Tổng kết}
 
-Khóa luận đã xây dựng và đánh giá XBone-Net cho bài toán phân lớp ảnh X-quang xương đa phương thức. Phương pháp kế thừa BiomedCLIP, thích nghi hai bộ mã hóa bằng LoRA qua hai giai đoạn, kết hợp ảnh toàn cục với các vùng ảnh cục bộ độ phân giải cao, dung hợp ảnh--văn bản bằng chú ý chéo hai chiều và phân lớp theo tâm lớp thực nghiệm. Trên biểu diễn dung hợp, khóa luận khảo sát các điểm OOD hậu xử lý và sử dụng tích phân gradient cùng can thiệp đầu vào để truy vết nguồn thông tin liên hệ với dự đoán.
+Khóa luận đã xây dựng và đánh giá XBone-Net cho bài toán phân lớp ảnh X-quang xương đa phương thức. Phương pháp kế thừa hai bộ mã hóa của BiomedCLIP, tiền xử lý ảnh bằng letterbox, thích nghi bằng LoRA qua hai giai đoạn, dung hợp ảnh--văn bản bằng chú ý chéo và dự đoán bằng đầu phân lớp tuyến tính. Trên biểu diễn dung hợp, khóa luận khảo sát các điểm OOD hậu xử lý và sử dụng tích phân gradient cùng can thiệp đầu vào để truy vết nguồn thông tin liên hệ với dự đoán.
 
-Thực nghiệm được tiến hành trên BTXRD và CTCH với ba hạt giống, bao gồm đối chứng phương thức, nghiên cứu thành phần, các mức thích nghi bộ mã hóa, thiết lập ít mẫu, chi phí tính toán, hai kịch bản OOD và phân tích lời giải thích. Kết quả cho thấy XBone-Net đạt hiệu năng cạnh tranh và có ưu thế ở một số độ đo xếp hạng, một số ngân sách ít mẫu và hiệu quả tham số, nhưng không có cấu hình nào dẫn đầu nhất quán trên mọi tiêu chí. Vì vậy, đóng góp chính của khóa luận nằm ở việc xây dựng một quy trình đánh giá có cấu trúc cho các đánh đổi giữa hiệu năng phân lớp, chi phí, cảnh báo OOD và khả năng truy vết dự đoán, thay vì khẳng định ưu thế tuyệt đối của một kiến trúc.
+Thực nghiệm được tiến hành trên BTXRD và CTCH với ba hạt giống, bao gồm so sánh mô hình, nghiên cứu thành phần, các mức thích nghi bộ mã hóa, thiết lập ít mẫu, chi phí tính toán, hai kịch bản OOD và phân tích lời giải thích. Các đối chứng phương thức chỉ được dùng như kiểm tra bổ sung rằng mô hình có sử dụng hai đầu vào, không phải bằng chứng cho một đóng góp nghiên cứu riêng. Kết quả cho thấy XBone-Net đạt hiệu năng cạnh tranh và có ưu thế ở một số độ đo xếp hạng, một số ngân sách ít mẫu và hiệu quả tham số, nhưng không có cấu hình nào dẫn đầu nhất quán trên mọi tiêu chí. Vì vậy, đóng góp chính của khóa luận nằm ở phương pháp thích nghi và quy trình đánh giá có cấu trúc cho các đánh đổi giữa hiệu năng phân lớp, chi phí, cảnh báo OOD và khả năng truy vết dự đoán.
 
 \section{Trả lời các câu hỏi nghiên cứu}
 
-\subsection{RQ1: Vai trò của ảnh và văn bản}
+\subsection{RQ1: Hiệu năng phân lớp và chi phí}
 
-Kết hợp ảnh với văn bản có Macro-F1 trung bình quan sát được cao hơn các cấu hình chỉ ảnh và chỉ văn bản trên cả hai bộ dữ liệu. Khi bệnh sử được thay bằng bệnh sử của mẫu khác lớp, Macro-F1 quan sát được giảm rõ rệt. Tuy nhiên, các cấu hình đơn phương thức không thực hiện pha khớp ảnh--văn bản và phép so sánh này chưa có khoảng tin cậy ghép cặp kèm p-value. Vì vậy, kết quả chỉ xác nhận XBone-Net sử dụng quan hệ liên phương thức, không khẳng định ưu thế thống kê hoặc đóng góp biên thuần túy của riêng từng nguồn. Trên BTXRD, văn bản còn được tổng hợp từ siêu dữ liệu và liên hệ mạnh với nhãn nên không được diễn giải tương đương với bệnh sử tự nhiên.
+Trong thiết lập toàn bộ dữ liệu, Macro-F1 của XBone-Net cạnh tranh với các Med-VLM trên cả BTXRD và CTCH vì các phép so sánh không đồng thời có khoảng tin cậy loại trừ 0 và $p<0{,}05$. Trong thiết lập ít mẫu, Macro-F1 tiếp tục cạnh tranh với hai mô hình PEFT đối chứng tại toàn bộ ngân sách; các lợi thế hoặc bất lợi nhất quán chỉ xuất hiện ở một số độ đo phụ trên CTCH. LoRA cập nhật $8{,}63$ triệu tham số, tương ứng $4{,}22\%$ tổng số tham số, thấp hơn nhiều so với tinh chỉnh toàn bộ. Tuy nhiên, XBone-Net cần $229{,}020$ GFLOPs mỗi mẫu và có thông lượng thấp hơn các mô hình LoRA đối chứng. Do đó, bằng chứng hỗ trợ claim hiệu năng cạnh tranh với ít tham số cập nhật hơn, đồng thời xác nhận sự đánh đổi bằng chi phí suy luận cao hơn.
 
-\subsection{RQ2: Đóng góp của các thành phần XBone-Net}
+\subsection{RQ2: Ảnh hưởng của các thành phần XBone-Net}
 
 Theo đồng thời khoảng tin cậy 95\% và p-value thô, XBone-Net cạnh tranh với gộp trung bình và nối đặc trưng trên toàn bộ năm độ đo được kiểm định. Cấu hình chỉ pha 2 và đầu tuyến tính có Accuracy cao hơn XBone-Net, trong khi XBone-Net có Macro-AUROC cao hơn cấu hình không dùng ảnh độ phân giải cao và đầu tuyến tính. Không khác biệt nào nhất quán về Balanced Accuracy, Macro-F1 hoặc Macro-AUPRC. Vì vậy, chưa có biến thể nào vượt trội trên toàn bộ tiêu chí; cấu hình đầy đủ được xem là một điểm đánh đổi giữa quyết định lớp và chất lượng xếp hạng.
 
-\subsection{RQ3: Đánh đổi dữ liệu, tham số và chi phí tính toán}
+\subsection{RQ3: Phân biệt dữ liệu ngoài phân phối}
 
-LoRA chỉ cập nhật $8{,}63$ triệu tham số, tương ứng $4{,}22\%$ tổng số tham số. Trong thiết lập ít mẫu, Macro-F1 của XBone-Net cạnh tranh với hai baseline PEFT tại toàn bộ ngân sách trên BTXRD và CTCH vì mọi khoảng tin cậy đều chứa 0 và mọi p-value đều lớn hơn $0{,}05$. Một số lợi thế và bất lợi nhất quán chỉ xuất hiện ở Accuracy, Macro-AUROC hoặc Macro-AUPRC trên CTCH. Quy trình hai giai đoạn và nhánh ảnh độ phân giải cao làm tăng GFLOPs, giảm thông lượng và không chứng minh lợi thế về thời gian huấn luyện hoặc suy luận. Do đó, LoRA mang lại hiệu quả về số tham số cập nhật, nhưng tiết kiệm tham số không đồng nghĩa với tiết kiệm chi phí tính toán toàn hệ thống.
+Trong bốn điểm hậu xử lý được đánh giá trên biểu diễn XBone-Net, khoảng cách Mahalanobis đạt AUROC-OOD $0{,}8042\pm0{,}0938$ trên BTXRD và $0{,}6286\pm0{,}0177$ trên 44 mẫu OOD ngữ nghĩa của CTCH. Kết quả cho thấy biểu diễn có chứa tín hiệu dịch chuyển, nhưng khả năng phân biệt phụ thuộc mạnh vào dạng OOD. FPR@95\%TPR vẫn cao ở cả hai kịch bản; do đó, mô-đun hiện tại chỉ phù hợp làm cảnh báo bổ trợ và chưa đủ để tự động từ chối dự đoán.
 
-\subsection{RQ4: Phân biệt dữ liệu ngoài phân phối}
-
-Khoảng cách Mahalanobis theo tâm lớp đạt AUROC-OOD $0{,}8042\pm0{,}0938$ trên BTXRD và $0{,}6286\pm0{,}0177$ trên 44 mẫu OOD ngữ nghĩa của CTCH, cho thấy biểu diễn có chứa tín hiệu dịch chuyển. Các so sánh giữa không gian biểu diễn chưa có khoảng tin cậy ghép cặp và p-value, nên thứ hạng trung bình không được dùng để khẳng định XBone-Net hoặc phép nối đặc trưng vượt trội. FPR@95\%TPR vẫn cao ở cả hai kịch bản; do đó, mô-đun hiện tại chỉ phù hợp làm cảnh báo bổ trợ và chưa đủ để tự động từ chối dự đoán.
-
-\subsection{RQ5: Vai trò của các nguồn thông tin trong lời giải thích}
+\subsection{RQ4: Vai trò của các nguồn thông tin trong lời giải thích}
 
 Can thiệp trên 669 mẫu kiểm thử CTCH cho thấy ảnh toàn cục tạo mức giảm xác suất trung bình $0{,}3740\pm0{,}0278$ và bệnh sử tạo mức giảm $0{,}2614\pm0{,}0621$, trong khi ảnh cục bộ có ảnh hưởng biên gần 0 với mốc thay thế hiện tại. So với thứ tự ngẫu nhiên, AUC loại bỏ theo tích phân gradient giảm $0{,}0793$ đối với ảnh toàn cục, $0{,}0699$ đối với bệnh sử nhưng chỉ $0{,}0062$ đối với ảnh cục bộ. Do đó, tích phân gradient cung cấp tín hiệu truy vết rõ hơn ở hai nguồn đầu nhưng độ trung thực phụ thuộc vào nguồn thông tin và mốc thay thế. Kết quả chưa chứng minh quan hệ nhân quả, khả năng định vị tổn thương hoặc độ đúng lâm sàng.
 

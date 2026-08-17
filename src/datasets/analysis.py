@@ -1,9 +1,4 @@
-"""Cung cấp thành phần dữ liệu analysis cho XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Dataset ngoại phân phối dùng cho benchmark CTCH và BTXRD."""
 
 from __future__ import annotations
 
@@ -19,7 +14,7 @@ from torch.utils.data import Dataset
 
 from src.utils.analysis import MetadataDataset
 
-from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
+from .preprocessing import prepare_image
 
 
 def _file_issue(path: Path) -> Optional[str]:
@@ -46,12 +41,7 @@ def _file_issue(path: Path) -> Optional[str]:
 
 
 class CTCHOODDataset(Dataset):
-    """Biểu diễn và truy xuất dữ liệu bằng lớp ``CTCHOODDataset``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Đọc cohort semantic-OOD CTCH từ manifest và kiểm tra đủ tệp bắt buộc."""
 
     def __init__(
         self,
@@ -62,8 +52,8 @@ class CTCHOODDataset(Dataset):
         split: str = "test",
         transform=None,
         tokenizer=None,
-        high_res: Optional[dict] = None,
         preprocess: Optional[dict] = None,
+        required_report_types: tuple[str, ...] = ("xray", "clinical"),
         allow_missing: bool = False,
         **_: Any,
     ) -> None:
@@ -85,10 +75,10 @@ class CTCHOODDataset(Dataset):
             Giá trị ``transform`` được sử dụng trong phép xử lý.
         tokenizer : object, optional
             Giá trị ``tokenizer`` được sử dụng trong phép xử lý.
-        high_res : Optional[dict]
-            Giá trị ``high_res`` được sử dụng trong phép xử lý.
         preprocess : Optional[dict]
-            Giá trị ``preprocess`` được sử dụng trong phép xử lý.
+            Chiến lược chuẩn hóa ảnh trước transform của backbone.
+        required_report_types : tuple[str, ...], optional
+            Các loại báo cáo bắt buộc phải tồn tại để giữ mẫu trong tập dữ liệu.
         allow_missing : bool, optional
             Giá trị ``allow_missing`` được sử dụng trong phép xử lý.
         **_ : Any
@@ -110,11 +100,17 @@ class CTCHOODDataset(Dataset):
         self.clinical_report_dir = str(clinical_report_dir)
         self.transform = transform
         self.tokenizer = tokenizer
-        self.high_res_cfg = high_res or {}
         self.preprocess_cfg = preprocess or {}
-        self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
-        self.cache_selection = bool(self.high_res_cfg.get("cache_selection", True))
-        self._selection_cache: dict[str, Any] = {}
+        self.required_report_types = tuple(required_report_types)
+        unknown_report_types = set(self.required_report_types) - {
+            "xray",
+            "clinical",
+        }
+        if unknown_report_types:
+            raise ValueError(
+                "required_report_types only supports 'xray' and 'clinical', got "
+                f"{sorted(unknown_report_types)}."
+            )
 
         manifest = Path(csv_manifest_path)
         if not manifest.is_file():
@@ -132,11 +128,15 @@ class CTCHOODDataset(Dataset):
             absent = []
             required_files = {
                 "image": Path(self.img_dir) / image_id,
-                "xray_report": Path(self.xray_report_dir) / f"{stem}.txt",
-                "clinical_report": (
-                    Path(self.clinical_report_dir) / f"{stem}.txt"
-                ),
             }
+            if "xray" in self.required_report_types:
+                required_files["xray_report"] = (
+                    Path(self.xray_report_dir) / f"{stem}.txt"
+                )
+            if "clinical" in self.required_report_types:
+                required_files["clinical_report"] = (
+                    Path(self.clinical_report_dir) / f"{stem}.txt"
+                )
             for role, path in required_files.items():
                 issue = _file_issue(path)
                 if issue is not None:
@@ -151,6 +151,7 @@ class CTCHOODDataset(Dataset):
             "missing_rows": int(len(missing)),
             "coverage_fraction": float(sum(complete) / max(len(df), 1)),
             "allow_missing": bool(allow_missing),
+            "required_report_types": list(self.required_report_types),
             "missing": missing,
         }
         if missing and not allow_missing:
@@ -191,7 +192,11 @@ class CTCHOODDataset(Dataset):
             Kết quả được tạo bởi bước xử lý của hàm.
         """
         path = Path(directory) / f"{Path(image_id).stem}.txt"
-        text = path.read_text(encoding="utf-8").strip().lower()
+        text = (
+            path.read_text(encoding="utf-8").strip().lower()
+            if path.is_file()
+            else ""
+        )
         text = text or "no clinical information available."
         return self.tokenizer([text]).squeeze(0) if self.tokenizer else text
 
@@ -211,23 +216,11 @@ class CTCHOODDataset(Dataset):
         row = self.df.iloc[index]
         image_id = str(row["image_id"])
         image = Image.open(Path(self.img_dir) / image_id).convert("RGB")
-        if self.use_high_res:
-            selection = self._selection_cache.get(image_id)
-            image_fields, selected = prepare_high_resolution_inputs(
-                image,
-                self.transform,
-                self.high_res_cfg,
-                selection=selection,
-                return_selection=True,
+        image_fields = {
+            "pixel_values": prepare_image(
+                image, self.transform, self.preprocess_cfg
             )
-            if self.cache_selection and selection is None:
-                self._selection_cache[image_id] = selected
-        else:
-            image_fields = {
-                "pixel_values": prepare_global_image(
-                    image, self.transform, self.preprocess_cfg
-                )
-            }
+        }
 
         columns = list(self.df.columns)
         patient_value = row[columns[1]] if len(columns) > 1 else ""

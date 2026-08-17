@@ -318,36 +318,54 @@ class OODDetector:
     def score_knn(
         self,
         test_embeddings: np.ndarray,
-        k: int = 5,
+        k: int = 10,
+        reduction: str = "kth",
+        metric: str = "euclidean",
         exclude_self: bool = False,
     ) -> np.ndarray:
-        """Tính điểm knn cho bước xử lý hiện tại.
+        """Tính điểm kNN OOD theo phương pháp của Sun et al. (ICML 2022 - KNN-OOD).
 
         Parameters
         ----------
         test_embeddings : np.ndarray
-            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
+            Ma trận embedding của các mẫu kiểm thử.
         k : int, optional
-            Giá trị ``k`` được sử dụng trong phép xử lý.
+            Số lân cận thứ k (mặc định k=10).
+        reduction : str, optional
+            Quy tắc xác định điểm số OOD:
+            - "kth" (mặc định theo Sun et al.): Khoảng cách tới lân cận thứ k r_k.
+            - "mean": Khoảng cách trung bình tới k lân cận gần nhất.
+        metric : str, optional
+            Hàm khoảng cách:
+            - "euclidean" (mặc định): Khoảng cách Euclid trên các vector chuẩn hóa L2.
+            - "cosine": 1 - cosine similarity.
         exclude_self : bool, optional
-            Giá trị ``exclude_self`` được sử dụng trong phép xử lý.
+            Loại bỏ phần tử đường chéo khi embedding kiểm thử trùng embedding tham chiếu.
 
         Returns
         -------
         np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
+            Dãy điểm số OOD cho từng mẫu kiểm thử.
 
         Raises
         ------
         RuntimeError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+            Khi bộ dò chưa được huấn luyện bằng fit().
         ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+            Khi dữ liệu hoặc cấu hình đầu vào không hợp lệ.
         """
         if not self._fitted or self.ref_embeddings is None:
             raise RuntimeError("Call fit() before k-NN scoring.")
         test_embeddings = _l2_normalize(test_embeddings)
-        distances = 1.0 - test_embeddings @ self.ref_embeddings.T
+        sim = test_embeddings @ self.ref_embeddings.T
+
+        if metric == "euclidean":
+            # Khoảng cách Euclid trên các vector chuẩn hóa L2: ||u - v|| = sqrt(2 - 2 * cos(u, v))
+            distances = np.sqrt(np.maximum(2.0 * (1.0 - sim), 0.0))
+        elif metric == "cosine":
+            distances = 1.0 - sim
+        else:
+            raise ValueError(f"Unknown metric '{metric}'. Choose 'euclidean' or 'cosine'.")
 
         if exclude_self and distances.shape[0] == distances.shape[1]:
             np.fill_diagonal(distances, np.inf)
@@ -357,8 +375,15 @@ class OODDetector:
         if n_available < 1:
             raise ValueError("No reference neighbor is available for k-NN scoring.")
         k = max(1, min(int(k), n_available))
-        nearest = np.partition(distances, kth=k - 1, axis=1)[:, :k]
-        return nearest.mean(axis=1)
+
+        if reduction == "kth":
+            # Theo Sun et al. (ICML 2022): Khoảng cách tới lân cận thứ k r_k(x)
+            return np.partition(distances, kth=k - 1, axis=1)[:, k - 1]
+        elif reduction == "mean":
+            nearest = np.partition(distances, kth=k - 1, axis=1)[:, :k]
+            return nearest.mean(axis=1)
+        else:
+            raise ValueError(f"Unknown reduction '{reduction}'. Choose 'kth' or 'mean'.")
 
     @staticmethod
     def score_energy(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
@@ -506,7 +531,9 @@ class OODDetector:
         if method == "knn":
             return self.score_knn(
                 test_embeddings,
-                k=kwargs.get("k", 5),
+                k=kwargs.get("k", 10),
+                reduction=kwargs.get("reduction", "kth"),
+                metric=kwargs.get("metric", "euclidean"),
                 exclude_self=kwargs.get("exclude_self", False),
             )
         if method == "entropy":

@@ -141,7 +141,7 @@ RESEARCH_GROUPS = OrderedDict({
     ),
     "rq2_visual_encoding": _registered_group(
         "ctch/proposed/ours_xbone_net",
-        "ctch/ablation_study/architecture/preprocess/xbone_nohighres",
+        "ctch/ablation_study/architecture/preprocess/direct_resize_current",
         "ctch/ablation_study/architecture/preprocess/xbone_letterbox_mlp_classifier",
     ),
     "rq2_training_strategy": _registered_group(
@@ -162,9 +162,8 @@ RESEARCH_GROUPS = OrderedDict({
         "ctch/ablation_study/architecture/classifier/no_class_bias",
     ),
     "rq3_lora_vs_full_ft": _registered_group(
-        "ctch/ablation_study/finetune/xbone_highres_no_ft",
         "ctch/proposed/ours_xbone_net",
-        "ctch/ablation_study/finetune/xbone_highres_full_ft",
+        "ctch/baselines/full_finetuned/fft_biomedclip",
     ),
     "rq4_ood_representation_baselines": _registered_group(
         "ctch/proposed/ours_xbone_net",
@@ -218,9 +217,8 @@ CHECKPOINT_SOURCE_EXPERIMENTS = {
 # Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
 RQ3_EXISTING_RESULT_EXPERIMENTS = {
-    "ctch/ablation_study/finetune/xbone_highres_no_ft",
     "ctch/proposed/ours_xbone_net",
-    "ctch/ablation_study/finetune/xbone_highres_full_ft",
+    "ctch/baselines/full_finetuned/fft_biomedclip",
 }
 
 RQ4_EXISTING_RESULT_EXPERIMENTS = {

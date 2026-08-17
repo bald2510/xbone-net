@@ -17,7 +17,6 @@ import numpy as np
 from PIL import Image
 import hydra
 from omegaconf import DictConfig
-import matplotlib.pyplot as plt
 
 from src.models.builder import (
     build_model,
@@ -27,7 +26,7 @@ from src.models.builder import (
     setup_phase3_modules,
 )
 from src.models.fusion.cross_attention import reduce_attention_to_keys
-from src.datasets.high_resolution import prepare_high_resolution_inputs
+from src.datasets.preprocessing import prepare_image
 from src.utils.ood import OODDetector
 from src.utils.trainer import resolve_pad_token_id
 
@@ -35,158 +34,6 @@ from src.utils.trainer import resolve_pad_token_id
 # ============================================================
 # Thiết lập thành phần dùng chung cho quy trình xử lý của mô-đun.
 # ============================================================
-
-
-def project_visual_attention_to_source(model, visual_attention: torch.Tensor):
-    """Thực hiện bước project visual attention to source trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    model : object
-        Mô hình hoặc thành phần mô hình cần xử lý.
-    visual_attention : torch.Tensor
-        Giá trị ``visual_attention`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    object
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    backbone = getattr(model, "backbone", None)
-    resampler = getattr(backbone, "visual_resampler", None)
-    resampler_attention = getattr(resampler, "last_attention", None)
-    local_boxes = getattr(backbone, "last_local_token_boxes", None)
-    local_mask = getattr(backbone, "last_local_mask", None)
-    if resampler_attention is None or local_boxes is None:
-        raise RuntimeError(
-            "High-resolution spatial attention is unavailable: the backbone did "
-            "not expose resampler attention and local token boxes."
-        )
-
-    visual_attention = visual_attention.to(resampler_attention.device)
-    if visual_attention.ndim != 2 or resampler_attention.ndim != 3:
-        raise ValueError(
-            "Expected visual attention [B,Q] and resampler attention [B,Q,N]."
-        )
-    if visual_attention.shape != resampler_attention.shape[:2]:
-        raise ValueError(
-            "Cross-attention visual keys do not match spatial-resampler queries: "
-            f"{tuple(visual_attention.shape)} vs "
-            f"{tuple(resampler_attention.shape[:2])}."
-        )
-
-    query_distribution = visual_attention / visual_attention.sum(
-        dim=-1, keepdim=True
-    ).clamp_min(1e-8)
-    local_scores = torch.einsum(
-        "bq,bqn->bn", query_distribution, resampler_attention
-    )
-    if local_mask is not None:
-        valid = local_mask.to(device=local_scores.device, dtype=torch.bool)
-        local_scores = local_scores.masked_fill(~valid, 0.0)
-    return local_boxes, local_scores
-
-
-def rasterize_spatial_attention(
-    boxes: np.ndarray,
-    scores: np.ndarray,
-    image_size: tuple[int, int],
-    max_side: int = 840,
-) -> np.ndarray:
-    """Thực hiện bước rasterize spatial attention trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    boxes : np.ndarray
-        Giá trị ``boxes`` được sử dụng trong phép xử lý.
-    scores : np.ndarray
-        Giá trị ``scores`` được sử dụng trong phép xử lý.
-    image_size : tuple[int, int]
-        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
-    max_side : int, optional
-        Giá trị ``max_side`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-    width, height = image_size
-    scale = min(1.0, max_side / max(width, height))
-    out_width = max(1, round(width * scale))
-    out_height = max(1, round(height * scale))
-    values = np.zeros((out_height, out_width), dtype=np.float32)
-    counts = np.zeros_like(values)
-    for box, score in zip(boxes, scores):
-        x1, y1 = np.floor(box[:2] * [out_width, out_height]).astype(int)
-        x2, y2 = np.ceil(box[2:] * [out_width, out_height]).astype(int)
-        x1, y1 = np.clip([x1, y1], 0, [out_width - 1, out_height - 1])
-        x2, y2 = np.clip(
-            [x2, y2], [x1 + 1, y1 + 1], [out_width, out_height]
-        )
-        values[y1:y2, x1:x2] += float(score)
-        counts[y1:y2, x1:x2] += 1.0
-    values /= np.maximum(counts, 1.0)
-    values -= values.min()
-    return values / (values.max() + 1e-8)
-
-
-def render_high_resolution_attention(
-    raw_img: Image.Image,
-    local_boxes: torch.Tensor,
-    local_scores: torch.Tensor,
-    output_path: str = "results/attention_map.png",
-) -> None:
-    """Kết xuất high resolution attention cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    raw_img : Image.Image
-        Ảnh hoặc biểu diễn ảnh đầu vào.
-    local_boxes : torch.Tensor
-        Giá trị ``local_boxes`` được sử dụng trong phép xử lý.
-    local_scores : torch.Tensor
-        Giá trị ``local_scores`` được sử dụng trong phép xử lý.
-    output_path : str, optional
-        Đường dẫn tài nguyên được sử dụng.
-    """
-    boxes = local_boxes[0].detach().float().cpu().numpy()
-    scores = local_scores[0].detach().float().cpu().numpy()
-    spatial_map = rasterize_spatial_attention(boxes, scores, raw_img.size)
-
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    axes[0].imshow(raw_img)
-    axes[0].set_title("Original X-ray", fontsize=11)
-    axes[0].axis("off")
-
-    axes[1].imshow(raw_img)
-    axes[1].imshow(
-        spatial_map,
-        cmap="jet",
-        alpha=0.5,
-        extent=(0, raw_img.width, raw_img.height, 0),
-        interpolation="bilinear",
-    )
-    axes[1].set_title("Text-to-image high-resolution attention", fontsize=11)
-    axes[1].axis("off")
-
-    plt.suptitle(
-        "Cross-attention projected through the spatial resampler",
-        fontsize=13,
-        fontweight="bold",
-    )
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=200, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved high-resolution attention map to: {output_path}")
 
 
 # ============================================================
@@ -601,31 +448,12 @@ def main(cfg: DictConfig) -> None:
         return
 
     image = Image.open(args.image).convert("RGB")
-    preprocess = model.backbone.preprocess
-
-    # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
-    high_res_cfg = cfg.dataset.get("params", {}).get("high_res", {})
-    use_high_res = high_res_cfg.get("enabled", False)
-
-    tile_values = None
-    tile_mask = None
-    tile_boxes = None
-    if use_high_res:
-        high_res_fields = prepare_high_resolution_inputs(
-            image,
-            preprocess,
-            high_res_cfg,
-        )
-        image_tensor = high_res_fields["pixel_values"].unsqueeze(0).to(device)
-        tile_values = high_res_fields["tile_values"].unsqueeze(0).to(device)
-        tile_count = tile_values.shape[1]
-        tile_mask = torch.ones((1, tile_count), dtype=torch.long, device=device)
-        tile_boxes = high_res_fields["tile_boxes"].unsqueeze(0).to(device)
-        print(
-            f"[High-Res] Created {tile_count} sparse focal tiles for inference."
-        )
-    else:
-        image_tensor = preprocess(image).unsqueeze(0).to(device)
+    preprocess_cfg = cfg.dataset.get("params", {}).get("preprocess", {})
+    image_tensor = prepare_image(
+        image,
+        model.backbone.preprocess,
+        preprocess_cfg,
+    ).unsqueeze(0).to(device)
 
     backbone_type = cfg.model.get("backbone_type", "biomedclip")
     phase2_cfg = cfg.get("params", {}).get("phase2", {}) or {}
@@ -662,9 +490,6 @@ def main(cfg: DictConfig) -> None:
                 images=image_tensor,
                 input_ids=text_tokens,
                 attention_mask=text_attention_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
             )
             logits = drl_output["primary_logits"]
             fused_feats = drl_output["label_features"]
@@ -674,9 +499,6 @@ def main(cfg: DictConfig) -> None:
                 images=image_tensor,
                 input_ids=text_tokens,
                 attention_mask=text_attention_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
                 return_features=True,
             )
         test_embed = F.normalize(fused_feats, dim=-1).cpu().numpy()
@@ -692,9 +514,6 @@ def main(cfg: DictConfig) -> None:
                 image_tensor,
                 text_tokens,
                 attention_mask=text_attention_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
             )
             txt_mask = None
             if text_attention_mask is not None and txt_feats.ndim == 3 and txt_feats.size(1) > 1:
@@ -739,22 +558,6 @@ def main(cfg: DictConfig) -> None:
             if txt_to_img is not None
             else None
         )
-
-        if image_attention is not None and use_high_res:
-            local_boxes, local_scores = project_visual_attention_to_source(
-                model, image_attention.unsqueeze(0)
-            )
-            render_high_resolution_attention(
-                image,
-                local_boxes,
-                local_scores,
-                output_path="results/attention_map.png",
-            )
-        elif use_high_res:
-            print(
-                "[Attention] No text-to-image branch is active; skipping the "
-                "high-resolution spatial map."
-            )
 
         mutual_affinity = None
         if img_to_txt is not None and txt_to_img is not None:

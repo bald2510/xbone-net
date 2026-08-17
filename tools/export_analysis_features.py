@@ -3,7 +3,7 @@
 Hợp nhất toàn bộ quy trình trích xuất đặc trưng cho mọi mô hình và mọi kịch bản:
 - Kịch bản ID: ctch_train, ctch_val, ctch_test
 - Kịch bản OOD: ctch_ood, btxrd_test, report_mismatch_cross_class, report_mismatch_same_class
-- Hỗ trợ: XBone-Net (High-res 5-views), Ablation models, Full fine-tuned, PEFT LoRA, Zero-shot CLIP/BiomedCLIP.
+- Hỗ trợ: XBone-Net letterbox, các ablation, full fine-tuning, PEFT LoRA và zero-shot CLIP/BiomedCLIP.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -36,6 +35,7 @@ from src.datasets.btxrd import BTXRD_CLASS_NAMES, BTXRDDataset
 from src.datasets.ctch import CTCHDataset
 from src.utils.analysis import (
     ANALYSIS_METADATA_KEYS,
+    AnalysisDataCollator,
     MetadataDataset,
     SOURCE_EXPERIMENT,
     SOURCE_SEEDS,
@@ -177,10 +177,12 @@ def build_scenario_dataset(
         return MetadataDataset(_ctch_dataset(loaded, split), scenario), {}
 
     if scenario == "ctch_ood":
-        high_res = dict(_plain(getattr(loaded.cfg.dataset.params, "high_res", {})))
+        params = loaded.cfg.dataset.params
+        preprocess = dict(_plain(getattr(params, "preprocess", {})))
         dataset = CTCHOODDataset(
-            img_dir=str(ROOT / "data" / "CTCH" / "images"),
-            clinical_report_dir=str(ROOT / "data" / "CTCH" / "reports" / "clinical"),
+            img_dir=str(params.img_dir),
+            xray_report_dir=str(params.xray_report_dir),
+            clinical_report_dir=str(params.clinical_report_dir),
             csv_manifest_path=str(ROOT / "data" / "CTCH" / "ctch-ood.csv"),
             transform=loaded.model.backbone.preprocess,
             tokenizer=getattr(
@@ -188,13 +190,18 @@ def build_scenario_dataset(
                 "tokenizer_obj",
                 getattr(loaded.model.backbone, "tokenizer", None),
             ),
-            high_res=high_res,
+            preprocess=preprocess,
+            # The OOD pipeline fuses each image with its clinical report. X-ray
+            # reports are not part of the current 26-case semantic-OOD cohort.
+            required_report_types=("clinical",),
             allow_missing=allow_incomplete_ood,
         )
         return dataset, {"coverage": getattr(dataset, "coverage", {})}
 
     if scenario == "btxrd_test":
-        high_res = dict(_plain(getattr(loaded.cfg.dataset.params, "high_res", {})))
+        preprocess = dict(
+            _plain(getattr(loaded.cfg.dataset.params, "preprocess", {}))
+        )
         dataset = BTXRDDataset(
             img_dir=str(ROOT / "data" / "BTXRD" / "images"),
             report_dir=str(ROOT / "data" / "BTXRD" / "reports"),
@@ -210,7 +217,7 @@ def build_scenario_dataset(
                 "tokenizer_obj",
                 getattr(loaded.model.backbone, "tokenizer", None),
             ),
-            high_res=high_res,
+            preprocess=preprocess,
         )
         coverage = _btxrd_coverage(dataset)
         return MetadataDataset(dataset, scenario), {
@@ -268,9 +275,6 @@ def collect_fused_feature_batches(
     with torch.no_grad():
         for batch in loader:
             images = _to_device(batch["pixel_values"], device)
-            tile_values = _to_device(batch.get("tile_values"), device)
-            tile_mask = _to_device(batch.get("tile_mask"), device)
-            tile_boxes = _to_device(batch.get("tile_boxes"), device)
             input_ids = _to_device(batch.get(f"{prefix}_input_ids", batch.get("input_ids")), device)
             attention_mask = _to_device(batch.get(f"{prefix}_attention_mask", batch.get("attention_mask")), device)
 
@@ -278,18 +282,15 @@ def collect_fused_feature_batches(
                 images,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
             )
-            image_features, text_features, full_image_padding, image_local_padding, text_local_padding = encoded
+            image_features, text_features, full_image_padding, image_patch_padding, text_token_padding = encoded
 
             fused = model._fuse_modalities(
                 image_features,
                 text_features,
                 full_image_padding,
-                image_local_padding,
-                text_local_padding,
+                image_patch_padding,
+                text_token_padding,
             )
             logits = model.head(fused)
             outputs = {
@@ -450,7 +451,9 @@ def export_features_for_experiment(
     dict[str, dict[str, np.ndarray]]
         Từ điển chứa dữ liệu đặc trưng theo từng kịch bản.
     """
-    save_dir = ROOT / "results" / experiment / f"seed_{seed}" / "analysis_features"
+    save_dir = (
+        ROOT / "results" / experiment / f"seed_{seed}" / "analysis" / "features"
+    )
     save_dir.mkdir(parents=True, exist_ok=True)
 
     loaded = None
@@ -460,10 +463,14 @@ def export_features_for_experiment(
         archive_path = save_dir / f"{sc}.npz"
         if not force_recompute and archive_path.is_file():
             try:
-                with np.load(archive_path, allow_pickle=False) as npz:
-                    feature_dict[sc] = {k: npz[k] for k in npz.files if k != "provenance_json"}
-                print(f"  [Đã có sẵn] {sc}.npz ({experiment}, seed={seed})")
-                continue
+                arrays, provenance = load_feature_archive(
+                    archive_path,
+                    expected_source_experiment=experiment,
+                )
+                if int(provenance.get("seed", -1)) == int(seed):
+                    feature_dict[sc] = arrays
+                    print(f"  [Đã có sẵn] {sc}.npz ({experiment}, seed={seed})")
+                    continue
             except Exception:
                 pass
 
@@ -471,12 +478,15 @@ def export_features_for_experiment(
             loaded = load_evaluated_classification_model(experiment, seed, device=device)
 
         print(f"  [Trích xuất] {sc} ({experiment}, seed={seed})...")
-        dataset, meta = build_scenario_dataset(sc, loaded, allow_incomplete_ood=True)
+        dataset, meta = build_scenario_dataset(sc, loaded, allow_incomplete_ood=False)
         loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
             shuffle=False,
             num_workers=num_workers,
+            collate_fn=AnalysisDataCollator(
+                loaded.model.backbone.tokenizer_obj
+            ),
         )
 
         if "zeroshot" in experiment.lower():
@@ -488,6 +498,8 @@ def export_features_for_experiment(
             archive_path,
             arrays,
             provenance={
+                **loaded.provenance,
+                "source_experiment": experiment,
                 "experiment": experiment,
                 "seed": seed,
                 "scenario": sc,

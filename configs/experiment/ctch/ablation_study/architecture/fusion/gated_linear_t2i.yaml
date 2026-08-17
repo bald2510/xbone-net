@@ -1,0 +1,44 @@
+# @package _global_
+# Gated fusion classification refinement for the canonical XBone-Letterbox
+# model. Reuse the trained Phase-1 adapters and retrain only Phase 2 with a
+# text-to-image residual correction and a learned linear classifier.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/fusion/gated_linear_t2i
+
+params:
+  run_phase1: false
+
+  phase1:
+    enabled: false
+    checkpoint_path: checkpoints/ctch/proposed/ours_xbone_net/seed_${seed}/best_phase1.pth
+
+  phase2:
+    enabled: true
+    init_from_phase1_checkpoint: true
+    init_from_phase1_merged: false
+
+    fusion_type: gated_cross_attention
+    fusion_params:
+      attention_direction: text_to_image
+      embed_dim: 512
+      num_heads: 8
+      dropout: 0.1
+      gate_hidden_dim: 128
+      # sigmoid(-2) ~= 0.119: allow the cross-attention branch to receive a
+      # useful signal early while retaining the concat residual as an anchor.
+      gate_bias_init: -2.0
+
+    classifier_type: linear
+    loss_type: ce
+    early_stopping_patience: 5
+
+    loss:
+      label_smoothing: 0.1
+      use_class_weights: true
+      weight_type: effective_num
+      effective_num_beta: 0.999
+      max_class_weight: 5.0

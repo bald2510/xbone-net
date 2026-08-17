@@ -1,0 +1,14 @@
+# @package _global_
+# Current-architecture ablation: keep LoRA, two-phase training,
+# bidirectional cross-attention and the linear head, but remove letterboxing.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/preprocess/direct_resize_current
+
+dataset:
+  params:
+    preprocess:
+      strategy: direct_resize

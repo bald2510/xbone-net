@@ -1,9 +1,4 @@
-"""Cung cấp thành phần dữ liệu ctch cho XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Dataset CTCH với ảnh letterbox và hai loại báo cáo lâm sàng."""
 
 import os
 import torch
@@ -11,7 +6,7 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
-from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
+from .preprocessing import prepare_image
 from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
@@ -20,12 +15,7 @@ from .sampling import cross_class_donor_indices, deranged_donor_indices
 # ============================================================
 
 class CTCHDataset(Dataset):
-    """Biểu diễn và truy xuất dữ liệu bằng lớp ``CTCHDataset``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Đọc cohort CTCH đã khóa theo split và trả ảnh, nhãn, hai báo cáo."""
 
     def __init__(
         self,
@@ -48,7 +38,6 @@ class CTCHDataset(Dataset):
         clinical_report_dir: str = None,
         # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         report_dir: str = None,
-        high_res: dict = None,
         preprocess: dict = None,
         **kwargs,
     ):
@@ -90,10 +79,8 @@ class CTCHDataset(Dataset):
             Đường dẫn tài nguyên được sử dụng.
         report_dir : str, optional
             Đường dẫn tài nguyên được sử dụng.
-        high_res : dict, optional
-            Giá trị ``high_res`` được sử dụng trong phép xử lý.
         preprocess : dict, optional
-            Giá trị ``preprocess`` được sử dụng trong phép xử lý.
+            Chiến lược chuẩn hóa ảnh trước transform của backbone.
         **kwargs : dict
             Các đối số từ khóa bổ sung.
 
@@ -108,12 +95,6 @@ class CTCHDataset(Dataset):
         self.transform = transform
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
-        self.high_res_cfg = high_res or {}
-        self.use_high_res = bool(self.high_res_cfg.get("enabled", False))
-        self.cache_high_res_selection = bool(
-            self.high_res_cfg.get("cache_selection", True)
-        )
-        self._high_res_selection_cache = {}
         self.preprocess_cfg = preprocess or {}
         self.text_only = bool(kwargs.get("text_only", False))
         self.shuffle_reports_all_splits = bool(kwargs.get("shuffle_reports", False))
@@ -251,8 +232,9 @@ class CTCHDataset(Dataset):
         has_dual = bool(self.xray_report_dir and self.clinical_report_dir)
         print(
             f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
-            f"Task: {task_type}, Dual reports: {has_dual}, Sparse high-res views: "
-            f"{self.use_high_res}, Text-only: {self.text_only}, Reports shuffled: "
+            f"Task: {task_type}, Dual reports: {has_dual}, "
+            f"Preprocess: {self.preprocess_cfg.get('strategy', 'letterbox')}, "
+            f"Text-only: {self.text_only}, Reports shuffled: "
             f"{self.shuffle_reports}."
         )
 
@@ -335,25 +317,7 @@ class CTCHDataset(Dataset):
             except FileNotFoundError:
                 image = Image.new("RGB", (224, 224), color="black")
 
-        if self.use_high_res:
-            cache_key = "__text_only__" if self.text_only else image_id
-            cached_selection = self._high_res_selection_cache.get(cache_key)
-            high_res_fields, selection = prepare_high_resolution_inputs(
-                image,
-                self.transform,
-                self.high_res_cfg,
-                selection=cached_selection,
-                return_selection=True,
-            )
-            if self.cache_high_res_selection and cached_selection is None:
-                self._high_res_selection_cache[cache_key] = selection
-        else:
-            high_res_fields = {}
-            image = prepare_global_image(
-                image,
-                self.transform,
-                self.preprocess_cfg,
-            )
+        image = prepare_image(image, self.transform, self.preprocess_cfg)
 
         # Chuẩn hóa chuỗi token và mặt nạ đệm cho batch.
         report_image_id = image_id
@@ -386,11 +350,4 @@ class CTCHDataset(Dataset):
                 label_vals.append(0.0 if pd.isna(val) else float(val))
             labels = torch.tensor(label_vals, dtype=torch.float32)
 
-        if self.use_high_res:
-            return {
-                **high_res_fields,
-                "xray_input_ids": xray_ids,
-                "clinical_input_ids": clinical_ids,
-                "labels": labels,
-            }
         return image, xray_ids, clinical_ids, labels

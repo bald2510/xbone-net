@@ -25,7 +25,7 @@ Trong thực hành lâm sàng với các ca bệnh có chỉ định chụp X-qu
 
 \begin{figure}[H]
 \centering
-    \includegraphics[width=1\linewidth]{images/procedure.png}
+    \includegraphics[width=1\linewidth]{images/chapter1/procedure.png}
     \caption{Sơ đồ quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam)}
     \label{fig:procedure}
 \end{figure}
@@ -34,7 +34,7 @@ Hệ thống được đề xuất trong khóa luận được thiết kế nh�
 
 \begin{figure}[H]
 \centering
-    \includegraphics[width=1\linewidth]{images/procedureXbone.png}
+    \includegraphics[width=1\linewidth]{images/chapter1/procedureXbone.png}
     \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam)}
     \label{fig:procedureXbone}
 \end{figure}
@@ -134,15 +134,13 @@ Mặc dù các mô hình học sâu đa phương thức đã đạt được nhi
 
 Các mục tiêu cụ thể của đề tài bao gồm:
 \begin{enumerate}
-\item Đánh giá vai trò của bệnh sử lâm sàng khi kết hợp với ảnh X-quang so với các thiết lập chỉ sử dụng một phương thức.
+\item Xây dựng XBone-Net bằng cách thích nghi BioMedCLIP với LoRA, quy trình huấn luyện hai giai đoạn và mô-đun dung hợp ảnh--văn bản cho bài toán phân lớp X-quang xương.
 
-\item Nghiên cứu phương pháp khai thác ảnh X-quang độ phân giải cao và các chiến lược dung hợp ảnh-văn bản nhằm bảo toàn thông tin cục bộ và hình thành biểu diễn đa phương thức.
+\item Đánh giá hiệu năng phân lớp của XBone-Net so với các mô hình đối chứng trong thiết lập ít mẫu và toàn bộ dữ liệu, đồng thời định lượng sự đánh đổi giữa số tham số cập nhật và chi phí suy luận.
 
-\item Khảo sát các phương pháp tinh chỉnh hiệu quả tham số nhằm giảm số lượng tham số cần cập nhật trong khi duy trì hiệu năng cạnh tranh so với tinh chỉnh toàn bộ.
+\item Thực hiện các thí nghiệm loại bỏ và thay thế thành phần để xác định ảnh hưởng của quy trình huấn luyện, cơ chế dung hợp, cách mã hóa ảnh và đầu phân lớp đến các nhóm độ đo khác nhau.
 
-\item Nghiên cứu cơ chế cảnh báo dữ liệu ngoài phân phối và phương pháp tích phân gradient kết hợp can thiệp nguồn thông tin để khảo sát độ tin cậy và nguồn phụ thuộc của dự đoán.
-
-\item Xây dựng và đánh giá XBone-Net trên các bộ dữ liệu X-quang xương mất cân bằng, đồng thời so sánh với các mô hình đơn phương thức và mô hình ngôn ngữ trực quan y khoa trong các thiết lập không mẫu, mẫu hạn chế và toàn bộ mẫu.
+\item Đánh giá hai đầu ra hỗ trợ của hệ thống gồm cảnh báo dữ liệu ngoài phân phối bằng các điểm bất thường hậu xử lý và truy vết nguồn phụ thuộc của dự đoán bằng tích phân gradient kết hợp can thiệp đầu vào.
 \end{enumerate}
 
 \section{Đối tượng nghiên cứu}
@@ -171,9 +169,6 @@ Các mục tiêu cụ thể của đề tài bao gồm:
   \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
   \item \textbf{Dữ liệu văn bản:} Bộ dữ liệu CTCH sử dụng bệnh sử có sẵn trong bệnh án, gồm lý do vào viện, diễn tiến bệnh và tiền sử. Bộ dữ liệu BTXRD không có bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Vì mẫu câu tổng hợp có phụ thuộc vào các cờ nhóm bệnh, kết quả BTXRD chỉ phản ánh thiết lập văn bản tổng hợp và không được xem là bằng chứng tương đương với bệnh sử lâm sàng tự nhiên.
   \item \textbf{Vai trò hệ thống:} Hệ thống được thiết kế làm công cụ hỗ trợ phân tích ảnh, không thay thế vai trò của bác sĩ trong quá trình ra quyết định.
-% ===== BẮT ĐẦU BỔ SUNG GIỚI HẠN HIỆN THỰC HÓA =====
-  \item \textbf{Mức độ hiện thực hóa định hướng thiết kế:} Khóa luận mới hiện thực hóa một phần các yêu cầu về cấu trúc đầu vào--đầu ra, khả năng kiểm tra, truy vết nguồn phụ thuộc và cảnh báo bất định. Hệ thống chưa xây dựng nhật ký kiểm toán hoàn chỉnh, chưa ghi nhận quyết định chấp nhận hoặc ghi đè của bác sĩ và chưa được đánh giá trong quy trình lâm sàng thực tế.
-% ===== KẾT THÚC BỔ SUNG GIỚI HẠN HIỆN THỰC HÓA =====
   \item \textbf{Giới hạn:} Đề tài không tập trung vào các bài toán phát hiện đối tượng, phân đoạn ảnh hay sinh báo cáo y khoa tự động.
 \end{itemize}
 
@@ -182,15 +177,13 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Để đạt được các mục tiêu đã đề ra, nghiên cứu tập trung trả lời các câu hỏi sau:
 
 \begin{itemize}
-\item \textbf{Câu hỏi nghiên cứu 1:} Việc kết hợp ảnh X-quang với bệnh sử lâm sàng đi kèm ảnh hưởng như thế nào đến hiệu năng phân lớp so với các mô hình chỉ sử dụng hình ảnh? Ảnh hưởng này khác nhau ra sao giữa hai kịch bản bệnh sử thực và văn bản tổng hợp từ siêu dữ liệu?
+\item \textbf{Câu hỏi nghiên cứu 1:} Trong các thiết lập ít mẫu và toàn bộ dữ liệu, XBone-Net đạt mức hiệu năng phân lớp nào so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận?
 
-\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần của XBone-Net, bao gồm nhánh xử lý ảnh độ phân giải cao, quá trình huấn luyện hai pha, cơ chế dung hợp hai chiều và đầu phân lớp dựa trên tâm lớp, đóng góp như thế nào vào hiệu năng phân lớp, khả năng xếp hạng và hiệu chuẩn của mô hình?
+\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện, cách mã hóa và tiền xử lý ảnh, cơ chế dung hợp cùng đầu phân lớp, ảnh hưởng như thế nào đến quyết định lớp, chất lượng xếp hạng và hiệu chuẩn?
 
-\item \textbf{Câu hỏi nghiên cứu 3:} XBone-Net và chiến lược tinh chỉnh LoRA đạt sự đánh đổi như thế nào giữa hiệu năng phân lớp, số lượng dữ liệu gán nhãn, số tham số cần cập nhật và chi phí tính toán trong các thiết lập ít mẫu và toàn bộ dữ liệu?
+\item \textbf{Câu hỏi nghiên cứu 3:} Các điểm bất thường hậu xử lý trên không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước ở mức nào, và giới hạn của cảnh báo này khác nhau ra sao giữa dịch chuyển gần miền và dịch chuyển khác bộ dữ liệu?
 
-\item \textbf{Câu hỏi nghiên cứu 4:} Không gian biểu diễn của XBone-Net có hỗ trợ phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước hay không?
-
-\item \textbf{Câu hỏi nghiên cứu 5:} Phương pháp tích phân gradient phản ánh vai trò của ảnh toàn cục, các vùng ảnh cục bộ và thông tin văn bản đối với quyết định phân lớp của XBone-Net như thế nào?
+\item \textbf{Câu hỏi nghiên cứu 4:} Tích phân gradient kết hợp với can thiệp đầu vào phản ánh mức phụ thuộc của dự đoán XBone-Net vào thông tin hình ảnh và văn bản như thế nào, và thứ tự quy đóng có làm thay đổi đầu ra rõ hơn đối chứng ngẫu nhiên hay không?
 
 \end{itemize}
 
@@ -199,19 +192,13 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Các đóng góp chính của đề tài bao gồm:
 
 \begin{enumerate}
-\item \textbf{Quy trình khai thác dữ liệu đa phương thức:} Sử dụng ảnh X-quang kết hợp với bệnh sử thực trên CTCH và văn bản lâm sàng tổng hợp từ siêu dữ liệu trên BTXRD.
+\item \textbf{Phương pháp XBone-Net:} Xây dựng quy trình thích nghi BioMedCLIP cho phân lớp X-quang xương bằng LoRA, huấn luyện hai giai đoạn và mô-đun dung hợp ảnh--văn bản. CTCH sử dụng bệnh sử có sẵn trong bệnh án, còn BTXRD sử dụng văn bản tổng hợp từ siêu dữ liệu; hai nguồn được diễn giải riêng do không có mức độ xác thực lâm sàng tương đương.
 
-\item \textbf{Kiến trúc XBone-Net cho ảnh độ phân giải cao:} Xây dựng nhánh thị giác khai thác đồng thời ảnh toàn cục và các vùng ảnh cục bộ, sử dụng thông tin tọa độ để tổng hợp các đơn vị biểu diễn trước khi dung hợp với biểu diễn văn bản bằng cơ chế chú ý chéo hai chiều.
+\item \textbf{Bằng chứng thực nghiệm về hiệu năng và đánh đổi:} Đánh giá XBone-Net với các mô hình đối chứng trong thiết lập ít mẫu và toàn bộ dữ liệu; thực hiện loại bỏ thành phần; đồng thời đo số tham số cập nhật, số phép toán, thông lượng, độ trễ và bộ nhớ. Kết quả được dùng để xác định hiệu năng cạnh tranh và các đánh đổi của phương pháp, không nhằm chứng minh rằng việc có thêm phương thức đầu vào tự thân luôn tốt hơn.
 
-\item \textbf{Quy trình huấn luyện hai giai đoạn với LoRA:} Giai đoạn đầu căn chỉnh biểu diễn ảnh-văn bản, sau đó tối ưu các bộ điều hợp của LoRA và mô-đun dung hợp cho tác vụ phân lớp ở giai đoạn sau. Quy trình này giúp thích nghi BiomedCLIP với ảnh X-quang xương trong khi chỉ cập nhật một phần tham số.
+\item \textbf{Phân tích cảnh báo dữ liệu ngoài phân phối:} Xây dựng quy trình hậu xử lý và đánh giá các điểm bất thường dựa trên khoảng cách đến tâm lớp, Mahalanobis, kNN và entropy dự đoán trong hai kịch bản dịch chuyển đã xác định. Kết quả được sử dụng để khảo sát khả năng và giới hạn của cảnh báo bổ trợ, không được xem là cơ chế bảo đảm phát hiện hoặc từ chối tự động.
 
-\item \textbf{Bộ phân lớp dựa trên tâm lớp:} Xây dựng bộ phân lớp sử dụng độ tương đồng cosine với các tâm lớp được ước lượng từ tập huấn luyện, kết hợp với hàm mất mát entropy chéo có trọng số nhằm hạn chế ảnh hưởng của mất cân bằng lớp.
-
-\item \textbf{Khung phát hiện dữ liệu ngoài phân phối:} Đánh giá các điểm ngoài phân phối dựa trên khoảng cách đến tâm lớp, Mahalanobis, kNN và entropy dự đoán đối với các mẫu cùng bộ dữ liệu và các mẫu khác bộ dữ liệu.
-
-\clearpage
-
-\item \textbf{Cơ chế giải thích ở cấp độ trường hợp:} Áp dụng tích phân gradient và can thiệp thông tin đầu vào để phân tích đóng góp của ảnh toàn cục, ảnh cục bộ và văn bản đối với các dự đoán của mô hình. Phân tích này hỗ trợ truy vết quyết định, không thay thế đánh giá định vị tổn thương hoặc đánh giá lâm sàng.
+\item \textbf{Phân tích nguồn phụ thuộc của dự đoán:} Kết hợp tích phân gradient, can thiệp đầu vào và đối chứng thứ tự ngẫu nhiên để khảo sát mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản ở cấp độ tập dữ liệu và trường hợp. Phân tích này hỗ trợ truy vết đầu ra nhưng không xác lập đóng góp nhân quả, khả năng định vị tổn thương hoặc độ đúng lâm sàng.
 
 \end{enumerate}
 

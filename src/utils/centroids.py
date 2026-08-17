@@ -130,16 +130,10 @@ def compute_empirical_centroids(
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
 
-            optional_tensors = {}
-            for name in ("tile_values", "tile_mask", "tile_boxes"):
-                value: Optional[torch.Tensor] = batch.get(name)
-                optional_tensors[name] = value.to(device) if value is not None else None
-
             features = model.encode_fused(
                 images,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                **optional_tensors,
             )
             if tuple(features.shape) != (labels.numel(), feature_dim):
                 raise ValueError(

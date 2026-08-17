@@ -3942,8 +3942,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=(
             ROOT
-            / "docs/report/generated/chapter4_draft/"
-            "table_ablation_leave_one_out_classification.tex"
+            / "docs"
+            / "report"
+            / "tables"
+            / "chapter4"
+            / "table_ablation_leave_one_out_classification.tex"
         ),
     )
     leave_one_out.add_argument("--precision", type=int, default=4)
@@ -4503,8 +4506,8 @@ ABLATION_VARIANTS = (
     },
     {
         "group": "Đầu vào",
-        "path": "architecture/preprocess/xbone_nohighres",
-        "label": "Không dùng nhánh ảnh độ phân giải cao",
+        "path": "architecture/preprocess/direct_resize_current",
+        "label": "Resize trực tiếp, không letterbox",
     },
     {
         "group": "Đầu vào",
@@ -4520,16 +4523,6 @@ ABLATION_VARIANTS = (
         "group": "Đầu vào",
         "path": "architecture/preprocess/xbone_reduced_local_tokens",
         "label": "Giảm số token ảnh cục bộ",
-    },
-    {
-        "group": "Tinh chỉnh",
-        "path": "finetune/xbone_highres_no_ft",
-        "label": "Đóng băng backbone",
-    },
-    {
-        "group": "Tinh chỉnh",
-        "path": "finetune/xbone_highres_full_ft",
-        "label": "Tinh chỉnh toàn bộ backbone",
     },
     {
         "group": "Huấn luyện",
@@ -4601,9 +4594,9 @@ LEAVE_ONE_OUT_CONFIGS = (
     },
     {
         "experiment": (
-            "ctch/ablation_study/architecture/preprocess/xbone_nohighres"
+            "ctch/ablation_study/architecture/preprocess/direct_resize_current"
         ),
-        "label": "Không dùng ảnh độ phân giải cao",
+        "label": "Không dùng letterbox",
         "components": (False, None, True, True, True),
     },
     {
@@ -6182,7 +6175,7 @@ def plot_ablation_forest(
         )
     axis.axvline(0.0, color="#222222", linestyle="--", linewidth=1.1)
     variant_names = {
-        "Không high-res": "Không dùng ảnh độ phân giải cao",
+        "Direct resize": "Không dùng letterbox",
         "Mean pooling": "Gộp trung bình",
         "Concat": "Nối đặc trưng",
         "Linear head": "Đầu tuyến tính",
@@ -6780,7 +6773,7 @@ def generate_ablation_report(
 REPRESENTATION_NAMES = {
     "fused_embeddings": "Dung hợp (fused)",
     "visual_global_embeddings": "Ảnh toàn cục",
-    "visual_local_summary_embeddings": "Tóm tắt ảnh cục bộ",
+    "visual_patch_summary_embeddings": "Tóm tắt patch ảnh",
     "text_global_embeddings": "Văn bản toàn cục",
     "image_from_text_embeddings": "Image-from-text",
     "text_from_image_embeddings": "Text-from-image",

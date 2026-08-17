@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = ROOT / "results"
-DEFAULT_OUTPUT_DIR = ROOT / "docs" / "report" / "generated" / "chapter4_results"
+DEFAULT_OUTPUT_DIR = ROOT / "docs" / "report" / "images" / "appendix"
 SEEDS = (42, 123, 456)
 METRICS = (
     "accuracy",

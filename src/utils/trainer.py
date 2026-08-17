@@ -321,81 +321,6 @@ class BioMedCLIPDataCollator:
             )
         return self._pad_ids_with_mask(ids_list)
 
-    def _pad_tiles_with_mask(self, tiles_list):
-        """Thực hiện bước pad tiles with mask trong quy trình hiện tại.
-
-        Parameters
-        ----------
-        tiles_list : object
-            Giá trị ``tiles_list`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        import torch
-        max_tiles = max(tiles.shape[0] for tiles in tiles_list)
-        
-        padded_tiles = []
-        tile_masks = []
-        
-        for tiles in tiles_list:
-            n = tiles.shape[0]
-            pad_n = max_tiles - n
-            
-            mask = torch.cat([
-                torch.ones(n, dtype=torch.long),
-                torch.zeros(pad_n, dtype=torch.long),
-            ])
-            
-            if pad_n > 0:
-                pad = torch.zeros((pad_n, *tiles.shape[1:]), dtype=tiles.dtype, device=tiles.device)
-                tiles = torch.cat([tiles, pad], dim=0)
-                
-            padded_tiles.append(tiles)
-            tile_masks.append(mask)
-            
-        return torch.stack(padded_tiles), torch.stack(tile_masks)
-
-    def _pad_tile_metadata(self, features: list, max_tiles: int):
-        """Thực hiện bước pad tile metadata trong quy trình hiện tại.
-
-        Parameters
-        ----------
-        features : list
-            Giá trị ``features`` được sử dụng trong phép xử lý.
-        max_tiles : int
-            Giá trị ``max_tiles`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        padded_boxes = []
-        for feature in features:
-            tile_count = feature["tile_values"].shape[0]
-            boxes = feature.get("tile_boxes")
-            if boxes is None:
-                boxes = torch.zeros((tile_count, 4), dtype=torch.float32)
-            if boxes.shape != (tile_count, 4):
-                raise ValueError(
-                    f"tile_boxes must be {(tile_count, 4)}, got {tuple(boxes.shape)}"
-                )
-            pad_count = max_tiles - tile_count
-            if pad_count:
-                boxes = torch.cat(
-                    [boxes, torch.zeros((pad_count, 4), dtype=boxes.dtype)], dim=0
-                )
-            padded_boxes.append(boxes)
-        return torch.stack(padded_boxes)
-
     def __call__(self, features: list) -> dict:
         """Thực hiện bước call trong quy trình hiện tại.
 
@@ -460,17 +385,6 @@ class BioMedCLIPDataCollator:
             "labels": labels,
         }
         
-        # Hỗ trợ chia vùng ảnh độ phân giải cao
-        if "tile_values" in features[0]:
-            tile_values_list = [f["tile_values"] for f in features]
-            padded_tiles, tile_masks = self._pad_tiles_with_mask(tile_values_list)
-            batch["tile_values"] = padded_tiles
-            batch["tile_mask"] = tile_masks
-            tile_boxes = self._pad_tile_metadata(
-                features, padded_tiles.shape[1]
-            )
-            batch["tile_boxes"] = tile_boxes
-            
         return batch
 
 
@@ -573,10 +487,6 @@ class SFTrainer(Trainer):
         labels = inputs["labels"]
         labels_for_loss = labels.argmax(dim=-1) if labels.ndim > 1 else labels
         
-        tile_values = inputs.get("tile_values")
-        tile_mask = inputs.get("tile_mask")
-        tile_boxes = inputs.get("tile_boxes")
-
         if self.phase == "phase1":
             # Thiết lập và thực thi pha 1 căn chỉnh ảnh-văn bản.
             if self.p1_report_type in ("both", "xray_clinical"):
@@ -594,9 +504,6 @@ class SFTrainer(Trainer):
                 images,
                 text_ids,
                 attention_mask=text_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
             )
 
             # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
@@ -647,9 +554,6 @@ class SFTrainer(Trainer):
                     images,
                     text_ids,
                     attention_mask=text_mask,
-                    tile_values=tile_values,
-                    tile_mask=tile_mask,
-                    tile_boxes=tile_boxes,
                 )
                 logits = outputs["auxiliary_logits"]
             else:
@@ -657,9 +561,6 @@ class SFTrainer(Trainer):
                     images,
                     text_ids,
                     attention_mask=text_mask,
-                    tile_values=tile_values,
-                    tile_mask=tile_mask,
-                    tile_boxes=tile_boxes,
                 )
                 logits = outputs[0] if isinstance(outputs, tuple) else outputs
             loss = self.loss_fn(logits, labels_for_loss)

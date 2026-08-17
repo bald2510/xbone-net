@@ -81,7 +81,7 @@ def load_state_dict_checked(
     model: nn.Module,
     state_dict: dict,
     context: str,
-    critical_substrings=("lora_A", "lora_B", "visual_resampler"),
+    critical_substrings=("lora_A", "lora_B"),
 ):
     """Tải trọng số mô hình và kiểm tra mức độ tương thích.
 
@@ -995,15 +995,10 @@ def estimate_drl_label_covariance(
         input_ids, attention_mask = _phase_text_inputs(
             batch, report_type, device
         )
-        optional = {}
-        for key in ("tile_values", "tile_mask", "tile_boxes"):
-            value = batch.get(key)
-            optional[key] = value.to(device) if value is not None else None
         features = model.encode_fused(
             images,
             input_ids=input_ids,
             attention_mask=attention_mask,
-            **optional,
         )
         label_features.append(features.detach().float().cpu())
     if not label_features:
@@ -1357,10 +1352,7 @@ def run_ood_calibration(
     with torch.no_grad():
         for batch in val_loader:
             if not isinstance(batch, dict):
-                raise TypeError(
-                    "High-resolution OOD calibration requires "
-                    "dictionary-format batches."
-                )
+                raise TypeError("OOD calibration requires dictionary-format batches.")
 
             images = batch["pixel_values"].to(device)
             labels = batch["labels"].to(device)
@@ -1382,25 +1374,10 @@ def run_ood_calibration(
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
 
-            tile_values = batch.get("tile_values")
-            tile_mask = batch.get("tile_mask")
-            tile_boxes = batch.get("tile_boxes")
-
-            if tile_values is not None:
-                tile_values = tile_values.to(device)
-
-            if tile_mask is not None:
-                tile_mask = tile_mask.to(device)
-            if tile_boxes is not None:
-                tile_boxes = tile_boxes.to(device)
-
             outputs = model(
                 images=images,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                tile_values=tile_values,
-                tile_mask=tile_mask,
-                tile_boxes=tile_boxes,
                 return_features=True,
             )
 
@@ -1762,11 +1739,7 @@ def main(cfg: DictConfig) -> None:
             if visual is not None:
                 for parameter in visual.parameters():
                     parameter.requires_grad = False
-            visual_resampler = getattr(model.backbone, "visual_resampler", None)
-            if visual_resampler is not None:
-                for parameter in visual_resampler.parameters():
-                    parameter.requires_grad = False
-            print("[Phase 2 Setup] Visual encoder/resampler disabled for text-only mode")
+            print("[Phase 2 Setup] Visual encoder disabled for text-only mode")
 
         model = model.to(device)
 

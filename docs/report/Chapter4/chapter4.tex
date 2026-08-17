@@ -20,7 +20,7 @@ Trong 3.746 mẫu, có 1.879 ảnh bình thường, 1.525 ảnh thuộc nhóm u 
 
 \begin{figure}[H]
 \centering
-    \includegraphics[width=1\linewidth]{images/BTXRDinfo.png}
+    \includegraphics[width=1\linewidth]{images/chapter4/BTXRDinfo.png}
     \caption{Phân bố độ tuổi và giới tính của các bệnh nhân được quan sát trong bộ dữ liệu BTXRD}
     \label{fig:BTXRDinfo}
 \end{figure}
@@ -518,7 +518,7 @@ Phần này giữ các bảng cần thiết để trả lời năm câu hỏi ng
 \label{subsec:foundation_model_evaluation}
 Kết quả trong Bảng \ref{tab:ch4draft_zeroshot} cho thấy BioMedCLIP đạt Accuracy $0{.}1453$, Balanced Accuracy $0{.}1261$, Macro-F1 $0{.}0837$ và Macro-AUPRC $0{.}1656$ trên BTXRD, cao nhất trong bốn mô hình ở các độ đo này; CLIP đạt Macro-AUROC cao nhất với $0{.}6051$. Trên CTCH, BioMedCLIP đạt giá trị cao nhất ở cả năm độ đo, gồm Accuracy $0{.}2720$, Balanced Accuracy $0{.}3898$, Macro-F1 $0{.}2698$, Macro-AUROC $0{.}8976$ và Macro-AUPRC $0{.}3244$.
 
-\input{generated/chapter4_results/table_zero_shot}
+\input{tables/chapter4/table_zero_shot}
 
 Trên BTXRD, Balanced Accuracy của các mô hình dao động từ $0{.}0991$ đến $0{.}1261$ và Macro-F1 không vượt quá $0{.}0837$, cho thấy câu nhắc chung chưa phân tách tốt các nhóm u xương có biểu hiện hình ảnh và tên gọi chuyên biệt. Việc CLIP đạt Macro-AUROC cao hơn nhưng có Macro-F1 thấp hơn BioMedCLIP cũng cho thấy khả năng xếp hạng điểm của từng lớp chưa chuyển thành quyết định đa lớp ổn định. Trên CTCH, kết quả của BioMedCLIP cao hơn rõ rệt, có thể liên quan đến mức độ tương thích tốt hơn giữa biểu diễn y sinh đã tiền huấn luyện với các khái niệm gãy xương và vị trí giải phẫu. Tuy vậy, chênh lệch giữa Macro-AUROC $0{.}8976$ và Macro-F1 $0{.}2698$ cho thấy khả năng xếp hạng vẫn tốt hơn đáng kể so với khả năng chọn đúng một lớp tại ngưỡng quyết định.
 
@@ -528,9 +528,9 @@ Xét tổng thể, BioMedCLIP cung cấp mốc không mẫu phù hợp hơn trê
 
 Kết quả trong Bảng \ref{tab:classification_full_data} và Bảng \ref{tab:classification_full_data_ranking} cho thấy XBone-Net không dẫn đầu nhất quán. Trên BTXRD, mô hình đạt Macro-F1 $0{.}6010\pm0{.}0034$ và Macro-AUROC cao nhất ($0{.}9243\pm0{.}0298$), nhưng thấp hơn các mức cao nhất tương ứng $0{.}0089$, $0{.}0636$ và $0{.}0317$ điểm về Accuracy, Balanced Accuracy và Macro-F1. Macro-AUPRC của XBone-Net đạt $0{.}6301\pm0{.}0211$, so với mức cao nhất $0{.}6592\pm0{.}0341$. Trên CTCH, mô hình đạt Macro-F1 $0{.}5558\pm0{.}0072$, thấp hơn kết quả cao nhất $0{.}0075$ điểm, đồng thời dẫn đầu Macro-AUROC ($0{.}9473\pm0{.}0246$) và Macro-AUPRC ($0{.}6189\pm0{.}0145$).
 
-\input{generated/chapter4_results/table_full_shot_classification}
+\input{tables/chapter4/table_full_shot_classification}
 
-\input{generated/chapter4_results/table_full_shot_ranking}
+\input{tables/chapter4/table_full_shot_ranking}
 
 Khoảng tin cậy ghép cặp theo từng mô hình và phần diễn giải chi tiết được trình bày tại Hình \ref{fig:full_shot_paired_f1_forest} trong Phụ lục \ref{AppendixSeedResults}. Do chỉ có ba cặp hạt giống, các khoảng này chủ yếu mô tả độ biến thiên giữa những lần huấn luyện hiện có. Chênh lệch giữa các độ đo xếp hạng và các độ đo quyết định lớp cho thấy khả năng sắp thứ tự điểm chưa chuyển hoàn toàn thành quyết định đa lớp ổn định.
 
@@ -540,7 +540,7 @@ Nhìn chung, XBone-Net có chất lượng xếp hạng cạnh tranh nhưng khô
 
 Kết quả trong Bảng \ref{tab:classification_few_shot} tăng theo ngân sách mẫu nhưng thứ hạng thay đổi. Trên BTXRD, XBone-Net đạt Macro-F1 $0{.}1620\pm0{.}0259$ ở mức 1 mẫu, sau đó dẫn đầu cả ba độ đo quyết định lớp ở mức 10 và 20 mẫu; Macro-F1 tương ứng đạt $0{.}4302\pm0{.}0263$ và $0{.}5202\pm0{.}0300$. Trên CTCH, mô hình dẫn đầu cả ba độ đo ở mức 1 mẫu, đạt Macro-F1 cao nhất ở mức 10 mẫu ($0{.}4329\pm0{.}0357$), nhưng không còn dẫn đầu ở mức 20 mẫu.
 
-\input{generated/chapter4_results/table_few_shot_classification}
+\input{tables/chapter4/table_few_shot_classification}
 
 Số liệu từng hạt giống cho ba ngân sách được trình bày tại Phụ lục \ref{AppendixSeedResults}. Khi tăng từ 1 lên 10 mẫu, Macro-F1 của XBone-Net tăng $0{.}2682$ điểm trên BTXRD và $0{.}2093$ điểm trên CTCH; mức tăng từ 10 lên 20 mẫu lần lượt còn $0{.}0900$ và $0{.}0355$ điểm. Xu hướng này gợi ý hiệu quả biên giảm khi bổ sung mẫu, nhưng ba mức ngân sách chưa đủ để mô tả đường học đầy đủ. Cấu trúc mô hình không đổi theo ngân sách nên chi phí suy luận vẫn cao hơn hai mô hình LoRA cơ sở như trong thiết lập toàn bộ dữ liệu.
 
@@ -551,7 +551,7 @@ Kết quả cho thấy XBone-Net phù hợp với một số điều kiện khan
 
 Bảng \ref{tab:rq1_modality} cho thấy XBone-Net cải thiện Macro-F1 so với chỉ ảnh và chỉ văn bản lần lượt $0{.}2845$ và $0{.}0695$ điểm trên BTXRD, $0{.}1574$ và $0{.}0788$ điểm trên CTCH. Khi ghép văn bản từ lớp khác, Macro-F1 giảm từ $0{.}6010$ xuống $0{.}0068$ trên BTXRD và từ $0{.}5558$ xuống $0{.}3039$ trên CTCH, cho thấy dự đoán nhạy với tính nhất quán ảnh--văn bản.
 
-\input{generated/chapter4_results/table_rq1_modality}
+\input{tables/chapter4/table_rq1_modality}
 
 Đối chứng BTXRD bắt buộc ghép khác lớp và văn bản tổng hợp chứa tín hiệu liên hệ mạnh với nhãn, nên mức giảm không đại diện cho nhiễu văn bản tự nhiên. Các cấu hình đơn phương thức cũng không thực hiện pha 1; chênh lệch vì vậy kết hợp cả việc bỏ phương thức và thay đổi quy trình huấn luyện.
 
@@ -562,7 +562,7 @@ Kết quả cho thấy mô hình sử dụng quan hệ ghép cặp ảnh--văn b
 
 Bảng \ref{tab:rq3_adaptation} cho thấy LoRA cập nhật $8{.}63$ triệu tham số ($4{.}22\%$), so với $199{.}43$ triệu khi tinh chỉnh toàn bộ. LoRA cao hơn tinh chỉnh toàn bộ $0{.}0146$ điểm Macro-F1 và $0{.}0357$ điểm Macro-AUPRC, trong khi Macro-AUROC thấp hơn $0{.}0034$ điểm.
 
-\input{generated/chapter4_results/table_rq3_adaptation}
+\input{tables/chapter4/table_rq3_adaptation}
 
 Thời gian huấn luyện của XBone-Net là $2{.}61\pm0{.}44$ giờ, còn tinh chỉnh toàn bộ có một phép đo $1{.}94$ giờ. Quy trình hai pha và nhánh ảnh độ phân giải cao làm cho mức giảm tham số cập nhật không chuyển trực tiếp thành mức giảm thời gian hoặc chi phí suy luận.
 
@@ -575,7 +575,7 @@ Do đối chứng tinh chỉnh toàn bộ chỉ có $n=1$, kết quả xác nh�
 
 Bảng \ref{tab:ablation_leave_one_out_classification} cho thấy không biến thể nào giảm đồng thời cả sáu độ đo. So với XBone-Net, gộp trung bình tăng Balanced Accuracy $0{.}0205$, Macro-F1 $0{.}0178$, Macro-AUROC $0{.}0104$ và Macro-AUPRC $0{.}0123$ điểm, nhưng ECE tăng từ $0{.}1032$ lên $0{.}1506$. Đầu tuyến tính tăng Accuracy $0{.}0538$ và Macro-F1 $0{.}0331$ điểm, đồng thời làm Macro-AUROC giảm $0{.}0393$ điểm. Nối đặc trưng đạt ECE thấp nhất ($0{.}0789\pm0{.}0148$) nhưng Macro-F1 giảm $0{.}0133$ điểm.
 
-\input{generated/chapter4_results/table_ablation_leave_one_out_classification}
+\input{tables/chapter4/table_ablation_leave_one_out_classification}
 
 Bỏ xử lý ảnh độ phân giải cao gần như giữ nguyên Macro-F1 ($0{.}5553\pm0{.}0136$) nhưng làm Macro-AUROC giảm xuống $0{.}9148\pm0{.}0223$ và ECE tăng lên $0{.}1743\pm0{.}0634$. Chỉ huấn luyện pha 2 tăng Macro-F1 lên $0{.}5753\pm0{.}0175$, trong khi Macro-AUROC giảm xuống $0{.}9144\pm0{.}0198$ và ECE tăng lên $0{.}1868\pm0{.}0724$. Các thay đổi này phản ánh đánh đổi giữa quyết định lớp, xếp hạng và hiệu chỉnh. Khoảng tin cậy từ 10.000 lần tái lấy mẫu bắt cặp được trình bày tại Phụ lục \ref{AppendixSeedResults}; với ba hạt giống, các khoảng này chủ yếu mô tả độ biến thiên của các lần huấn luyện hiện có.
 
@@ -585,7 +585,7 @@ Kết quả chưa cho thấy cấu hình đầy đủ tối ưu riêng cho phân
 
 Bảng \ref{tab:rq2_grouped_components} tổng hợp các đối chứng theo bốn nhóm. Gộp trung bình đạt Macro-F1 $0{.}5736\pm0{.}0251$, nối đặc trưng đạt Macro-AUROC $0{.}9566\pm0{.}0046$ và ECE $0{.}0789\pm0{.}0148$, còn đầu tuyến tính đạt Macro-F1 $0{.}5889\pm0{.}0251$.
 
-\input{generated/chapter4_results/table_rq2_grouped_components}
+\input{tables/chapter4/table_rq2_grouped_components}
 
 Trong nhóm mã hóa ảnh, giảm số đơn vị cục bộ và đệm biên giữ tỷ lệ đạt Macro-F1 lần lượt $0{.}5684\pm0{.}0131$ và $0{.}5621\pm0{.}0083$, nhưng ECE đều cao hơn $0{.}18$. Trong nhóm huấn luyện, hợp nhất pha 1 đạt Macro-AUROC $0{.}9513\pm0{.}0166$ nhưng Macro-F1 chỉ đạt $0{.}5401\pm0{.}0303$. Trong nhóm dung hợp, hai hướng chú ý một chiều đạt Macro-F1 $0{.}5559\pm0{.}0159$ và $0{.}5632\pm0{.}0217$, gần cấu hình hai chiều; nối đặc trưng có Macro-AUROC và ECE thuận lợi hơn nhưng Macro-F1 thấp hơn. Trong nhóm đầu phân loại, bỏ trọng số lớp và bỏ độ chệch lớp tăng Macro-F1 lần lượt lên $0{.}5641\pm0{.}0093$ và $0{.}5740\pm0{.}0126$, nhưng không đồng thời cải thiện mọi độ đo còn lại.
 
@@ -598,9 +598,9 @@ Tổng hợp RQ2, ảnh cục bộ, hai pha huấn luyện, dung hợp và đầ
 
 Bảng \ref{tab:ood_semantic_btxrd} sử dụng 669 mẫu CTCH trong phân phối, 44 mẫu OOD ngữ nghĩa và 750 mẫu BTXRD. Mahalanobis đạt AUROC-OOD cao nhất trong bốn phương pháp trên BTXRD ($0{.}8042\pm0{.}0938$) và OOD ngữ nghĩa ($0{.}6286\pm0{.}0177$); kNN đạt AUPR-Out cao nhất trên OOD ngữ nghĩa. Khi giữ cố định Mahalanobis trong Bảng \ref{tab:rq4_ood_baselines}, BioMedCLIP không mẫu đạt AUROC-OOD $0{.}6362$ trên OOD ngữ nghĩa với một lần đánh giá, còn nối đặc trưng dẫn đầu cả ba độ đo trên BTXRD.
 
-\input{generated/chapter4_results/table_ood_semantic_btxrd}
+\input{tables/chapter4/table_ood_semantic_btxrd}
 
-\input{generated/chapter4_results/table_rq4_ood_baselines}
+\input{tables/chapter4/table_rq4_ood_baselines}
 
 Tín hiệu phân biệt rõ hơn với dịch chuyển BTXRD, nơi ảnh, văn bản và không gian nhãn đều thay đổi, so với các bệnh ngoài không gian nhãn nhưng còn gần CTCH. XBone-Net có AUPR-Out cao nhất trong phép so sánh biểu diễn trên OOD ngữ nghĩa, nhưng trên BTXRD mô hình chỉ đạt AUROC-OOD $0{.}8042\pm0{.}0938$ và FPR@95\%TPR $0{.}7071\pm0{.}0678$, thấp hơn phép nối đặc trưng. FPR@95\%TPR còn cao, cỡ mẫu OOD ngữ nghĩa nhỏ và độ lệch chuẩn trên BTXRD còn lớn.
 
@@ -610,7 +610,7 @@ Kết quả cho thấy biểu diễn có chứa tín hiệu OOD nhưng kiến tr
 
 Bảng \ref{tab:explain_representation} cho thấy biểu diễn dung hợp đạt Silhouette $-0{.}0075\pm0{.}0325$ và Davies--Bouldin $2{.}8672\pm0{.}0719$, thuận lợi nhất trong sáu không gian được khảo sát. Biểu diễn ảnh nhận ngữ cảnh văn bản đứng thứ hai về Silhouette ($-0{.}0880\pm0{.}0124$), còn biểu diễn văn bản nhận ngữ cảnh ảnh đứng thứ hai về Davies--Bouldin ($3{.}5628\pm0{.}1281$).
 
-\input{generated/chapter4_results/table_explain_representation}
+\input{tables/chapter4/table_explain_representation}
 
 Silhouette của mọi không gian đều âm, trong đó tóm tắt ảnh cục bộ đạt mức thấp nhất ($-0{.}1595\pm0{.}0284$); Davies--Bouldin của không gian này cũng cao nhất ($4{.}3243\pm0{.}2035$). Hai độ đo cùng gợi ý rằng dung hợp làm giảm mức chồng lấn tương đối, nhưng giá trị Silhouette gần 0 chưa xác nhận các cụm lớp tách biệt ổn định. Kết quả OOD thấp hơn phép nối đặc trưng trên BTXRD cũng cho thấy hình học thuận lợi hơn trên CTCH không mặc nhiên thuận lợi cho phát hiện dịch chuyển.
 
@@ -622,7 +622,7 @@ Nhìn chung, dung hợp tạo cấu trúc lớp thuận lợi hơn tương đố
 
 Bảng \ref{tab:explain_source_intervention} ghi nhận mức giảm xác suất lớp đích trung bình lớn nhất khi thay ảnh toàn cục ($0{.}3740\pm0{.}0278$), tiếp theo là bệnh sử ($0{.}2614\pm0{.}0621$); hai nguồn chi phối lần lượt $63{.}48\%$ và $35{.}87\%$ số mẫu trên 669 mẫu CTCH tại mỗi hạt giống.
 
-\input{generated/chapter4_results/table_explain_source_intervention}
+\input{tables/chapter4/table_explain_source_intervention}
 
 Ảnh toàn cục được thay bằng đầu vào không, ảnh cục bộ bằng biểu diễn toàn cục lặp lại và bệnh sử bằng phần đệm. Mức thay đổi trung bình của ảnh cục bộ gần 0, nhưng mốc thay thế vẫn giữ thông tin thị giác; vì vậy, chênh lệch này phản ánh độ nhạy theo mốc tham chiếu thay vì đóng góp nhân quả độc lập của từng nguồn.
 
@@ -632,7 +632,7 @@ Kết quả cho thấy dự đoán phụ thuộc rõ hơn vào ảnh toàn cục
 
 Bảng \ref{tab:explain_faithfulness} cho thấy AUC loại bỏ theo tích phân gradient thấp hơn đối chứng ngẫu nhiên $0{.}0062$ ở ảnh cục bộ và $0{.}0036$ ở bệnh sử. Trọng số chú ý trên sáu trường hợp mỗi hạt giống có kết quả gần đối chứng ngẫu nhiên.
 
-\input{generated/chapter4_results/table_explain_faithfulness}
+\input{tables/chapter4/table_explain_faithfulness}
 
 Chênh lệch nhỏ giữa tích phân gradient và thứ tự ngẫu nhiên cho thấy bằng chứng về độ trung thực còn hạn chế. Hai trường hợp minh họa được chuyển sang Phụ lục \ref{AppendixSeedResults}; các kiểm tra hiện tại hỗ trợ truy vết mức phụ thuộc của dự đoán nhưng chưa đánh giá trực tiếp vùng tổn thương hoặc tính phù hợp lâm sàng.
 

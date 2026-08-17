@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import matplotlib
 matplotlib.use("Agg")
@@ -21,6 +22,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import pandas as pd
 from PIL import Image
+import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -34,7 +36,17 @@ if sys.platform == "win32":
 
 from src.utils.online_inference import (
     OnlineInferenceEngine,
+    _build_online_inputs,
+    _decoded_text_attribution,
+    _global_patch_grid,
+    project_global_ig_to_source,
     render_global_ig_overlay,
+)
+from benchmark.explainability_analysis import (
+    _cache_modalities,
+    _integrated_gradients_image,
+    _integrated_gradients_text,
+    _logits_from_features,
 )
 
 
@@ -42,6 +54,69 @@ TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
     "xbonenet_text_ig",
     ["#1f77b4", "#ffffff", "#ff7f0e"],
 )
+
+
+def _predict_architecture_neutral_ig(
+    engine: OnlineInferenceEngine,
+    image: Image.Image,
+    clinical_text: str,
+    ig_steps: int,
+):
+    """Compute input-level image/text IG through the common model interface."""
+    loaded = engine.loaded
+    model = loaded.model
+    inputs = _build_online_inputs(loaded, image, clinical_text)
+    batch = {
+        "pixel_values": inputs["pixel_values"],
+        "clinical_input_ids": inputs["input_ids"],
+        "clinical_attention_mask": inputs["attention_mask"],
+    }
+    cached = _cache_modalities(model, batch)
+    with torch.no_grad():
+        logits = _logits_from_features(model, cached)
+        probabilities = torch.softmax(logits, dim=-1)[0]
+        predicted_index = int(probabilities.argmax())
+
+    global_relevance, _ = _integrated_gradients_image(
+        model,
+        cached,
+        inputs["pixel_values"],
+        predicted_index,
+        steps=int(ig_steps),
+    )
+    _, text_attribution = _integrated_gradients_text(
+        model,
+        cached,
+        predicted_index,
+        steps=int(ig_steps),
+    )
+    text_signed_scores = text_attribution.sum(dim=-1).detach().cpu().numpy()
+    decoded_tokens, decoded_scores = _decoded_text_attribution(
+        model.backbone.tokenizer_obj,
+        inputs["input_ids"],
+        inputs["attention_mask"],
+        text_signed_scores,
+    )
+    global_ig_map = project_global_ig_to_source(
+        global_relevance.detach().cpu().numpy(),
+        inputs["foreground_box"],
+        image.size,
+        patch_grid=_global_patch_grid(model),
+    )
+    return SimpleNamespace(
+        predicted_index=predicted_index,
+        predicted_label=engine.class_labels[predicted_index],
+        probabilities=probabilities.detach().cpu().numpy(),
+        is_ood=False,
+        ood_score=float("nan"),
+        ood_threshold=float("nan"),
+        global_ig_map=global_ig_map,
+        text_tokens=decoded_tokens,
+        text_ig_scores=decoded_scores,
+        global_faithfulness=None,
+        text_faithfulness=None,
+        contribution_drops=None,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,8 +133,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="auto")
     parser.add_argument(
         "--experiment",
-        default="ctch/ablation_study/architecture/preprocess/xbone_letterbox",
-        help="Định danh thí nghiệm (ví dụ: ctch/ablation_study/architecture/preprocess/xbone_letterbox hoặc ctch/baselines/full_finetuned/fft_biomedclip)",
+        default="ctch/proposed/ours_xbone_net",
+        help="Định danh thí nghiệm (ví dụ: ctch/proposed/ours_xbone_net hoặc ctch/baselines/full_finetuned/fft_biomedclip)",
     )
     parser.add_argument(
         "--enable-ood",
@@ -180,14 +255,22 @@ def main() -> None:
         experiment_name=args.experiment,
         enable_ood=args.enable_ood,
     )
-    result = engine.predict(
-        image,
-        clinical_text,
-        ood_method=args.ood_method,
-        ig_steps=args.ig_steps,
-        compute_faithfulness=True,
-        compute_global_ig=True,
-    )
+    if args.enable_ood:
+        result = engine.predict(
+            image,
+            clinical_text,
+            ood_method=args.ood_method,
+            ig_steps=args.ig_steps,
+            compute_faithfulness=True,
+            compute_global_ig=True,
+        )
+    else:
+        result = _predict_architecture_neutral_ig(
+            engine,
+            image,
+            clinical_text,
+            args.ig_steps,
+        )
 
     if result.is_ood:
         raise RuntimeError(
@@ -288,9 +371,6 @@ def main() -> None:
             "global_deletion": result.global_faithfulness["deletion"],
             "global_insertion": result.global_faithfulness["insertion"],
         }
-        if result.visual_faithfulness is not None:
-            f_data["local_deletion"] = result.visual_faithfulness["deletion"]
-            f_data["local_insertion"] = result.visual_faithfulness["insertion"]
         if result.text_faithfulness is not None:
             f_data["text_deletion"] = result.text_faithfulness["deletion"]
             f_data["text_insertion"] = result.text_faithfulness["insertion"]

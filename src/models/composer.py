@@ -1,9 +1,4 @@
-"""Cung cấp thành phần mô hình composer trong kiến trúc XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Ghép backbone BiomedCLIP, fusion và linear head thành XBone-Net."""
 
 from __future__ import annotations
 
@@ -14,24 +9,19 @@ import torch.nn as nn
 
 
 class XBoneMultiModalModel(nn.Module):
-    """Đóng gói hành vi của thành phần ``XBoneMultiModalModel``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Ghép backbone ảnh-văn bản, mô-đun dung hợp và đầu phân lớp."""
 
     def __init__(self, backbone: nn.Module, fusion_module: nn.Module, head_module: nn.Module):
-        """Thực hiện bước init trong quy trình hiện tại.
+        """Khởi tạo mô hình đa phương thức.
 
         Parameters
         ----------
         backbone : nn.Module
-            Mô hình hoặc thành phần mô hình cần xử lý.
+            Backbone cung cấp chuỗi token ảnh và văn bản.
         fusion_module : nn.Module
-            Giá trị ``fusion_module`` được sử dụng trong phép xử lý.
+            Mô-đun kết hợp hai biểu diễn modality.
         head_module : nn.Module
-            Mô hình hoặc thành phần mô hình cần xử lý.
+            Đầu ánh xạ embedding dung hợp sang logits lớp.
         """
         super().__init__()
         self.backbone = backbone
@@ -42,7 +32,7 @@ class XBoneMultiModalModel(nn.Module):
         self.use_image_in_fusion = True
 
     def train(self, mode: bool = True):
-        """Huấn luyện kết quả cho bước xử lý hiện tại.
+        """Đặt chế độ train/eval và giữ ba mô-đun chính frozen ở pha DRL.
 
         Parameters
         ----------
@@ -51,8 +41,8 @@ class XBoneMultiModalModel(nn.Module):
 
         Returns
         -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
+        XBoneMultiModalModel
+            Chính instance hiện tại.
         """
         super().train(mode)
         if mode and self.phase3_mode:
@@ -68,11 +58,8 @@ class XBoneMultiModalModel(nn.Module):
         images,
         input_ids=None,
         attention_mask=None,
-        tile_values=None,
-        tile_mask=None,
-        tile_boxes=None,
     ):
-        """Mã hóa modalities cho bước xử lý hiện tại.
+        """Mã hóa ảnh letterbox và chuỗi token lâm sàng.
 
         Parameters
         ----------
@@ -82,17 +69,10 @@ class XBoneMultiModalModel(nn.Module):
             Dữ liệu nguồn của phép xử lý.
         attention_mask : object, optional
             Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
-        tile_values : object, optional
-            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
-        tile_mask : object, optional
-            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
-        tile_boxes : object, optional
-            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
-
         Returns
         -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
+        tuple
+            Token ảnh, token văn bản và các padding mask tương ứng.
 
         Raises
         ------
@@ -104,9 +84,6 @@ class XBoneMultiModalModel(nn.Module):
             images if use_image else None,
             input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values if use_image else None,
-            tile_mask=tile_mask if use_image else None,
-            tile_boxes=tile_boxes if use_image else None,
         )
         full_img_padding_mask = getattr(
             self.backbone,
@@ -119,7 +96,7 @@ class XBoneMultiModalModel(nn.Module):
             expected_len = txt_feats.size(1) - 1
             if txt_key_padding_mask.size(1) != expected_len:
                 raise ValueError(
-                    "Text attention mask length does not match local text tokens: "
+            "Text attention mask length does not match text tokens: "
                     f"{txt_key_padding_mask.size(1)} vs {expected_len}."
                 )
         img_key_padding_mask = None
@@ -141,25 +118,25 @@ class XBoneMultiModalModel(nn.Module):
         img_key_padding_mask=None,
         txt_key_padding_mask=None,
     ) -> torch.Tensor:
-        """Thực hiện bước fuse modalities trong quy trình hiện tại.
+        """Dung hợp modality có mặt thành một embedding mỗi mẫu.
 
         Parameters
         ----------
-        img_feats : object
-            Ảnh hoặc biểu diễn ảnh đầu vào.
-        txt_feats : object
-            Giá trị ``txt_feats`` được sử dụng trong phép xử lý.
-        full_img_padding_mask : object, optional
-            Ảnh hoặc biểu diễn ảnh đầu vào.
-        img_key_padding_mask : object, optional
-            Ảnh hoặc biểu diễn ảnh đầu vào.
-        txt_key_padding_mask : object, optional
-            Tên hoặc khóa định danh của giá trị.
+        img_feats : torch.Tensor or None
+            Embedding ảnh toàn cục hoặc chuỗi CLS + patch token.
+        txt_feats : torch.Tensor or None
+            Embedding văn bản toàn cục hoặc chuỗi token.
+        full_img_padding_mask : torch.Tensor, optional
+            Mask cho toàn bộ chuỗi token ảnh.
+        img_key_padding_mask : torch.Tensor, optional
+            Mask patch token truyền vào cross-attention.
+        txt_key_padding_mask : torch.Tensor, optional
+            Mask token văn bản truyền vào cross-attention.
 
         Returns
         -------
         torch.Tensor
-            Kết quả được tạo bởi bước xử lý của hàm.
+            Embedding dung hợp có dạng ``[B, D]``.
 
         Raises
         ------
@@ -207,19 +184,19 @@ class XBoneMultiModalModel(nn.Module):
         features: torch.Tensor,
         key_padding_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
-        """Thực hiện bước masked token mean trong quy trình hiện tại.
+        """Lấy trung bình các token không bị đánh dấu padding.
 
         Parameters
         ----------
         features : torch.Tensor
-            Giá trị ``features`` được sử dụng trong phép xử lý.
+            Chuỗi đặc trưng dạng ``[B, T, D]``.
         key_padding_mask : Optional[torch.Tensor]
-            Tên hoặc khóa định danh của giá trị.
+            Mask dạng ``[B, T]``; ``True`` biểu thị padding.
 
         Returns
         -------
         torch.Tensor
-            Kết quả được tạo bởi bước xử lý của hàm.
+            Tensor dạng ``[B, D]``.
 
         Raises
         ------
@@ -244,11 +221,8 @@ class XBoneMultiModalModel(nn.Module):
         images,
         input_ids=None,
         attention_mask=None,
-        tile_values=None,
-        tile_mask=None,
-        tile_boxes=None,
     ) -> torch.Tensor:
-        """Mã hóa fused cho bước xử lý hiện tại.
+        """Trả về một embedding dung hợp cho mỗi mẫu trong batch.
 
         Parameters
         ----------
@@ -258,13 +232,6 @@ class XBoneMultiModalModel(nn.Module):
             Dữ liệu nguồn của phép xử lý.
         attention_mask : object, optional
             Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
-        tile_values : object, optional
-            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
-        tile_mask : object, optional
-            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
-        tile_boxes : object, optional
-            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
-
         Returns
         -------
         torch.Tensor
@@ -274,9 +241,6 @@ class XBoneMultiModalModel(nn.Module):
             images,
             input_ids=input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values,
-            tile_mask=tile_mask,
-            tile_boxes=tile_boxes,
         )
         return self._fuse_modalities(*encoded)
 
@@ -285,9 +249,6 @@ class XBoneMultiModalModel(nn.Module):
         images,
         input_ids=None,
         attention_mask=None,
-        tile_values=None,
-        tile_mask=None,
-        tile_boxes=None,
         return_details: bool = False,
     ):
         """Thực hiện bước forward drl trong quy trình hiện tại.
@@ -300,12 +261,6 @@ class XBoneMultiModalModel(nn.Module):
             Dữ liệu nguồn của phép xử lý.
         attention_mask : object, optional
             Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
-        tile_values : object, optional
-            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
-        tile_mask : object, optional
-            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
-        tile_boxes : object, optional
-            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
         return_details : bool, optional
             Giá trị ``return_details`` được sử dụng trong phép xử lý.
 
@@ -325,9 +280,6 @@ class XBoneMultiModalModel(nn.Module):
             images,
             input_ids=input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values,
-            tile_mask=tile_mask,
-            tile_boxes=tile_boxes,
         )
         (
             img_feats,
@@ -374,9 +326,6 @@ class XBoneMultiModalModel(nn.Module):
         images,
         input_ids=None,
         attention_mask=None,
-        tile_values=None,
-        tile_mask=None,
-        tile_boxes=None,
         return_features: bool = False,
     ):
         """Thực hiện lượt lan truyền xuôi của mô hình.
@@ -389,12 +338,6 @@ class XBoneMultiModalModel(nn.Module):
             Dữ liệu nguồn của phép xử lý.
         attention_mask : object, optional
             Giá trị ``attention_mask`` được sử dụng trong phép xử lý.
-        tile_values : object, optional
-            Giá trị ``tile_values`` được sử dụng trong phép xử lý.
-        tile_mask : object, optional
-            Giá trị ``tile_mask`` được sử dụng trong phép xử lý.
-        tile_boxes : object, optional
-            Giá trị ``tile_boxes`` được sử dụng trong phép xử lý.
         return_features : bool, optional
             Giá trị ``return_features`` được sử dụng trong phép xử lý.
 
@@ -407,9 +350,6 @@ class XBoneMultiModalModel(nn.Module):
             images,
             input_ids=input_ids,
             attention_mask=attention_mask,
-            tile_values=tile_values,
-            tile_mask=tile_mask,
-            tile_boxes=tile_boxes,
         )
 
         logits = self.head(fused_feats)

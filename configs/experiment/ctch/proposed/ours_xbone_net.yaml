@@ -1,84 +1,44 @@
 # @package _global_
 # ===============================================================================
-# Canonical experiment: ctch/proposed/ours_xbone_net
-# Backbone: BiomedCLIP | PEFT: LoRA | Fusion: cross-attention | Head: empirical centroid
+# Current experiment: original BioMedCLIP tokens with LoRA and no extra image branch.
+# Fusion: cross-attention | Head: linear classifier
 # ===============================================================================
 
 defaults:
   - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
-  - /model/classifier@model.classifier: empirical_centroid
+  - /model/classifier@model.classifier: linear
   - /dataset@dataset: ctch
   - _self_
 
 experiment_name: ctch/proposed/ours_xbone_net
-seed: 42
 
 model:
   backbone_type: biomedclip
-  freeze_backbone: true
-  num_visual_tokens: 20
-  single_view_pool_shape: [4, 5]
 
 dataset:
   params:
-    high_res:
-      enabled: false
     preprocess:
       strategy: letterbox
-      target_size: 224
       pad_value: black
 
 params:
-  run_phase1: true
-  run_phase2: true
-  run_ood: false
   model_dir: checkpoints/${experiment_name}/seed_${seed}/
 
   phase1:
-    enabled: true
     epochs: 30
     lr: 5e-5
     weight_decay: 1e-4
-    warmup_ratio: 0.1
     early_stopping_patience: 3
-    loss_type: semantic_matching
-    # Reduce the pressure to collapse distinct same-class image/report pairs.
     target_similarity: 0.50
-    p1_report_type: clinical
     class_aware_sampling:
       enabled: true
-      samples_per_class: 2
-      seed: ${seed}
-    # Keep adapters explicit so they remain trainable in Phase 2. Merging and
-    # freezing after Phase 1 is an architecture ablation, not the final model.
-    merge_lora_after_training: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase1.pth
-    merged_checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/merged_phase1.pth
-    optimizer: adamw
-    scheduler: cosine
 
   phase2:
-    enabled: true
-    epochs: 50
     lr: 1e-4
-    weight_decay: 1e-4
-    warmup_ratio: 0.1
-    early_stopping_patience: 5
-    use_text: true
-    p2_report_type: clinical
-    init_from_phase1_merged: false
     checkpoint_path: checkpoints/${experiment_name}/seed_${seed}/best_phase2.pth
-    loss_type: empirical_centroid_ce
-    optimizer: adamw
-    scheduler: cosine
-    centroid:
-      # Re-estimate class means with the latest encoder before each validation.
-      update_interval_epochs: 1
     loss:
-      label_smoothing: 0.05
+      label_smoothing: 0.1
       use_class_weights: true
-      weight_type: effective_num
-      # Moderate the rare-class correction and cap extreme relative weights.
-      effective_num_beta: 0.999
       max_class_weight: 5.0

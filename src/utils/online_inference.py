@@ -1,8 +1,9 @@
-"""Cung cấp tiện ích online inference cho huấn luyện, đánh giá và phân tích XBone-Net.
+"""Suy luận trực tuyến cho XBone-Net dùng ảnh letterbox và linear head.
 
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
+Mô-đun nạp đúng checkpoint đã đánh giá, hiệu chỉnh confidence/OOD từ tập
+validation-ID và tạo Integrated Gradients trên ảnh toàn cục cùng văn bản. Ảnh
+đầu vào chỉ đi qua một phép letterbox trước backbone; không tạo thêm nhánh ảnh
+hay đặc trưng phụ trợ.
 """
 
 from __future__ import annotations
@@ -16,12 +17,9 @@ import torch
 import torch.nn.functional as F
 from matplotlib import colormaps
 from omegaconf import OmegaConf
-from PIL import Image, ImageFilter
+from PIL import Image
 
-from src.datasets.high_resolution import (
-    prepare_global_image,
-    prepare_high_resolution_inputs,
-)
+from src.datasets.preprocessing import prepare_image
 from src.utils.analysis import (
     SOURCE_EXPERIMENT,
     analysis_root,
@@ -33,10 +31,8 @@ from src.utils.analysis import (
 from src.utils.explainability import (
     curve_auc,
     global_image_perturbation_curves,
-    integrated_gradients,
     integrated_gradients_global_image,
     integrated_gradients_text,
-    perturbation_curves,
     text_input_perturbation_curves,
 )
 from src.utils.ood import OODDetector, calibrate_ood_threshold
@@ -53,12 +49,7 @@ OOD_METHODS = (
 
 @dataclass(frozen=True)
 class OODCalibration:
-    """Đóng gói hành vi của thành phần ``OODCalibration``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Các detector và ngưỡng OOD được khớp trên validation-ID."""
 
     normalized_detector: OODDetector
     raw_detector: OODDetector
@@ -88,12 +79,7 @@ class ConfidenceCalibration:
 
 @dataclass(frozen=True)
 class SimilarImageReference:
-    """Đóng gói hành vi của thành phần ``SimilarImageReference``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Một ảnh huấn luyện gần nhất theo cosine similarity."""
 
     image_id: str
     class_index: int
@@ -103,12 +89,7 @@ class SimilarImageReference:
 
 @dataclass
 class OnlineInferenceResult:
-    """Đóng gói hành vi của thành phần ``OnlineInferenceResult``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Kết quả phân loại, cảnh báo OOD và IG của một mẫu đầu vào."""
 
     predicted_index: int | None
     predicted_label: str | None
@@ -122,16 +103,11 @@ class OnlineInferenceResult:
     ood_threshold: float
     is_ood: bool
     similar_images: list[SimilarImageReference]
-    local_boxes: np.ndarray | None
-    local_ig_scores: np.ndarray | None
-    spatial_ig_boxes: np.ndarray | None
-    spatial_ig_scores: np.ndarray | None
     global_ig_map: np.ndarray | None
     text_tokens: list[str] | None
     text_ig_scores: np.ndarray | None
     contribution_drops: dict[str, float] | None
     global_faithfulness: dict[str, Any] | None
-    visual_faithfulness: dict[str, Any] | None
     text_faithfulness: dict[str, Any] | None
     seed: int
     checkpoint: str
@@ -576,7 +552,7 @@ def _tokenize_text(tokenizer, text: str, device: torch.device):
 
 
 def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
-    """Xây dựng online inputs cho bước xử lý hiện tại.
+    """Chuẩn hóa một ảnh bằng letterbox và token hóa mô tả lâm sàng.
 
     Parameters
     ----------
@@ -592,49 +568,19 @@ def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
     object
         Kết quả được tạo bởi bước xử lý của hàm.
 
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     cfg = loaded.cfg
-    high_res_cfg = (
-        OmegaConf.to_container(cfg.dataset.params.high_res, resolve=True)
-        if hasattr(cfg.dataset.params, "high_res") and cfg.dataset.params.high_res is not None
+    preprocess_cfg = (
+        OmegaConf.to_container(cfg.dataset.params.preprocess, resolve=True)
+        if hasattr(cfg.dataset.params, "preprocess")
+        and cfg.dataset.params.preprocess is not None
         else {}
     )
-    if isinstance(high_res_cfg, dict) and high_res_cfg.get("enabled", False):
-        fields, selection = prepare_high_resolution_inputs(
-            image.convert("RGB"),
-            loaded.model.backbone.preprocess,
-            high_res_cfg,
-            return_selection=True,
-        )
-        pixel_values = fields["pixel_values"].unsqueeze(0).to(loaded.device)
-        tile_values = fields["tile_values"].unsqueeze(0).to(loaded.device)
-        tile_boxes = fields["tile_boxes"].unsqueeze(0).to(loaded.device)
-        tile_mask = torch.ones(
-            tile_values.shape[:2],
-            dtype=torch.long,
-            device=loaded.device,
-        )
-        foreground_box = tuple(selection.foreground_box)
-    else:
-        preprocess_cfg = (
-            OmegaConf.to_container(cfg.dataset.params.preprocess, resolve=True)
-            if hasattr(cfg.dataset.params, "preprocess") and cfg.dataset.params.preprocess is not None
-            else {}
-        )
-        pixel_values = prepare_global_image(
-            image.convert("RGB"),
-            loaded.model.backbone.preprocess,
-            preprocess_cfg,
-        ).unsqueeze(0).to(loaded.device)
-        tile_values = None
-        tile_boxes = None
-        tile_mask = None
-        selection = None
-        foreground_box = (0, 0, image.width, image.height)
+    pixel_values = prepare_image(
+        image.convert("RGB"),
+        loaded.model.backbone.preprocess,
+        preprocess_cfg,
+    ).unsqueeze(0).to(loaded.device)
 
     input_ids, attention_mask = _tokenize_text(
         loaded.model.backbone.tokenizer_obj,
@@ -643,13 +589,9 @@ def _build_online_inputs(loaded, image: Image.Image, clinical_text: str):
     )
     return {
         "pixel_values": pixel_values,
-        "tile_values": tile_values,
-        "tile_mask": tile_mask,
-        "tile_boxes": tile_boxes,
         "input_ids": input_ids,
         "attention_mask": attention_mask,
-        "high_res_selection": selection,
-        "foreground_box": foreground_box,
+        "foreground_box": (0, 0, image.width, image.height),
     }
 
 
@@ -675,21 +617,11 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
     """
     model = loaded.model
     with torch.no_grad():
-        if inputs.get("tile_values") is not None:
-            image_tokens, text_tokens = model.backbone(
-                inputs["pixel_values"],
-                inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
-                tile_values=inputs["tile_values"],
-                tile_mask=inputs["tile_mask"],
-                tile_boxes=inputs["tile_boxes"],
-            )
-        else:
-            image_tokens, text_tokens = model.backbone(
-                inputs["pixel_values"],
-                inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
-            )
+        image_tokens, text_tokens = model.backbone(
+            inputs["pixel_values"],
+            inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+        )
         full_image_padding = getattr(
             model.backbone,
             "last_image_key_padding_mask",
@@ -716,16 +648,11 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
 
         global_fg = inputs.get("foreground_box", (0, 0, 224, 224))
         global_feat = getattr(model.backbone, "last_global_feature", image_tokens[:, 0]).detach()
-        loc_tokens = getattr(model.backbone, "last_local_tokens", image_tokens[:, 1:] if image_tokens.size(1) > 1 else image_tokens).detach()
-        loc_mask = getattr(model.backbone, "last_local_mask", torch.ones((image_tokens.size(0), loc_tokens.size(1)), dtype=torch.bool, device=image_tokens.device)).detach()
-        loc_boxes = getattr(model.backbone, "last_local_token_boxes", torch.zeros((image_tokens.size(0), loc_tokens.size(1), 4), dtype=torch.float32, device=image_tokens.device)).detach()
 
     cached = {
         "global_feature": global_feat,
         "visual_global_embedding": image_tokens[:, 0].detach(),
-        "local_tokens": loc_tokens,
-        "local_mask": loc_mask,
-        "local_boxes": loc_boxes,
+        "image_tokens": image_tokens.detach(),
         "text_tokens": text_tokens.detach(),
         "text_attention_mask": inputs["attention_mask"],
         "text_input_ids": inputs["input_ids"],
@@ -753,44 +680,6 @@ def _forward_and_cache(loaded, inputs: Mapping[str, Any]):
             inputs["input_ids"] == special_id
         )
     return fused.detach(), logits.detach(), cached
-
-
-def _spatial_token_subset(model, boxes: np.ndarray, scores: np.ndarray):
-    """Thực hiện bước spatial token subset trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    model : object
-        Mô hình hoặc thành phần mô hình cần xử lý.
-    boxes : np.ndarray
-        Giá trị ``boxes`` được sử dụng trong phép xử lý.
-    scores : np.ndarray
-        Giá trị ``scores`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    object
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    RuntimeError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    tokens_per_tile = int(model.backbone.local_pool_grid) ** 2 + int(
-        model.backbone.include_local_cls_token
-    )
-    include_cls = bool(model.backbone.include_local_cls_token)
-    spatial_indices: list[int] = []
-    for start in range(0, len(scores), tokens_per_tile):
-        offset = 1 if include_cls else 0
-        spatial_indices.extend(
-            range(start + offset, min(start + tokens_per_tile, len(scores)))
-        )
-    indices = np.asarray(spatial_indices, dtype=np.int64)
-    if indices.size == 0:
-        raise RuntimeError("No spatial local tokens are available for IG rendering.")
-    return boxes[indices], scores[indices]
 
 
 def _decoded_text_attribution(
@@ -1141,28 +1030,17 @@ class OnlineInferenceEngine:
                 ood_threshold=threshold,
                 is_ood=True,
                 similar_images=similar_images,
-                local_boxes=None,
-                local_ig_scores=None,
-                spatial_ig_boxes=None,
-                spatial_ig_scores=None,
                 global_ig_map=None,
                 text_tokens=None,
                 text_ig_scores=None,
                 contribution_drops=None,
                 global_faithfulness=None,
-                visual_faithfulness=None,
                 text_faithfulness=None,
                 seed=self.seed,
                 checkpoint=str(self.loaded.checkpoint),
             )
 
         self.loaded.model.zero_grad(set_to_none=True)
-        ig_scores, _ = integrated_gradients(
-            self.loaded.model,
-            cached,
-            predicted_index,
-            steps=int(ig_steps),
-        )
         text_ig_relevance, text_ig_attribution = integrated_gradients_text(
             self.loaded.model,
             cached,
@@ -1187,7 +1065,6 @@ class OnlineInferenceEngine:
                 patch_grid=_global_patch_grid(self.loaded.model),
             )
         global_faithfulness = None
-        visual_faithfulness = None
         text_faithfulness = None
         contribution_drops = None
         if compute_faithfulness:
@@ -1204,15 +1081,6 @@ class OnlineInferenceEngine:
                     random_trials=1,
                     seed=self.seed + 2000,
                 )
-            visual_curves = perturbation_curves(
-                self.loaded.model,
-                cached,
-                ig_scores,
-                predicted_index,
-                fractions=fractions,
-                random_trials=1,
-                seed=self.seed,
-            )
             text_curves = text_input_perturbation_curves(
                 self.loaded.model,
                 cached,
@@ -1245,19 +1113,6 @@ class OnlineInferenceEngine:
                     global_faithfulness["random_deletion_auc"]
                     - global_faithfulness["deletion_auc"]
                 )
-            visual_faithfulness = {
-                "fractions": visual_curves["fractions"],
-                "deletion": visual_curves["delete_most_relevant"],
-                "insertion": visual_curves["insert_most_relevant"],
-                "deletion_auc": curve_auc(
-                    visual_curves["fractions"],
-                    visual_curves["delete_most_relevant"],
-                ),
-                "insertion_auc": curve_auc(
-                    visual_curves["fractions"],
-                    visual_curves["insert_most_relevant"],
-                ),
-            }
             text_faithfulness = {
                 "fractions": text_curves["fractions"],
                 "deletion": text_curves["delete_most_relevant"],
@@ -1285,27 +1140,9 @@ class OnlineInferenceEngine:
                 contribution_drops = {
                     "global_visual": full_probability
                     - float(global_faithfulness["deletion"][-1]),
-                    "local_visual": full_probability
-                    - float(visual_faithfulness["deletion"][-1]),
                     "clinical_text": full_probability
                     - float(text_faithfulness["deletion"][-1]),
                 }
-        if hasattr(self.loaded.model.backbone, "local_pool_grid") and cached.get("local_boxes") is not None:
-            local_boxes = cached["local_boxes"][0].detach().cpu().numpy()
-            local_scores = ig_scores.detach().cpu().numpy()
-            try:
-                spatial_boxes, spatial_scores = _spatial_token_subset(
-                    self.loaded.model,
-                    local_boxes,
-                    local_scores,
-                )
-            except Exception:
-                spatial_boxes, spatial_scores = None, None
-        else:
-            local_boxes = None
-            local_scores = None
-            spatial_boxes = None
-            spatial_scores = None
         decoded_tokens, decoded_text_scores = _decoded_text_attribution(
             self.loaded.model.backbone.tokenizer_obj,
             inputs["input_ids"],
@@ -1326,16 +1163,11 @@ class OnlineInferenceEngine:
             ood_threshold=threshold,
             is_ood=False,
             similar_images=similar_images,
-            local_boxes=local_boxes,
-            local_ig_scores=local_scores,
-            spatial_ig_boxes=spatial_boxes,
-            spatial_ig_scores=spatial_scores,
             global_ig_map=global_ig_map,
             text_tokens=decoded_tokens,
             text_ig_scores=decoded_text_scores,
             contribution_drops=contribution_drops,
             global_faithfulness=global_faithfulness,
-            visual_faithfulness=visual_faithfulness,
             text_faithfulness=text_faithfulness,
             seed=self.seed,
             checkpoint=str(self.loaded.checkpoint),
@@ -1535,107 +1367,3 @@ def render_global_ig_overlay(
         result.global_ig_map,
         alpha=alpha,
     )
-
-
-def rasterize_local_ig(
-    boxes: np.ndarray,
-    scores: np.ndarray,
-    image_size: tuple[int, int],
-    *,
-    max_side: int = 720,
-) -> np.ndarray:
-    """Thực hiện bước rasterize local ig trong quy trình hiện tại.
-
-    Parameters
-    ----------
-    boxes : np.ndarray
-        Giá trị ``boxes`` được sử dụng trong phép xử lý.
-    scores : np.ndarray
-        Giá trị ``scores`` được sử dụng trong phép xử lý.
-    image_size : tuple[int, int]
-        Số lượng, kích thước hoặc tỷ lệ được sử dụng.
-    max_side : int, optional
-        Giá trị ``max_side`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
-    """
-
-    width, height = image_size
-    scale = min(1.0, float(max_side) / max(width, height))
-    out_width = max(1, round(width * scale))
-    out_height = max(1, round(height * scale))
-    values = np.zeros((out_height, out_width), dtype=np.float32)
-    counts = np.zeros_like(values)
-    scores = np.maximum(np.asarray(scores, dtype=np.float32), 0.0)
-    if float(scores.max(initial=0.0)) > 0:
-        scores = scores / float(scores.max())
-
-    for box, score in zip(np.asarray(boxes), scores):
-        x1, y1 = np.floor(box[:2] * [out_width, out_height]).astype(int)
-        x2, y2 = np.ceil(box[2:] * [out_width, out_height]).astype(int)
-        x1, y1 = np.clip([x1, y1], 0, [out_width - 1, out_height - 1])
-        x2, y2 = np.clip(
-            [x2, y2],
-            [x1 + 1, y1 + 1],
-            [out_width, out_height],
-        )
-        values[y1:y2, x1:x2] += float(score)
-        counts[y1:y2, x1:x2] += 1.0
-
-    values /= np.maximum(counts, 1.0)
-    blur_radius = max(4.0, 0.018 * min(values.shape))
-    smoothed = Image.fromarray(
-        np.uint8(np.clip(values, 0.0, 1.0) * 255.0),
-        mode="L",
-    ).filter(ImageFilter.GaussianBlur(radius=blur_radius))
-    heatmap = np.asarray(smoothed, dtype=np.float32) / 255.0
-    positive = heatmap[heatmap > 0]
-    if positive.size:
-        low, high = np.percentile(positive, [1.0, 99.0])
-        heatmap = np.clip(
-            (heatmap - float(low)) / max(float(high - low), 1e-8),
-            0.0,
-            1.0,
-        )
-    return heatmap
-
-
-def render_local_ig_overlay(
-    image: Image.Image,
-    result: OnlineInferenceResult,
-    *,
-    alpha: float = 0.58,
-) -> Image.Image:
-    """Kết xuất local ig overlay cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    image : Image.Image
-        Ảnh hoặc biểu diễn ảnh đầu vào.
-    result : OnlineInferenceResult
-        Giá trị ``result`` được sử dụng trong phép xử lý.
-    alpha : float, optional
-        Giá trị ``alpha`` được sử dụng trong phép xử lý.
-
-    Returns
-    -------
-    Image.Image
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-
-    if result.spatial_ig_boxes is None or result.spatial_ig_scores is None:
-        raise ValueError("Integrated Gradients is unavailable for an OOD sample.")
-    heatmap = rasterize_local_ig(
-        result.spatial_ig_boxes,
-        result.spatial_ig_scores,
-        image.size,
-    )
-    return _render_heatmap_overlay(image, heatmap, alpha=alpha)

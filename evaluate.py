@@ -368,16 +368,6 @@ def run_evaluation(
 
             images = batch["pixel_values"].to(device)
             labels = batch["labels"]
-            tile_values = batch.get("tile_values")
-            tile_mask = batch.get("tile_mask")
-            tile_boxes = batch.get("tile_boxes")
-            if tile_values is not None:
-                tile_values = tile_values.to(device)
-            if tile_mask is not None:
-                tile_mask = tile_mask.to(device)
-            if tile_boxes is not None:
-                tile_boxes = tile_boxes.to(device)
-
             input_ids = None
             attention_mask = None
             if is_classifier and use_text_in_p2:
@@ -396,9 +386,6 @@ def run_evaluation(
                         images=images,
                         input_ids=input_ids,
                         attention_mask=attention_mask,
-                        tile_values=tile_values,
-                        tile_mask=tile_mask,
-                        tile_boxes=tile_boxes,
                     )
                     # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
                     logits = drl_output["primary_logits"]
@@ -416,9 +403,6 @@ def run_evaluation(
                         images=images,
                         input_ids=input_ids,
                         attention_mask=attention_mask,
-                        tile_values=tile_values,
-                        tile_mask=tile_mask,
-                        tile_boxes=tile_boxes,
                         return_features=True,
                     )
                 batch_probs = (

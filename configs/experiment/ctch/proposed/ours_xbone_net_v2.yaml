@@ -1,6 +1,6 @@
 # @package _global_
 # ===============================================================================
-# Current experiment: original BioMedCLIP tokens with LoRA and no extra image branch.
+# LoRA-r8 variant using the same original BiomedCLIP token path.
 # Fusion: cross-attention | Head: linear classifier
 # ===============================================================================
 
@@ -8,13 +8,17 @@ defaults:
   - /model/peft@model.peft: lora
   - /model/fusion@model.fusion: cross_attention
   - /model/classifier@model.classifier: linear
-  - /dataset@dataset: btxrd
+  - /dataset@dataset: ctch
   - _self_
 
-experiment_name: btxrd/proposed/ours_xbone_net
+experiment_name: ctch/proposed/ours_xbone_net_v2
 
 model:
   backbone_type: biomedclip
+  peft:
+    params:
+      r: 8
+      alpha: 16
 
 dataset:
   params:

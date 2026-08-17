@@ -1,0 +1,19 @@
+# @package _global_
+# Current-architecture ablation: replace the learned linear head with an
+# empirical-centroid head while reusing the matching Phase-1 checkpoint.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/classifier/empirical_centroid_current
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+    checkpoint_path: checkpoints/ctch/proposed/ours_xbone_net/seed_${seed}/best_phase1.pth
+  phase2:
+    init_from_phase1_checkpoint: true
+    init_from_phase1_merged: false
+    classifier_type: empirical_centroid

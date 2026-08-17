@@ -10,14 +10,14 @@ HƯỚNG DẪN SỬ DỤNG XBONE-NET
 
 - Terminal đang đứng tại thư mục gốc của chương trình: MaDeTai/src.
 - Dữ liệu đã được bố trí đúng cấu trúc trong thư mục data/.
-- Các checkpoint huấn luyện đặt tại thư mục checkpoints/ (hoặc demo/artifacts/).
+- Checkpoint huấn luyện đặt tại thư mục checkpoints/ và phải khớp config trong results/.
 
 
 2. KIỂM TRA CÚ PHÁP VÀ HỆ THỐNG
 -------------------------------
 Kiểm tra cú pháp toàn bộ mã nguồn:
 
-  python -m compileall -q train.py evaluate.py evaluate_ood.py inference.py src tools benchmark demo data
+  python -m compileall -q train.py evaluate.py inference.py src tools benchmark demo data
 
 Kiểm tra danh mục thư viện đồng bộ:
 
@@ -39,13 +39,6 @@ Kiểm tra danh mục thư viện đồng bộ:
   python data/BTXRD/preprocess_btxrd.py
   python data/BTXRD/generate_clinical_reports.py
 
-3.3. Tập dữ liệu FracAtlas (Domain OOD):
-Đặt dữ liệu vào data/FracAtlas, sau đó chạy:
-
-  python data/FracAtlas/preprocess.py
-  python data/FracAtlas/generate_reports.py
-
-
 4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT (XBONE-NET)
 -----------------------------------------
 Huấn luyện XBone-Net trên CTCH (mặc định seed 42):
@@ -58,11 +51,11 @@ Huấn luyện XBone-Net trên BTXRD:
 
 Chỉ định seed khác (ví dụ: seed 123, seed 456):
 
-  python train.py +experiment=ctch/proposed/ours_xbone_net ++seed=123
+  python train.py +experiment=ctch/proposed/ours_xbone_net seed=123
 
 Tối ưu bộ nhớ GPU (giảm batch size):
 
-  python train.py +experiment=ctch/proposed/ours_xbone_net dataset.batch_size=4 model.tile_encode_chunk_size=8
+  python train.py +experiment=ctch/proposed/ours_xbone_net dataset.batch_size=4
 
 Trọng số tốt nhất của 2 giai đoạn huấn luyện sẽ được lưu tự động tại:
   checkpoints/<dataset>/proposed/ours_xbone_net/seed_<seed>/best_phase1.pth
@@ -101,9 +94,9 @@ Few-Shot Learning (10-shot, 20-shot):
 
   python train.py +experiment=ctch/few_shot/10_shot/ours_xbone_net
 
-Ablation Study (Ví dụ bỏ Letterbox / bỏ High-Res):
+Ablation tiền xử lý (resize trực tiếp thay cho letterbox):
 
-  python train.py +experiment=ctch/ablation_study/architecture/preprocess/xbone_letterbox
+  python train.py +experiment=ctch/ablation_study/architecture/preprocess/direct_resize_current
 
 
 8. CHẠY NHIỀU SEED HOẶC TỰ ĐỘNG HÓA HÀNG LOẠT
@@ -121,7 +114,11 @@ Tổng hợp bảng so sánh kết quả tự động:
 ----------------------------------------------------
 9.1. Đánh giá phát hiện Out-of-Distribution (OOD):
 
-  python benchmark/ood_analysis.py --analyses ood --device cuda
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 123 456 --device cuda
+
+Đánh giá IG end-to-end trên ảnh letterbox và văn bản (cần feature archive train/test):
+
+  python benchmark/explainability_analysis.py --experiment ctch/proposed/ours_xbone_net --seed 42 --train-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz --test-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_test.npz --output-dir results/ctch/proposed/ours_xbone_net/seed_42/analysis/explainability --device cuda
 
 9.2. Xuất hình ảnh Integrated Gradients (IG Attribution) đa phương thức:
 
@@ -145,9 +142,8 @@ Trực quan hóa quy trình tiền xử lý ảnh Letterbox Square:
 
   python tools/visualize/preprocessing.py --image data/CTCH/images/<TEN_FILE_ANH.jpg>
 
-Trực quan hóa phân bố tâm lớp (Empirical Centroids):
-
-  python tools/visualize/centroids.py --experiment ctch/proposed/ours_xbone_net --seed 42 --split test
+Mô hình đề xuất hiện dùng linear head; công cụ tâm lớp chỉ áp dụng cho các
+checkpoint ablation dùng empirical centroid, không áp dụng cho ours_xbone_net.
 
 
 12. KHỞI CHẠY ỨNG DỤNG WEB DEMO (STREAMLIT)

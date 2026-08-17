@@ -1,0 +1,17 @@
+# @package _global_
+# Current-architecture ablation: omit multimodal alignment in Phase 1 and
+# train the final letterbox + cross-attention + linear pipeline from Phase 2.
+
+defaults:
+  - /experiment/ctch/proposed/ours_xbone_net
+  - _self_
+
+experiment_name: ctch/ablation_study/architecture/phase/phase2_only_current
+
+params:
+  run_phase1: false
+  phase1:
+    enabled: false
+  phase2:
+    init_from_phase1_checkpoint: false
+    init_from_phase1_merged: false

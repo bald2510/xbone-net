@@ -1,9 +1,4 @@
-"""Cung cấp thành phần dữ liệu fracatlas cho XBone-Net.
-
-Notes
------
-Mô-đun này thuộc cơ sở mã nguồn nghiên cứu XBone-Net và giữ các quy ước dùng chung của dự án.
-"""
+"""Dataset FracAtlas dùng cho các phép đánh giá gãy xương ngoài CTCH."""
 
 import os
 from pathlib import Path
@@ -13,7 +8,7 @@ import pandas as pd
 from PIL import Image, ImageFile
 from torch.utils.data import Dataset
 
-from .high_resolution import prepare_global_image, prepare_high_resolution_inputs
+from .preprocessing import prepare_image
 
 
 FRACATLAS_IMAGE_RESOLVER_VERSION = 3
@@ -28,12 +23,7 @@ _FRACATLAS_CLASS_DIRECTORIES = {
 # ============================================================
 
 class FracAtlasDataset(Dataset):
-    """Biểu diễn và truy xuất dữ liệu bằng lớp ``FracAtlasDataset``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
+    """Đọc ảnh FracAtlas theo split và phân giải đường dẫn lớp một cách chặt chẽ."""
 
     def __init__(
         self, 
@@ -165,17 +155,12 @@ class FracAtlasDataset(Dataset):
             )
 
         # Chuẩn bị và xử lý đầu vào hoặc đặc trưng hình ảnh.
-        self.high_res_cfg = kwargs.get('high_res', {})
-        self.use_high_res = self.high_res_cfg.get('enabled', False)
-        self.cache_high_res_selection = bool(
-            self.high_res_cfg.get('cache_selection', True)
-        )
-        self._high_res_selection_cache = {}
         self.preprocess_cfg = kwargs.get('preprocess', {})
         
         print(
             f"[FracAtlasDataset] Loaded '{split.upper()}' split with "
-            f"{len(self.df)} samples. Sparse high-res views: {self.use_high_res}. "
+            f"{len(self.df)} samples. "
+            f"Preprocess: {self.preprocess_cfg.get('strategy', 'letterbox')}. "
             f"Image layout: {image_layout}"
         )
 
@@ -365,24 +350,7 @@ class FracAtlasDataset(Dataset):
             ) from error
             
         # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
-        if self.use_high_res:
-            cached_selection = self._high_res_selection_cache.get(image_id)
-            high_res_fields, selection = prepare_high_resolution_inputs(
-                image,
-                self.transform,
-                self.high_res_cfg,
-                selection=cached_selection,
-                return_selection=True,
-            )
-            if self.cache_high_res_selection and cached_selection is None:
-                self._high_res_selection_cache[image_id] = selection
-        else:
-            high_res_fields = {}
-            image = prepare_global_image(
-                image,
-                self.transform,
-                self.preprocess_cfg,
-            )
+        image = prepare_image(image, self.transform, self.preprocess_cfg)
             
         # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if self.task_type == "multiclass":
@@ -393,10 +361,4 @@ class FracAtlasDataset(Dataset):
         # Chuẩn bị và xử lý đầu vào hoặc đặc trưng văn bản.
         input_ids = self._load_and_tokenize(report_path, "no fracture identified.")
         
-        if self.use_high_res:
-            return {
-                **high_res_fields,
-                "input_ids": input_ids,
-                "labels": labels
-            }
         return image, input_ids, labels
