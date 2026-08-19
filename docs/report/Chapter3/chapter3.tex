@@ -4,7 +4,7 @@
 \section{Tổng quan phương pháp đề xuất}
 \label{sec:final-pipeline}
 
-Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân loại đa lớp ảnh X-quang xương có kết hợp thông tin lâm sàng. Hệ thống được xây dựng theo kiến trúc hai nhánh. Nhánh ảnh khai thác đồng thời cấu trúc giải phẫu toàn cục và các vùng cục bộ giàu chi tiết, trong khi nhánh văn bản biểu diễn bệnh sử và lý do vào viện. Hai nguồn thông tin được ánh xạ vào cùng một không gian đặc trưng, trao đổi ngữ cảnh bằng cơ chế chú ý chéo hai chiều, sau đó được phân lớp bằng tâm cụm thực nghiệm.
+Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân loại đa lớp ảnh X-quang xương có kết hợp thông tin lâm sàng. Hệ thống được xây dựng theo kiến trúc hai nhánh. Nhánh ảnh khai thác đồng thời cấu trúc giải phẫu toàn cục và các vùng cục bộ giàu chi tiết, trong khi nhánh văn bản biểu diễn bệnh sử và lý do vào viện. Hai nguồn thông tin được ánh xạ vào cùng một không gian đặc trưng, trao đổi ngữ cảnh bằng cơ chế chú ý chéo hai chiều, sau đó được phân lớp.
 
 \begin{figure}[htbp]
     \centering
@@ -13,7 +13,7 @@ Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân loại đa lớp
     \label{fig:ch3_overview}
 \end{figure}
 
-Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện để thích nghi trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được so sánh với các nguyên mẫu lớp để đưa ra dự đoán. Định danh mô hình nền tảng, kích thước biểu diễn, vị trí chèn LoRA và cấu hình tái lập đầy đủ được trình bày tại Phụ lục~\ref{AppendixModelDetails}.
+Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện để thích nghi trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được dưa vào mô-đun phân loại. Định danh mô hình nền tảng, kích thước biểu diễn, vị trí chèn LoRA và cấu hình tái lập đầy đủ được trình bày tại Phụ lục~\ref{AppendixModelDetails}.
 
 Mỗi mẫu dữ liệu được ký hiệu bởi bộ ba gồm ảnh X-quang, thông tin lâm sàng và nhãn lớp. Tập huấn luyện có dạng:
 
@@ -28,11 +28,13 @@ y_i\in\mathcal{Y}.
 \label{eq:ch3_dataset}
 \end{equation}
 
-Trong đó, $x_i^{\mathrm{img}}\in\mathbb{R}^{H_i\times W_i\times C_{\mathrm{in}}}$ là ảnh X-quang của mẫu thứ $i$. Các ký hiệu $H_i$, $W_i$ và $C_{\mathrm{in}}$ lần lượt là chiều cao, chiều rộng và số kênh ảnh. Thông tin lâm sàng được ký hiệu $x_i^{\mathrm{txt}}=\left(w_{i,1},\ldots,w_{i,L_i}\right)$, với $L_i$ là số đơn vị biểu dmạng niễn trước khi cắt hoặc đệm. Nhãn $y_i$ thuộc tập chỉ số lớp $\mathcal{Y}=\{1,\ldots,K\}$, còn $N$ là số mẫu huấn luyện.
+Trong đó, $x_i^{\mathrm{img}}\in\mathbb{R}^{H_i\times W_i\times C_{\mathrm{in}}}$ là ảnh X-quang của mẫu thứ $i$. Các ký hiệu $H_i$, $W_i$ và $C_{\mathrm{in}}$ lần lượt là chiều cao, chiều rộng và số kênh ảnh. Thông tin lâm sàng được ký hiệu $x_i^{\mathrm{txt}}=\left(w_{i,1},\ldots,w_{i,L_i}\right)$, với $L_i$ là số đơn vị biểu diễn trước khi cắt hoặc đệm. Nhãn $y_i$ thuộc tập nhãn $\mathcal{Y}=\{y_1,y_2,\ldots,y_K\}$, còn $N$ là số mẫu huấn luyện.
 
-Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại tuyến. Giai đoạn thứ nhất thích nghi hai nhánh mã hóa và căn chỉnh không gian ảnh-văn bản bằng hàm mất mát khớp ngữ nghĩa. Giai đoạn thứ hai học cơ chế dung hợp và ranh giới phân lớp trong không gian nguyên mẫu. Khi suy luận trực tuyến, toàn bộ tham số được cố định, mô hình chỉ thực hiện tính toán truyền thuận cho một ca mới.
+Quá trình xây dựng mô hình được chia thành hai giai đoạn ngoại tuyến. Giai đoạn thứ nhất thích nghi hai nhánh mã hóa và căn chỉnh không gian ảnh-văn bản bằng hàm mất mát khớp ngữ nghĩa. Giai đoạn thứ hai học cơ chế dung hợp và phân loại. Khi suy luận trực tuyến, toàn bộ tham số được cố định, mô hình chỉ thực hiện tính toán truyền thuận cho một ca mới.
 
 Để làm rõ cách hệ thống chuyển đổi từng nguồn dữ liệu thành biểu diễn có thể sử dụng cho quá trình dung hợp, các phần tiếp theo lần lượt trình bày nhánh biểu diễn ảnh, nhánh biểu diễn văn bản và cơ chế thích nghi hai bộ mã hóa trước khi đi đến mô-đun dung hợp và phân lớp.
+
+Với ký hiệu $D_{\mathrm{enc}}=768$ là chiều ẩn bên trong hai Transformer của BiomedCLIP, còn $D=512$ là chiều biểu diễn chung sau các lớp chiếu của BiomedCLIP. Mọi đặc trưng được truyền vào mô-đun dung hợp, bộ phân lớp và bộ phát hiện OOD đều nằm trong không gian $D=512$ chiều.
 
 \section{Nhánh mã hóa hình ảnh}
 
@@ -44,17 +46,19 @@ Mô hình kế thừa bộ mã hóa của BiomedCLIP \cite{BiomedCLIP}, được
     N = \frac{224 \times 224}{16^2} = 196
     \end{equation}
     
-    \item \textbf{Nhúng tuyến tính và chèn token $[CLS]$:} Các mảnh ảnh được trải phẳng và chiếu tuyến tính qua ma trận trọng số $E \in \mathbb{R}^{(16^2 \cdot 3) \times D}$ vào không gian ẩn có số chiều ẩn $D = 768$ để tạo thành các \textit{patch embeddings}. Để tổng hợp thông tin ngữ nghĩa toàn cục của bức ảnh, một token phân loại học được đặc biệt - ký hiệu là $v_{\text{CLS}} \in \mathbb{R}^{1 \times D}$ - được chèn vào ngay đầu chuỗi đặc trưng. Đồng thời, một ma trận nhúng vị trí một chiều học được $E_{\text{pos}} \in \mathbb{R}^{(N+1) \times D}$ được cộng trực tiếp vào chuỗi nhằm bảo toàn thông tin cấu trúc không gian:
+    \item \textbf{Nhúng tuyến tính và chèn token $[CLS]$:} Các mảnh ảnh được trải phẳng và chiếu tuyến tính qua ma trận trọng số $E \in \mathbb{R}^{(16^2 \cdot 3) \times D_{\mathrm{enc}}}$ vào không gian ẩn $D_{\mathrm{enc}}=768$ chiều để tạo thành các \textit{patch embeddings}. Để tổng hợp thông tin ngữ nghĩa toàn cục của bức ảnh, một token phân loại học được đặc biệt - ký hiệu là $v_{\text{CLS}} \in \mathbb{R}^{1 \times D_{\mathrm{enc}}}$ - được chèn vào ngay đầu chuỗi đặc trưng. Đồng thời, một ma trận nhúng vị trí một chiều học được $E_{\text{pos}} \in \mathbb{R}^{(N+1) \times D_{\mathrm{enc}}}$ được cộng trực tiếp vào chuỗi nhằm bảo toàn thông tin cấu trúc không gian:
     \begin{equation}
     z_0 = [v_{\text{CLS}}; v_p^1 E; v_p^2 E; \dots; v_p^N E] + E_{\text{pos}}
     \end{equation}
     
     \item \textbf{Xử lý qua Transformer Encoder:} Chuỗi biểu diễn tích hợp $z_0$ được truyền qua chồng gồm $L = 12$ tầng Transformer Encoder. Tại mỗi tầng, các cơ chế tự chú ý đa đầu (Multi-Head Self-Attention) và mạng truyền thẳng (MLP) liên tục cập nhật trạng thái của toàn bộ chuỗi thông qua chuẩn hóa trước và kết nối tắt residual.
     
-    \item \textbf{Trích xuất đầu ra của bộ mã hóa:} Tại tầng mã hóa cuối cùng ($L=12$), đặc trưng biểu diễn toàn cầu của hình ảnh (ký hiệu là $y_v$) được trích xuất bằng cách lấy trạng thái ẩn của token phân loại ở vị trí đầu tiên của chuỗi ($z_L^0$) đi qua một lớp chuẩn hóa LayerNorm cuối cùng:
+    \item \textbf{Trích xuất và chiếu chuỗi đặc trưng:} Tại tầng mã hóa cuối cùng ($L=12$), toàn bộ chuỗi trạng thái ẩn được chuẩn hóa và chiếu từ $D_{\mathrm{enc}}=768$ xuống không gian chung $D=512$ chiều bằng ma trận $W_v^{\mathrm{proj}}\in\mathbb{R}^{D_{\mathrm{enc}}\times D}$:
     \begin{equation}
-    y_v = \text{LN}(z_L^0) \in \mathbb{R}^D
+    y_v = \operatorname{LN}(z_L)W_v^{\mathrm{proj}}
+    \in \mathbb{R}^{(N+1)\times D}.
     \end{equation}
+    Dòng đầu $y_v^0\in\mathbb{R}^{D}$ là biểu diễn ảnh toàn cục tại vị trí $[CLS]$, còn $y_v^{1:}\in\mathbb{R}^{N\times D}$ gồm $N=196$ biểu diễn mảnh ảnh cục bộ. Hai phần này đều được giữ lại cho mô-đun dung hợp.
 \end{enumerate}
 
 \section{Nhánh biểu diễn văn bản}
@@ -62,25 +66,31 @@ Mô hình kế thừa bộ mã hóa của BiomedCLIP \cite{BiomedCLIP}, được
 Bổ sung cho các bằng chứng hình thái được trích xuất từ ảnh X-quang, nhánh biểu diễn văn bản có nhiệm vụ mã hóa thông tin lâm sàng $t$ thành các đặc trưng ngữ cảnh theo từng đơn vị biểu diễn và một vectơ đại diện cho toàn bộ chuỗi. Trong khóa luận, nhánh này được kế thừa từ bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, với thành phần chính là PubMedBERT. Khác với các mô hình ngôn ngữ được tiền huấn luyện trên văn bản tổng quát, PubMedBERT được tiền huấn luyện từ đầu trên kho ngữ liệu y sinh và sử dụng bộ từ vựng được xây dựng trực tiếp từ miền dữ liệu này. Nhờ đó, mô hình phù hợp hơn với các thuật ngữ chuyên ngành xuất hiện trong thông tin lâm sàng. Chuỗi văn bản mô tả y khoa đầu vào $t$ được chuyển đổi thành vector biểu diễn ngữ nghĩa thông qua các bước biến đổi tuần tự như sau:
 
 \begin{enumerate}
-    \item \textbf{Phân tách từ tố (Tokenization):} Văn bản thô $t$ được phân tách thành chuỗi các từ tố (subwords) bằng thuật toán WordPiece dựa trên từ vựng y sinh chuyên biệt gồm $30.000$ từ. Để đảm bảo mô hình bao phủ được các mô tả bệnh lý chi tiết, độ dài tối đa của chuỗi được nới rộng và giới hạn ở ngưỡng $M = 256$ token.
+    \item \textbf{Phân tách từ tố (Tokenization):} Văn bản thô $t$ được phân tách thành chuỗi các từ tố (subwords) bằng thuật toán WordPiece dựa trên từ vựng y sinh chuyên biệt gồm $30.000$ từ. Tổng độ dài chuỗi sau khi thêm token đặc biệt, cắt và đệm được cố định ở $T=256$ vị trí.
     
     \item \textbf{Khởi tạo chuỗi và chèn các token đặc biệt $[CLS]$ và $[SEP]$:} 
     Để cấu trúc hóa chuỗi đầu vào theo chuẩn BERT, một token phân loại đặc biệt ký hiệu là $t_{\text{CLS}}$ được chèn vào đầu chuỗi, và một token phân tách đặc biệt ký hiệu là $t_{\text{SEP}}$ được bổ sung ở cuối chuỗi để phân định ranh giới ngữ cảnh:
     \begin{equation}
-    t_{\text{seq}} = [t_{\text{CLS}}, t_1, t_2, \dots, t_M, t_{\text{SEP}}]
+    t_{\text{seq}}
+    = [t_{\text{CLS}},t_1,t_2,\ldots,t_{\ell},t_{\text{SEP}},
+    t_{\text{PAD}},\ldots],
+    \qquad T=256,
     \end{equation}
+    trong đó $\ell$ là số từ tố nội dung còn lại sau khi cắt; các vị trí đệm được loại khỏi phép chú ý chéo bằng mặt nạ chú ý.
     
-    Vector nhúng ban đầu $g_0$ sau đó được thiết lập bằng cách cộng phần tử (element-wise summation) giữa các vector nhúng từ tố (token embeddings), nhúng phân đoạn (segment embeddings) và nhúng vị trí (position embeddings) trong không gian ẩn có số chiều $D = 768$:
+    Vector nhúng ban đầu $g_0$ sau đó được thiết lập bằng cách cộng phần tử (element-wise summation) giữa các vector nhúng từ tố (token embeddings), nhúng phân đoạn (segment embeddings) và nhúng vị trí (position embeddings) trong không gian ẩn $D_{\mathrm{enc}}=768$ chiều:
     \begin{equation}
     g_0 = \text{Embedding}(t_{\text{seq}})
     \end{equation}
     
     \item \textbf{Xử lý qua Transformer Encoder:} Chuỗi biểu diễn tích hợp $g_0$ được truyền qua chồng gồm $L = 12$ tầng Transformer Encoder hai chiều (bidirectional). Tại mỗi tầng, cơ chế tự chú ý đa đầu (Multi-Head Self-Attention) và mạng truyền thẳng (MLP) liên tục cập nhật trạng thái ngữ cảnh của toàn bộ chuỗi thông qua chuẩn hóa trước và kết nối tắt residual.
     
-    \item \textbf{Trích xuất đầu ra của bộ mã hóa:} Tại tầng mã hóa cuối cùng ($L=12$), đặc trưng biểu diễn toàn cầu của đoạn văn bản (ký hiệu là $y_t$) được trích xuất bằng cách lấy trạng thái ẩn của token phân loại ở vị trí đầu tiên của chuỗi ($g_L^0$) đi qua một lớp chuẩn hóa LayerNorm cuối cùng:
+    \item \textbf{Trích xuất và chiếu chuỗi đặc trưng:} Tại tầng mã hóa cuối cùng ($L=12$), toàn bộ chuỗi trạng thái ẩn được chiếu từ $D_{\mathrm{enc}}=768$ xuống không gian chung $D=512$ chiều bằng ma trận $W_t^{\mathrm{proj}}\in\mathbb{R}^{D_{\mathrm{enc}}\times D}$:
     \begin{equation}
-    y_t = \text{LN}(g_L^0) \in \mathbb{R}^D
+    y_t = g_LW_t^{\mathrm{proj}}
+    \in \mathbb{R}^{T\times D}.
     \end{equation}
+    Dòng đầu $y_t^0\in\mathbb{R}^{D}$ là biểu diễn văn bản toàn cục tại vị trí $[CLS]$. Các dòng còn lại tạo ngữ cảnh cục bộ theo từng vị trí từ tố; những vị trí đệm không tham gia chú ý chéo.
 \end{enumerate}
 
 Kết thúc hai nhánh mã hóa, mỗi mẫu được biểu diễn bởi chuỗi đặc trưng ảnh $\boldsymbol{V}_{i}$, ma trận đặc trưng văn bản $\boldsymbol{H}_{i}^{T}$ và các vectơ toàn cục tương ứng. Mặc dù các biểu diễn này kế thừa tri thức y sinh từ BiomedCLIP, sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu X-quang xương đích vẫn đòi hỏi hai bộ mã hóa được thích nghi trước khi thực hiện dung hợp.
@@ -88,6 +98,13 @@ Kết thúc hai nhánh mã hóa, mỗi mẫu được biểu diễn bởi chuỗ
 \section{Thích nghi tham số hiệu quả bằng LoRA}
 
 Trong quá trình thích nghi các mô hình lớn (như PubMedBERT hay ViT trong BiomedCLIP) cho các tác vụ y sinh hạ nguồn, phương pháp tinh chỉnh toàn bộ tham số đòi hỏi chi phí tính toán và bộ nhớ lưu trữ cực kỳ lớn. Để giải quyết rào cản này, phương pháp Thích nghi tham số hạng thấp (LoRA - Low-Rank Adaptation) được áp dụng. Phương pháp này hoạt động dựa trên giả thuyết rằng sự thay đổi trọng số của các lớp liên kết dày đặc trong quá trình học thực chất nằm trong một không gian có "hạng nội tại" rất thấp. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/chapter3/LoRA.png}
+    \caption{Phân rã hạng r với ma trận cập nhật trọng số $\Delta W$}
+    \label{fig:lora}
+\end{figure}
 
 Quy trình toán học và dòng chảy dữ liệu của cơ chế LoRA được mô tả cụ thể qua các bước sau:
 
@@ -114,10 +131,52 @@ Quy trình toán học và dòng chảy dữ liệu của cơ chế LoRA đượ
     \end{equation}
     Trong đó, $\alpha$ là một hằng số tỷ lệ cố định. Việc nhân thêm hệ số điều chỉnh $\frac{\alpha}{r}$ đóng vai trò quan trọng trong việc ổn định hóa quá trình tối ưu hóa, giúp giảm thiểu tối đa việc phải tinh chỉnh lại các siêu tham số huấn luyện khác (như tốc độ học) khi người dùng thay đổi giá trị của hạng $r$.
 
-    \item \textbf{Tích hợp vào kiến trúc Transformer:}
-    Mặc dù cấu trúc tuyến tính của LoRA có thể áp dụng cho bất kỳ lớp liên kết dày đặc nào, phương pháp này được ưu tiên áp dụng vào các ma trận trọng số chiếu của cơ chế tự chú ý đa đầu (Multi-Head Self-Attention), cụ thể là các ma trận Query ($W_q$), Key ($W_k$) và Value ($W_v$).
-\end{enumerate}
+        \item \textbf{Tích hợp vào kiến trúc Transformer:}
+    Trong cấu hình XBone-Net, LoRA không chỉ được gắn vào các phép chiếu Query, Key và Value mà còn được gắn vào phép chiếu đầu ra chú ý và hai lớp tuyến tính của MLP trong mỗi khối Transformer. ViT-B/16 cài đặt ba phép chiếu Query-Key-Value bằng một ma trận gộp $W_{QKV}$, trong khi PubMedBERT sử dụng ba ma trận riêng $W_Q$, $W_K$ và $W_V$. Bảng~\ref{tab:ch3_lora_targets} liệt kê đầy đủ các ma trận đích theo đúng cấu hình mã nguồn.
+
+        \end{enumerate}
+
+        \begin{table}[H]
+        \centering
+        \small
+        \resizebox{\textwidth}{!}{%
+        \begin{tabular}{|l|l|l|l|}
+        \hline
+        \textbf{Bộ mã hóa} &
+        \textbf{Mô-đun trong mã nguồn} &
+        \textbf{Ma trận được gắn LoRA} &
+        \textbf{Vai trò} \\ \hline
+        ViT-B/16 & \texttt{attn.qkv} &
+        $W_{QKV}^{(v)}\in\mathbb{R}^{3D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+        Chiếu đồng thời Query, Key và Value. \\ \hline
+        ViT-B/16 & \texttt{attn.proj} &
+        $W_{O}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+        Chiếu đầu ra của chú ý đa đầu. \\ \hline
+        ViT-B/16 & \texttt{mlp.fc1}, \texttt{mlp.fc2} &
+        $W_{1}^{(v)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$,
+        $W_{2}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
+        Mở rộng rồi thu hẹp chiều trong MLP. \\ \hline
+        PubMedBERT & \texttt{query}, \texttt{key}, \texttt{value} &
+        $W_Q^{(t)},W_K^{(t)},W_V^{(t)}\in
+        \mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+        Ba phép chiếu Query, Key và Value riêng biệt. \\ \hline
+        PubMedBERT & \texttt{attention.output.dense} &
+        $W_O^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+        Chiếu đầu ra của chú ý đa đầu. \\ \hline
+        PubMedBERT & \texttt{intermediate.dense}, \texttt{output.dense} &
+        $W_{1}^{(t)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$,
+        $W_{2}^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
+        Mở rộng rồi thu hẹp chiều trong mạng truyền thẳng. \\ \hline
+        \end{tabular}%
+        }
+        \caption{Các ma trận được gắn LoRA trong hai bộ mã hóa của XBone-Net}
+        \label{tab:ch3_lora_targets}
+        \end{table}
+
+Với $D_{\mathrm{enc}}=768$, kích thước trung gian của MLP là $4D_{\mathrm{enc}}=3072$. Các adapter được chèn vào các ma trận trên ở cả 12 khối Transformer của mỗi bộ mã hóa; mỗi ma trận có một cặp tham số hạng thấp $(A,B)$ riêng và không chia sẻ adapter với ma trận khác. Cấu hình chính sử dụng $r=16$, $\alpha=32$ và tỷ lệ bỏ học LoRA bằng $0{,}1$. Các độ chệch, lớp embedding, LayerNorm và hai lớp chiếu cuối từ 768 xuống 512 chiều không được gắn LoRA; trọng số nền của chúng tiếp tục được giữ cố định. Mô-đun chú ý chéo, mạng dung hợp và đầu phân lớp cũng không sử dụng LoRA mà được tối ưu trực tiếp trong giai đoạn thứ hai.
+
 LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu trong miền đích. Bản thân kỹ thuật này chưa thực hiện trao đổi thông tin giữa ảnh và văn bản. Sau khi hai nhánh đã tạo ra các đặc trưng thích nghi, các biểu diễn này được chuyển đến mô-đun dung hợp để mô hình hóa quan hệ giữa dấu hiệu thị giác và ngữ cảnh lâm sàng.
+
 
 
 % \section{Dung hợp đa phương thức bằng chú ý chéo}
@@ -246,12 +305,12 @@ LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu 
 
 % Kết quả của quá trình trên là vectơ đa phương thức $\boldsymbol{z}_{i}$, trong đó thông tin ảnh và văn bản đã được tổng hợp trong cùng một biểu diễn. Vectơ này là đầu vào trực tiếp của bộ phân lớp, do đó quyết định cuối cùng không còn dựa trên từng phương thức riêng lẻ mà dựa trên quan hệ đã học giữa chúng.
 
-\section{Module dung hợp đa phương thức với chú ý chéo hai chiều}
+\section{mô-đun dung hợp đa phương thức với chú ý chéo hai chiều}
 
 Sau khi đi qua các bộ mã hóa chuyên biệt, ta thu được các ma trận biểu diễn đặc trưng đầy đủ chứa cả thông tin toàn cục lẫn cục bộ của hai nhánh:
 \begin{itemize}
-    \item Ma trận đặc trưng hình ảnh $y_v \in \mathbb{R}^{(N+1) \times D}$, trong đó dòng đầu tiên $y_v^0 \in \mathbb{R}^D$ đại diện cho token phân loại $[CLS]$, và phần còn lại $y_v^{1:} \in \mathbb{R}^{N \times D}$ đại diện cho đặc trưng cục bộ của $N$ mảnh ảnh.
-    \item Ma trận đặc trưng văn bản $y_t \in \mathbb{R}^{(M+1) \times D}$, trong đó dòng đầu tiên $y_t^0 \in \mathbb{R}^D$ đại diện cho token đặc biệt $[CLS]$, và phần còn lại $y_t^{1:} \in \mathbb{R}^{M \times D}$ đại diện cho đặc trưng cục bộ của $M$ từ tố.
+    \item Ma trận đặc trưng hình ảnh $y_v \in \mathbb{R}^{197 \times D}$, trong đó dòng đầu tiên $y_v^0 \in \mathbb{R}^D$ đại diện cho token phân loại $[CLS]$, và phần còn lại $y_v^{1:} \in \mathbb{R}^{196 \times D}$ đại diện cho đặc trưng cục bộ của 196 mảnh ảnh.
+    \item Ma trận đặc trưng văn bản $y_t \in \mathbb{R}^{T \times D}$ với $T=256$, trong đó dòng đầu tiên $y_t^0 \in \mathbb{R}^D$ đại diện cho token đặc biệt $[CLS]$, còn $y_t^{1:} \in \mathbb{R}^{(T-1) \times D}$ chứa các vị trí ngữ cảnh còn lại; mặt nạ chú ý loại các vị trí đệm. Trong cả hai nhánh, $D=512$.
 \end{itemize}
 
 
@@ -411,7 +470,7 @@ Quy trình toán học trong một batch huấn luyện kích thước $B$ đư�
 %     Với $\eta$ đại diện cho tốc độ học (learning rate) được thiết lập theo lịch trình suy giảm tuyến tính kết hợp khởi động ấm (warm-up).
 % \end{enumerate}
 
-Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để tạo ra không gian ảnh-văn bản phù hợp hơn với dữ liệu X-quang xương. Tuy nhiên, các đặc trưng của cặp ảnh-văn bản mới chỉ được căn chỉnh gần nhau hơn ở mức biểu diễn trong không gian nhúng và chưa được tối ưu trực tiếp cho quyết định phân lớp đa lớp. Vì vậy, giai đoạn thứ hai tiếp tục sử dụng các bộ mã hóa đã thích nghi, đồng thời đưa mô-đun dung hợp và tâm cụm thực nghiệm vào quá trình huấn luyện có giám sát.
+Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để tạo ra không gian ảnh-văn bản phù hợp hơn với dữ liệu X-quang xương. Tuy nhiên, các đặc trưng của cặp ảnh-văn bản mới chỉ được căn chỉnh gần nhau hơn ở mức biểu diễn trong không gian nhúng và chưa được tối ưu trực tiếp cho quyết định phân lớp đa lớp. Vì vậy, giai đoạn thứ hai tiếp tục sử dụng các bộ mã hóa đã thích nghi, đồng thời đưa mô-đun dung hợp và mô-đun phân loại vào quá trình huấn luyện có giám sát.
 
 
 % Dạng mất mát trong Công thức \ref{eq:ch3_phase1_loss} kế thừa nguyên lý khớp ngữ nghĩa hai chiều của các mô hình ảnh-văn bản y khoa \cite{MedCLIP}. So với nhãn khớp cứng, phân phối đích mềm tránh xem mọi cặp khác mẫu là âm hoàn toàn khi chúng cùng mô tả một lớp bệnh. Việc lấy mẫu theo lớp làm tăng khả năng một lô có nhiều cặp cùng lớp để cung cấp tín hiệu ngữ nghĩa cho mục tiêu này.
@@ -487,7 +546,7 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
 
 \begin{enumerate}
     \item \textbf{Khởi tạo đầu vào bộ phân loại:}
-    Gọi $\mathbf{z} = y_{\text{fusion}} \in \mathbb{R}^D$ là vector đặc trưng dung hợp tổng hợp thu được từ đầu ra của module chú ý chéo hai chiều (với số chiều ẩn $D = 768$). Bộ phân loại hạ nguồn được thiết lập để dự đoán $C = 22$ lớp bệnh lý y khoa mục tiêu.
+    Gọi $\mathbf{z} = y_{\text{fusion}} \in \mathbb{R}^D$ là vector đặc trưng dung hợp tổng hợp thu được từ đầu ra của mô-đun chú ý chéo hai chiều, với $D=512$. Bộ phân loại hạ nguồn được thiết lập để dự đoán $C = 22$ lớp bệnh lý y khoa mục tiêu.
 
     \item \textbf{Phép chiếu tuyến tính và tính xác suất dự đoán (Forward Pass):}
     Vector đặc trưng dung hợp $\mathbf{z}$ được đưa trực tiếp qua một lớp tuyến tính đơn giản (Linear Layer) để tính toán ma trận logits điểm số $\mathbf{s} \in \mathbb{R}^{C}$:
@@ -529,7 +588,7 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
     \end{equation}
 
     \item \textbf{Quy trình cập nhật trọng số hệ thống:}
-    Gradient $\frac{\partial \mathcal{L}_{\text{WCE}}}{\partial \mathbf{z}}$ tiếp tục lan truyền ngược qua khối MLP, các lớp chuẩn hóa tầng LN, các ma trận chiếu của module chú ý chéo hai chiều, và đi sâu xuống các ma trận thích ứng LoRA ($A$ và $B$) của cả hai nhánh bộ mã hóa ảnh và chữ. 
+    Gradient $\frac{\partial \mathcal{L}_{\text{WCE}}}{\partial \mathbf{z}}$ tiếp tục lan truyền ngược qua khối MLP, các lớp chuẩn hóa tầng LN, các ma trận chiếu của mô-đun chú ý chéo hai chiều, và đi sâu xuống các ma trận thích ứng LoRA ($A$ và $B$) của cả hai nhánh bộ mã hóa ảnh và chữ.
     
     Gọi $\Theta_2$ là tập hợp tất cả các tham số có quyền cập nhật trong giai đoạn này. Tại mỗi bước lặp $t$, thuật toán tối ưu hóa AdamW thực hiện cập nhật đồng thời các tham số theo công thức:
     \begin{equation}
@@ -539,59 +598,139 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
 \end{enumerate}
 
 \section{Phát hiện dữ liệu lệch phân phối bằng thuật toán k-NN đa phương thức}
+\label{sec:ch3_multimodal_knn_ood}
 
-Sau khi huấn luyện thích nghi mô hình, các bộ mã hóa hình ảnh và văn bản có khả năng trích xuất các đặc trưng biểu diễn ngữ nghĩa rất mạnh mẽ. Tuy nhiên, khi triển khai thực tế, mô hình có thể gặp phải các mẫu dữ liệu lệch phân phối (Out-of-Distribution - OOD) nằm ngoài tập huấn luyện gốc. Để nhận diện và ngăn chặn các mẫu dữ liệu này, hệ thống áp dụng phương pháp phát hiện OOD phi tham số dựa trên thuật toán $k$-láng giềng gần nhất ($k$-NN) hoạt động đồng thời trên cả hai nhánh ảnh và chữ.
+Sau hai giai đoạn huấn luyện, hệ thống sử dụng các biểu diễn đơn phương thức để
+xây dựng một điểm cảnh báo ngoài phân phối (Out-of-Distribution, OOD) theo
+phương pháp hậu xử lý. Với cặp đầu vào $(v,t)$ đã được định nghĩa ở các phần
+trên, $y_v^0\in\mathbb{R}^{D}$ và $y_t^0\in\mathbb{R}^{D}$ lần lượt là các
+vectơ toàn cục ở vị trí $[\mathrm{CLS}]$ của nhánh ảnh và nhánh văn bản. Bộ
+phát hiện OOD không cập nhật tham số của XBone-Net và không sử dụng mẫu OOD để
+xây dựng ngân hàng tham chiếu hoặc chọn ngưỡng.
 
-Thay vì sử dụng vector đặc trưng dung hợp cuối cùng $y_{\text{fusion}}$ trích xuất từ module chú ý chéo ở Giai đoạn 2, phương pháp đề xuất lựa chọn trích xuất song song hai vector đặc trưng độc lập $y_v$ và $y_t$ sát với đầu ra của bộ mã hóa gốc. Vector dung hợp $y_{\text{fusion}}$ được tối ưu hóa trực tiếp bằng hàm lỗi Weighted Cross-Entropy nhằm phân tách rõ rệt giữa các lớp bệnh lý mục tiêu. Quá trình này sẽ ép mô hình thực hiện nén dữ liệu và loại bỏ các đặc trưng không liên quan đến tác vụ, vô tình triệt tiêu các thông tin phân phối nhạy cảm cần thiết để nhận diện dữ liệu lạ. Việc trích xuất đặc trưng sát bộ mã hóa gốc (tương đương với đặc trưng tầng áp chót - penultimate layer) giúp bảo toàn được nhiều thông tin phân phối phong phú và nguyên bản nhất.
+Việc dùng hai biểu diễn đơn phương thức thay cho vectơ dung hợp
+$y_{\mathrm{fusion}}$ cho phép đo độ lệch riêng trên từng nguồn dữ liệu. Đây là
+một lựa chọn thiết kế cần được đánh giá thực nghiệm; không giả định rằng phép
+dung hợp luôn làm mất thông tin cần thiết cho phát hiện OOD.
 
-Quy trình tính toán điểm số OOD và thiết lập ngưỡng quyết định được thực hiện tuần tự qua các bước sau:
+Trước tiên, hai vectơ toàn cục được chuẩn hóa theo chuẩn $L_2$:
+\begin{equation}
+\widetilde{y}_v
+=
+\frac{y_v^0}{\left\lVert y_v^0\right\rVert_2},
+\qquad
+\widetilde{y}_t
+=
+\frac{y_t^0}{\left\lVert y_t^0\right\rVert_2}.
+\label{eq:ch3_ood_l2_normalization}
+\end{equation}
+Với các vectơ đơn vị, thứ tự theo khoảng cách Euclid tương ứng với thứ tự theo
+độ tương đồng cosine vì
+$\lVert a-b\rVert_2^2=2-2a^{\mathsf T}b$ khi
+$\lVert a\rVert_2=\lVert b\rVert_2=1$.
 
-\begin{enumerate}
-    \item \textbf{Chuẩn hóa đặc trưng đầu vào:}
-    Gọi $y_v \in \mathbb{R}^D$ và $y_t \in \mathbb{R}^D$ (với $D = 768$) lần lượt là các vector đặc trưng biểu diễn hình ảnh và văn bản thu được từ tầng cuối cùng của các bộ mã hóa tương ứng. Trước khi tính toán khoảng cách, hai vector này bắt buộc phải được chuẩn hóa chuẩn $L_2$ để đưa về mặt cầu đơn vị:
-    \begin{equation}
-    \tilde{y}_v = \frac{y_v}{\|y_v\|_2}, \quad \tilde{y}_t = \frac{y_t}{\|y_t\|_2}
-    \end{equation}
-    Việc chuẩn hóa này đóng vai trò quyết định, giúp loại bỏ sự ảnh hưởng của độ dài vector (norm) vốn có xu hướng phân phối rất khác biệt giữa dữ liệu trong phân phối (ID) và dữ liệu ngoại lai (OOD), đồng thời đưa phép đo khoảng cách Euclid về tương đương với độ tương đồng Cosine.
+Từ $N_{\mathrm{train}}$ mẫu huấn luyện trong phân phối, hai ngân hàng tham
+chiếu đã chuẩn hóa được xây dựng độc lập:
+\begin{equation}
+\mathcal{D}_v
+=
+\left\{z_{v,1},z_{v,2},\ldots,z_{v,N_{\mathrm{train}}}\right\},
+\qquad
+\mathcal{D}_t
+=
+\left\{z_{t,1},z_{t,2},\ldots,z_{t,N_{\mathrm{train}}}\right\}.
+\label{eq:ch3_ood_reference_banks}
+\end{equation}
+Mỗi $z_{v,i}$ hoặc $z_{t,i}$ là vectơ toàn cục đã được chuẩn hóa của mẫu huấn
+luyện thứ $i$ trong không gian biểu diễn tương ứng.
 
-    \item \textbf{Thiết lập cơ sở dữ liệu tham chiếu trong phân phối (ID):}
-    Từ tập dữ liệu huấn luyện trong phân phối (In-Distribution), ta trích xuất và lưu trữ sẵn hai tập hợp vector đặc trưng đã chuẩn hóa làm cơ sở dữ liệu đối sánh:
-    \begin{equation}
-    \mathcal{D}_v = \{z_{v, 1}, z_{v, 2}, \dots, z_{v, N_{\text{train}}}\}, \quad \mathcal{D}_t = \{z_{t, 1}, z_{t, 2}, \dots, z_{t, N_{\text{train}}}\}
-    \end{equation}
+Với một mẫu cần đánh giá, gọi $z_v^{(k)}\in\mathcal{D}_v$ và
+$z_t^{(k)}\in\mathcal{D}_t$ là láng giềng gần thứ $k$ trong từng không gian.
+Hai khoảng cách $k$-NN đơn phương thức được xác định bởi
+\begin{equation}
+d_v\!\left(\widetilde{y}_v\right)
+=
+\left\lVert\widetilde{y}_v-z_v^{(k)}\right\rVert_2,
+\qquad
+d_t\!\left(\widetilde{y}_t\right)
+=
+\left\lVert\widetilde{y}_t-z_t^{(k)}\right\rVert_2.
+\label{eq:ch3_ood_unimodal_knn}
+\end{equation}
 
-    \item \textbf{Tính toán khoảng cách $k$-NN cho từng nhánh độc lập:}
-    Với một mẫu thử nghiệm đa phương thức có cặp đặc trưng đầu vào là $(\tilde{y}_v, \tilde{y}_t)$, ta lần lượt tính toán khoảng cách Euclid đến tất cả các mẫu trong tập tham chiếu tương ứng, sau đó sắp xếp theo thứ tự tăng dần. Khoảng cách đến láng giềng thứ $k$ (ký hiệu là $d_v$ cho ảnh và $d_t$ cho văn bản) được xác định bởi:
-    \begin{equation}
-    d_v(\tilde{y}_v) = \|\tilde{y}_v - z_{v}^{(k)}\|_2
-    \end{equation}
-    \begin{equation}
-    d_t(\tilde{y}_t) = \|\tilde{y}_t - z_{t}^{(k)}\|_2
-    \end{equation}
-    Trong đó, $z_{v}^{(k)}$ và $z_{t}^{(k)}$ lần lượt là các vector láng giềng gần nhất thứ $k$ của đặc trưng ảnh và đặc trưng văn bản thử nghiệm trong không gian biểu diễn tương ứng.
+Mặc dù đầu vào đã được chuẩn hóa $L_2$, phân phối của $d_v$ và $d_t$ vẫn có
+thể khác nhau. Vì vậy, trước khi hợp nhất, trung bình và độ lệch chuẩn của từng
+khoảng cách được ước lượng trên tập xác thực ID
+$\mathcal{V}_{\mathrm{ID}}$. Ký hiệu các thống kê này là
+$\mu_v^{\mathrm{val}},\sigma_v^{\mathrm{val}}$ và
+$\mu_t^{\mathrm{val}},\sigma_t^{\mathrm{val}}$; hai khoảng cách sau chuẩn hóa
+$Z$-score là
+\begin{equation}
+\widetilde{d}_v
+=
+\frac{d_v-\mu_v^{\mathrm{val}}}
+{\sigma_v^{\mathrm{val}}+\epsilon},
+\qquad
+\widetilde{d}_t
+=
+\frac{d_t-\mu_t^{\mathrm{val}}}
+{\sigma_t^{\mathrm{val}}+\epsilon},
+\label{eq:ch3_ood_zscore}
+\end{equation}
+trong đó $\epsilon>0$ là hằng số nhỏ dùng để bảo đảm ổn định số. Phép biến đổi
+này đưa hai khoảng cách về cùng thang đo không thứ nguyên, nhưng không hàm ý
+rằng chúng tuân theo phân phối Gauss.
 
-    \item \textbf{Dung hợp điểm số OOD bằng toán tử cực đại (Max Fusion):}
-    Để đảm bảo tính nhạy bén tối đa của hệ thống trước sự lệch phân phối ngữ nghĩa xảy ra ở bất kỳ phương thức nào (hoặc chỉ lệch ở ảnh, hoặc chỉ lệch ở chữ, hoặc lệch ở cả hai), điểm số khoảng cách OOD tổng hợp ($d_{\text{OOD}}$) được định nghĩa bằng giá trị cực đại giữa hai khoảng cách độc lập:
-    \begin{equation}
-    d_{\text{OOD}}(\tilde{y}_v, \tilde{y}_t) = \max \left( d_v(\tilde{y}_v), \, d_t(\tilde{y}_t) \right)
-    \end{equation}
+Điểm OOD đa phương thức giữ ký hiệu $d_{\mathrm{OOD}}$ đã dùng ở phần trên và
+được hợp nhất bằng toán tử cực đại:
+\begin{equation}
+d_{\mathrm{OOD}}\!\left(\widetilde{y}_v,\widetilde{y}_t\right)
+=
+\max\left\{\widetilde{d}_v,\widetilde{d}_t\right\}.
+\label{eq:ch3_ood_max_fusion}
+\end{equation}
+Quy tắc này làm điểm tổng hợp tăng khi ít nhất một phương thức khác biệt so với
+dữ liệu tham chiếu. Tuy nhiên, giá trị lớn chỉ tạo tín hiệu cảnh báo, không tự
+thân chứng minh rằng mẫu chắc chắn là OOD.
 
-    \item \textbf{Xác định ngưỡng quyết định dựa trên tập kiểm định:}
-    Ngưỡng phát hiện OOD (ký hiệu là $\lambda$) được thiết lập hoàn toàn dựa trên dữ liệu trong phân phối (ID) mà không cần bất kỳ thông tin nào của dữ liệu ngoại lai chưa biết. Cụ thể, $\lambda$ được chọn là giá trị phân vị thứ 95 (95\% quantile) của tập hợp các điểm số kết hợp $d_{\text{OOD}}$ tính toán trên tập kiểm định trong phân phối (Validation ID set - $\mathcal{V}_{\text{ID}}$):
-    \begin{equation}
-    P\left( d_{\text{OOD}}(\tilde{y}_v, \tilde{y}_t) \le \lambda \;\middle|\; (\tilde{y}_v, \tilde{y}_t) \in \mathcal{V}_{\text{ID}} \right) = 0.95
-    \end{equation}
-    Ngưỡng này đảm bảo về mặt thống kê rằng hệ thống sẽ giữ lại chính xác 95\% dữ liệu ID thực tế (tương ứng với tỷ lệ True Positive Rate - TPR95 đạt mức 95\%).
+Ngưỡng $\lambda$ được hiệu chỉnh trên cùng tập xác thực ID tại mức cảnh báo
+nhầm mục tiêu $\alpha=0{,}05$:
+\begin{equation}
+\lambda
+=
+Q_{1-\alpha}^{+}
+\!\left(
+\left\{
+d_{\mathrm{OOD}}\!\left(\widetilde{y}_{v,i},\widetilde{y}_{t,i}\right)
+\;\middle|\;
+(v_i,t_i)\in\mathcal{V}_{\mathrm{ID}}
+\right\}
+\right),
+\qquad \alpha=0{,}05,
+\label{eq:ch3_ood_threshold}
+\end{equation}
+trong đó $Q_q^{+}$ là phân vị thực nghiệm phía trên ở mức $q$. Với tập mẫu hữu
+hạn, cách chọn này nhằm giữ lại ít nhất khoảng $95\%$ mẫu xác thực ID theo quy
+ước phân vị; nó không đồng nhất với chỉ số FPR@95\%TPR dùng để đánh giá trên
+tập kiểm thử.
 
-    \item \textbf{Hàm quyết định phân loại quyết định:}
-    Tại pha thử nghiệm, mô hình đưa ra quyết định phân loại nhị phân cuối cùng cho mẫu dựa trên việc so sánh điểm số $d_{\text{OOD}}$ với ngưỡng $\lambda$:
-    \begin{equation}
-    G(\tilde{y}_v, \tilde{y}_t) = \begin{cases} 
-    \text{ID (Trong phân phối)}, & \text{nếu } d_{\text{OOD}}(\tilde{y}_v, \tilde{y}_t) \le \lambda \\ 
-    \text{OOD (Lệch phân phối)}, & \text{nếu } d_{\text{OOD}}(\tilde{y}_v, \tilde{y}_t) > \lambda 
-    \end{cases}
-    \end{equation}
-\end{enumerate}
+Quy tắc cảnh báo:
+\begin{equation}
+G\!\left(\widetilde{y}_v,\widetilde{y}_t\right)
+=
+\begin{cases}
+\mathrm{ID},
+& \text{nếu }d_{\mathrm{OOD}}\!\left(\widetilde{y}_v,\widetilde{y}_t\right)
+\leq\lambda,\\[3pt]
+\mathrm{OOD},
+& \text{nếu }d_{\mathrm{OOD}}\!\left(\widetilde{y}_v,\widetilde{y}_t\right)
+>\lambda.
+\end{cases}
+\label{eq:ch3_ood_decision}
+\end{equation}
+Kết quả của $G$ là tín hiệu cảnh báo bổ trợ cho dự đoán phân lớp, không phải
+bằng chứng bảo đảm an toàn và không được diễn giải như một cơ chế tự động từ
+chối chẩn đoán.
 
 \section{Suy luận trong quá trình trực tuyến}
 \label{sec:ch3_online_inference}
@@ -614,30 +753,37 @@ W_{\text{inference}} = W_0 + \frac{\alpha}{r} B A
 Nhờ phép cộng gộp này, mô hình suy luận hoạt động với cấu trúc và số lượng tham số tương đương mô hình pre-trained gốc nhưng đã mang đầy đủ tri thức thích nghi miền. Dòng chảy dữ liệu và quyết định của quy trình suy luận diễn ra tuần tự qua các bước sau:
 
 \begin{enumerate}
-    \item \textbf{Trích xuất đặc trưng song song (Parallel Feature Extraction):}
+    \item \textbf{Trích xuất đặc trưng:}
     Cặp đầu vào $(v, t)$ được đưa vào hai bộ mã hóa thích ứng để trích xuất các ma trận đặc trưng biểu diễn ngữ nghĩa:
     \begin{itemize}
-        \item Bộ mã hóa hình ảnh trích xuất ma trận đặc trưng đầy đủ $y_v \in \mathbb{R}^{(N+1) \times D}$, được chia thành vector toàn cục ở dòng đầu tiên $y_v^0 \in \mathbb{R}^D$ (token $[CLS]$) và ma trận đặc trưng cục bộ của các mảnh ảnh ở các dòng còn lại $y_v^{1:} \in \mathbb{R}^{N \times D}$.
-        \item Bộ mã hóa văn bản trích xuất ma trận đặc trưng đầy đủ $y_t \in \mathbb{R}^{(M+1) \times D}$, được chia thành vector toàn cục ở dòng đầu tiên $y_t^0 \in \mathbb{R}^D$ (token $[CLS]$) và ma trận đặc trưng cục bộ của các từ tố ở các dòng còn lại $y_t^{1:} \in \mathbb{R}^{M \times D}$.
+        \item Bộ mã hóa hình ảnh trích xuất ma trận đặc trưng đầy đủ $y_v \in \mathbb{R}^{197 \times D}$, được chia thành vector toàn cục ở dòng đầu tiên $y_v^0 \in \mathbb{R}^D$ (token $[CLS]$) và ma trận đặc trưng cục bộ của các mảnh ảnh ở các dòng còn lại $y_v^{1:} \in \mathbb{R}^{196 \times D}$.
+        \item Bộ mã hóa văn bản trích xuất ma trận đặc trưng đầy đủ $y_t \in \mathbb{R}^{T \times D}$ với $T=256$, được chia thành vector toàn cục ở dòng đầu tiên $y_t^0 \in \mathbb{R}^D$ (token $[CLS]$) và chuỗi ngữ cảnh còn lại $y_t^{1:} \in \mathbb{R}^{(T-1) \times D}$; các vị trí đệm bị loại bằng mặt nạ chú ý.
     \end{itemize}
 
-    \item \textbf{Kiểm duyệt an toàn OOD bằng k-NN đa phương thức (Safe OOD Screening):}
-    Trước khi đưa dữ liệu vào module dung hợp, các vector đặc trưng toàn cục được đưa qua cổng kiểm duyệt an toàn để nhận diện dữ liệu lệch phân phối (OOD):
+    \item \textbf{Tính điểm cảnh báo OOD bằng $k$-NN đa phương thức:}
+    Các vectơ toàn cục được đưa qua bộ phát hiện OOD đã trình bày tại
+    Mục~\ref{sec:ch3_multimodal_knn_ood}:
     \begin{itemize}
         \item Tiến hành chuẩn hóa chuẩn $L_2$ trên các vector toàn cục để đưa về mặt cầu đơn vị:
         \begin{equation}
-        \tilde{y}_v = \frac{y_v^0}{\|y_v^0\|_2}, \quad \tilde{y}_t = \frac{y_t^0}{\|y_t^0\|_2}
+        \widetilde{y}_v = \frac{y_v^0}{\|y_v^0\|_2},
+        \qquad
+        \widetilde{y}_t = \frac{y_t^0}{\|y_t^0\|_2}.
         \end{equation}
-        \item Tính toán khoảng cách Euclid $d_v$ và $d_t$ từ các vector đã chuẩn hóa đến láng giềng thứ $k$ gần nhất trong hai tập cơ sở dữ liệu tham chiếu trong phân phối ($\mathcal{D}_v$ và $\mathcal{D}_t$).
-        \item Dung hợp điểm số OOD bằng toán tử cực đại để phát hiện nhạy bén sự bất thường ở bất kỳ phương thức nào:
+        \item Tính khoảng cách Euclid $d_v$ và $d_t$ tới láng giềng thứ $k$
+        trong hai ngân hàng tham chiếu $\mathcal{D}_v$ và $\mathcal{D}_t$, sau
+        đó chuẩn hóa chúng thành $\widetilde d_v$ và $\widetilde d_t$ bằng các
+        thống kê của $\mathcal{V}_{\mathrm{ID}}$.
+        \item Hợp nhất hai khoảng cách đã chuẩn hóa bằng toán tử cực đại:
         \begin{equation}
-        d_{\text{OOD}} = \max \left( d_v, \, d_t \right)
+        d_{\mathrm{OOD}}
+        =
+        \max\left\{\widetilde d_v,\widetilde d_t\right\}.
         \end{equation}
-        \item Đối sánh điểm số OOD với ngưỡng quyết định $\lambda$ (thiết lập từ phân vị 95\% trên tập kiểm định ID):
-        \begin{itemize}
-            \item \textbf{Trường hợp OOD ($d_{\text{OOD}} > \lambda$):} Mẫu thử nghiệm bị xác định là dữ liệu lạ hoặc bị lỗi nhiễu nghiêm trọng. Hệ thống ngay lập tức \textbf{dừng quy trình suy luận}, từ chối đưa ra chẩn đoán tự động và phát cảnh báo yêu cầu bác sĩ chuyên khoa can thiệp kiểm tra thủ công.
-            \item \textbf{Trường hợp ID ($d_{\text{OOD}} \le \lambda$):} Mẫu thử nghiệm được xác nhận an toàn (thuộc miền phân phối bệnh lý đã học) và được phép chuyển tiếp sang bước chẩn đoán tiếp theo.
-        \end{itemize}
+        \item So sánh $d_{\mathrm{OOD}}$ với ngưỡng $\lambda$. Trường hợp
+        $d_{\mathrm{OOD}}>\lambda$ tạo cảnh báo để người dùng xem xét mẫu;
+        trường hợp còn lại chỉ cho biết mẫu không vượt ngưỡng đã hiệu chỉnh,
+        không xác nhận rằng mẫu chắc chắn an toàn hay thuộc phân phối huấn luyện.
     \end{itemize}
 
     \item \textbf{Dung hợp ngữ cảnh bằng chú ý chéo hai chiều (Bidirectional Cross-Attention Fusion):}
@@ -656,85 +802,135 @@ Nhờ phép cộng gộp này, mô hình suy luận hoạt động với cấu t
     \end{itemize}
 
     \item \textbf{Phân lớp chẩn đoán bệnh lý (Diagnostic Classification):}
-    Vector dung hợp tối ưu $\mathbf{z} \in \mathbb{R}^{768}$ được đưa qua bộ phân loại tuyến tính đơn giản cuối cùng để đưa ra quyết định lâm sàng:
+    Vector dung hợp tối ưu $\mathbf{z} \in \mathbb{R}^{512}$ được đưa qua bộ phân loại tuyến tính đơn giản cuối cùng để đưa ra quyết định lâm sàng:
     \begin{itemize}
         \item Tính vector logits điểm số $\mathbf{s}$ cho 22 lớp bệnh lý hạ nguồn:
         \begin{equation}
         \mathbf{s} = W_{\text{clf}} \mathbf{z} + b_{\text{clf}} \in \mathbb{R}^{22}
         \end{equation}
-        \item Áp dụng hàm kích hoạt Softmax để thu được phân phối xác suất tin cậy của mô hình trên từng lớp $c \in [1, 2]$:
+        \item Áp dụng hàm Softmax để thu được xác suất dự đoán cho từng nhãn
+        $y_k\in\mathcal{Y}=\{y_1,y_2,\ldots,y_K\}$:
         \begin{equation}
-        \hat{p}_c = \frac{\exp(s_c)}{\sum_{j=1}^{22} \exp(s_j)}
+        \widehat{p}_k
+        =
+        \frac{\exp(s_k)}{\sum_{j=1}^{K}\exp(s_j)}.
         \end{equation}
-        \item Hệ thống xuất ra lớp bệnh lý có xác suất dự đoán $\hat{p}_c$ cao nhất (hoặc danh sách các bệnh lý kèm tỷ lệ phần trăm tin cậy tương ứng) làm chẩn đoán cuối cùng hỗ trợ bác sĩ ra quyết định điều trị.
+        \item Hệ thống xuất ra nhãn có xác suất lớn nhất:
+        \begin{equation}
+        \widehat{y}
+        =
+        \operatorname*{arg\,max}_{y_k\in\mathcal{Y}}
+        p\!\left(y_k\mid v,t\right).
+        \label{eq:ch3_online_prediction}
+        \end{equation}
     \end{itemize}
 \end{enumerate}
 
-Bên cạnh hai thành phần dự đoán trên, đối với mẫu không bị cảnh báo ngoài phân phối, quá trình suy luận còn có thể cung cấp thông tin hỗ trợ giải thích bằng phương pháp tích phân gradient \cite{Sundararajan2017IntegratedGradients}. Thành phần này được thực hiện như một lượt tính riêng khi cần giải thích. Các tham số mô hình vẫn được cố định, còn đạo hàm chỉ được tính đối với đầu vào hoặc biểu diễn cần khảo sát và không được dùng để cập nhật mô hình.
+\subsection{Giải thích kết quả phân loại}
+\label{subsec:ch3_integrated_gradients}
 
-Với mỗi mẫu, lớp đích được chọn là lớp do mô hình dự đoán $\widehat{y}$, kể cả khi dự đoán này khác nhãn tham chiếu. Gọi $F_{\widehat{y}}(\boldsymbol{u})$ là giá trị logit của lớp đích tại đầu vào hoặc biểu diễn $\boldsymbol{u}$, và $\boldsymbol{u}^{0}$ là mốc tham chiếu tương ứng. Quy đóng của thành phần thứ $j$ được xác định bởi:
+Đối với một mẫu cần khảo sát, hệ thống có thể thực hiện thêm phép phân tích
+Integrated Gradients (IG) \cite{Sundararajan2017IntegratedGradients} để xác
+định những thành phần ảnh và văn bản làm thay đổi logit của lớp được dự đoán.
+Quy trình gồm bốn bước: chọn lớp đích, xác định mốc tham chiếu, tích lũy gradient
+trên đường nội suy từ mốc đến đầu vào thật, rồi tổng hợp quy đóng thành điểm cho
+từng điểm ảnh hoặc từ tố. Toàn bộ tham số mô hình được giữ cố định; đạo hàm chỉ
+được tính theo đầu vào của phương thức đang được giải thích và không được dùng
+để cập nhật mô hình.
 
+Với tập nhãn $\mathcal{Y}=\{y_1,y_2,\ldots,y_K\}$, gọi
+$\widehat{y}=y_{\widehat{k}}\in\mathcal{Y}$ là nhãn được dự đoán trên cặp
+đầu vào đầy đủ, trong đó $\widehat{k}$ là chỉ số có xác suất lớn nhất. Ký hiệu
+$F_{\widehat{k}}(\boldsymbol{u})=s_{\widehat{k}}\in\mathbb{R}$ là logit của
+lớp đích khi đầu vào của phương thức đang giải thích là $\boldsymbol{u}$; đầu
+vào của phương thức còn lại luôn được giữ cố định tại giá trị của mẫu đang xét.
+Với mốc tham chiếu $\boldsymbol{u}^{0}$, quy đóng IG của thành phần thứ $j$ là
 \begin{equation}
-\operatorname{IG}_{j}(\boldsymbol{u})
+\operatorname{IG}_{j}
+\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
 =
-\left(u_{j}-u_{j}^{0}\right)
+\left(u_j-u_j^{0}\right)
 \int_{0}^{1}
-\frac{\partial F_{\widehat{y}}
-\!\left(\boldsymbol{u}^{0}+\beta(\boldsymbol{u}-\boldsymbol{u}^{0})\right)}
-{\partial u_{j}}
-\,\mathrm{d}\beta,
+\frac{\partial F_{\widehat{k}}
+\!\left(
+\boldsymbol{u}^{0}
++\beta\left(\boldsymbol{u}-\boldsymbol{u}^{0}\right)
+\right)}
+{\partial u_j}
+\,\mathrm{d}\beta.
 \label{eq:ch3_integrated_gradients}
 \end{equation}
+Ở đây, $\beta\in[0,1]$ tham số hóa đường thẳng từ mốc tham chiếu đến đầu vào.
+Trực giác của công thức là lấy trung bình gradient trên toàn bộ đường đi này,
+sau đó nhân với độ chênh giữa đầu vào thật và mốc tham chiếu. Quy đóng dương có
+độ lớn cao cho biết thành phần tương ứng làm tăng logit $s_{\widehat{k}}$ so với
+mốc đã chọn. Việc cố định lớp đích ở $\widehat{k}$ giúp toàn bộ phép tính giải
+thích cùng một quyết định của mô hình.
 
-trong đó $\beta\in[0,1]$ xác định một điểm trên đường thẳng từ mốc tham chiếu đến đầu vào. Trong phần đánh giá thực nghiệm, tích phân được xấp xỉ bằng quy tắc hình thang tại 24 điểm cách đều. Đối với ảnh toàn cục, mốc tham chiếu là tenxơ bằng không trong không gian đầu vào đã chuẩn hóa. Đối với các đơn vị ảnh cục bộ, mốc tham chiếu là biểu diễn ảnh toàn cục được lặp lại theo số đơn vị. Đối với bệnh sử, các từ nội dung được nội suy từ biểu diễn của ký hiệu đệm, trong khi các ký hiệu đặc biệt được giữ nguyên.
-
-Để thu được mức liên quan của từng điểm ảnh, đơn vị ảnh cục bộ hoặc từ, các quy đóng theo chiều biểu diễn được cộng lại và chỉ giữ phần dương. Nếu tổng phần dương gần bằng không, tổng trị tuyệt đối được sử dụng làm phương án dự phòng. Bản đồ và điểm liên quan thu được phản ánh mức đóng góp của từng thành phần đối với logit của lớp dự đoán trong lân cận đường nội suy, do đó được sử dụng như thông tin hỗ trợ diễn giải thay vì một kết luận nhân quả.
-
-
-Khi tiếp nhận một ca mới, ảnh X-quang và thông tin lâm sàng được xử lý bằng đúng các phép biến đổi đã sử dụng trong huấn luyện. Hai bộ mã hóa tạo đặc trưng ảnh và văn bản, mô-đun chú ý chéo tạo vectơ tổng hợp, sau đó bộ phân lớp tính xác suất cho từng lớp. Toàn bộ tham số LoRA, mô-đun dung hợp và các nguyên mẫu lớp đều được cố định. Bước phân lớp và tính điểm ngoài phân phối không tính đạo hàm, đồng thời không cập nhật tâm lớp từ mẫu mới. Kết quả phân loại cho biết lớp nào phù hợp nhất trong số các lớp đã biết, nhưng chưa cho biết mẫu có thực sự thuộc phân bố huấn luyện hay không.
-
-Để phát hiện mẫu ngoài phân phối (OOD), việc chỉ dựa vào không gian biểu diễn sau khi dung hợp ($\boldsymbol{z}_{\mathrm{fused}}$) có thể gặp hạn chế do mô-đun chú ý chéo có xu hướng ép các đặc trưng dị biệt vào cấu trúc không gian lớp nội tại để tối ưu phân loại, làm suy giảm độ nhạy phát hiện bất thường ở từng phương thức riêng lẻ. Vì vậy, hệ thống xây dựng cơ chế \textbf{Multi-Modal Modality-Decoupled Ensemble OOD Detection} bằng cách tách rời hai phương thức, áp dụng phương pháp khoảng cách $k$-láng giềng gần nhất ($k\mathrm{NN}$) trên từng không gian biểu diễn đơn phương thức, chuẩn hóa $Z$-score trên tập xác thực ID và hợp nhất bằng toán tử $\max$:
-
-\begin{enumerate}
-    \item \textbf{Khoảng cách $k\mathrm{NN}$ đơn phương thức tách rời:} Gọi $\mathcal{D}_{\mathrm{ID}}^{\mathrm{train}}$ là tập biểu diễn tham chiếu trong phân phối đã được chuẩn hóa $L_2$. Với mỗi mẫu kiểm thử có biểu diễn ảnh $\boldsymbol{z}_{\mathrm{img}}$ và biểu diễn văn bản $\boldsymbol{z}_{\mathrm{txt}}$, điểm bất thường đơn phương thức được tính bằng khoảng cách Euclid tới láng giềng thứ $k$ gần nhất \cite{Sun2022KNN}:
-    \begin{equation}
-    s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{img}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{img}}^{\mathrm{train}}\right),
-    \label{eq:ch3_ood_knn_vis}
-    \end{equation}
-    \begin{equation}
-    s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) = d_{k\mathrm{NN}}\!\left(\boldsymbol{z}_{\mathrm{txt}},\,\mathcal{D}_{\mathrm{ID},\,\mathrm{txt}}^{\mathrm{train}}\right).
-    \label{eq:ch3_ood_knn_txt}
-    \end{equation}
-
-    \item \textbf{Chuẩn hóa $Z$-score trên tập ID Validation:} Do thang đo khoảng cách trên không gian ảnh và không gian văn bản có thể khác biệt, hệ thống ước lượng giá trị kỳ vọng và độ lệch chuẩn của từng phương thức trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ($\mu_{\mathrm{vis}}^{\mathrm{val}}, \sigma_{\mathrm{vis}}^{\mathrm{val}}$ và $\mu_{\mathrm{txt}}^{\mathrm{val}}, \sigma_{\mathrm{txt}}^{\mathrm{val}}$) để đưa các điểm số về phân phối chuẩn hóa không thứ nguyên:
-    \begin{equation}
-    \widetilde{s}_{\mathrm{vis}} = \frac{s_{\mathrm{vis}}(\boldsymbol{z}_{\mathrm{img}}) - \mu_{\mathrm{vis}}^{\mathrm{val}}}{\sigma_{\mathrm{vis}}^{\mathrm{val}} + \epsilon}, \qquad \widetilde{s}_{\mathrm{txt}} = \frac{s_{\mathrm{txt}}(\boldsymbol{z}_{\mathrm{txt}}) - \mu_{\mathrm{txt}}^{\mathrm{val}}}{\sigma_{\mathrm{txt}}^{\mathrm{val}} + \epsilon}.
-    \label{eq:ch3_ood_zscore}
-    \end{equation}
-
-    \item \textbf{Hợp nhất bằng toán tử $\max$ (Max-pooling Fusion):} Điểm ngoài phân phối tổng hợp được xác định theo nguyên lý phòng vệ nghiêm ngặt (worst-case anomaly):
-    \begin{equation}
-    s_{\mathrm{OOD}}(\boldsymbol{x}) = \max\left(\widetilde{s}_{\mathrm{vis}},\,\widetilde{s}_{\mathrm{txt}}\right).
-    \label{eq:ch3_ood_max_fusion}
-    \end{equation}
-    Theo cơ chế này, chỉ cần một trong hai phương thức (ảnh hoặc văn bản lâm sàng) có mức độ bất thường vượt trội so với phân phối huấn luyện, toàn bộ ca bệnh sẽ lập tức được nhận diện và cảnh báo là dữ liệu ngoài phân phối.
-\end{enumerate}
-
-Ngưỡng cảnh báo $\tau_{\mathrm{alert}}$ được hiệu chỉnh trên tập xác thực $\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}$ ở mức tỷ lệ cảnh báo giả mục tiêu $\alpha = 0{,}05$:
+Trong thực nghiệm, tích phân được xấp xỉ bằng quy tắc hình thang tại
+$n_{\mathrm{IG}}=24$ điểm nội suy đều. Ký hiệu
+$\beta_q=q/(n_{\mathrm{IG}}-1)$ và
 \begin{equation}
-\tau_{\mathrm{alert}} = Q_{1-\alpha}^{+}\!\left(\left\{s_{\mathrm{OOD}}(\boldsymbol{x}_{i}) \mid \boldsymbol{x}_{i}\in\mathcal{D}_{\mathrm{ID}}^{\mathrm{val}}\right\}\right), \qquad \alpha=0{,}05,
-\label{eq:ch3_ood_threshold}
+g_j(\beta_q)
+=
+\frac{\partial F_{\widehat{k}}
+\!\left(
+\boldsymbol{u}^{0}
++\beta_q\left(\boldsymbol{u}-\boldsymbol{u}^{0}\right)
+\right)}
+{\partial u_j}.
 \end{equation}
-trong đó $Q_{q}^{+}$ là phân vị thực nghiệm phía trên ở mức $q$, nhằm bảo đảm giữ lại ít nhất $95\%$ mẫu trong phân phối. Quy tắc đưa ra cảnh báo OOD độc lập với kết quả phân lớp:
+Khi đó,
 \begin{equation}
-\begin{aligned}
-\widehat{y} &= \operatorname*{arg\,max}_{k\in\mathcal{Y}} p(y=k\mid\boldsymbol{x}), \\[6pt]
-\omega_{\mathrm{OOD}} &= \begin{cases}
-1, & \text{nếu } s_{\mathrm{OOD}}(\boldsymbol{x}) > \tau_{\mathrm{alert}}, \\[4pt]
-0, & \text{ngược lại}.
-\end{cases}
-\end{aligned}
-\label{eq:ch3_ood_decision}
+\operatorname{IG}_{j}
+\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
+\approx
+\left(u_j-u_j^{0}\right)
+\frac{1}{n_{\mathrm{IG}}-1}
+\left[
+\frac{1}{2}g_j(\beta_0)
++\sum_{q=1}^{n_{\mathrm{IG}}-2}g_j(\beta_q)
++\frac{1}{2}g_j(\beta_{n_{\mathrm{IG}}-1})
+\right].
+\label{eq:ch3_ig_trapezoidal}
 \end{equation}
 
-Mô-đun phát hiện ngoài phân phối không thay đổi dự đoán nội tại của XBone-Net mà cung cấp thêm tín hiệu cảnh báo $\omega_{\mathrm{OOD}}$ khi mẫu đầu vào có dấu hiệu bất thường về thị giác hoặc bất thường về nội dung văn bản lâm sàng.
+Mốc tham chiếu và cách giữ cố định phương thức còn lại được xác định như sau:
+\begin{itemize}
+    \item \textbf{Ảnh X-quang:}
+    $\boldsymbol{u}=v$ là tenxơ ảnh sau đúng chuỗi tiền xử lý dùng khi huấn
+    luyện, còn $\boldsymbol{u}^{0}=v^{0}=\boldsymbol{0}$ là tenxơ không trong
+    chính không gian đầu vào đã chuẩn hóa. Vì vậy, không nên đồng nhất mốc này
+    với một ``ảnh đen'' trong không gian ảnh thô. Khi tính IG cho ảnh, văn bản
+    $t$ của ca đang xét được giữ cố định.
+
+    \item \textbf{Văn bản lâm sàng:}
+    $\boldsymbol{u}=\operatorname{WordEmbedding}(t_{\mathrm{seq}})$ là chuỗi
+    word embedding trước khi đi qua PubMedBERT. Đây là vị trí mà mã nguồn thực
+    hiện nội suy; các nhúng vị trí và phân đoạn vẫn được PubMedBERT xử lý theo
+    kiến trúc gốc. Tại các vị trí từ tố nội dung, $\boldsymbol{u}^{0}$ dùng word
+    embedding của token đệm; các token đặc biệt được giữ nguyên. Khi tính IG
+    cho văn bản, ảnh $v$ được giữ cố định.
+\end{itemize}
+
+Để tạo kết quả trực quan, quy đóng có dấu được cộng theo ba kênh tại mỗi điểm
+ảnh và theo chiều embedding tại mỗi vị trí từ tố. Phần dương của tổng này được
+dùng làm điểm liên quan; nếu toàn bộ phần dương gần bằng không, tổng trị tuyệt
+đối được dùng làm phương án dự phòng để tránh bản đồ rỗng. Các token đệm và
+token đặc biệt không được hiển thị như từ tố nội dung có liên quan.
+
+IG thỏa tính đầy đủ theo nghĩa tổng quy đóng xấp xỉ chênh lệch logit giữa đầu
+vào và mốc tham chiếu:
+\begin{equation}
+\sum_j
+\operatorname{IG}_{j}
+\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
+\approx
+F_{\widehat{k}}(\boldsymbol{u})
+-F_{\widehat{k}}(\boldsymbol{u}^{0}).
+\label{eq:ch3_ig_completeness}
+\end{equation}
+Sai số của quan hệ này được dùng để kiểm tra chất lượng xấp xỉ số. Bản đồ ảnh
+và điểm từ tố chỉ phản ánh độ nhạy của logit dọc theo đường nội suy đã chọn;
+chúng không tự thân chứng minh quan hệ nhân quả, không xác nhận vị trí tổn
+thương và không thay thế đánh giá của chuyên gia.
