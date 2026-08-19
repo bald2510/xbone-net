@@ -231,7 +231,7 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
 
 \begin{itemize}
     \item \textbf{Học tương phản:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
-    \item \textbf{Mất mát tâm lớp \cite{CenterLoss}:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các embedding tiến gần tâm tương ứng.
+    \item \textbf{Mất mát tâm lớp \cite{CenterLoss}:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các đặc trưng tiến gần tâm tương ứng.
     \item \textbf{Mạng nguyên mẫu \cite{Snell2017ProtoNet}:} Phương pháp học theo hệ đo này biểu diễn mỗi lớp bằng một nguyên mẫu $c_k$:
     \begin{equation}
     c_k = \frac{1}{|S_k|}\sum_{x_i\in S_k}f_\theta(x_i)
@@ -240,7 +240,7 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
     Trong quá trình huấn luyện, mạng được tối ưu hóa để cực tiểu hóa khoảng cách giữa đặc trưng của dữ liệu và nguyên mẫu tương ứng của nó.
 \end{itemize}
 
-Đối với các phương pháp dựa trên khoảng cách, chất lượng của không gian biểu diễn đặc biệt quan trọng vì điểm ngoài phân phối được suy ra trực tiếp từ cấu trúc lân cận của các embedding. Một không gian đặc trưng duy trì tốt quan hệ tương đồng giữa các mẫu trong phân phối sẽ tạo cơ sở phù hợp hơn cho việc đánh giá mức độ xa lạ của mẫu mới bằng khoảng cách láng giềng.
+Đối với các phương pháp dựa trên khoảng cách, chất lượng của không gian biểu diễn đặc biệt quan trọng vì điểm ngoài phân phối được suy ra trực tiếp từ cấu trúc lân cận của các đặc trưng. Một không gian đặc trưng duy trì tốt quan hệ tương đồng giữa các mẫu trong phân phối sẽ tạo cơ sở phù hợp hơn cho việc đánh giá mức độ xa lạ của mẫu mới bằng khoảng cách láng giềng.
 
 \section{Các phương pháp giải thích và đánh giá độ trung thực}
 
@@ -283,7 +283,7 @@ Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa ch�
 Phương pháp sử dụng Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
 
 \textbf{Về phát hiện dữ liệu ngoài phân phối:}
-Ngoài nhiệm vụ chính của hệ thống, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không yêu cầu mẫu ngoài phân phối trong quá trình huấn luyện. Thay vì ước lượng trung bình lớp và ma trận hiệp phương sai như trong khoảng cách Mahalanobis yêu cầu một phân phối dữ liệu không đảm bảo đạt được khi triển trai, phương pháp sử dụng kNN trực tiếp trên các embedding đầu ra của hai bộ mã hóa BiomedCLIP. Cụ thể, embedding ảnh và embedding văn bản của tập huấn luyện được lưu thành hai ngân hàng tham chiếu độc lập, ký hiệu lần lượt là $\mathcal{B}_{I}$ và $\mathcal{B}_{T}$. Với một mẫu mới, embedding ảnh $z_I$ và embedding văn bản $z_T$ được đối sánh riêng với ngân hàng tương ứng để xác định các láng giềng gần nhất và thu được tín hiệu khoảng cách lân cận cho từng phương thức. Các tín hiệu này phản ánh mức độ gần của mẫu mới đối với những biểu diễn đã quan sát trong tập huấn luyện và được sử dụng để hình thành cảnh báo ngoài phân phối theo ngưỡng hiệu chỉnh trên tập xác thực. Trong phạm vi khóa luận, cảnh báo ngoài phân phối đóng vai trò tín hiệu bổ trợ; chi tiết cách tính điểm từ các láng giềng và quy tắc sử dụng hai tín hiệu ảnh-văn bản được trình bày trong Chương~\ref{Chapter3}.
+Ngoài nhiệm vụ chính, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không cần mẫu OOD khi huấn luyện. Phương pháp sử dụng kNN trực tiếp trên đặc trưng ảnh và văn bản từ hai bộ mã hóa BiomedCLIP, với hai ngân hàng tham chiếu $\mathcal{B}{I}$ và $\mathcal{B}{T}$ được xây dựng từ tập huấn luyện. Với mẫu mới, hai đặc trưng được đối sánh riêng với ngân hàng tương ứng để tạo tín hiệu khoảng cách lân cận và cảnh báo OOD theo ngưỡng hiệu chỉnh trên tập xác thực; chi tiết cách tính và kết hợp hai tín hiệu được trình bày trong Chương~\ref{Chapter3}.
 
 \textbf{Về quy trình huấn luyện:}
 Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:
@@ -293,7 +293,7 @@ Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai 
     hai bộ mã hóa của BiomedCLIP được thích nghi thông qua LoRA bằng hàm mất mát khớp ngữ nghĩa. Mô-đun dung hợp và đầu phân lớp chưa được tối ưu trong giai đoạn này.
 
     \item \textbf{Giai đoạn 2 - Dung hợp và phân lớp:}
-    các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân lớp. Sau khi quá trình thích nghi hoàn tất, embedding ảnh và embedding văn bản của tập huấn luyện được trích xuất từ hai bộ mã hóa để xây dựng hai ngân hàng tham chiếu phục vụ kNN trong giai đoạn suy luận.
+    các bộ mã hóa tiếp tục được thích nghi thông qua LoRA, đồng thời mô-đun xử lý đặc trưng cục bộ và cơ chế chú ý chéo hai chiều được tối ưu cho nhiệm vụ phân lớp. Sau khi quá trình thích nghi hoàn tất, đặc trưng ảnh và đặc trưng văn bản của tập huấn luyện được trích xuất từ hai bộ mã hóa để xây dựng hai ngân hàng tham chiếu phục vụ kNN trong giai đoạn suy luận.
 \end{itemize}
 
 Các định hướng trên được hiện thực hóa trong phương pháp XBone-Net. Kiến trúc chi tiết, quy trình huấn luyện và cơ chế suy luận được trình bày trong Chương~\ref{Chapter3}.
