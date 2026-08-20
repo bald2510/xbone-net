@@ -31,37 +31,43 @@
 x^{\mathrm{img}} & Ảnh X-quang đầu vào của hệ thống. & \pageref{sec:ch1_problem_def} \\
 H,W,C & Chiều cao, chiều rộng và số kênh của ảnh. & \pageref{sec:ch1_problem_def} \\
 x^{\mathrm{txt}} & Chuỗi văn bản lâm sàng đầu vào. & \pageref{sec:ch1_problem_def} \\
-w_t,\,T & Token tại vị trí $t$ và tổng số token (hoặc nhiệt độ). & \pageref{sec:ch1_problem_def} \\
+w_t,\,T & Đơn vị từ ngữ tại vị trí $t$ và tổng số đơn vị từ ngữ. & \pageref{sec:ch1_problem_def} \\
 \mathcal{Y},\,y_k,\,K & Tập nhãn trong phân phối, lớp thứ $k$ và tổng số lớp. & \pageref{sec:ch1_problem_def} \\
 \widehat{y} & Nhãn dự đoán cuối cùng. & \pageref{sec:ch1_problem_def} \\
-\omega_{\mathrm{OOD}} & Cảnh báo mẫu ngoài phân phối. & \pageref{sec:ch1_problem_def} \\
-s_{\mathrm{OOD}}(\cdot) & Điểm ngoài phân phối của mẫu đầu vào. & \pageref{sec:ch1_problem_def} \\
+\omega_{\mathrm{OOD}} & Chỉ báo cảnh báo, bằng 1 khi điểm bất thường vượt ngưỡng. & \pageref{eq:ch3_ood_decision} \\
+s_{\mathrm{OOD}}(\cdot) & Điểm bất thường đa phương thức, giá trị lớn hơn biểu thị mẫu khác biệt hơn so với dữ liệu tham chiếu. & \pageref{eq:ch3_ood_max_fusion} \\
 p(y_k\mid x^{\mathrm{img}},x^{\mathrm{txt}}) & Xác suất dự đoán lớp $y_k$. & \pageref{sec:ch1_problem_def} \\
 
 %% --- Cơ sở OOD và học theo hệ đo ---
-E(x) & Energy score của mẫu $x$. & \pageref{eq:energy_score} \\
+E(x) & Điểm năng lượng của mẫu $x$. & \pageref{eq:energy_score} \\
 f_i(x) & Logit phân loại của lớp $i$. & \pageref{eq:energy_score} \\
 d_E(z,c_k) & Khoảng cách Euclid giữa đặc trưng $z$ và tâm lớp $c_k$. & \pageref{eq:euclid} \\
 d_M(z,\mu_k) & Khoảng cách Mahalanobis giữa đặc trưng $z$ và trung bình $\mu_k$. & \pageref{eq:mahalanobis} \\
-\Sigma,\,\lambda,\,I & Ma trận hiệp phương sai, hệ số điều chuẩn và ma trận đơn vị. & \pageref{eq:mahalanobis} \\
-S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm đặc trưng và prototype của lớp $k$. & \pageref{eq:protonet} \\
+\Sigma,\,I & Ma trận hiệp phương sai và ma trận đơn vị. & \pageref{eq:mahalanobis} \\
+\lambda_{\mathrm{cov}} & Hệ số điều chuẩn ma trận hiệp phương sai trong khoảng cách Mahalanobis. & \pageref{eq:mahalanobis} \\
+S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm đặc trưng và tâm đại diện của lớp $k$. & \pageref{eq:protonet} \\
 
 %% --- Đầu vào và tiền xử lý ---
 \mathcal{D}_{\mathrm{train}},\,N & Tập dữ liệu và tổng số mẫu huấn luyện. & \pageref{eq:ch3_dataset} \\
 X_i,\,R_i,\,y_i & Ảnh X-quang, bệnh sử và nhãn của mẫu thứ $i$. & \pageref{eq:ch3_dataset} \\
+q_{ic} & Xác suất đích đã làm trơn của lớp $c$ đối với mẫu $i$. & \pageref{eq:ch3_smoothed_target} \\
+\varepsilon_{\mathrm{ls}} & Hệ số làm trơn nhãn, bằng $0{,}1$ trong cấu hình XBone-Net. & \pageref{eq:ch3_smoothed_target} \\
+\mathcal{L}_{\mathrm{WLSCE}} & Hàm mất mát entropy chéo có trọng số lớp và làm trơn nhãn. & \pageref{eq:ch3_phase2_loss} \\
+Z_{\mathcal{B}} & Tổng trọng số của các nhãn đúng trong một lô. & \pageref{eq:ch3_phase2_loss} \\
+\varepsilon_{\mathrm{num}} & Hằng số nhỏ bảo đảm ổn định số khi chuẩn hóa khoảng cách. & \pageref{eq:ch3_ood_zscore} \\
 
 %% --- Độ đo phân loại ---
 TP_c,\,FP_c,\,TN_c,\,FN_c & Các trường hợp dương/âm tính thật/giả của lớp $c$. & \pageref{eq:ch4_accuracy} \\
 \operatorname{TPR}_c,\,\operatorname{FPR}_c & Tỷ lệ dương tính thật và dương tính giả. & \pageref{sec:evaluation_metrics} \\
 \operatorname{AUROC}_c & Diện tích dưới đường cong ROC của lớp $c$. & \pageref{eq:ch4_macro_auroc} \\
 \operatorname{Precision}_c,\,\operatorname{Recall}_c & Độ chính xác và độ thu hồi của lớp $c$. & \pageref{eq:ch4_precision_def} \\
-\operatorname{AUPRC}_c & Average Precision (AP) của lớp $c$. & \pageref{eq:ch4_auprc_class} \\
+\operatorname{AUPRC}_c & Độ chính xác trung bình của lớp $c$. & \pageref{eq:ch4_auprc_class} \\
 
 %% --- Độ đo phát hiện ngoài phân phối ---
 \mathcal{D}_{\mathrm{ID}},\,\mathcal{D}_{\mathrm{OOD}} & Tập dữ liệu trong phân phối và ngoài phân phối. & \pageref{sec:evaluation_metrics} \\
-\tau_{\mathrm{alert}} & Ngưỡng cảnh báo OOD được hiệu chỉnh trên tập xác thực. & \pageref{eq:ch3_ood_decision} \\
+\tau_{\mathrm{alert}} & Ngưỡng cảnh báo được hiệu chỉnh trên tập xác thực trong phân phối. & \pageref{eq:ch3_ood_threshold} \\
 \tau_{95}^{\mathrm{test}} & Ngưỡng đánh giá FPR@95\%TPR được xác định trên tập kiểm thử. & \pageref{eq:ch4_fpr95} \\
-\operatorname{Precision}_{\mathrm{OOD}},\,\operatorname{Recall}_{\mathrm{OOD}} & Precision và recall khi xem OOD là lớp dương. & \pageref{eq:ch4_aupr_out} \\
+\operatorname{Precision}_{\mathrm{OOD}},\,\operatorname{Recall}_{\mathrm{OOD}} & Độ chính xác dự đoán và độ nhạy khi xem dữ liệu ngoài phân phối là lớp dương. & \pageref{eq:ch4_aupr_out} \\
 
 \end{longtable}
 \endgroup

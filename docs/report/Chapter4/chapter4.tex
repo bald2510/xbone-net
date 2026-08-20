@@ -378,19 +378,19 @@ p_{k}=\frac{
 \right)}{N_{\mathrm{perm}}+1}.
 \label{eq:ch4_paired_permutation_pvalue}
 \end{equation}
-Phân tích dùng $N_{\mathrm{boot}}=N_{\mathrm{perm}}=10\,000$, $\alpha=0{,}05$ và hạt giống 2026. Sáu giá trị $p$ trong mỗi độ đo được hiệu chỉnh Holm \cite{Holm1979Sequential}. XBone-Net có ưu thế thống kê khi $\widehat{\Delta}_{k}>0$, khoảng tin cậy 95\% không chứa 0 và $p_{\mathrm{Holm}}<0{,}05$; kết luận chỉ áp dụng cho phân hoạch hiện tại.
+Phân tích dùng $N_{\mathrm{boot}}=N_{\mathrm{perm}}=10\,000$, $\alpha=0{,}05$ và hạt giống 2026. Sáu giá trị $p$ trong mỗi độ đo được hiệu chỉnh Holm \cite{Holm1979Sequential}. Tiêu chuẩn duy nhất để kết luận khác biệt có ý nghĩa thống kê là $p_{\mathrm{Holm}}<0{,}05$. Dấu của $\widehat{\Delta}_{k}$ xác định hướng khác biệt, trong đó $\widehat{\Delta}_{k}>0$ nghiêng về XBone-Net và $\widehat{\Delta}_{k}<0$ nghiêng về mô hình đối chứng. Khoảng tin cậy bootstrap 95\% được báo cáo để mô tả độ bất định của chênh lệch, không được dùng như một điều kiện kiểm định bổ sung. Do khoảng tin cậy và giá trị $p$ đến từ hai thủ tục lấy mẫu lại khác nhau, chúng có thể không đồng thuận ở các trường hợp sát ngưỡng. Những trường hợp này vẫn được kết luận theo tiêu chuẩn kiểm định hoán vị được quy định ở trên, đồng thời phải được diễn giải thận trọng. Mọi kết luận chỉ áp dụng cho phân hoạch hiện tại.
 
 \subsubsection{Độ đo phát hiện dữ liệu ngoài phân phối}
 
-Gọi $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập trong và ngoài phân phối, $N_{\mathrm{OOD}}=|\mathcal{D}_{\mathrm{OOD}}|$, còn $s(x)$ là điểm bất thường với giá trị lớn hơn biểu thị khả năng ngoài phân phối cao hơn.
+Gọi $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập trong và ngoài phân phối, $N_{\mathrm{OOD}}=|\mathcal{D}_{\mathrm{OOD}}|$, còn $s_{\mathrm{OOD}}(x)$ là điểm bất thường đa phương thức đã định nghĩa ở Công thức~\ref{eq:ch3_ood_max_fusion}. Giá trị lớn hơn biểu thị mẫu khác biệt hơn so với ngân hàng tham chiếu trong phân phối.
 
 \paragraph{AUROC-OOD}
 
 Diện tích dưới đường cong phân biệt dữ liệu ngoài phân phối \cite{Hendrycks2017MSP} là xác suất điểm của một mẫu ngoài phân phối cao hơn điểm của một mẫu trong phân phối, với trường hợp bằng điểm được tính một nửa:
 \begin{equation}
 \operatorname{AUROC}_{\mathrm{OOD}}
-=\Pr\!\left(s(x_{\mathrm{OOD}})>s(x_{\mathrm{ID}})\right)
-+\frac{1}{2}\Pr\!\left(s(x_{\mathrm{OOD}})=s(x_{\mathrm{ID}})\right).
+=\Pr\!\left(s_{\mathrm{OOD}}(x_{\mathrm{OOD}})>s_{\mathrm{OOD}}(x_{\mathrm{ID}})\right)
++\frac{1}{2}\Pr\!\left(s_{\mathrm{OOD}}(x_{\mathrm{OOD}})=s_{\mathrm{OOD}}(x_{\mathrm{ID}})\right).
 \label{eq:ch4_auroc_ood}
 \end{equation}
 
@@ -416,9 +416,9 @@ Tỷ lệ chấp nhận nhầm tại điểm vận hành giữ lại 95\% mẫu 
 \begin{aligned}
 \operatorname{FPR@95\%TPR}
 &=\frac{1}{N_{\mathrm{OOD}}}\sum_{x\in\mathcal{D}_{\mathrm{OOD}}}
-\mathbb{1}\!\left[s(x)\leq\tau_{95}^{\mathrm{test}}\right],\\
+\mathbb{1}\!\left[s_{\mathrm{OOD}}(x)\leq\tau_{95}^{\mathrm{test}}\right],\\
 \Pr_{x\sim\mathcal{D}_{\mathrm{ID}}^{\mathrm{test}}}
-&\!\left[s(x)\leq\tau_{95}^{\mathrm{test}}\right]\geq0{,}95.
+&\!\left[s_{\mathrm{OOD}}(x)\leq\tau_{95}^{\mathrm{test}}\right]\geq0{,}95.
 \end{aligned}
 \label{eq:ch4_fpr95}
 \end{equation}
@@ -427,7 +427,7 @@ FPR@95\%TPR là độ đo đánh giá, nên không sử dụng ngưỡng cảnh 
 
 \subsubsection{Độ đo đánh giá tích phân gradient}
 
-Với mỗi mẫu, lớp đích $t$ được chọn là lớp có xác suất dự đoán lớn nhất. Gọi $F_t(\boldsymbol{u})$ là logit của lớp này tại đầu vào hoặc dãy đơn vị biểu diễn $\boldsymbol{u}$, $\boldsymbol{u}'$ là mốc tham chiếu và $L$ là số thành phần được đóng góp. Các đường loại bỏ và khôi phục dùng xác suất Softmax của cùng lớp dự đoán. Các độ đo dưới đây tập trung vào mức đóng góp và độ trung thực qua phép loại bỏ, khôi phục và đối chứng ngẫu nhiên.
+Với mỗi mẫu, lớp đích $t$ được chọn là lớp có xác suất dự đoán lớn nhất. Gọi $F_t(\boldsymbol{u})$ là logit của lớp này tại đầu vào hoặc dãy đơn vị biểu diễn $\boldsymbol{u}$, $\boldsymbol{u}'$ là mốc tham chiếu và $L$ là số thành phần được đóng góp. Các đường loại bỏ và khôi phục dùng xác suất Softmax của cùng lớp dự đoán. Các độ đo dưới đây tập trung vào mức đóng góp và độ trung thực qua phép loại bỏ, khôi phục.
 
 \paragraph{Mức đóng góp bằng tích phân gradient}
 
@@ -450,8 +450,6 @@ Theo phép đánh giá loại bỏ của Petsiuk và cộng sự \cite{Petsiuk20
 \int_{0}^{1}p_t\!\left(\boldsymbol{u}^{\mathrm{del}}(q)\right)\,\mathrm{d}q.
 \label{eq:ch4_deletion_auc}
 \end{equation}
-
-\clearpage
 
 Tích phân được xấp xỉ bằng quy tắc hình thang tại các tỷ lệ can thiệp được định trước. Độ đo được dùng để kiểm tra liệu các đơn vị được tích phân gradient xếp hạng cao có làm xác suất lớp đích giảm nhanh hay không. Giá trị thấp hơn thường cung cấp bằng chứng thuận lợi hơn về độ trung thực.
 
@@ -494,6 +492,8 @@ r_{\mathrm{train}}=100\frac{P_{\mathrm{train}}}{P_{\mathrm{total}}}.
 
 Nghiên cứu đồng thời báo cáo số phép toán dấu phẩy động trên mỗi mẫu, thông lượng, độ trễ trung bình và bộ nhớ đồ họa cực đại \cite{Canziani2017PracticalDNN,Reddi2020MLPerfInference}. Số phép toán được đếm trên các phép toán mà bộ đếm của PyTorch hỗ trợ, trong đó một phép nhân-cộng được tính là hai phép toán. Thông lượng và độ trễ sử dụng kích thước lô 1 trên 20 lô kiểm thử. Mỗi lô gồm 10 lượt khởi động và 10 lượt ghi thời gian. Thời gian chỉ bao gồm lan truyền tiến sau khi dữ liệu đã nằm trong bộ nhớ GPU, không bao gồm nạp dữ liệu và truyền dữ liệu từ CPU. Các phép đo được thực hiện trên cùng phần cứng, độ chính xác số học và đồ thị suy luận sau khi hợp nhất LoRA.
 
+\clearpage
+
 \section{Kiểm tra hiệu năng phân lớp và đánh đổi chi phí}
 \label{sec:data_cost_performance}
 
@@ -501,7 +501,7 @@ Nghiên cứu đồng thời báo cáo số phép toán dấu phẩy động tr�
 Thực nghiệm này nhằm trả lời câu hỏi: XBone-Net đạt mức hiệu năng phân lớp như thế nào khi so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận. Thực nghiệm tập trung vào hai khía cạnh gồm chất lượng dự đoán trên bộ dữ liệu CTCH và bộ BTXRD, cùng hiệu quả tham số và chi phí suy luận so với BiomedCLIP tinh chỉnh toàn bộ.
 
 \subsection{Nội dung}
-Nhóm đối chứng gồm ResNet-50 và DenseNet-121 chỉ nhận ảnh X-quang, cùng với CLIP, MedCLIP, PubMedCLIP và BiomedCLIP nhận cặp ảnh-văn bản. Hai mạng nơ-ron tích chập được khởi tạo từ trọng số ImageNet, còn bốn mô hình ngôn ngữ trực quan sử dụng trọng số tiền huấn luyện tương ứng. Tất cả sáu mô hình được tinh chỉnh toàn bộ trong pha phân lớp. Việc so sánh được thực hiện trên cùng tập chia của bộ dữ liệu CTCH và bộ BTXRD với các hạt giống 42, 123 và 456. Sáu mô hình dùng chung cấu hình thực nghiệm trên cả hai bộ dữ liệu. Kết quả phân lớp được tổng hợp qua ba hạt giống. Phép đo tham số và chi phí suy luận chỉ so sánh XBone-Net với BiomedCLIP tinh chỉnh toàn bộ trong cùng môi trường phần cứng, cùng kích thước lô và cùng dữ liệu đầu vào.
+Nhóm đối chứng gồm ResNet-50 và DenseNet-121 chỉ nhận ảnh X-quang, cùng với CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP} nhận cặp ảnh-văn bản. Hai mạng nơ-ron tích chập được khởi tạo từ trọng số ImageNet, còn bốn mô hình ngôn ngữ trực quan sử dụng trọng số tiền huấn luyện tương ứng. Tất cả sáu mô hình được tinh chỉnh toàn bộ trong pha phân lớp. Việc so sánh được thực hiện trên cùng tập chia của bộ dữ liệu CTCH và bộ BTXRD với các hạt giống 42, 123 và 456. Sáu mô hình dùng chung cấu hình thực nghiệm trên cả hai bộ dữ liệu. Kết quả phân lớp được tổng hợp qua ba hạt giống. Phép đo tham số và chi phí suy luận chỉ so sánh XBone-Net với BiomedCLIP tinh chỉnh toàn bộ trong cùng môi trường phần cứng, cùng kích thước lô và cùng dữ liệu đầu vào.
 
 \subsection{Kết quả}
 
@@ -517,7 +517,7 @@ Về kết quả quyết định lớp, XBone-Net đạt độ chính xác $0{,}
 
 Kết quả trên khả năng xếp hạng xác suất cho thấy bức tranh khác. XBone-Net có diện tích trung bình dưới đường cong đặc trưng hoạt động thấp hơn bốn mô hình ngôn ngữ trực quan trên hai bộ dữ liệu. Đối với diện tích trung bình dưới đường cong độ chính xác-độ nhạy, mô hình cũng không dẫn đầu về giá trị quan sát. Như vậy, XBone-Net tạo được quyết định lớp cuối cùng cạnh tranh, nhưng chưa sắp thứ tự mức tin cậy giữa các mẫu tốt bằng nhiều mô hình được tinh chỉnh toàn bộ. Hai nhóm độ đo phản ánh hai khía cạnh khác nhau, nên kết quả quyết định lớp tốt không đồng nghĩa xác suất dự đoán có chất lượng xếp hạng tốt hơn.
 
-Nhằm kiểm chứng liệu các chênh lệch quan sát được có ý nghĩa thống kê hay không, Bảng~\ref{tab:paired_baseline_classification} và Bảng~\ref{tab:paired_baseline_ranking} lần lượt báo cáo kết quả phân tích bootstrap ghép cặp chéo bệnh nhân và hạt giống với 10.000 lần lấy mẫu lại, cùng kiểm định hoán vị ghép cặp với 10.000 lần hoán vị. Các giá trị xác suất được hiệu chỉnh bằng phương pháp Holm trong từng độ đo.
+Nhằm kiểm chứng liệu các chênh lệch quan sát được có ý nghĩa thống kê hay không, Bảng~\ref{tab:paired_baseline_classification} và Bảng~\ref{tab:paired_baseline_ranking} lần lượt báo cáo chênh lệch ghép cặp và giá trị $p$ sau hiệu chỉnh Holm. Phân tích dùng 10.000 lần lấy mẫu bootstrap ghép cặp chéo bệnh nhân và hạt giống, cùng 10.000 lần hoán vị ghép cặp. Các khoảng tin cậy 95\% tương ứng được chuyển sang phụ lục, trong đó Bảng~\ref{tab:appendix-paired-baseline-classification-confidence-intervals} trình bày các độ đo phân loại và Bảng~\ref{tab:appendix-paired-baseline-ranking-confidence-intervals} trình bày các độ đo xếp hạng.
 
 \input{tables/chapter4/table_paired_baseline_classification}
 
@@ -526,6 +526,8 @@ Kiểm định ghép cặp xác nhận XBone-Net tốt hơn có ý nghĩa so v�
 \input{tables/chapter4/table_paired_baseline_ranking}
 
 So với các mô hình ngôn ngữ trực quan tinh chỉnh toàn bộ, XBone-Net chỉ tốt hơn ở một số đối sánh. Trên bộ dữ liệu CTCH, mô hình cải thiện có ý nghĩa độ chính xác và điểm macro-F1 trước MedCLIP và PubMedCLIP, nhưng chưa đủ bằng chứng xác nhận khác biệt với CLIP và BiomedCLIP. Trên bộ BTXRD, mô hình cải thiện có ý nghĩa độ chính xác trước CLIP và PubMedCLIP, trong khi chênh lệch điểm macro-F1 với cả bốn mô hình ngôn ngữ trực quan chưa được xác nhận. Vì vậy, XBone-Net có chất lượng quyết định lớp cạnh tranh, nhưng không tốt hơn toàn bộ nhóm đối chứng ảnh-văn bản.
+
+Trường hợp độ chính xác trên BTXRD giữa XBone-Net và CLIP minh họa sự không đồng thuận giữa hai thủ tục. Chênh lệch bằng $+0{,}0267$ và $p_{\mathrm{Holm}}=0{,}046$, nên khác biệt được xem là có ý nghĩa theo tiêu chuẩn kiểm định hoán vị được quy định ở trên. Tuy nhiên, khoảng tin cậy bootstrap 95\% là $[-0{,}0098; +0{,}0689]$ và vẫn chứa 0. Vì vậy, kết quả này chỉ cung cấp bằng chứng sát ngưỡng trên phân hoạch hiện tại, không được diễn giải như một lợi thế ổn định của XBone-Net.
 
 Kết quả trên phù hợp với vai trò của quy trình huấn luyện hai pha, cơ chế chú ý chéo hai chiều và đầu phân lớp tuyến tính. Hai pha huấn luyện giúp thích nghi biểu diễn ảnh và văn bản trước khi tối ưu trực tiếp biên quyết định phân lớp, trong khi cơ chế chú ý chéo cho phép trao đổi thông tin giữa hai phương thức. Sau đó, đầu phân lớp tuyến tính ánh xạ biểu diễn dung hợp thành điểm số lớp và được tối ưu cùng mô-đun dung hợp trong pha phân lớp. Việc chỉ cập nhật một phần nhỏ tham số của mạng nền có thể giúp duy trì tri thức tiền huấn luyện, nhưng cũng giới hạn mức độ điều chỉnh toàn bộ không gian xác suất. Đây là một cách giải thích hợp lý cho việc XBone-Net đạt kết quả quyết định lớp cạnh tranh nhưng khả năng xếp hạng chưa dẫn đầu. Tuy nhiên, diễn giải này dựa trên thiết kế mô hình và chưa chứng minh được quan hệ nhân quả. Vì vậy, cần thực nghiệm tách riêng quy trình huấn luyện, cơ chế dung hợp và đầu phân lớp để kiểm chứng.
 
@@ -557,18 +559,18 @@ Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với 
 
 \input{tables/chapter4/table_ablation_leave_one_out_classification}
 
-Để đánh giá liệu các chênh lệch này có ổn định trên cùng các mẫu kiểm thử hay không, Bảng~\ref{tab:ablation_paired_statistics} trình bày kiểm định ghép cặp giữa từng biến thể và XBone-Net. Giá trị xác suất được tính bằng phép kiểm định hoán vị ghép cặp, sau đó được hiệu chỉnh theo phương pháp Holm trong từng độ đo cho hai phép so sánh. Chênh lệch được định nghĩa bằng kết quả của biến thể trừ kết quả của XBone-Net.
+Để đánh giá liệu các chênh lệch này có ổn định trên cùng các mẫu kiểm thử hay không, Bảng~\ref{tab:ablation_paired_statistics} trình bày kiểm định ghép cặp giữa từng biến thể và XBone-Net. Giá trị xác suất được tính bằng phép kiểm định hoán vị ghép cặp, sau đó được hiệu chỉnh theo phương pháp Holm trong từng độ đo cho hai phép so sánh. Chênh lệch được định nghĩa bằng kết quả của biến thể trừ kết quả của XBone-Net. Các khoảng tin cậy 95\% được trình bày riêng trong Bảng~\ref{tab:appendix-ablation-paired-confidence-intervals} ở phụ lục.
 
 \input{tables/chapter4/table_ablation_paired_statistics}
 
-Đối với biến thể Chỉ pha 2, kiểm định không xác nhận khác biệt có ý nghĩa thống kê ở cả năm độ đo vì các giá trị xác suất sau hiệu chỉnh Holm đều không nhỏ hơn $0{,}119$. Vì vậy, dù XBone-Net có giá trị trung bình cao hơn ở bốn trong năm độ đo, kết quả hiện tại chưa đủ bằng chứng để khẳng định pha thích nghi tương phản tạo ra cải thiện ổn định trên tập kiểm thử cố định này.
+Đối với biến thể Chỉ pha 2, kiểm định không xác nhận khác biệt có ý nghĩa thống kê ở cả năm độ đo vì các giá trị xác suất sau hiệu chỉnh Holm đều không nhỏ hơn $0{,}119$. Vì vậy, dù XBone-Net có giá trị trung bình cao hơn ở bốn trong năm độ đo, kết quả hiện tại chưa đủ bằng chứng để khẳng định pha khớp ngữ nghĩa tạo ra cải thiện ổn định trên tập kiểm thử cố định này.
 
 Đối với biến thể Nối đặc trưng, khác biệt duy nhất được xác nhận là diện tích trung bình dưới đường cong đặc trưng hoạt động. Biến thể này cao hơn XBone-Net $0{,}0231$ và giá trị xác suất sau hiệu chỉnh Holm bằng $0{,}021$. Độ chính xác quan sát được của XBone-Net cao hơn $0{,}0359$, nhưng giá trị xác suất sau hiệu chỉnh Holm bằng $0{,}052$ nên chưa đạt ngưỡng ý nghĩa $0{,}05$. Các độ đo còn lại cũng chưa cho thấy khác biệt có ý nghĩa thống kê.
 
 Một cách giải thích phù hợp với kết quả là phép nối giữ hai biểu diễn ảnh và văn bản tách biệt hơn trước đầu phân lớp, nhờ đó có thể bảo toàn thứ tự điểm số giữa các lớp và tạo lợi thế về khả năng xếp hạng. Trong khi đó, chú ý chéo hai chiều biến đổi hai nguồn thông tin theo ngữ cảnh của nhau và cấu hình đầy đủ đạt giá trị quan sát cao hơn về độ chính xác cùng macro-F1. Tuy nhiên, kiểm định chỉ xác nhận lợi thế xếp hạng của phép nối, nên các diễn giải về cơ chế chỉ là giả thuyết dựa trên thiết kế kiến trúc chứ chưa phải quan hệ nhân quả đã được chứng minh.
 
 \subsection{Kết luận}
-Thực nghiệm này cho thấy XBone-Net đạt độ chính xác và macro-F1 quan sát được cao hơn hai biến thể, nhưng kiểm định ghép cặp chưa xác nhận lợi thế này sau hiệu chỉnh đa so sánh. Việc loại bỏ pha thích nghi tương phản không tạo ra khác biệt có ý nghĩa thống kê ở cả năm độ đo, còn phép nối đặc trưng cải thiện có ý nghĩa thống kê khả năng xếp hạng theo diện tích trung bình dưới đường cong đặc trưng hoạt động. Nhận định nổi bật là quy trình huấn luyện hai pha và chú ý chéo hai chiều không tạo lợi ích đồng đều trên mọi mục tiêu, đồng thời chưa có đủ bằng chứng để xem từng thành phần là nguyên nhân trực tiếp làm tăng hiệu năng phân lớp.
+Thực nghiệm này cho thấy XBone-Net đạt độ chính xác và macro-F1 quan sát được cao hơn hai biến thể, nhưng kiểm định ghép cặp chưa xác nhận lợi thế này sau hiệu chỉnh đa so sánh. Việc loại bỏ pha khớp ngữ nghĩa không tạo ra khác biệt có ý nghĩa thống kê ở cả năm độ đo, còn phép nối đặc trưng cải thiện có ý nghĩa thống kê khả năng xếp hạng theo diện tích trung bình dưới đường cong đặc trưng hoạt động. Nhận định nổi bật là quy trình huấn luyện hai pha và chú ý chéo hai chiều không tạo lợi ích đồng đều trên mọi mục tiêu, đồng thời chưa có đủ bằng chứng để xem từng thành phần là nguyên nhân trực tiếp làm tăng hiệu năng phân lớp.
 
 \section{Khảo sát khả năng cảnh báo dữ liệu ngoài phân phối}
 \label{subsec:ablation_ood_results}
@@ -577,18 +579,18 @@ Thực nghiệm này cho thấy XBone-Net đạt độ chính xác và macro-F1 
 Thực nghiệm này đánh giá khả năng phát hiện mẫu ngoài phân phối hậu xử lý được xây dựng từ không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối đã xác định, đồng thời khảo sát sự khác biệt giữa dịch chuyển gần miền và dịch chuyển sang bộ dữ liệu khác.
 
 \subsection{Nội dung}
-Ba cấu hình được đánh giá gồm XBone-Net, Chỉ pha 2 và Nối đặc trưng. Dữ liệu huấn luyện CTCH được dùng để khớp bộ chấm điểm hậu xử lý, còn dữ liệu xác thực được dùng để chuẩn hóa điểm và chọn ngưỡng tại phân vị 95, tương ứng mục tiêu cảnh báo nhầm 5\% mẫu trong phân phối. Ngưỡng được xác định riêng cho từng cấu hình và từng hạt giống mà không sử dụng mẫu ngoài phân phối. Tập kiểm thử gồm 18 mẫu ngoài không gian nhãn từ bộ CTCH và 750 mẫu từ bộ BTXRD. Cùng một ngưỡng đã hiệu chỉnh được giữ nguyên cho hai kịch bản. Ba độ đo lần lượt phản ánh khả năng phân tách tổng thể, chất lượng xếp hạng khi coi mẫu ngoài phân phối là lớp dương và tỷ lệ chấp nhận nhầm mẫu ngoài phân phối tại mức giữ lại 95\% mẫu trong phân phối.
+Ba cấu hình được đánh giá gồm XBone-Net, Chỉ pha 2 và Nối đặc trưng. Dữ liệu huấn luyện CTCH được dùng để khớp bộ chấm điểm hậu xử lý, còn dữ liệu xác thực được dùng để chuẩn hóa điểm mà không sử dụng mẫu ngoài phân phối. Tập đánh giá gồm 669 mẫu CTCH trong phân phối, 18 mẫu ngoài không gian nhãn của CTCH và 750 mẫu từ bộ BTXRD. Ba độ đo AUROC-OOD, AUPR-Out và FPR@95\%TPR lần lượt phản ánh khả năng phân tách tổng thể, chất lượng xếp hạng khi coi mẫu ngoài phân phối là lớp dương và tỷ lệ chấp nhận nhầm tại ngưỡng đánh giá được xác định trên tập kiểm thử.
 
 \subsection{Kết quả}
-Bảng~\ref{tab:ablation_ood} so sánh XBone-Net với hai biến thể khi cùng sử dụng điểm tổng hợp đa phương thức. Trong kịch bản gần miền, XBone-Net không tốt hơn hoàn toàn hai biến thể. Biến thể Chỉ pha 2 đạt khả năng phân tách và xếp hạng tổng thể cao nhất, còn XBone-Net đạt tỷ lệ lỗi thấp nhất tại điểm vận hành giữ lại 95\% mẫu trong phân phối. Tuy vậy, giá trị này vẫn xấp xỉ $63\%$, chỉ thấp hơn hai biến thể còn lại từ khoảng hai đến bốn điểm phần trăm. Như vậy, lợi thế của XBone-Net chỉ xuất hiện ở một điểm vận hành cụ thể và chưa khắc phục được tỷ lệ lỗi cao đối với các mẫu ngoài phân phối gần miền.
+Bảng~\ref{tab:ablation_ood} so sánh XBone-Net với hai biến thể khi cùng sử dụng điểm tổng hợp đa phương thức. Trong kịch bản gần miền, XBone-Net không tốt hơn hoàn toàn hai biến thể. Biến thể Chỉ pha 2 đạt khả năng phân tách và xếp hạng tổng thể cao nhất, còn XBone-Net đạt FPR@95\%TPR thấp nhất ở mức $0{,}6296$. Tuy nhiên, FPR@95\%TPR sử dụng $\tau_{95}^{\mathrm{test}}$ được xác định lại từ tập kiểm thử nên kết quả này chỉ mô tả một điểm trên đường cong đánh giá và không phải hành vi của ngưỡng triển khai.
 
 \input{tables/chapter4/table_ablation_ood}
 
-Khi chuyển sang bộ BTXRD, XBone-Net đạt khả năng phân tách tổng thể $0{,}9321$ và tỷ lệ lỗi khoảng $36\%$ tại cùng điểm vận hành. Biến thể Chỉ pha 2 vẫn nhỉnh hơn về hai độ đo xếp hạng, trong khi XBone-Net tiếp tục có tỷ lệ lỗi thấp nhất. Cả ba cấu hình đều tốt hơn rõ rệt so với kịch bản gần miền, cho thấy việc nhận diện dữ liệu từ một nguồn khác biệt lớn dễ hơn nhận diện các bệnh lý nằm gần không gian dữ liệu huấn luyện.
+Khi chuyển sang bộ BTXRD, XBone-Net đạt khả năng phân tách tổng thể $0{,}9321$, chất lượng xếp hạng $0{,}9052$ và FPR@95\%TPR bằng $0{,}3604$. Biến thể Chỉ pha 2 vẫn nhỉnh hơn về hai độ đo xếp hạng, trong khi XBone-Net có FPR@95\%TPR thấp nhất. Cả ba cấu hình đều phân tách BTXRD tốt hơn kịch bản gần miền, cho thấy việc nhận diện dữ liệu từ một nguồn khác biệt lớn dễ hơn nhận diện các bệnh lý nằm gần không gian dữ liệu huấn luyện.
 
-Nguyên nhân hợp lý nằm ở khoảng cách biểu diễn. Các mẫu từ bộ BTXRD thay đổi đồng thời về nguồn ảnh, văn bản và không gian nhãn nên nằm xa dữ liệu huấn luyện và dễ được điểm hậu xử lý phát hiện. Ngược lại, các mẫu gần miền vẫn chia sẻ nhiều đặc trưng hình ảnh và ngữ nghĩa với dữ liệu trong phân phối, làm khoảng cách giữa hai nhóm bị thu hẹp. Huấn luyện hai pha có thể làm biểu diễn trong cùng miền gắn kết hơn, giúp XBone-Net giảm lỗi tại ngưỡng đã chọn nhưng không cải thiện toàn bộ thứ tự xếp hạng so với biến thể Chỉ pha 2.
+
 \subsection{Kết luận}
-Thực nghiệm này cho thấy XBone-Net cạnh tranh với hai biến thể và đạt tỷ lệ lỗi thấp nhất tại điểm vận hành đã chọn, nhưng không tốt hơn về khả năng phân tách và xếp hạng tổng thể. Nhận định quan trọng là hiệu quả cảnh báo phụ thuộc nhiều vào loại dịch chuyển hơn là chênh lệch kiến trúc: thay đổi lớn giữa hai nguồn dữ liệu dễ nhận diện, còn bệnh lý gần miền vẫn là trường hợp khó.
+Thực nghiệm này cho thấy XBone-Net cạnh tranh với hai biến thể và đạt FPR@95\%TPR quan sát được thấp nhất trong cả hai kịch bản, nhưng không tốt hơn về khả năng phân tách và xếp hạng tổng thể. Nhận định quan trọng là hiệu quả phát hiện phụ thuộc nhiều vào dạng dịch chuyển hơn chênh lệch kiến trúc, trong đó thay đổi lớn giữa hai nguồn dữ liệu dễ nhận diện còn bệnh lý gần miền vẫn là trường hợp khó. Các kết quả chỉ mô tả khả năng xếp hạng trên tập kiểm thử và không được dùng để kết luận hiệu quả của một ngưỡng triển khai cố định.
 
 \section{Khảo sát mức phụ thuộc của dự đoán vào ảnh và văn bản}
 \label{subsec:ablation_explainability_results}

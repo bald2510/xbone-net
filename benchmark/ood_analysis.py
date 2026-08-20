@@ -135,7 +135,12 @@ def parse_args() -> argparse.Namespace:
         default="euclidean",
         help="Hàm khoảng cách kNN OOD: 'euclidean' (trên vector chuẩn hóa L2) hoặc 'cosine'",
     )
-    parser.add_argument("--target-fpr", type=float, default=0.05, help="Mức FPR mục tiêu trên tập validation (mặc định 0.05 cho 95%% TPR)")
+    parser.add_argument(
+        "--target-fpr",
+        type=float,
+        default=0.05,
+        help="Mức cảnh báo nhầm ID mục tiêu trên tập validation (mặc định 0.05)",
+    )
     parser.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--num-workers", type=int, default=0)

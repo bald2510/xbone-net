@@ -1,0 +1,25 @@
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llcc}
+\toprule
+\textbf{Biến thể} & \textbf{Độ đo} & \textbf{$\Delta$} & \textbf{Khoảng tin cậy 95\%} \\
+\midrule
+\multirow{5}{*}{Chỉ pha 2}
+ & Accuracy & $-0{,}0179$ & $[-0{,}0578; +0{,}0214]$ \\
+ & Balanced Accuracy & $-0{,}0383$ & $[-0{,}0862; +0{,}0084]$ \\
+ & Macro-F1 & $-0{,}0230$ & $[-0{,}0665; +0{,}0196]$ \\
+ & Macro-AUROC & $+0{,}0049$ & $[-0{,}0195; +0{,}0277]$ \\
+ & Macro-AUPRC & $-0{,}0117$ & $[-0{,}0506; +0{,}0214]$ \\
+\midrule
+\multirow{5}{*}{Nối đặc trưng}
+ & Accuracy & $-0{,}0359$ & $[-0{,}0688; -0{,}0025]$ \\
+ & Balanced Accuracy & $+0{,}0048$ & $[-0{,}0363; +0{,}0452]$ \\
+ & Macro-F1 & $-0{,}0250$ & $[-0{,}0609; +0{,}0109]$ \\
+ & Macro-AUROC & $+0{,}0231$ & $[+0{,}0001; +0{,}0485]$ \\
+ & Macro-AUPRC & $-0{,}0093$ & $[-0{,}0467; +0{,}0296]$ \\
+\bottomrule
+\end{tabular}
+\caption{Khoảng tin cậy 95\% của chênh lệch ghép cặp giữa từng biến thể và XBone-Net trên 669 mẫu kiểm thử CTCH qua các hạt giống 42, 123 và 456. Chênh lệch được tính bằng biến thể trừ XBone-Net. Khoảng tin cậy được ước lượng từ 10.000 lần bootstrap ghép cặp chéo bệnh nhân và hạt giống.}
+\label{tab:appendix-ablation-paired-confidence-intervals}
+\end{table}

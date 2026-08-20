@@ -1,0 +1,24 @@
+\begin{table}[H]
+\centering
+\small
+\resizebox{0.88\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Đối chứng}} & \textbf{$\Delta$ Macro-AUROC} & \textbf{$\Delta$ Macro-AUPRC} \\ \hline
+\multirow{6}{*}{CTCH} & ResNet-50 & $-0{,}0115$ \scriptsize$[-0{,}0352; +0{,}0113]$ & \textbf{$+0{,}1419$ \scriptsize$[+0{,}0859; +0{,}1857]$} \\ \cline{2-4}
+ & DenseNet-121 & $-0{,}0330$ \scriptsize$[-0{,}0560; -0{,}0112]$ & \textbf{$+0{,}1137$ \scriptsize$[+0{,}0548; +0{,}1607]$} \\ \cline{2-4}
+ & CLIP & \textbf{$-0{,}0270$ \scriptsize$[-0{,}0667; +0{,}0231]$} & $-0{,}0099$ \scriptsize$[-0{,}0712; +0{,}0592]$ \\ \cline{2-4}
+ & MedCLIP & $-0{,}0195$ \scriptsize$[-0{,}0495; +0{,}0163]$ & $+0{,}0063$ \scriptsize$[-0{,}0348; +0{,}0492]$ \\ \cline{2-4}
+ & PubMedCLIP & \textbf{$-0{,}0259$ \scriptsize$[-0{,}0457; -0{,}0017]$} & $+0{,}0016$ \scriptsize$[-0{,}0398; +0{,}0465]$ \\ \cline{2-4}
+ & BiomedCLIP & \textbf{$-0{,}0370$ \scriptsize$[-0{,}0717; +0{,}0031]$} & $-0{,}0265$ \scriptsize$[-0{,}0688; +0{,}0178]$ \\ \hline
+\multirow{6}{*}{BTXRD} & ResNet-50 & \textbf{$+0{,}0810$ \scriptsize$[+0{,}0243; +0{,}1398]$} & \textbf{$+0{,}2526$ \scriptsize$[+0{,}1993; +0{,}3077]$} \\ \cline{2-4}
+ & DenseNet-121 & $+0{,}0328$ \scriptsize$[-0{,}0068; +0{,}0728]$ & \textbf{$+0{,}2034$ \scriptsize$[+0{,}1464; +0{,}2536]$} \\ \cline{2-4}
+ & CLIP & \textbf{$-0{,}0927$ \scriptsize$[-0{,}1300; -0{,}0566]$} & $-0{,}0386$ \scriptsize$[-0{,}0942; +0{,}0128]$ \\ \cline{2-4}
+ & MedCLIP & \textbf{$-0{,}0553$ \scriptsize$[-0{,}1070; +0{,}0034]$} & $-0{,}0362$ \scriptsize$[-0{,}0842; +0{,}0165]$ \\ \cline{2-4}
+ & PubMedCLIP & \textbf{$-0{,}1002$ \scriptsize$[-0{,}1483; -0{,}0487]$} & $-0{,}0284$ \scriptsize$[-0{,}0850; +0{,}0328]$ \\ \cline{2-4}
+ & BiomedCLIP & \textbf{$-0{,}0819$ \scriptsize$[-0{,}1240; -0{,}0392]$} & $-0{,}0645$ \scriptsize$[-0{,}1029; -0{,}0178]$ \\ \hline
+\end{tabular}%
+}
+\caption{Khoảng tin cậy 95\% của chênh lệch ghép cặp giữa XBone-Net và các mô hình đối chứng đối với các độ đo xếp hạng qua ba hạt giống. Chênh lệch được tính bằng XBone-Net trừ mô hình đối chứng. Giá trị trong ngoặc vuông được ước lượng từ 10.000 lần bootstrap ghép cặp chéo bệnh nhân và hạt giống.}
+\label{tab:appendix-paired-baseline-ranking-confidence-intervals}
+\end{table}

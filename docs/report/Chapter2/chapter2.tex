@@ -76,7 +76,7 @@ Ngoài học tương phản, các hướng tiếp cận khác bao gồm học c�
 \label{subsubsec:BiomedCLIP_selection}
 Trong số các mô hình ngôn ngữ trực quan y khoa được khảo sát, khóa luận lựa chọn BiomedCLIP \cite{BiomedCLIP} làm mô hình nền tảng dựa trên mức độ phù hợp với bài toán, thay vì chỉ dựa trên kết quả của một bộ dữ liệu riêng lẻ. Thứ nhất, BiomedCLIP được tiền huấn luyện trên PMC-15M, gồm khoảng 15 triệu cặp ảnh-văn bản thu thập từ nhiều loại dữ liệu y sinh, trong khi một số mô hình trước đó chủ yếu được xây dựng và đánh giá trên ảnh X-quang ngực. Phạm vi tiền huấn luyện rộng hơn tạo cơ sở phù hợp cho việc chuyển giao sang ảnh X-quang xương, vốn có sự đa dạng lớn về vùng giải phẫu, tư thế chụp và loại tổn thương.
 
-Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá không mẫu thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm mô hình nền tảng khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương. Kết quả phân lớp không mẫu của BiomedCLIP và các mô hình nền tảng khác được trình bày trong Phần \ref{subsec:foundation_model_evaluation}.
+Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập gồm Vision Transformer cho ảnh và PubMedBERT cho văn bản, phù hợp với thiết kế hai nhánh của hệ thống và cho phép kế thừa trực tiếp biểu diễn của cả hai phương thức. Thứ ba, kiến trúc CLIP của mô hình hỗ trợ đánh giá không mẫu thông qua độ tương đồng ảnh-văn bản, đồng thời có thể được mở rộng bằng các kỹ thuật tinh chỉnh hiệu quả tham số và mô-đun dung hợp cho bài toán đích. Vì vậy, BiomedCLIP được sử dụng làm mô hình nền tảng khởi tạo, trong khi các ý tưởng phù hợp từ những nghiên cứu khác, chẳng hạn hàm mất mát khớp ngữ nghĩa của MedCLIP, được kế thừa để cải thiện quá trình thích nghi trên dữ liệu X-quang xương.
 
 \subsubsection{Cơ chế phân lớp không mẫu của BiomedCLIP}
 \label{subsubsec:BiomedCLIP_zeroshot}
@@ -132,7 +132,7 @@ Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ, còn đượ
 Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức.
 
 \subsection{Tinh chỉnh thích nghi hạng thấp}
-Tinh chỉnh thích nghi hạng thấp (LoRA) \cite{Hu2022LoRA} giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này sử dụng một lượng nhỏ tham số huấn luyện nhưng đem lại hiệu quả gần như tương đương với tinh chỉnh toàn phần.
+Tinh chỉnh thích nghi hạng thấp LoRA \cite{Hu2022LoRA} giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này sử dụng một lượng nhỏ tham số huấn luyện nhưng đem lại hiệu quả gần như tương đương với tinh chỉnh toàn phần.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Giảm đáng kể số tham số cần cập nhật và bộ nhớ tối ưu hóa với hiệu suất gần như tương đương với tinh chỉnh toàn phần. Ngoài ra, các ma trận cập nhật có thể được hợp nhất vào trọng số nền khi cách triển khai hỗ trợ.
     \item \textbf{Điểm yếu:} Hiệu quả phụ thuộc vào vị trí chèn, hạng của ma trận và cấu hình tối ưu. Tuy nhiên, việc giảm tham số huấn luyện không đồng nghĩa với giảm chi phí lan truyền tiến của toàn bộ kiến trúc.
@@ -155,7 +155,7 @@ Bảng~\ref{tab:VLMTransferlearningMethodPropose} tổng hợp các phương ph�
   \textbf{PLIP (2024) \cite{PLIP}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng câu nhắc\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Kết hợp câu nhắc thị giác \\ với tinh chỉnh chọn lọc, tận \\ dụng đặc trưng hình ảnh\\ để tinh chỉnh hiệu quả\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}0,896 AUC \\ (5\% PanNuke)\end{tabular} \\ \hline
+  \begin{tabular}[c]{@{}l@{}}0,896 AUC \\ 5\% PanNuke\end{tabular} \\ \hline
 \textbf{2} &
   \textbf{CLIPath (2023) \cite{CLIPath}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
@@ -165,7 +165,7 @@ Bảng~\ref{tab:VLMTransferlearningMethodPropose} tổng hợp các phương ph�
   \textbf{LCBB (2024) \cite{LCBB}} &
   \begin{tabular}[c]{@{}l@{}}Thích nghi hạng \\ thấp bằng LoRA\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Bổ sung ma trận hạng thấp \\ vào bộ mã hóa thị giác, giữ \\ cố định trọng số nền\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}93,1\% AUROC \\ (RSNA, 10\%)\end{tabular} \\ \hline
+  \begin{tabular}[c]{@{}l@{}}93,1\% AUROC \\ RSNA, 10\%\end{tabular} \\ \hline
 \textbf{4} &
   \textbf{FTB (2024) \cite{FTB}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
@@ -204,11 +204,11 @@ Nhận thấy những hạn chế của không gian logit, các nghiên cứu g�
     Khoảng cách euclid đo độ lệch hình học tuyệt đối $d_E(z,c_k)=\|z-c_k\|_2$ \label{eq:euclid} và phù hợp với hình học đẳng hướng khi các chiều có cùng thang đo. Khoảng cách cosine loại bỏ ảnh hưởng của độ lớn vectơ và chỉ so sánh hướng, nhưng không mô hình hóa mức phân tán khác nhau theo từng chiều.
     \item \textbf{Khoảng cách Mahalanobis \cite{Lee2018MahalanobisOOD}:} Khoảng cách Mahalanobis bổ sung thông tin hiệp phương sai để chuẩn hóa độ lệch theo cấu trúc phân tán của không gian đặc trưng:
     \begin{equation}
-    d_M(z,\mu_k)=\sqrt{(z-\mu_k)^\top(\Sigma+\lambda I)^{-1}(z-\mu_k)}
+    d_M(z,\mu_k)=\sqrt{(z-\mu_k)^\top(\Sigma+\lambda_{\mathrm{cov}} I)^{-1}(z-\mu_k)}
     \label{eq:mahalanobis}
     \end{equation}
-    Trong đó, $z$ là vectơ biểu diễn của mẫu kiểm thử, $\mu_k$ là trung bình đặc trưng của lớp $k$ và $\Sigma$ là ma trận hiệp phương sai. Độ tin cậy của phép đo phụ thuộc vào chất lượng ước lượng hiệp phương sai và mức phù hợp của giả định phân phối.
-    \item \textbf{Khoảng cách láng giềng gần nhất (kNN) \cite{Sun2022KNN}:}
+    Trong đó, $z$ là vectơ biểu diễn của mẫu kiểm thử, $\mu_k$ là trung bình đặc trưng của lớp $k$, $\Sigma$ là ma trận hiệp phương sai, $I$ là ma trận đơn vị và $\lambda_{\mathrm{cov}}$ là hệ số điều chuẩn hiệp phương sai. Ký hiệu $\lambda_{\mathrm{cov}}$ chỉ được dùng cho phép điều chuẩn này, khác với ngưỡng cảnh báo dữ liệu ngoài phân phối $\tau_{\mathrm{alert}}$ ở Chương~\ref{Chapter3}. Độ tin cậy của phép đo phụ thuộc vào chất lượng ước lượng hiệp phương sai và mức phù hợp của giả định phân phối.
+    \item \textbf{Khoảng cách láng giềng gần nhất kNN \cite{Sun2022KNN}:}
     Thay vì mô hình hóa không gian đặc trưng bằng một dạng phân phối tham số, phương pháp kNN đánh giá mẫu kiểm thử dựa trên quan hệ lân cận trực tiếp với các biểu diễn của dữ liệu trong phân phối đã quan sát. Với tập tham chiếu $\mathcal{Z}_{\mathrm{ID}}=\{z_i\}_{i=1}^{N}$, tập $k$ láng giềng gần nhất của biểu diễn kiểm thử $z$ được xác định bởi:
     \begin{equation}
     \mathcal{N}_k(z)=\operatorname{kNN}(z,\mathcal{Z}_{\mathrm{ID}}).
@@ -237,7 +237,7 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
 
 Các phương pháp quy đóng gán mức ảnh hưởng cho từng thành phần đầu vào đối với một đầu ra cụ thể. Tích phân gradient \cite{Sundararajan2017IntegratedGradients} tích lũy gradient dọc theo đường nội suy từ một mốc tham chiếu đến đầu vào, nhờ đó có thể áp dụng cho vùng ảnh, đơn vị biểu diễn cục bộ và từ ngữ. Kết quả phản ánh mức phụ thuộc của đầu ra đối với mốc tham chiếu và lớp đích đã chọn, không mặc nhiên biểu thị quan hệ nhân quả hoặc vị trí tổn thương.
 
-Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào với phép loại bỏ hoặc phép khôi phục \cite{doiRISERandomized}. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
+Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào với phép loại bỏ hoặc phép khôi phục \cite{Petsiuk2018RISE}. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
 
 Trọng số chú ý mô tả cách mô-đun phân bổ tương tác trong một lần truyền thuận nhưng không mặc nhiên là lời giải thích trung thực cho quyết định. Mối quan hệ giữa chú ý và giải thích vẫn phụ thuộc vào định nghĩa, mô hình và giao thức đánh giá cụ thể \cite{Jain2019AttentionNotExplanation,Wiegreffe2019AttentionNotNotExplanation}. Ngoài độ trung thực, đánh giá trong y khoa còn cần phân biệt độ ổn định của bản đồ, mức phù hợp với chú thích tổn thương và nhận định của chuyên gia. Khóa luận vì vậy sử dụng tích phân gradient và can thiệp đầu vào để khảo sát nguồn thông tin liên hệ với dự đoán, đồng thời không diễn giải bản đồ quy đóng như bằng chứng định vị hoặc xác nhận lâm sàng.
 
@@ -268,7 +268,7 @@ Bên cạnh đó, trong hàm mất mát tương phản InfoNCE nguyên bản \ci
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân lớp không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
 
-Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều, có nguyên lý trao đổi thông tin giữa hai luồng ảnh--văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}, để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
+Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều, có nguyên lý trao đổi thông tin giữa hai luồng ảnh-văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}, để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
 
 \textbf{Về phân lớp đa lớp và mất cân bằng dữ liệu:}
 Phương pháp sử dụng Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.

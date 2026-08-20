@@ -47,7 +47,7 @@ Chuỗi thị giác dùng cho dung hợp & $B\times197\times512$ & Chuỗi đầ
 Chuỗi văn bản & $B\times256\times512$ & Một đơn vị đại diện, các đơn vị nội dung và các vị trí đệm. \\ \hline
 Biểu diễn ảnh nhận ngữ cảnh văn bản & $B\times512$ & Kết quả truy vấn văn bản bằng biểu diễn ảnh toàn cục. \\ \hline
 Biểu diễn văn bản nhận ngữ cảnh ảnh & $B\times512$ & Kết quả truy vấn các đơn vị ảnh cục bộ bằng biểu diễn văn bản toàn cục. \\ \hline
-Biểu diễn dung hợp & $B\times512$ & Đầu vào của đầu phân lớp tuyến tính và các điểm OOD hậu xử lý. \\ \hline
+Biểu diễn dung hợp & $B\times512$ & Đầu vào của đầu phân lớp tuyến tính. \\ \hline
 Logit phân lớp & $B\times K$ & Điểm của từng lớp trước Softmax. \\ \hline
 \end{tabular}%
 }
@@ -147,4 +147,4 @@ Trọng số lớp & Không áp dụng & Số lượng hiệu dụng & Giới h�
 \label{tab:appendix-model-training-phases}
 \end{table}
 
-Hai bộ dữ liệu khác nhau ở số lớp, với $K=22$ trên CTCH và $K=10$ trên BTXRD. Cả hai cấu hình chính đều dùng hệ số số lượng hiệu dụng mặc định $\beta=0{,}999$. Các cấu hình còn lại trong Bảng~\ref{tab:appendix-model-training-phases} được giữ giống nhau. Trong thiết lập ít mẫu, chỉ tập huấn luyện được lấy tối đa 1, 10 hoặc 20 mẫu trên mỗi lớp theo từng hạt giống. Tập xác thực và tập kiểm thử được giữ nguyên.
+Hai bộ dữ liệu khác nhau ở số lớp, với $K=22$ trên CTCH và $K=10$ trên BTXRD. Cả hai cấu hình chính đều dùng hệ số số lượng hiệu dụng mặc định $\beta=0{,}999$. Các cấu hình còn lại trong Bảng~\ref{tab:appendix-model-training-phases} được giữ giống nhau.
