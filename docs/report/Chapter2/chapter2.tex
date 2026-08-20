@@ -35,28 +35,28 @@ Chiến lược học tương phản là hướng tiếp cận được ứng d�
   \multicolumn{1}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}Chiến lược \\ kết hợp\end{tabular}}} &
   \multicolumn{1}{c|}{\textbf{Bộ giải mã}} \\ \hline
 \textbf{1} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT\\ (2020)\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}ConVIRT \cite{ConVIRT}\\ (2020)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ResNet50} &
   \multicolumn{1}{l|}{BERT} &
   \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
   N/a \\ \hline
 \textbf{2} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA\\ (2021)\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA \cite{GLoRIA}\\ (2021)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ResNet50} &
   \multicolumn{1}{l|}{BioClinicalBERT} &
   \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
   N/a \\ \hline
 \textbf{3} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP\\ (2022)\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP \cite{MedCLIP}\\ (2022)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} &
   \multicolumn{1}{l|}{BioClinicalBERT} &
   \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Knowledge-enhanced \\ Alignment\end{tabular}} &
   N/a \\ \hline
 \textbf{4} &
-  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP\\ (2023)\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP \cite{BiomedCLIP}\\ (2023)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ViT-Base} &
   \multicolumn{1}{l|}{PubMedBERT} &
@@ -116,7 +116,7 @@ Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn p
 Để giải quyết bài toán đánh đổi giữa hiệu năng và chi phí tính toán, tinh chỉnh hiệu quả tham số đã nổi lên như một giải pháp thay thế. Kỹ thuật này chỉ cập nhật hoặc thêm mới một lượng rất nhỏ tham số, giúp tiết kiệm tài nguyên và giữ vững khả năng tổng quát hóa. Dựa trên cơ chế can thiệp, các phương pháp tinh chỉnh hiệu quả tham số được chia thành ba hướng tiếp cận chính:
 
 \subsection{Tinh chỉnh sử dụng câu nhắc}
-Hướng tiếp cận này chèn thêm các tham số (vectơ) có thể học được vào không gian đầu vào của mô hình mà không thay đổi cấu trúc mạng bên trong.
+Hướng tiếp cận này chèn thêm các tham số (vectơ) có thể học được vào không gian đầu vào của mô hình mà không thay đổi cấu trúc mạng bên trong \cite{Lester2021PromptTuning}.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Tiết kiệm tham số tối đa, bảo toàn nguyên vẹn tri thức của mô hình gốc, đặc biệt hiệu quả trong các kịch bản học ít mẫu hoặc không mẫu.
     \item \textbf{Điểm yếu:} Tối ưu hóa khó khăn do không gian biểu diễn bị giới hạn ở đầu vào, nhạy cảm với cách khởi tạo, và chiếm dụng một phần độ dài của chuỗi đầu vào.
@@ -124,7 +124,7 @@ Hướng tiếp cận này chèn thêm các tham số (vectơ) có thể học �
 Trong lĩnh vực y tế, PLIP \cite{PLIP} kết hợp đặc trưng thị giác với câu nhắc hiệu quả, đạt 0,896 AUC chỉ với 5\% dữ liệu PanNuke. BiomedCoOp \cite{BiomedCoOp} tích hợp mô hình ngôn ngữ lớn để tự động sinh các câu nhắc ngữ nghĩa, đồng bộ hóa qua cơ chế chú ý chéo và căn chỉnh tương phản.
 
 \subsection{Tinh chỉnh bộ điều hợp}
-Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ, còn được gọi là bộ điều hợp vào giữa các lớp kiến trúc của mạng học sâu.
+Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ, còn được gọi là bộ điều hợp vào giữa các lớp kiến trúc của mạng học sâu \cite{Houlsby2019Adapters}.
 \begin{itemize}
     \item \textbf{Điểm mạnh:} Tính mô-đun hóa cao, dễ dàng thêm/bớt các bộ điều hợp cho các tác vụ khác nhau mà không can thiệp vào tham số gốc.
     \item \textbf{Điểm yếu:} Việc chèn thêm các lớp mạng vật lý làm tăng độ trễ suy luận, hạn chế khả năng triển khai trên các hệ thống đòi hỏi thời gian thực.
@@ -132,12 +132,11 @@ Phương pháp này chèn các mô-đun mạng nơ-ron siêu nhẹ, còn đượ
 Điển hình, CLIPath \cite{CLIPath} sử dụng kết nối thặng dư để giảm khoảng cách miền trên dữ liệu nhỏ. FTB \cite{FTB} đặt mô-đun dung hợp giữa bộ mã hóa ảnh và văn bản để chắt lọc thông tin đa phương thức.
 
 \subsection{Tinh chỉnh thích nghi hạng thấp}
-Tinh chỉnh thích nghi hạng thấp (LoRA) giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này làm tăng một lượng nhỏ tham số huấn luyện nhưng tránh cập nhật toàn bộ mô hình.
+Tinh chỉnh thích nghi hạng thấp (LoRA) \cite{Hu2022LoRA} giữ cố định trọng số nền và bổ sung các ma trận hạng thấp có thể huấn luyện để tham số hóa phần cập nhật trọng số. Cách tiếp cận này sử dụng một lượng nhỏ tham số huấn luyện nhưng đem lại hiệu quả gần như tương đương với tinh chỉnh toàn phần.
 \begin{itemize}
-    \item \textbf{Điểm mạnh:} Giảm đáng kể số tham số cần cập nhật và bộ nhớ tối ưu hóa. Ngoài ra, các ma trận cập nhật có thể được hợp nhất vào trọng số nền khi cách triển khai hỗ trợ.
+    \item \textbf{Điểm mạnh:} Giảm đáng kể số tham số cần cập nhật và bộ nhớ tối ưu hóa với hiệu suất gần như tương đương với tinh chỉnh toàn phần. Ngoài ra, các ma trận cập nhật có thể được hợp nhất vào trọng số nền khi cách triển khai hỗ trợ.
     \item \textbf{Điểm yếu:} Hiệu quả phụ thuộc vào vị trí chèn, hạng của ma trận và cấu hình tối ưu. Tuy nhiên, việc giảm tham số huấn luyện không đồng nghĩa với giảm chi phí lan truyền tiến của toàn bộ kiến trúc.
 \end{itemize}
-LCBB \cite{LCBB} áp dụng LoRA cho mô hình ngôn ngữ trực quan y khoa và đạt 93,1\% AUROC trên tập RSNA với 10\% dữ liệu gán nhãn, cho thấy khả năng thích nghi với số tham số cập nhật thấp hơn tinh chỉnh toàn phần. 
 
 Bảng~\ref{tab:VLMTransferlearningMethodPropose} tổng hợp các phương pháp tinh chỉnh hiệu quả tham số đại diện.
 
@@ -153,22 +152,22 @@ Bảng~\ref{tab:VLMTransferlearningMethodPropose} tổng hợp các phương ph�
   \multicolumn{1}{c|}{\textbf{Nguyên lý}} &
   \multicolumn{1}{c|}{\textbf{Kết quả nổi bật}} \\ \hline
 \textbf{1} &
-  \textbf{PLIP (2024)} &
+  \textbf{PLIP (2024) \cite{PLIP}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng câu nhắc\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Kết hợp câu nhắc thị giác \\ với tinh chỉnh chọn lọc, tận \\ dụng đặc trưng hình ảnh\\ để tinh chỉnh hiệu quả\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}0,896 AUC \\ (5\% PanNuke)\end{tabular} \\ \hline
 \textbf{2} &
-  \textbf{CLIPath (2023)} &
+  \textbf{CLIPath (2023) \cite{CLIPath}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Sử dụng kết nối thặng dư \\ để giảm khoảng cách miền \\ trên dữ liệu mô bệnh học\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Cải thiện so với CLIP \\ trên dữ liệu nhỏ\end{tabular} \\ \hline
 \textbf{3} &
-  \textbf{LCBB (2024)} &
+  \textbf{LCBB (2024) \cite{LCBB}} &
   \begin{tabular}[c]{@{}l@{}}Thích nghi hạng \\ thấp bằng LoRA\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Bổ sung ma trận hạng thấp \\ vào bộ mã hóa thị giác, giữ \\ cố định trọng số nền\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}93,1\% AUROC \\ (RSNA, 10\%)\end{tabular} \\ \hline
 \textbf{4} &
-  \textbf{FTB (2024)} &
+  \textbf{FTB (2024) \cite{FTB}} &
   \begin{tabular}[c]{@{}l@{}}Tinh chỉnh sử \\ dụng bộ điều hợp\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Mô-đun dung hợp giữa bộ \\ mã hóa ảnh và văn bản, \\ chắt lọc thông tin đa \\ phương thức\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Cải thiện trên \\ CheXpert, RSNA\end{tabular} \\ \hline
@@ -197,14 +196,6 @@ Nhóm phương pháp này không can thiệp vào quá trình huấn luyện mà
     Mặc dù điểm năng lượng khai thác độ lớn tuyệt đối của các logit và thường khắc phục một phần hiện tượng quá tự tin của hàm softmax, các phương pháp hậu xử lý dựa trên đầu ra vẫn phụ thuộc mạnh vào biểu diễn và biên quyết định của bộ phân lớp đã huấn luyện. Do mô hình phân lớp đóng buộc mọi đầu vào vào một trong các lớp đã biết, các mẫu ngoài phân phối nằm xa dữ liệu huấn luyện vẫn có thể nhận điểm tin cậy cao.
 \end{itemize}
 
-\subsection{Các phương pháp dựa trên độ không chắc chắn và tái tạo}
-Để tránh phụ thuộc vào đầu ra hàm softmax, một số nghiên cứu tiếp cận bài toán bằng cách đánh giá khả năng sinh hoặc sự bất định của mô hình.
-
-\begin{itemize}
-    \item \textbf{Sai số tái tạo:} Sử dụng các mô hình sinh như bộ tự mã hóa được huấn luyện chỉ trên dữ liệu trong phân phối. Khi gặp dữ liệu ngoài phân phối, sai số tái tạo sẽ tăng đột biến. Dù hiệu quả, phương pháp này gặp khó khăn khi tái tạo các ảnh y khoa có độ phân giải cao và chi tiết phức tạp.
-    \item \textbf{Dropout Monte Carlo:} Kích hoạt hàm tắt ngẫu nhiên trong quá trình suy luận và thực hiện dự đoán nhiều lần để tính phương sai. Tuy nhiên, việc phải suy luận nhiều lần làm tăng chi phí tính toán, không phù hợp cho các hệ thống đòi hỏi thời gian thực.
-\end{itemize}
-
 \subsection[Các phương pháp dựa trên khoảng cách]{Các phương pháp dựa trên khoảng\\cách đặc trưng}
 Nhận thấy những hạn chế của không gian logit, các nghiên cứu gần đây chuyển hướng sang thực hiện phát hiện dữ liệu ngoài phân phối trực tiếp trên không gian đặc trưng. Việc đánh giá bằng khoảng cách giúp giới hạn không gian rủi ro mở.
 
@@ -230,7 +221,7 @@ Nhận thấy những hạn chế của không gian logit, các nghiên cứu g�
 Sự thành công của các phương pháp dựa trên khoảng cách phụ thuộc rất lớn vào chất lượng của không gian đặc trưng. Nếu mô hình được huấn luyện bằng hàm entropy chéo thông thường, dữ liệu của các lớp không được tối ưu để co cụm lại, làm giảm hiệu quả của các phép đo khoảng cách. Để giải quyết vấn đề này, các kỹ thuật học biểu diễn được áp dụng.
 
 \begin{itemize}
-    \item \textbf{Học tương phản:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng.
+    \item \textbf{Học tương phản:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng \cite{Chen2020SimCLR,He2020MoCo}.
     \item \textbf{Mất mát tâm lớp \cite{CenterLoss}:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các đặc trưng tiến gần tâm tương ứng.
     \item \textbf{Mạng nguyên mẫu \cite{Snell2017ProtoNet}:} Phương pháp học theo hệ đo này biểu diễn mỗi lớp bằng một nguyên mẫu $c_k$:
     \begin{equation}
@@ -246,9 +237,9 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
 
 Các phương pháp quy đóng gán mức ảnh hưởng cho từng thành phần đầu vào đối với một đầu ra cụ thể. Tích phân gradient \cite{Sundararajan2017IntegratedGradients} tích lũy gradient dọc theo đường nội suy từ một mốc tham chiếu đến đầu vào, nhờ đó có thể áp dụng cho vùng ảnh, đơn vị biểu diễn cục bộ và từ ngữ. Kết quả phản ánh mức phụ thuộc của đầu ra đối với mốc tham chiếu và lớp đích đã chọn, không mặc nhiên biểu thị quan hệ nhân quả hoặc vị trí tổn thương.
 
-Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
+Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào với phép loại bỏ hoặc phép khôi phục \cite{doiRISERandomized}. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
 
-Trọng số chú ý mô tả cách mô-đun phân bổ tương tác trong một lần truyền thuận nhưng không mặc nhiên là lời giải thích trung thực cho quyết định. Ngoài độ trung thực, đánh giá trong y khoa còn cần phân biệt độ ổn định của bản đồ, mức phù hợp với chú thích tổn thương và nhận định của chuyên gia. Khóa luận vì vậy sử dụng tích phân gradient và can thiệp đầu vào để khảo sát nguồn thông tin liên hệ với dự đoán, đồng thời không diễn giải bản đồ quy đóng như bằng chứng định vị hoặc xác nhận lâm sàng.
+Trọng số chú ý mô tả cách mô-đun phân bổ tương tác trong một lần truyền thuận nhưng không mặc nhiên là lời giải thích trung thực cho quyết định. Mối quan hệ giữa chú ý và giải thích vẫn phụ thuộc vào định nghĩa, mô hình và giao thức đánh giá cụ thể \cite{Jain2019AttentionNotExplanation,Wiegreffe2019AttentionNotNotExplanation}. Ngoài độ trung thực, đánh giá trong y khoa còn cần phân biệt độ ổn định của bản đồ, mức phù hợp với chú thích tổn thương và nhận định của chuyên gia. Khóa luận vì vậy sử dụng tích phân gradient và can thiệp đầu vào để khảo sát nguồn thông tin liên hệ với dự đoán, đồng thời không diễn giải bản đồ quy đóng như bằng chứng định vị hoặc xác nhận lâm sàng.
 
 \section{Bàn luận}
 
@@ -272,12 +263,12 @@ Từ những hạn chế trên, khóa luận lựa chọn xây dựng hệ thố
 \textbf{Về thích nghi mô hình nền tảng:}
 LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa của BiomedCLIP với miền ảnh X-quang xương mà không cần cập nhật toàn bộ tham số nền. Lựa chọn này giúp giảm chi phí huấn luyện, hạn chế nguy cơ quá khớp trên các lớp có ít mẫu và bảo toàn phần lớn tri thức y sinh đã được học trong giai đoạn tiền huấn luyện.
 
-Bên cạnh đó, hàm mất mát tương phản InfoNCE nguyên bản xem các mẫu khác nhau trong cùng lô là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, khóa luận sử dụng hàm mất mát khớp ngữ nghĩa kế thừa từ MedCLIP và xây dựng phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
+Bên cạnh đó, trong hàm mất mát tương phản InfoNCE nguyên bản \cite{Oord2018CPC} được BiomedCLIP sử dụng, các mẫu khác nhau trong cùng lô được xem là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng. Do đó, khóa luận sử dụng hàm mất mát khớp ngữ nghĩa kế thừa từ MedCLIP \cite{MedCLIP} và xây dựng phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
 
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân lớp không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
 
-Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
+Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều, có nguyên lý trao đổi thông tin giữa hai luồng ảnh--văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}, để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
 
 \textbf{Về phân lớp đa lớp và mất cân bằng dữ liệu:}
 Phương pháp sử dụng Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
