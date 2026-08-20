@@ -63,7 +63,7 @@ Mô hình kế thừa bộ mã hóa của BiomedCLIP \cite{BiomedCLIP}, được
 
 \section{Nhánh biểu diễn văn bản}
 \label{sec:ch3_text_branch}
-Bổ sung cho các bằng chứng hình thái được trích xuất từ ảnh X-quang, nhánh biểu diễn văn bản có nhiệm vụ mã hóa thông tin lâm sàng $t$ thành các đặc trưng ngữ cảnh theo từng đơn vị biểu diễn và một vectơ đại diện cho toàn bộ chuỗi. Trong khóa luận, nhánh này được kế thừa từ bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, với thành phần chính là PubMedBERT. Khác với các mô hình ngôn ngữ được tiền huấn luyện trên văn bản tổng quát, PubMedBERT được tiền huấn luyện từ đầu trên kho ngữ liệu y sinh và sử dụng bộ từ vựng được xây dựng trực tiếp từ miền dữ liệu này. Nhờ đó, mô hình phù hợp hơn với các thuật ngữ chuyên ngành xuất hiện trong thông tin lâm sàng. Chuỗi văn bản mô tả y khoa đầu vào $t$ được chuyển đổi thành vector biểu diễn ngữ nghĩa thông qua các bước biến đổi tuần tự như sau:
+Bổ sung cho các bằng chứng hình thái được trích xuất từ ảnh X-quang, nhánh biểu diễn văn bản có nhiệm vụ mã hóa thông tin lâm sàng $t$ thành các đặc trưng ngữ cảnh theo từng đơn vị biểu diễn và một vectơ đại diện cho toàn bộ chuỗi. Trong khóa luận, nhánh này được kế thừa từ bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, với thành phần chính là PubMedBERT \cite{Gu2021PubMedBERT}. Khác với các mô hình ngôn ngữ được tiền huấn luyện trên văn bản tổng quát, PubMedBERT được tiền huấn luyện từ đầu trên kho ngữ liệu y sinh và sử dụng bộ từ vựng được xây dựng trực tiếp từ miền dữ liệu này. Nhờ đó, mô hình phù hợp hơn với các thuật ngữ chuyên ngành xuất hiện trong thông tin lâm sàng. Chuỗi văn bản mô tả y khoa đầu vào $t$ được chuyển đổi thành vector biểu diễn ngữ nghĩa thông qua các bước biến đổi tuần tự như sau:
 
 \begin{enumerate}
     \item \textbf{Phân tách từ tố (Tokenization):} Văn bản thô $t$ được phân tách thành chuỗi các từ tố (subwords) bằng thuật toán WordPiece dựa trên từ vựng y sinh chuyên biệt gồm $30.000$ từ. Tổng độ dài chuỗi sau khi thêm token đặc biệt, cắt và đệm được cố định ở $T=256$ vị trí.
@@ -97,7 +97,7 @@ Kết thúc hai nhánh mã hóa, mỗi mẫu được biểu diễn bởi chuỗ
 
 \section{Thích nghi tham số hiệu quả bằng LoRA}
 
-Trong quá trình thích nghi các mô hình lớn (như PubMedBERT hay ViT trong BiomedCLIP) cho các tác vụ y sinh hạ nguồn, phương pháp tinh chỉnh toàn bộ tham số đòi hỏi chi phí tính toán và bộ nhớ lưu trữ cực kỳ lớn. Để giải quyết rào cản này, phương pháp Thích nghi tham số hạng thấp (LoRA - Low-Rank Adaptation) được áp dụng. Phương pháp này hoạt động dựa trên giả thuyết rằng sự thay đổi trọng số của các lớp liên kết dày đặc trong quá trình học thực chất nằm trong một không gian có "hạng nội tại" rất thấp. 
+Trong quá trình thích nghi các mô hình lớn (như PubMedBERT hay ViT trong BiomedCLIP) cho các tác vụ y sinh hạ nguồn, phương pháp tinh chỉnh toàn bộ tham số đòi hỏi chi phí tính toán và bộ nhớ lưu trữ cực kỳ lớn. Để giải quyết rào cản này, phương pháp Thích nghi tham số hạng thấp (LoRA - Low-Rank Adaptation) \cite{Hu2022LoRA} được áp dụng. Phương pháp này hoạt động dựa trên giả thuyết rằng sự thay đổi trọng số của các lớp liên kết dày đặc trong quá trình học thực chất nằm trong một không gian có "hạng nội tại" rất thấp. 
 
 \begin{figure}[htbp]
     \centering
@@ -321,7 +321,7 @@ Sau khi đi qua các bộ mã hóa chuyên biệt, ta thu được các ma trậ
     \label{fig:ch3_fusion}
 \end{figure}
 
-Quy trình dung hợp thông tin sử dụng cơ chế chú ý chéo hai chiều (Bidirectional Cross-Attention), trực quan hóa ở hình \ref{fig:ch3_fusion} được thực hiện tuần tự như sau:
+Quy trình dung hợp thông tin sử dụng cơ chế chú ý chéo hai chiều (Bidirectional Cross-Attention), được xây dựng trên phép chú ý scaled dot-product đa đầu \cite{Vaswani2017Attention} và cơ chế trao đổi thông tin hai chiều giữa hai luồng ảnh--văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}. Quy trình này được trực quan hóa ở hình \ref{fig:ch3_fusion} và thực hiện tuần tự như sau:
 
 \begin{enumerate}
     \item \textbf{Chú ý chéo từ hình ảnh sang văn bản (Image-to-Text Attention):}
@@ -386,7 +386,7 @@ Quy trình ngoại tuyến lần lượt giải quyết hai yêu cầu của h�
 
 Giai đoạn thứ nhất được minh họa trong Hình \ref{fig:ch3_phase1}. Trong giai đoạn này, mô hình thực hiện quá trình thích nghi miền nhằm chuyển đổi không gian biểu diễn tổng quát của bộ mã hóa tiền huấn luyện sang miền dữ liệu y khoa chuyên biệt. Để tối ưu hóa hiệu quả và bảo toàn tri thức nền tảng, các tham số gốc của bộ mã hóa hình ảnh và bộ mã hóa văn bản đều được đóng băng, và quá trình huấn luyện thích nghi được thực hiện thông qua cơ chế thích nghi hạng thấp LoRA. 
 
-Trọng tâm của giai đoạn này là giải quyết hiện tượng tiêu cực giả (false negatives) - xảy ra khi các mẫu ảnh và văn bản của các bệnh nhân khác nhau nhưng mang cùng một bệnh lý bị ép phải đẩy ra xa nhau trong không gian nhúng của học tương phản truyền thống. Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss - SML) kết hợp với ma trận đích mềm (soft target matrix) để dẫn đường cho mô hình.
+Trọng tâm của giai đoạn này là giải quyết hiện tượng tiêu cực giả (false negatives) - xảy ra khi các mẫu ảnh và văn bản của các bệnh nhân khác nhau nhưng mang cùng một bệnh lý bị ép phải đẩy ra xa nhau trong không gian nhúng của học tương phản truyền thống. Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa (Semantic Matching Loss - SML), kế thừa ý tưởng giám sát tương phản bằng nhãn từ MedCLIP \cite{MedCLIP}, kết hợp với ma trận đích mềm (soft target matrix) được thiết kế cho XBone-Net để dẫn đường cho mô hình.
 
 Quy trình toán học trong một batch huấn luyện kích thước $B$ được mô tả cụ thể như sau:
 
@@ -561,11 +561,11 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
     \end{equation}
 
     \item \textbf{Hàm mất mát Entropy chéo có trọng số (Weighted Cross-Entropy Loss):}
-    Để đối phó với hiện tượng mất cân bằng mẫu nghiêm trọng giữa 22 lớp bệnh lý trong tập dữ liệu y khoa, mô hình áp dụng hàm mất mát Weighted Cross-Entropy ($\mathcal{L}_{\text{WCE}}$). Với nhãn thực tế dạng mã hóa một nóng (one-hot) ký hiệu là $y \in \{0, 1\}^{C}$, hàm mất mát được định nghĩa như sau:
+    Để đối phó với hiện tượng mất cân bằng mẫu nghiêm trọng giữa 22 lớp bệnh lý trong tập dữ liệu y khoa, mô hình áp dụng hàm mất mát Weighted Cross-Entropy ($\mathcal{L}_{\text{WCE}}$), trong đó trọng số lớp được tính theo số lượng mẫu hiệu dụng \cite{Cui2019ClassBalanced}. Với nhãn thực tế dạng mã hóa một nóng (one-hot) ký hiệu là $y \in \{0, 1\}^{C}$, hàm mất mát được định nghĩa như sau:
     \begin{equation}
     \mathcal{L}_{\text{WCE}} = - \sum_{c=1}^{C} w_c y_c \log(\hat{p}_c)
     \end{equation}
-    Trong đó, $w_c$ là hệ số trọng số phạt được gán cho lớp thứ $c$ (tỉ lệ nghịch với tần suất xuất hiện của lớp đó trong tập huấn luyện).
+    Trong đó, $w_c$ là hệ số trọng số phạt của lớp thứ $c$, được tính từ số lượng mẫu hiệu dụng với $\beta=0{,}999$, sau đó được chuẩn hóa và giới hạn trên ở mức $5{,}0$ theo cấu hình huấn luyện.
 
     \item \textbf{Lan truyền ngược sai số gradient (Backpropagation):}
     Để tối ưu hóa toàn bộ mô hình, mạng tính toán đạo hàm riêng của hàm lỗi $\mathcal{L}_{\text{WCE}}$ đối với các điểm logit đầu ra $s_i$ ($i = 1, \dots, C$):
@@ -590,7 +590,7 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
     \item \textbf{Quy trình cập nhật trọng số hệ thống:}
     Gradient $\frac{\partial \mathcal{L}_{\text{WCE}}}{\partial \mathbf{z}}$ tiếp tục lan truyền ngược qua khối MLP, các lớp chuẩn hóa tầng LN, các ma trận chiếu của mô-đun chú ý chéo hai chiều, và đi sâu xuống các ma trận thích ứng LoRA ($A$ và $B$) của cả hai nhánh bộ mã hóa ảnh và chữ.
     
-    Gọi $\Theta_2$ là tập hợp tất cả các tham số có quyền cập nhật trong giai đoạn này. Tại mỗi bước lặp $t$, thuật toán tối ưu hóa AdamW thực hiện cập nhật đồng thời các tham số theo công thức:
+    Gọi $\Theta_2$ là tập hợp tất cả các tham số có quyền cập nhật trong giai đoạn này. Tại mỗi bước lặp $t$, thuật toán tối ưu hóa AdamW \cite{Loshchilov2019AdamW} thực hiện cập nhật đồng thời các tham số theo công thức:
     \begin{equation}
     \Theta_2^{(t+1)} = \Theta_2^{(t)} - \eta \cdot \text{AdamW}\left(\nabla_{\Theta_2} \mathcal{L}_{\text{WCE}}^{(t)}\right)
     \end{equation}
@@ -602,7 +602,7 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
 
 Sau hai giai đoạn huấn luyện, hệ thống sử dụng các biểu diễn đơn phương thức để
 xây dựng một điểm cảnh báo ngoài phân phối (Out-of-Distribution, OOD) theo
-phương pháp hậu xử lý. Với cặp đầu vào $(v,t)$ đã được định nghĩa ở các phần
+phương pháp hậu xử lý dựa trên k-NN \cite{Sun2022KNN}. Với cặp đầu vào $(v,t)$ đã được định nghĩa ở các phần
 trên, $y_v^0\in\mathbb{R}^{D}$ và $y_t^0\in\mathbb{R}^{D}$ lần lượt là các
 vectơ toàn cục ở vị trí $[\mathrm{CLS}]$ của nhánh ảnh và nhánh văn bản. Bộ
 phát hiện OOD không cập nhật tham số của XBone-Net và không sử dụng mẫu OOD để
@@ -746,7 +746,7 @@ Hình~\ref{fig:ch3_online} minh họa quy trình suy luận trực tuyến và p
 
 Tại pha suy luận (inference), khi nhận được một mẫu dữ liệu bệnh nhân mới bao gồm cặp hình ảnh y tế đầu vào $v$ và văn bản mô tả lâm sàng $t$, hệ thống thực hiện một quy trình xử lý khép kín, an toàn và tối ưu hóa thời gian phản hồi. 
 
-Để triệt tiêu hoàn toàn độ trễ tính toán phát sinh từ các nhánh thích ứng bổ trợ trong pha suy luận thực tế, các ma trận trọng số LoRA học được ($A$ và $B$) được cộng tích hợp trực tiếp vào ma trận trọng số gốc của các lớp tuyến tính tương ứng trong bộ mã hóa ảnh và văn bản trước khi triển khai:
+Để triệt tiêu hoàn toàn độ trễ tính toán phát sinh từ các nhánh thích ứng bổ trợ trong pha suy luận thực tế, các ma trận trọng số LoRA học được ($A$ và $B$) được cộng tích hợp trực tiếp vào ma trận trọng số gốc của các lớp tuyến tính tương ứng trong bộ mã hóa ảnh và văn bản trước khi triển khai \cite{Hu2022LoRA}:
 \begin{equation}
 W_{\text{inference}} = W_0 + \frac{\alpha}{r} B A
 \end{equation}
