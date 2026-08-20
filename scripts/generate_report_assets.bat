@@ -36,7 +36,7 @@ echo [1/6] Tao cac bang phan loai zero-shot, full-shot va mau hoc han che...
 "%PYTHON%" "%VIS%" latex ^
   --input "%RUN_ALL%" ^
   --where category="Baselines / Zero-shot" ^
-  --where-in "config=biomedclip_zeroshot|clip_zeroshot|medclip_zeroshot|pubmedclip_zeroshot" ^
+  --where-in "config=clip_zeroshot|medclip_zeroshot|pubmedclip_zeroshot|biomedclip_zeroshot" ^
   --columns dataset config accuracy_mean balanced_accuracy_mean f1_macro_mean auroc_macro_mean auprc_macro_mean ^
   --value-columns accuracy_mean balanced_accuracy_mean f1_macro_mean auroc_macro_mean auprc_macro_mean ^
   --column-label "dataset=Dữ liệu" ^
@@ -205,19 +205,19 @@ echo.
 echo [3/6] Tao bang va bieu do OOD cho Semantic OOD va BTXRD...
 
 "%PYTHON%" "%VIS%" ood ^
-  --input results\ctch\proposed\ours_xbone_net\analysis\aggregated_results.json ^
+  --input results\summary\ood\ood_benchmark_summary.json ^
   --scenarios semantic_ood domain_ood_btxrd ^
-  --methods cosine_centroids mahalanobis_centroid knn entropy ^
+  --methods multimodal_ensemble ^
   --csv-output "%OOD%\ood_semantic_btxrd.csv" ^
   --output "%OOD%\table_ood_semantic_btxrd.tex"
 
 "%PYTHON%" "%VIS%" ood-metrics ^
-  --input results\ctch\proposed\ours_xbone_net\analysis\aggregated_results.json ^
+  --input results\summary\ood\ood_benchmark_summary.json ^
   --scenarios semantic_ood domain_ood_btxrd ^
-  --method mahalanobis_centroid ^
-  --title "Mahalanobis theo tâm lớp trên OOD ngữ nghĩa và BTXRD" ^
+  --method multimodal_ensemble ^
+  --title "Ensemble đa phương thức trên OOD ngữ nghĩa và BTXRD" ^
   --dpi 300 ^
-  --output "%OOD%\mahalanobis_semantic_btxrd_metrics.png"
+  --output "%OOD%\multimodal_ensemble_semantic_btxrd_metrics.png"
 
 echo.
 echo [4/6] Tao hinh Integrated Gradients...
@@ -345,7 +345,7 @@ copy /Y "%APPENDIX_SUMMARY%\table_few_shot_per_seed.tex" "%APPENDIX_TABLE%\table
 copy /Y "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex" "%APPENDIX_TABLE%\table_ablation_per_seed.tex" >nul
 copy /Y "%APPENDIX_SUMMARY%\table_ood_per_seed.tex" "%APPENDIX_TABLE%\table_ood_per_seed.tex" >nul
 copy /Y "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png" "%APPENDIX_IMG%\full_shot_macro_f1_by_seed.png" >nul
-copy /Y "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png" "%APPENDIX_IMG%\ood_mahalanobis_by_seed.png" >nul
+copy /Y "%APPENDIX_SUMMARY%\ood_multimodal_ensemble_by_seed.png" "%APPENDIX_IMG%\ood_multimodal_ensemble_by_seed.png" >nul
 copy /Y "%APPENDIX_SUMMARY%\manifest.json" "%APPENDIX_TABLE%\manifest.json" >nul
 
 set "MISSING=0"
@@ -366,7 +366,7 @@ for %%F in (
   "%CLASS%\few_shot_btxrd_f1_bar.png"
   "%CLASS%\few_shot_ctch_f1_bar.png"
   "%OOD%\table_ood_semantic_btxrd.tex"
-  "%OOD%\mahalanobis_semantic_btxrd_metrics.png"
+  "%OOD%\multimodal_ensemble_semantic_btxrd_metrics.png"
   "%ATTN%\attention_case_2842_img-33484-00001.png"
   "%ATTN%\attention_case_3021_img-84263-00001.png"
   "%ABL%\table_ablation_leave_one_out_classification.tex"
@@ -380,7 +380,7 @@ for %%F in (
   "%APPENDIX_SUMMARY%\table_ablation_per_seed.tex"
   "%APPENDIX_SUMMARY%\table_ood_per_seed.tex"
   "%APPENDIX_SUMMARY%\full_shot_macro_f1_by_seed.png"
-  "%APPENDIX_SUMMARY%\ood_mahalanobis_by_seed.png"
+  "%APPENDIX_SUMMARY%\ood_multimodal_ensemble_by_seed.png"
 ) do (
   if not exist "%%~F" (
     echo [MISSING] %%~F

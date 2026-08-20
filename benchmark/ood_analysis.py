@@ -4,7 +4,7 @@ Hợp nhất toàn bộ quy trình OOD analysis:
 1. Dựa hoàn toàn trên các thuật toán và bộ phát hiện chuẩn từ `src/utils/ood.py`.
 2. Nhận trực tiếp một hoặc nhiều thí nghiệm (--experiments) để đánh giá.
 3. Đánh giá đa kịch bản (Semantic OOD, Domain OOD BTXRD, Report mismatch).
-4. Đa phương pháp phát hiện (Cosine centroids, Mahalanobis centroid, kNN, Entropy).
+4. Chỉ sử dụng bộ phát hiện ``MultimodalEnsembleOODDetector``.
 5. Tự động trích xuất / tái sử dụng bộ đặc trưng (features cache) an toàn.
 6. Tính toán thống kê Mean ± Std qua các hạt giống (seeds) kèm khoảng tin cậy Bootstrap 95% CI.
 7. Xuất bảng tổng hợp kết quả (Console, JSON, CSV, Markdown).
@@ -45,7 +45,6 @@ from src.utils.analysis import (
 )
 from src.utils.ood import (
     MultimodalEnsembleOODDetector,
-    OODDetector,
     bootstrap_ood_metrics,
     calibrate_ood_threshold,
     evaluate_ood,
@@ -90,18 +89,7 @@ SCENARIO_LABELS = {
     "report_mismatch_same_class": "Mâu thuẫn bệnh sử cùng lớp",
 }
 
-ALL_METHODS = [
-    "cosine_centroids",
-    "mahalanobis_centroid",
-    "knn",
-    "entropy",
-    "multimodal_ensemble",
-]
-DEFAULT_METHODS = [
-    "cosine_centroids",
-    "mahalanobis_centroid",
-    "multimodal_ensemble",
-]
+OOD_METHOD = "multimodal_ensemble"
 
 
 def parse_args() -> argparse.Namespace:
@@ -133,13 +121,6 @@ def parse_args() -> argparse.Namespace:
         choices=list(SCENARIO_ARCHIVES.keys()),
         default=["semantic_ood", "domain_ood_btxrd"],
         help="Các kịch bản OOD cần đánh giá",
-    )
-    parser.add_argument(
-        "--methods",
-        nargs="+",
-        choices=ALL_METHODS,
-        default=DEFAULT_METHODS,
-        help="Các phương pháp phát hiện OOD cần đánh giá",
     )
     parser.add_argument("--knn-k", type=int, default=10, help="Tham số k lân cận cho kNN OOD (mặc định: 10 theo Sun et al.)")
     parser.add_argument(
@@ -312,14 +293,13 @@ def extract_or_load_features(
 def evaluate_single_seed_ood(
     feature_dict: dict[str, dict[str, np.ndarray]],
     scenarios: list[str],
-    methods: list[str],
     *,
     knn_k: int = 10,
     knn_reduction: str = "kth",
     knn_metric: str = "euclidean",
     target_fpr: float = 0.05,
 ) -> dict[str, dict[str, Any]]:
-    """Đánh giá các độ đo OOD cho 1 seed trên tất cả các kịch bản và phương pháp.
+    """Đánh giá ensemble OOD cho một seed trên tất cả kịch bản.
 
     Parameters
     ----------
@@ -327,8 +307,6 @@ def evaluate_single_seed_ood(
         Từ điển chứa đặc trưng của các tập ID và OOD.
     scenarios : list[str]
         Danh sách các kịch bản OOD cần đánh giá.
-    methods : list[str]
-        Danh sách các phương pháp phát hiện OOD.
     knn_k : int, optional
         Số láng giềng k trong kNN, mặc định 5.
     target_fpr : float, optional
@@ -337,155 +315,67 @@ def evaluate_single_seed_ood(
     Returns
     -------
     dict[str, dict[str, Any]]
-        Kết quả đánh giá độ đo OOD chi tiết cho từng kịch bản và phương pháp.
+        Kết quả đánh giá ensemble OOD chi tiết cho từng kịch bản.
     """
     train_data = feature_dict["ctch_train"]
     val_data = feature_dict["ctch_val"]
     test_id_data = feature_dict["ctch_test"]
 
-    # 1. Huấn luyện các bộ dò OOD trên tập train
     train_embeddings = np.asarray(train_data["fused_embeddings"], dtype=np.float64)
-    train_embeddings_raw = np.asarray(train_data.get("fused_embeddings_raw", train_embeddings), dtype=np.float64)
-    train_labels = np.asarray(train_data["labels"], dtype=np.int64)
-
     train_vis = np.asarray(train_data.get("visual_global_embeddings", train_embeddings), dtype=np.float64)
     train_txt = np.asarray(train_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in train_data else None
 
-    detector_norm = OODDetector().fit(train_embeddings, train_labels)
-    detector_raw = OODDetector().fit(train_embeddings_raw, train_labels)
-
-    # 2. Cân chỉnh ngưỡng cảnh báo trên tập validation ID
     val_emb = np.asarray(val_data["fused_embeddings"], dtype=np.float64)
-    val_emb_raw = np.asarray(val_data.get("fused_embeddings_raw", val_emb), dtype=np.float64)
-    val_logits = np.asarray(val_data["logits"], dtype=np.float64)
     val_vis = np.asarray(val_data.get("visual_global_embeddings", val_emb), dtype=np.float64)
     val_txt = np.asarray(val_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in val_data else None
 
-    multimodal_detector = None
-    if "multimodal_ensemble" in methods:
-        multimodal_detector = MultimodalEnsembleOODDetector(
-            knn_k=knn_k,
-            knn_reduction=knn_reduction,
-            knn_metric=knn_metric,
-        ).fit(
-            visual_embeddings=train_vis,
-            labels=train_labels,
-            text_embeddings=train_txt,
-            logits=train_data.get("logits"),
-            val_visual_embeddings=val_vis,
-            val_text_embeddings=val_txt,
-            val_logits=val_logits,
-        )
+    detector = MultimodalEnsembleOODDetector(
+        knn_k=knn_k,
+        knn_reduction=knn_reduction,
+        knn_metric=knn_metric,
+    ).fit(
+        visual_embeddings=train_vis,
+        text_embeddings=train_txt,
+        val_visual_embeddings=val_vis,
+        val_text_embeddings=val_txt,
+    )
+    val_scores = detector.score(val_vis, text_embeddings=val_txt)
+    threshold = calibrate_ood_threshold(
+        val_scores,
+        target_id_fpr=target_fpr,
+    )
 
-    val_scores: dict[str, np.ndarray] = {}
-    thresholds: dict[str, float] = {}
-
-    for method in methods:
-        if method == "mahalanobis_centroid":
-            scores = detector_raw.score(val_emb_raw, method=method)
-        elif method == "entropy":
-            scores = OODDetector.score_entropy(val_logits)
-        elif method == "knn":
-            scores = detector_norm.score(
-                val_emb,
-                method="knn",
-                k=knn_k,
-                reduction=knn_reduction,
-                metric=knn_metric,
-            )
-        elif method == "multimodal_ensemble":
-            scores = multimodal_detector.score(
-                visual_embeddings=val_vis,
-                text_embeddings=val_txt,
-                logits=val_logits,
-            )
-        else:  # cosine_centroids
-            scores = detector_norm.score(val_emb, method=method)
-        val_scores[method] = scores
-        thresholds[method] = calibrate_ood_threshold(scores, target_id_fpr=target_fpr)
-
-    # 3. Tính điểm trên ID test
     test_emb = np.asarray(test_id_data["fused_embeddings"], dtype=np.float64)
-    test_emb_raw = np.asarray(test_id_data.get("fused_embeddings_raw", test_emb), dtype=np.float64)
-    test_logits = np.asarray(test_id_data["logits"], dtype=np.float64)
     test_vis = np.asarray(test_id_data.get("visual_global_embeddings", test_emb), dtype=np.float64)
     test_txt = np.asarray(test_id_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in test_id_data else None
+    test_id_scores = detector.score(test_vis, text_embeddings=test_txt)
 
-    test_id_scores: dict[str, np.ndarray] = {}
-    for method in methods:
-        if method == "mahalanobis_centroid":
-            scores = detector_raw.score(test_emb_raw, method=method)
-        elif method == "entropy":
-            scores = OODDetector.score_entropy(test_logits)
-        elif method == "knn":
-            scores = detector_norm.score(
-                test_emb,
-                method="knn",
-                k=knn_k,
-                reduction=knn_reduction,
-                metric=knn_metric,
-            )
-        elif method == "multimodal_ensemble":
-            scores = multimodal_detector.score(
-                visual_embeddings=test_vis,
-                text_embeddings=test_txt,
-                logits=test_logits,
-            )
-        else:
-            scores = detector_norm.score(test_emb, method=method)
-        test_id_scores[method] = scores
-
-    # 4. Đánh giá từng kịch bản OOD
     scenario_results: dict[str, dict[str, Any]] = {}
     for sc in scenarios:
         archive = SCENARIO_ARCHIVES[sc]
         ood_data = feature_dict[archive]
         ood_emb = np.asarray(ood_data["fused_embeddings"], dtype=np.float64)
-        ood_emb_raw = np.asarray(ood_data.get("fused_embeddings_raw", ood_emb), dtype=np.float64)
-        ood_logits = np.asarray(ood_data["logits"], dtype=np.float64)
         ood_vis = np.asarray(ood_data.get("visual_global_embeddings", ood_emb), dtype=np.float64)
         ood_txt = np.asarray(ood_data["text_global_embeddings"], dtype=np.float64) if "text_global_embeddings" in ood_data else None
+        ood_scores = detector.score(ood_vis, text_embeddings=ood_txt)
 
-        method_metrics: dict[str, Any] = {}
-        for method in methods:
-            if method == "mahalanobis_centroid":
-                ood_scores = detector_raw.score(ood_emb_raw, method=method)
-            elif method == "entropy":
-                ood_scores = OODDetector.score_entropy(ood_logits)
-            elif method == "knn":
-                ood_scores = detector_norm.score(
-                    ood_emb,
-                    method="knn",
-                    k=knn_k,
-                    reduction=knn_reduction,
-                    metric=knn_metric,
-                )
-            elif method == "multimodal_ensemble":
-                ood_scores = multimodal_detector.score(
-                    visual_embeddings=ood_vis,
-                    text_embeddings=ood_txt,
-                    logits=ood_logits,
-                )
-            else:
-                ood_scores = detector_norm.score(ood_emb, method=method)
-
-            in_scores = test_id_scores[method]
-            threshold = thresholds[method]
-
-            # AUROC, AUPR-Out và FPR@95%TPR được tính từ toàn bộ đường cong
-            # ID/OOD. Ngưỡng hiệu chỉnh trên validation là ngưỡng vận hành
-            # riêng và được lưu bên dưới, không phải đối số của evaluate_ood().
-            eval_metrics = evaluate_ood(in_scores, ood_scores)
-            bootstrap_res = bootstrap_ood_metrics(in_scores, ood_scores, n_bootstrap=500)
-
-            method_metrics[method] = {
+        # Các độ đo đường cong không sử dụng ngưỡng vận hành. Ngưỡng được
+        # hiệu chỉnh riêng trên validation-ID và lưu để phục vụ triển khai.
+        eval_metrics = evaluate_ood(test_id_scores, ood_scores)
+        bootstrap_res = bootstrap_ood_metrics(
+            test_id_scores,
+            ood_scores,
+            n_bootstrap=500,
+        )
+        scenario_results[sc] = {
+            OOD_METHOD: {
                 "auroc_ood": float(eval_metrics["auroc_ood"]),
                 "aupr_out": float(eval_metrics["aupr_out"]),
                 "fpr_at_95tpr": float(eval_metrics["fpr_at_95tpr"]),
                 "threshold": float(threshold),
                 "bootstrap_ci": bootstrap_res,
             }
-        scenario_results[sc] = method_metrics
+        }
 
     return scenario_results
 
@@ -493,7 +383,6 @@ def evaluate_single_seed_ood(
 def aggregate_seeds_results(
     seed_results: dict[int, dict[str, dict[str, Any]]],
     scenarios: list[str],
-    methods: list[str],
 ) -> dict[str, dict[str, dict[str, float]]]:
     """Tổng hợp giá trị trung bình và độ lệch chuẩn (Mean ± Std) qua các hạt giống.
 
@@ -503,8 +392,6 @@ def aggregate_seeds_results(
         Kết quả đánh giá chi tiết theo từng hạt giống.
     scenarios : list[str]
         Danh sách kịch bản OOD.
-    methods : list[str]
-        Danh sách phương pháp phát hiện OOD.
 
     Returns
     -------
@@ -516,12 +403,18 @@ def aggregate_seeds_results(
 
     for sc in scenarios:
         aggregated[sc] = {}
-        for m in methods:
-            aggregated[sc][m] = {}
-            for metric in metric_keys:
-                values = [seed_results[s][sc][m][metric] for s in seed_results]
-                aggregated[sc][m][f"{metric}_mean"] = float(np.mean(values))
-                aggregated[sc][m][f"{metric}_std"] = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+        aggregated[sc][OOD_METHOD] = {}
+        for metric in metric_keys:
+            values = [
+                seed_results[s][sc][OOD_METHOD][metric]
+                for s in seed_results
+            ]
+            aggregated[sc][OOD_METHOD][f"{metric}_mean"] = float(
+                np.mean(values)
+            )
+            aggregated[sc][OOD_METHOD][f"{metric}_std"] = (
+                float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+            )
 
     return aggregated
 
@@ -530,7 +423,6 @@ def run_experiment_ood_pipeline(
     experiment: str,
     seeds: list[int],
     scenarios: list[str],
-    methods: list[str],
     *,
     device: torch.device,
     knn_k: int = 10,
@@ -551,8 +443,6 @@ def run_experiment_ood_pipeline(
         Danh sách hạt giống ngẫu nhiên.
     scenarios : list[str]
         Danh sách kịch bản OOD.
-    methods : list[str]
-        Danh sách phương pháp dò OOD.
     device : torch.device
         Thiết bị thực thi tính toán.
     knn_k : int, optional
@@ -586,7 +476,6 @@ def run_experiment_ood_pipeline(
         res = evaluate_single_seed_ood(
             feat_dict,
             scenarios,
-            methods,
             knn_k=knn_k,
             knn_reduction=knn_reduction,
             knn_metric=knn_metric,
@@ -594,13 +483,13 @@ def run_experiment_ood_pipeline(
         )
         seed_results[seed] = res
 
-    aggregated = aggregate_seeds_results(seed_results, scenarios, methods)
+    aggregated = aggregate_seeds_results(seed_results, scenarios)
 
     return {
         "experiment": experiment,
         "seeds": seeds,
         "scenarios": scenarios,
-        "methods": methods,
+        "methods": [OOD_METHOD],
         "target_fpr": target_fpr,
         "per_seed": seed_results,
         "aggregated": aggregated,
@@ -610,7 +499,6 @@ def run_experiment_ood_pipeline(
 def format_summary_table(
     all_experiment_results: list[dict[str, Any]],
     scenarios: list[str],
-    methods: list[str],
 ) -> str:
     """Tạo bảng kết quả định dạng văn bản tổng hợp trực quan.
 
@@ -620,8 +508,6 @@ def format_summary_table(
         Danh sách kết quả của các mô hình đã đánh giá.
     scenarios : list[str]
         Danh sách kịch bản OOD.
-    methods : list[str]
-        Danh sách phương pháp phát hiện OOD.
 
     Returns
     -------
@@ -636,19 +522,18 @@ def format_summary_table(
 
         for sc in scenarios:
             sc_label = SCENARIO_LABELS.get(sc, sc)
-            for m in methods:
-                m_data = agg[sc][m]
-                auroc_str = f"{m_data['auroc_ood_mean'] * 100:.2f} ± {m_data['auroc_ood_std'] * 100:.2f}"
-                aupr_str = f"{m_data['aupr_out_mean'] * 100:.2f} ± {m_data['aupr_out_std'] * 100:.2f}"
-                fpr_str = f"{m_data['fpr_at_95tpr_mean'] * 100:.2f} ± {m_data['fpr_at_95tpr_std'] * 100:.2f}"
-                rows.append({
-                    "Mô hình": exp_name,
-                    "Kịch bản OOD": sc_label,
-                    "Phương pháp": m,
-                    "AUROC (%)": auroc_str,
-                    "AUPR-Out (%)": aupr_str,
-                    "FPR@95%TPR (%)": fpr_str,
-                })
+            m_data = agg[sc][OOD_METHOD]
+            auroc_str = f"{m_data['auroc_ood_mean'] * 100:.2f} ± {m_data['auroc_ood_std'] * 100:.2f}"
+            aupr_str = f"{m_data['aupr_out_mean'] * 100:.2f} ± {m_data['aupr_out_std'] * 100:.2f}"
+            fpr_str = f"{m_data['fpr_at_95tpr_mean'] * 100:.2f} ± {m_data['fpr_at_95tpr_std'] * 100:.2f}"
+            rows.append({
+                "Mô hình": exp_name,
+                "Kịch bản OOD": sc_label,
+                "Phương pháp": OOD_METHOD,
+                "AUROC (%)": auroc_str,
+                "AUPR-Out (%)": aupr_str,
+                "FPR@95%TPR (%)": fpr_str,
+            })
 
     df = pd.DataFrame(rows)
     return df.to_string(index=False)
@@ -669,7 +554,7 @@ def main() -> None:
     print(f"  • Danh sách seeds   : {args.seeds}")
     print(f"  • Số lượng mô hình  : {len(experiments)}")
     print(f"  • Kịch bản OOD      : {', '.join(args.scenarios)}")
-    print(f"  • Phương pháp dò    : {', '.join(args.methods)}")
+    print(f"  • Phương pháp dò    : {OOD_METHOD}")
     print("=" * 80)
 
     all_results: list[dict[str, Any]] = []
@@ -681,7 +566,6 @@ def main() -> None:
                 exp_name,
                 args.seeds,
                 args.scenarios,
-                args.methods,
                 device=device,
                 knn_k=args.knn_k,
                 knn_reduction=args.knn_reduction,
@@ -702,7 +586,7 @@ def main() -> None:
         return
 
     # In bảng tổng hợp
-    table_str = format_summary_table(all_results, args.scenarios, args.methods)
+    table_str = format_summary_table(all_results, args.scenarios)
     print("\n" + table_str + "\n")
 
     # Xuất báo cáo ra file
@@ -728,19 +612,18 @@ def main() -> None:
         exp_name = exp_res["experiment"]
         agg = exp_res["aggregated"]
         for sc in args.scenarios:
-            for m in args.methods:
-                m_data = agg[sc][m]
-                flat_rows.append({
-                    "experiment": exp_name,
-                    "scenario": sc,
-                    "method": m,
-                    "auroc_mean": m_data["auroc_ood_mean"],
-                    "auroc_std": m_data["auroc_ood_std"],
-                    "aupr_out_mean": m_data["aupr_out_mean"],
-                    "aupr_out_std": m_data["aupr_out_std"],
-                    "fpr_at_95tpr_mean": m_data["fpr_at_95tpr_mean"],
-                    "fpr_at_95tpr_std": m_data["fpr_at_95tpr_std"],
-                })
+            m_data = agg[sc][OOD_METHOD]
+            flat_rows.append({
+                "experiment": exp_name,
+                "scenario": sc,
+                "method": OOD_METHOD,
+                "auroc_mean": m_data["auroc_ood_mean"],
+                "auroc_std": m_data["auroc_ood_std"],
+                "aupr_out_mean": m_data["aupr_out_mean"],
+                "aupr_out_std": m_data["aupr_out_std"],
+                "fpr_at_95tpr_mean": m_data["fpr_at_95tpr_mean"],
+                "fpr_at_95tpr_std": m_data["fpr_at_95tpr_std"],
+            })
     pd.DataFrame(flat_rows).to_csv(csv_path, index=False, encoding="utf-8-sig")
 
     print(f"[Thành công] Đã xuất báo cáo JSON tại : {json_path}")

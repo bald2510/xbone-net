@@ -25,10 +25,7 @@ SCENARIO_DISPLAY_NAMES = {
 }
 
 METHOD_DISPLAY_NAMES = {
-    "cosine_centroids": "Cosine-centroid",
-    "mahalanobis_centroid": "Mahalanobis-centroid",
-    "knn": "kNN",
-    "entropy": "Entropy",
+    "multimodal_ensemble": "Multimodal ensemble",
 }
 
 
@@ -48,7 +45,12 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Defaults to ood_metrics.json beside --scores.",
     )
-    parser.add_argument("--methods", nargs="+", default=None)
+    parser.add_argument(
+        "--methods",
+        nargs="+",
+        choices=["multimodal_ensemble"],
+        default=["multimodal_ensemble"],
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--layout-columns",

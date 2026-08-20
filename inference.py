@@ -27,7 +27,7 @@ from src.models.builder import (
 )
 from src.models.fusion.cross_attention import reduce_attention_to_keys
 from src.datasets.preprocessing import prepare_image
-from src.utils.ood import OODDetector
+from src.utils.ood import MultimodalEnsembleOODDetector, calibrate_ood_threshold
 from src.utils.trainer import resolve_pad_token_id
 
 
@@ -270,9 +270,7 @@ def parse_args():
     parser.add_argument("--id-embeddings", type=str, default=None, 
                         help="Path to In-Distribution reference embeddings (.npz)")
     parser.add_argument("--ood-params", type=str, default=None,
-                        help="Path to pre-computed OOD calibration parameters (.npz)")
-    parser.add_argument("--method", type=str, default="mahalanobis", choices=["mahalanobis", "knn", "text_anchor"],
-                        help="OOD score method")
+                        help="Path to pre-computed multimodal-ensemble OOD parameters (.npz)")
     parser.add_argument("--fpr-threshold", type=float, default=0.05, 
                         help="Target False Positive Rate to calculate OOD threshold (default: 0.05)")
     parser.add_argument("--device", type=str, default=None, help="cpu or cuda")
@@ -343,42 +341,49 @@ def main(cfg: DictConfig) -> None:
             ood_params_path = default_params_path
             print(f"Auto-resolved OOD parameters to: {ood_params_path}")
 
-    model_prototypes = None
-    if hasattr(model, 'head') and hasattr(model.head, 'prototypes'):
-        model_prototypes = model.head.prototypes.detach().cpu().numpy()
-        print("Successfully extracted classifier class centers for OOD centering.")
-
     detector = None
     threshold = None
 
-    id_scores_mean = None
-    id_scores_std = None
-
-    if args.method == "mahalanobis" and ood_params_path and os.path.exists(ood_params_path):
+    if ood_params_path and os.path.exists(ood_params_path):
         print(f"\nLoading pre-computed OOD calibration parameters from: {ood_params_path}...")
         try:
             ood_data = np.load(ood_params_path, allow_pickle=True)
-            detector = OODDetector()
-            detector.shared_cov_inv = ood_data["shared_cov_inv"]
-
-            detector.class_means = {}
-            if "class_means" in ood_data.files:
-                class_means = ood_data["class_means"]
-                class_ids = (
-                    ood_data["class_ids"]
-                    if "class_ids" in ood_data.files
-                    else np.arange(len(class_means))
+            method = str(ood_data["method"].item())
+            if method != "multimodal_ensemble":
+                raise ValueError(
+                    f"Unsupported OOD parameter method: {method!r}."
                 )
-                for class_id, center in zip(class_ids, class_means):
-                    detector.class_means[int(class_id)] = center
-            elif model_prototypes is not None:
-                norms = np.linalg.norm(model_prototypes, axis=1, keepdims=True)
-                normed_prototypes = model_prototypes / (norms + 1e-8)
-                for class_id, prototype in enumerate(normed_prototypes):
-                    detector.class_means[class_id] = prototype
-            else:
-                raise ValueError("OOD parameters contain no class centers.")
-            detector._fitted = True
+            references = np.asarray(
+                ood_data["reference_visual_embeddings"],
+                dtype=np.float64,
+            )
+            text_references = (
+                np.asarray(
+                    ood_data["reference_text_embeddings"],
+                    dtype=np.float64,
+                )
+                if "reference_text_embeddings" in ood_data.files
+                else None
+            )
+            detector = MultimodalEnsembleOODDetector(
+                knn_k=int(ood_data["knn_k"].item()),
+                knn_reduction=str(ood_data["knn_reduction"].item()),
+                knn_metric=str(ood_data["knn_metric"].item()),
+            ).fit(
+                visual_embeddings=references,
+                text_embeddings=text_references,
+                val_visual_embeddings=references,
+                val_text_embeddings=text_references,
+            )
+            detector.scalers["vis"] = (
+                float(ood_data["visual_score_mean"].item()),
+                float(ood_data["visual_score_std"].item()),
+            )
+            if text_references is not None:
+                detector.scalers["txt"] = (
+                    float(ood_data["text_score_mean"].item()),
+                    float(ood_data["text_score_std"].item()),
+                )
             if "calibrated_threshold" in ood_data.files:
                 threshold = float(ood_data["calibrated_threshold"])
             elif "threshold" in ood_data.files:
@@ -386,11 +391,10 @@ def main(cfg: DictConfig) -> None:
             else:
                 raise KeyError("OOD parameter file contains no calibrated threshold.")
 
-            if "id_scores_mean" in ood_data and "id_scores_std" in ood_data:
-                id_scores_mean = float(ood_data["id_scores_mean"])
-                id_scores_std = float(ood_data["id_scores_std"])
-
-            print(f"OOD Detector successfully initialized from pre-computed parameters (Threshold={threshold:.4f})!")
+            print(
+                "Multimodal ensemble OOD detector initialized from "
+                f"pre-computed parameters (Threshold={threshold:.4f})!"
+            )
         except Exception as e:
             print(f"[Warning] Failed to load pre-computed OOD parameters: {e}. Falling back to fitting from ID embeddings.")
             detector = None
@@ -411,36 +415,38 @@ def main(cfg: DictConfig) -> None:
         if id_embed_path and os.path.exists(id_embed_path):
             print(f"\nFitting OOD Detector using reference: {id_embed_path}...")
             id_data = np.load(id_embed_path, allow_pickle=True)
-            id_embeddings = id_data["image_embeddings"]
-            id_labels = id_data["labels"]
-
-            id_embeds_norm = np.linalg.norm(id_embeddings, axis=1, keepdims=True)
-            id_embeddings = id_embeddings / (id_embeds_norm + 1e-8)
-
-            detector = OODDetector()
-            detector.fit(id_embeddings, id_labels, prototypes=model_prototypes)
-
-            if args.method == "mahalanobis":
-                id_scores = detector.score_mahalanobis(id_embeddings)
-            elif args.method == "knn":
-                id_scores = detector.score_knn(id_embeddings, k=5, exclude_self=True)
-            elif args.method == "text_anchor":
-                anchors = []
-                tokenizer = model.backbone.tokenizer
-                with torch.no_grad():
-                    for path in classes:
-                        prompt = f"this is an image of a bone x-ray; {path.lower()} presented in image"
-                        tokens = tokenizer([prompt]).to(device)
-                        feat = model.backbone.model.encode_text(tokens)
-                        feat = feat / feat.norm(dim=-1, keepdim=True)
-                        anchors.append(feat.cpu().numpy())
-                text_anchors = np.vstack(anchors)
-                id_scores = detector.score_text_anchor(id_embeddings, text_anchors)
-
-            id_scores_mean = float(np.mean(id_scores))
-            id_scores_std = float(np.std(id_scores))
-            threshold = np.percentile(id_scores, 100 * (1.0 - args.fpr_threshold))
-            print(f"OOD Detector ({args.method}) fitted successfully! OOD threshold (FPR={args.fpr_threshold:.2f}): {threshold:.4f}")
+            if "visual_global_embeddings" in id_data.files:
+                reference_key = "visual_global_embeddings"
+            elif "image_embeddings" in id_data.files:
+                reference_key = "image_embeddings"
+            elif "fused_embeddings" in id_data.files:
+                reference_key = "fused_embeddings"
+            else:
+                raise KeyError(
+                    "Reference archive has no visual_global_embeddings, "
+                    "image_embeddings, or fused_embeddings array."
+                )
+            id_embeddings = np.asarray(id_data[reference_key], dtype=np.float64)
+            id_text = (
+                np.asarray(id_data["text_global_embeddings"], dtype=np.float64)
+                if "text_global_embeddings" in id_data.files
+                else None
+            )
+            detector = MultimodalEnsembleOODDetector().fit(
+                visual_embeddings=id_embeddings,
+                text_embeddings=id_text,
+                val_visual_embeddings=id_embeddings,
+                val_text_embeddings=id_text,
+            )
+            id_scores = detector.score(id_embeddings, text_embeddings=id_text)
+            threshold = calibrate_ood_threshold(
+                id_scores,
+                target_id_fpr=args.fpr_threshold,
+            )
+            print(
+                "Multimodal ensemble OOD detector fitted successfully! "
+                f"Threshold (ID FPR={args.fpr_threshold:.2f}): {threshold:.4f}"
+            )
 
     print(f"\nProcessing input image: {args.image}...")
     if not os.path.exists(args.image):
@@ -508,6 +514,34 @@ def main(cfg: DictConfig) -> None:
         else:
             probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
 
+        ood_visual_embedding = test_embed
+        ood_text_embedding = None
+        if detector is not None:
+            image_features, text_features = model.backbone(
+                image_tensor,
+                text_tokens,
+                attention_mask=text_attention_mask,
+            )
+            image_global = (
+                image_features[:, 0]
+                if image_features.ndim == 3
+                else image_features
+            )
+            ood_visual_embedding = F.normalize(
+                image_global,
+                dim=-1,
+            ).cpu().numpy()
+            if text_features is not None:
+                text_global = (
+                    text_features[:, 0]
+                    if text_features.ndim == 3
+                    else text_features
+                )
+                ood_text_embedding = F.normalize(
+                    text_global,
+                    dim=-1,
+                ).cpu().numpy()
+
         # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
         if use_text and getattr(model.fusion, "supports_padding_mask", False):
             img_feats, txt_feats = model.backbone(
@@ -531,13 +565,10 @@ def main(cfg: DictConfig) -> None:
     is_ood = False
     test_score = None
     if detector is not None:
-        if args.method == "mahalanobis":
-            test_score = detector.score_mahalanobis(test_embed)[0]
-        elif args.method == "knn":
-            test_score = detector.score_knn(test_embed, k=5)[0]
-        elif args.method == "text_anchor":
-            test_score = detector.score_text_anchor(test_embed, text_anchors)[0]
-
+        test_score = detector.score(
+            ood_visual_embedding,
+            text_embeddings=ood_text_embedding,
+        )[0]
         is_ood = test_score > threshold
 
     if attn_info is not None:
@@ -599,45 +630,22 @@ def main(cfg: DictConfig) -> None:
         print(f"DRL OOD Score        : {drl_score:10.4f} (larger means more OOD)")
 
     if detector is not None:
-        embed_dim = test_embed.shape[-1]
-
-        print(f"OOD Method          : {args.method.upper()}")
-        if args.method == "mahalanobis":
-            norm_score = test_score / embed_dim
-            norm_threshold = threshold / embed_dim
-            print(f"Raw Score (D²)      : {test_score:10.4f}  (Threshold: {threshold:.4f})")
-            print(
-                f"Dimension-Norm (D²/D): {norm_score:10.4f}  "
-                f"(Threshold: {norm_threshold:.4f})"
-            )
-        else:
-            print(f"OOD Score           : {test_score:10.4f}  (Threshold: {threshold:.4f})")
-
-        z_str = ""
-        if id_scores_mean is not None and id_scores_std is not None and id_scores_std > 0:
-            z_score = (test_score - id_scores_mean) / id_scores_std
-            z_thresh = (threshold - id_scores_mean) / id_scores_std
-            print(f"Z-Score             : {z_score:+10.4f} σ (Threshold: {z_thresh:+.4f} σ)")
-            print(f"                      [Ref ID Mean: {id_scores_mean:.2f}, Std: {id_scores_std:.2f}]")
-            z_str = f" ({z_score:+.2f} σ from ID mean)"
-        else:
-            theo_mean = float(embed_dim)
-            theo_std = float(np.sqrt(2 * embed_dim))
-            z_score = (test_score - theo_mean) / theo_std
-            z_thresh = (threshold - theo_mean) / theo_std
-            print(f"Z-Score (theoretical): {z_score:+10.4f} σ (Threshold: {z_thresh:+.4f} σ)")
-            z_str = f" ({z_score:+.2f} σ from theoretical mean)"
+        print("OOD Method          : MULTIMODAL ENSEMBLE")
+        print(
+            f"OOD Score           : {test_score:10.4f}  "
+            f"(Threshold: {threshold:.4f})"
+        )
 
         print("-" * 60)
 
         if is_ood:
             print("STATUS       : OUT-OF-DISTRIBUTION (OOD)")
-            print(f"WARNING      : Sample is out-of-distribution{z_str}. Skipping disease prediction.")
+            print("WARNING      : Sample is out-of-distribution. Skipping disease prediction.")
             print("=" * 60 + "\n")
             return
         else:
             print("STATUS       : IN-DISTRIBUTION (ID)")
-            print(f"               Valid sample{z_str}, proceeding with classification.")
+            print("               Valid sample, proceeding with classification.")
     else:
         print("STATUS       : UNKNOWN OOD (No reference loaded)")
 

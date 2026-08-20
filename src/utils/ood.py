@@ -10,16 +10,12 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
-from sklearn.covariance import LedoitWolf
 from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
-OOD_PROTOCOL_VERSION = 4
-MAHALANOBIS_SCORE_DEFINITION = (
-    "minimum_class_conditional_mahalanobis_distance_to_empirical_centroid"
-)
-COSINE_CENTROIDS_SCORE_DEFINITION = (
-    "one_minus_maximum_cosine_similarity_to_empirical_centroid"
+OOD_PROTOCOL_VERSION = 5
+MULTIMODAL_ENSEMBLE_SCORE_DEFINITION = (
+    "maximum_validation_z_score_of_modality_decoupled_knn_distances"
 )
 
 
@@ -99,223 +95,33 @@ def _finite_scores(scores: np.ndarray, name: str) -> np.ndarray:
     return values
 
 
-def _softmax(logits: np.ndarray) -> np.ndarray:
-    """Thực hiện bước softmax trong quy trình hiện tại.
+class _KNNDistanceScorer:
+    """Tính khoảng cách kNN nội bộ cho từng phương thức của ensemble."""
 
-    Parameters
-    ----------
-    logits : np.ndarray
-        Giá trị ``logits`` được sử dụng trong phép xử lý.
+    def __init__(self) -> None:
+        """Khởi tạo bộ lưu biểu diễn tham chiếu đã chuẩn hóa."""
+        self._reference_embeddings: Optional[np.ndarray] = None
 
-    Returns
-    -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    logits = np.asarray(logits, dtype=np.float64)
-    if logits.ndim != 2 or logits.shape[1] < 2:
-        raise ValueError("logits must have shape [N,C] with C >= 2.")
-    shifted = logits - logits.max(axis=1, keepdims=True)
-    exponentials = np.exp(shifted)
-    return exponentials / np.maximum(exponentials.sum(axis=1, keepdims=True), 1e-12)
-
-
-class OODDetector:
-    """Phát hiện dữ liệu ngoài phân phối bằng lớp ``OODDetector``.
-
-    Notes
-    -----
-    Lớp này đóng gói trạng thái và hành vi để các thành phần khác có thể tái sử dụng nhất quán.
-    """
-
-    def __init__(self):
-        """Thực hiện bước init trong quy trình hiện tại."""
-        self.class_means: dict[int, np.ndarray] = {}
-        self.shared_cov_inv: Optional[np.ndarray] = None
-        self.ref_embeddings: Optional[np.ndarray] = None
-        self.ref_labels: Optional[np.ndarray] = None
-        self._fitted = False
-
-    def fit(
-        self,
-        embeddings: np.ndarray,
-        labels: np.ndarray,
-        prototypes: Optional[np.ndarray] = None,
-    ):
-        # Tính điểm và độ đo phát hiện dữ liệu ngoài phân phối.
-        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
-        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
-        # Bước hỗ trợ để khớp kết quả cho bước xử lý hiện tại.
-        # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
-        """Khớp kết quả cho bước xử lý hiện tại.
+    def fit(self, embeddings: np.ndarray) -> "_KNNDistanceScorer":
+        """Lưu ma trận biểu diễn ID dùng làm tập tham chiếu.
 
         Parameters
         ----------
-        embeddings : np.ndarray
-            Giá trị ``embeddings`` được sử dụng trong phép xử lý.
-        labels : np.ndarray
-            Giá trị ``labels`` được sử dụng trong phép xử lý.
-        prototypes : Optional[np.ndarray]
-            Giá trị ``prototypes`` được sử dụng trong phép xử lý.
+        embeddings : numpy.ndarray
+            Ma trận biểu diễn ID có kích thước ``[N, D]``.
 
         Returns
         -------
-        object
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
+        _KNNDistanceScorer
+            Chính bộ tính điểm sau khi đã khớp dữ liệu tham chiếu.
         """
-        embeddings = _embedding_matrix(embeddings)
-        labels = np.asarray(labels)
-        if labels.ndim == 2:
-            labels = np.argmax(labels, axis=1)
-        labels = labels.astype(np.int64).reshape(-1)
-        if len(labels) != len(embeddings):
-            raise ValueError("Embedding and label counts differ.")
-        if len(embeddings) < 2:
+        values = _embedding_matrix(embeddings)
+        if len(values) < 2:
             raise ValueError("At least two reference samples are required.")
-        if np.any(labels < 0):
-            raise ValueError("Reference labels must be non-negative class IDs.")
-
-        self.ref_embeddings = _l2_normalize(embeddings)
-        self.ref_labels = labels
-        unique_classes = np.unique(labels)
-        if unique_classes.size < 1:
-            raise ValueError("Reference labels contain no classes.")
-
-        prototype_centers = None
-        if prototypes is not None:
-            prototype_centers = _embedding_matrix(prototypes, "prototype")
-            if prototype_centers.shape[1] != embeddings.shape[1]:
-                raise ValueError(
-                    "Prototype and reference embedding dimensions differ."
-                )
-
-        self.class_means = {}
-        centered_parts = []
-        for class_id in unique_classes:
-            class_embeddings = embeddings[labels == class_id]
-            if (
-                prototype_centers is not None
-                and 0 <= class_id < len(prototype_centers)
-            ):
-                center = prototype_centers[class_id]
-            else:
-                center = class_embeddings.mean(axis=0)
-            self.class_means[int(class_id)] = center
-            centered_parts.append(class_embeddings - center)
-
-        # Tính hoặc cập nhật các tâm lớp trong không gian biểu diễn.
-        # Chuẩn bị dữ liệu và chiến lược lấy mẫu tương ứng.
-        if prototype_centers is not None:
-            for class_id, center in enumerate(prototype_centers):
-                self.class_means.setdefault(int(class_id), center)
-
-        centered = np.vstack(centered_parts)
-        covariance = LedoitWolf().fit(centered).covariance_
-        self.shared_cov_inv = np.linalg.pinv(covariance, hermitian=True)
-        self._fitted = True
+        self._reference_embeddings = _l2_normalize(values)
         return self
 
-    def score_mahalanobis_centroid(
-        self, test_embeddings: np.ndarray
-    ) -> np.ndarray:
-        """Tính điểm mahalanobis tâm lớp cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        test_embeddings : np.ndarray
-            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        RuntimeError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        if not self._fitted or self.shared_cov_inv is None:
-            raise RuntimeError("Call fit() before Mahalanobis scoring.")
-        test_embeddings = _embedding_matrix(test_embeddings, "test embedding")
-        if test_embeddings.shape[1] != self.shared_cov_inv.shape[0]:
-            raise ValueError(
-                "Test and reference embedding dimensions differ."
-            )
-        squared_scores = np.full(
-            test_embeddings.shape[0], np.inf, dtype=np.float64
-        )
-        for center in self.class_means.values():
-            diff = test_embeddings - center
-            squared_distances = np.einsum(
-                "ni,ij,nj->n", diff, self.shared_cov_inv, diff
-            )
-            squared_scores = np.minimum(squared_scores, squared_distances)
-        # Tính và tổng hợp các độ đo đánh giá cần thiết.
-        # do sai số làm tròn số thực. Việc chặn tại 0 giữ nguyên tính chất
-        # Bước hỗ trợ để tính điểm mahalanobis centroid cho bước xử lý hiện tại.
-        return np.sqrt(np.maximum(squared_scores, 0.0))
-
-    def score_mahalanobis(self, test_embeddings: np.ndarray) -> np.ndarray:
-        """Tính điểm mahalanobis cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        test_embeddings : np.ndarray
-            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        return self.score_mahalanobis_centroid(test_embeddings)
-
-    def score_cosine_centroids(
-        self, test_embeddings: np.ndarray
-    ) -> np.ndarray:
-        """Tính điểm cosine các tâm lớp cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        test_embeddings : np.ndarray
-            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        RuntimeError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        if not self._fitted or not self.class_means:
-            raise RuntimeError("Call fit() before cosine-centroid scoring.")
-        test_embeddings = _l2_normalize(test_embeddings)
-        centers = _l2_normalize(np.stack(list(self.class_means.values()), axis=0))
-        if test_embeddings.shape[1] != centers.shape[1]:
-            raise ValueError(
-                "Test and empirical-centroid embedding dimensions differ."
-            )
-        return 1.0 - (test_embeddings @ centers.T).max(axis=1)
-
-    def score_knn(
+    def score(
         self,
         test_embeddings: np.ndarray,
         k: int = 10,
@@ -323,7 +129,7 @@ class OODDetector:
         metric: str = "euclidean",
         exclude_self: bool = False,
     ) -> np.ndarray:
-        """Tính điểm kNN OOD theo phương pháp của Sun et al. (ICML 2022 - KNN-OOD).
+        """Tính khoảng cách tới các láng giềng ID gần nhất.
 
         Parameters
         ----------
@@ -350,14 +156,14 @@ class OODDetector:
         Raises
         ------
         RuntimeError
-            Khi bộ dò chưa được huấn luyện bằng fit().
+            Khi bộ tính điểm chưa được khớp bằng ``fit()``.
         ValueError
             Khi dữ liệu hoặc cấu hình đầu vào không hợp lệ.
         """
-        if not self._fitted or self.ref_embeddings is None:
+        if self._reference_embeddings is None:
             raise RuntimeError("Call fit() before k-NN scoring.")
         test_embeddings = _l2_normalize(test_embeddings)
-        sim = test_embeddings @ self.ref_embeddings.T
+        sim = test_embeddings @ self._reference_embeddings.T
 
         if metric == "euclidean":
             # Khoảng cách Euclid trên các vector chuẩn hóa L2: ||u - v|| = sqrt(2 - 2 * cos(u, v))
@@ -384,175 +190,6 @@ class OODDetector:
             return nearest.mean(axis=1)
         else:
             raise ValueError(f"Unknown reduction '{reduction}'. Choose 'kth' or 'mean'.")
-
-    @staticmethod
-    def score_energy(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
-        """Tính điểm energy cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        logits : np.ndarray
-            Giá trị ``logits`` được sử dụng trong phép xử lý.
-        temperature : float, optional
-            Giá trị ``temperature`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        logits = np.asarray(logits, dtype=np.float64)
-        if logits.ndim != 2:
-            raise ValueError("logits must have shape [N,C].")
-        if temperature <= 0:
-            raise ValueError("temperature must be positive.")
-        scaled = logits / temperature
-        row_max = scaled.max(axis=1, keepdims=True)
-        logsumexp = row_max[:, 0] + np.log(np.exp(scaled - row_max).sum(axis=1))
-        return -temperature * logsumexp
-
-    @staticmethod
-    def score_msp(logits: np.ndarray) -> np.ndarray:
-        """Tính điểm msp cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        logits : np.ndarray
-            Giá trị ``logits`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        return 1.0 - _softmax(logits).max(axis=1)
-
-    @staticmethod
-    def score_entropy(logits: np.ndarray) -> np.ndarray:
-        """Tính điểm entropy cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        logits : np.ndarray
-            Giá trị ``logits`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        probabilities = _softmax(logits)
-        entropy = -(probabilities * np.log(np.maximum(probabilities, 1e-12))).sum(axis=1)
-        return entropy / np.log(probabilities.shape[1])
-
-    @staticmethod
-    def score_max_logit(logits: np.ndarray) -> np.ndarray:
-        """Tính điểm max logit cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        logits : np.ndarray
-            Giá trị ``logits`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        logits = np.asarray(logits, dtype=np.float64)
-        if logits.ndim != 2:
-            raise ValueError("logits must have shape [N,C].")
-        return -logits.max(axis=1)
-
-    @staticmethod
-    def score_text_anchor(
-        test_img_embeddings: np.ndarray,
-        anchor_text_embeddings: np.ndarray,
-    ) -> np.ndarray:
-        """Tính điểm văn bản anchor cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        test_img_embeddings : np.ndarray
-            Ảnh hoặc biểu diễn ảnh đầu vào.
-        anchor_text_embeddings : np.ndarray
-            Văn bản hoặc biểu diễn văn bản đầu vào.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        test_img_embeddings = _l2_normalize(test_img_embeddings)
-        anchor_text_embeddings = _l2_normalize(anchor_text_embeddings)
-        return 1.0 - (test_img_embeddings @ anchor_text_embeddings.T).max(axis=1)
-
-    def score(
-        self,
-        test_embeddings: np.ndarray,
-        method: str = "mahalanobis_centroid",
-        **kwargs,
-    ) -> np.ndarray:
-        """Tính điểm kết quả cho bước xử lý hiện tại.
-
-        Parameters
-        ----------
-        test_embeddings : np.ndarray
-            Giá trị ``test_embeddings`` được sử dụng trong phép xử lý.
-        method : str, optional
-            Phương pháp hoặc chế độ xử lý được chọn.
-        **kwargs : dict
-            Các đối số từ khóa bổ sung.
-
-        Returns
-        -------
-        np.ndarray
-            Kết quả được tạo bởi bước xử lý của hàm.
-
-        Raises
-        ------
-        ValueError
-            Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-        """
-        if method == "mahalanobis_centroid":
-            return self.score_mahalanobis_centroid(test_embeddings)
-        if method == "cosine_centroids":
-            return self.score_cosine_centroids(test_embeddings)
-        if method == "knn":
-            return self.score_knn(
-                test_embeddings,
-                k=kwargs.get("k", 10),
-                reduction=kwargs.get("reduction", "kth"),
-                metric=kwargs.get("metric", "euclidean"),
-                exclude_self=kwargs.get("exclude_self", False),
-            )
-        if method == "entropy":
-            return self.score_entropy(kwargs["logits"])
-        if method == "multimodal_ensemble":
-            ensemble_detector = kwargs.get("ensemble_detector")
-            if ensemble_detector is not None:
-                return ensemble_detector.score(
-                    test_embeddings,
-                    text_embeddings=kwargs.get("text_embeddings"),
-                    logits=kwargs.get("logits"),
-                )
-            raise ValueError("ensemble_detector must be provided for method 'multimodal_ensemble'.")
-        raise ValueError(
-            "Unknown OOD method: "
-            f"{method}. Choose cosine_centroids, mahalanobis_centroid, "
-            "knn, entropy, or multimodal_ensemble."
-        )
-
 
 class MultimodalEnsembleOODDetector:
     """Bộ phát hiện Multi-Modal Modality-Decoupled Ensemble OOD Detection.
@@ -590,38 +227,53 @@ class MultimodalEnsembleOODDetector:
         self.knn_k = knn_k
         self.knn_reduction = knn_reduction
         self.knn_metric = knn_metric
-        self.visual_detector = OODDetector()
-        self.text_detector = OODDetector()
+        self._visual_scorer = _KNNDistanceScorer()
+        self._text_scorer = _KNNDistanceScorer()
         self.scalers: dict[str, tuple[float, float]] = {}
         self._fitted = False
 
     def fit(
         self,
         visual_embeddings: np.ndarray,
-        labels: np.ndarray,
         text_embeddings: Optional[np.ndarray] = None,
-        logits: Optional[np.ndarray] = None,
         val_visual_embeddings: Optional[np.ndarray] = None,
         val_text_embeddings: Optional[np.ndarray] = None,
-        val_logits: Optional[np.ndarray] = None,
     ):
-        """Huấn luyện các bộ dò kNN đơn phương thức và chuẩn hóa z-score trên tập validation ID."""
+        """Khớp tham chiếu kNN và chuẩn hóa z-score trên validation-ID.
+
+        Parameters
+        ----------
+        visual_embeddings : numpy.ndarray
+            Biểu diễn ảnh của tập train-ID.
+        text_embeddings : numpy.ndarray, optional
+            Biểu diễn văn bản tương ứng của tập train-ID.
+        val_visual_embeddings : numpy.ndarray, optional
+            Biểu diễn ảnh validation-ID dùng để khớp z-score.
+        val_text_embeddings : numpy.ndarray, optional
+            Biểu diễn văn bản validation-ID dùng để khớp z-score.
+
+        Returns
+        -------
+        MultimodalEnsembleOODDetector
+            Detector đã được khớp.
+        """
         visual_embeddings = _embedding_matrix(visual_embeddings, "visual_embeddings")
-        labels = np.asarray(labels, dtype=np.int64).reshape(-1)
+        self._visual_scorer.fit(visual_embeddings)
 
-        # 1. Huấn luyện bộ dò kNN trên tập huấn luyện tham chiếu ID
-        self.visual_detector.fit(visual_embeddings, labels)
-
-        if text_embeddings is not None and len(text_embeddings) == len(labels):
+        if text_embeddings is not None:
             text_embeddings = _embedding_matrix(text_embeddings, "text_embeddings")
-            self.text_detector.fit(text_embeddings, labels)
+            if len(text_embeddings) != len(visual_embeddings):
+                raise ValueError(
+                    "Visual and text training embedding counts differ."
+                )
+            self._text_scorer.fit(text_embeddings)
 
         # 2. Cân chỉnh z-score scalers trên tập ID validation (hoặc train fallback)
         val_vis = val_visual_embeddings if val_visual_embeddings is not None else visual_embeddings
         val_txt = val_text_embeddings if val_text_embeddings is not None else text_embeddings
 
         # kNN score trên validation ảnh
-        s_vis_val = self.visual_detector.score_knn(
+        s_vis_val = self._visual_scorer.score(
             val_vis,
             k=self.knn_k,
             reduction=self.knn_reduction,
@@ -634,7 +286,11 @@ class MultimodalEnsembleOODDetector:
 
         # kNN score trên validation văn bản
         if val_txt is not None:
-            s_txt_val = self.text_detector.score_knn(
+            if text_embeddings is None:
+                raise ValueError(
+                    "Validation text embeddings require text training embeddings."
+                )
+            s_txt_val = self._text_scorer.score(
                 val_txt,
                 k=self.knn_k,
                 reduction=self.knn_reduction,
@@ -652,19 +308,40 @@ class MultimodalEnsembleOODDetector:
         self,
         visual_embeddings: np.ndarray,
         text_embeddings: Optional[np.ndarray] = None,
-        logits: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """Tính điểm OOD bằng kNN tách rời phương thức, chuẩn hóa Z-score và hợp nhất bằng toán tử Max."""
+        """Tính điểm ensemble OOD cho một batch biểu diễn ảnh--văn bản."""
+        return self.score_components(
+            visual_embeddings,
+            text_embeddings=text_embeddings,
+        )["ensemble"]
+
+    def score_components(
+        self,
+        visual_embeddings: np.ndarray,
+        text_embeddings: Optional[np.ndarray] = None,
+    ) -> dict[str, np.ndarray]:
+        """Trả điểm thành phần nội bộ và điểm ensemble cuối cùng.
+
+        Parameters
+        ----------
+        visual_embeddings : numpy.ndarray
+            Biểu diễn ảnh cần chấm điểm.
+        text_embeddings : numpy.ndarray, optional
+            Biểu diễn văn bản tương ứng nếu mô hình có nhánh văn bản.
+
+        Returns
+        -------
+        dict[str, numpy.ndarray]
+            ``visual_raw``, ``visual_z`` và ``ensemble``; khi có văn bản còn
+            có ``text_raw`` và ``text_z``.
+        """
         if not self._fitted:
             raise RuntimeError(
                 "MultimodalEnsembleOODDetector must be fitted before scoring."
             )
 
         visual_embeddings = _embedding_matrix(visual_embeddings, "visual_embeddings")
-        n_samples = len(visual_embeddings)
-
-        # 1. Điểm kNN ảnh và chuẩn hóa z-score
-        s_vis = self.visual_detector.score_knn(
+        s_vis = self._visual_scorer.score(
             visual_embeddings,
             k=self.knn_k,
             reduction=self.knn_reduction,
@@ -676,7 +353,9 @@ class MultimodalEnsembleOODDetector:
         # 2. Điểm kNN văn bản và chuẩn hóa z-score
         if text_embeddings is not None and "txt" in self.scalers:
             text_embeddings = _embedding_matrix(text_embeddings, "text_embeddings")
-            s_txt = self.text_detector.score_knn(
+            if len(text_embeddings) != len(visual_embeddings):
+                raise ValueError("Visual and text scoring counts differ.")
+            s_txt = self._text_scorer.score(
                 text_embeddings,
                 k=self.knn_k,
                 reduction=self.knn_reduction,
@@ -687,13 +366,20 @@ class MultimodalEnsembleOODDetector:
 
             # 3. Hợp nhất bằng toán tử Max (Max-pooling Fusion)
             ensemble_score = np.maximum(z_vis, z_txt)
+            return {
+                "visual_raw": s_vis,
+                "visual_z": z_vis,
+                "text_raw": s_txt,
+                "text_z": z_txt,
+                "ensemble": ensemble_score,
+            }
         else:
             ensemble_score = z_vis
-
-        return ensemble_score
-
-
-MultimodalDecoupledEnsembleOODDetector = MultimodalEnsembleOODDetector
+        return {
+            "visual_raw": s_vis,
+            "visual_z": z_vis,
+            "ensemble": ensemble_score,
+        }
 
 
 def calibrate_ood_threshold(

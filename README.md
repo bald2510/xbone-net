@@ -11,7 +11,7 @@ XBone-Net is a multimodal vision-language framework for bone-tumor classificatio
   - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
   - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention and a 512-to-class linear head using class-weighted cross-entropy.
 - **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
-- **Post-hoc OOD detection:** Supports cosine distance to empirical class centroids, class-centroid Mahalanobis distance, cosine-KNN, predictive entropy, and a multimodal ensemble. Detectors are fitted on CTCH train features and thresholds are calibrated on CTCH validation-ID data.
+- **Post-hoc OOD detection:** Uses only `MultimodalEnsembleOODDetector`, which combines validation-standardized image and clinical-text kNN distances with max fusion. The detector is fitted on CTCH train features and its operating threshold is calibrated on CTCH validation-ID data.
 - **Explainability:** Provides end-to-end Integrated Gradients for the image tensor produced by the locked preprocessing config and for clinical-text embeddings, together with perturbation-based faithfulness analysis.
 
 ---
@@ -129,7 +129,7 @@ python evaluate.py +experiment=btxrd/proposed/ours_xbone_net --bootstrap --save-
 
 ### 5.3. Out-of-Distribution (OOD) Detection
 OOD and explainability are locked to the proposed model trained on CTCH. The
-orchestrator exports the required feature archives, fits detectors only on CTCH
+orchestrator exports the required feature archives, fits the ensemble detector on CTCH
 train/validation data, and evaluates all configured scenarios for three seeds:
 
 ```bash

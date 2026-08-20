@@ -1,0 +1,24 @@
+\begin{table}[H]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{$\Delta$ Acc ($p_{\mathrm{Holm}}$)}} & \multicolumn{1}{c|}{\textbf{$\Delta$ BAcc ($p_{\mathrm{Holm}}$)}} & \multicolumn{1}{c|}{\textbf{$\Delta$ Macro-F1 ($p_{\mathrm{Holm}}$)}} \\ \hline
+\multirow{6}{*}{BTXRD} & ResNet-50 & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}2236$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}2935$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}2955$ \scriptsize$(p < 0{,}001)$}} \\ \cline{2-5}
+ & DenseNet-121 & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1982$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}2421$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}2522$ \scriptsize$(p < 0{,}001)$}} \\ \cline{2-5}
+ & CLIP & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0267$ \scriptsize$(p = 0{,}046)$}} & $+0{,}0158$ \scriptsize$(p = 1{,}000)$ & $+0{,}0453$ \scriptsize$(p = 0{,}299)$ \\ \cline{2-5}
+ & MedCLIP & $+0{,}0093$ \scriptsize$(p = 0{,}715)$ & $-0{,}0012$ \scriptsize$(p = 1{,}000)$ & $+0{,}0182$ \scriptsize$(p = 0{,}581)$ \\ \cline{2-5}
+ & PubMedCLIP & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0418$ \scriptsize$(p = 0{,}002)$}} & $+0{,}0026$ \scriptsize$(p = 1{,}000)$ & $+0{,}0517$ \scriptsize$(p = 0{,}276)$ \\ \cline{2-5}
+ & BiomedCLIP & $-0{,}0009$ \scriptsize$(p = 0{,}946)$ & $+0{,}0053$ \scriptsize$(p = 1{,}000)$ & $+0{,}0246$ \scriptsize$(p = 0{,}581)$ \\ \hline
+\multirow{6}{*}{CTCH} & ResNet-50 & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1201$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1755$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1573$ \scriptsize$(p < 0{,}001)$}} \\ \cline{2-5}
+ & DenseNet-121 & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1365$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1015$ \scriptsize$(p < 0{,}001)$}} & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}1367$ \scriptsize$(p < 0{,}001)$}} \\ \cline{2-5}
+ & CLIP & $+0{,}0309$ \scriptsize$(p = 0{,}150)$ & $-0{,}0282$ \scriptsize$(p = 0{,}555)$ & $+0{,}0094$ \scriptsize$(p = 0{,}711)$ \\ \cline{2-5}
+ & MedCLIP & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0583$ \scriptsize$(p = 0{,}003)$}} & $+0{,}0212$ \scriptsize$(p = 0{,}586)$ & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0566$ \scriptsize$(p = 0{,}027)$}} \\ \cline{2-5}
+ & PubMedCLIP & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0663$ \scriptsize$(p = 0{,}002)$}} & $+0{,}0346$ \scriptsize$(p = 0{,}480)$ & \textcolor[RGB]{0, 135, 0}{\textbf{$+0{,}0524$ \scriptsize$(p = 0{,}042)$}} \\ \cline{2-5}
+ & BiomedCLIP & $+0{,}0214$ \scriptsize$(p = 0{,}161)$ & $-0{,}0088$ \scriptsize$(p = 0{,}672)$ & $+0{,}0187$ \scriptsize$(p = 0{,}711)$ \\ \hline
+\end{tabular}
+}
+\caption{Kiểm định thống kê ghép cặp về hiệu năng phân lớp giữa XBone-Net và các mô hình đối chứng qua 3 hạt giống ($N_{\mathrm{perm}}=10.000$). $\Delta = \text{XBone-Net} - \text{Mô hình đối chứng}$. Giá trị trong ngoặc đơn là mức ý nghĩa $p_{\mathrm{Holm}}$ sau hiệu chỉnh đa so sánh; \textcolor[RGB]{0, 135, 0}{\textbf{màu xanh lá}} biểu thị XBone-Net vượt trội có ý nghĩa thống kê ($p_{\mathrm{Holm}} < 0{,}05, \Delta > 0$); \textcolor[RGB]{200, 0, 0}{\textbf{màu đỏ}} biểu thị đối chứng vượt trội có ý nghĩa ($p_{\mathrm{Holm}} < 0{,}05, \Delta < 0$)}
+\label{tab:paired_baseline_classification}
+\end{table}

@@ -59,8 +59,9 @@ trong quá trình tải.
 
 - Checkpoint seed được khóa ở seed 42.
 - Thiết bị "auto" ưu tiên CUDA; chọn "cpu" nếu GPU không đủ bộ nhớ.
-- Phương pháp OOD gồm cosine-centroid, Mahalanobis-centroid, cosine-kNN,
-  predictive entropy và multi-modal ensemble.
+- Demo chỉ sử dụng Multi-modal Ensemble OOD; người dùng không cần chọn phương
+  pháp. Điểm ảnh và văn bản được chuẩn hóa trên validation-ID rồi hợp nhất bằng
+  toán tử max.
 - Tăng số bước IG cho xấp xỉ mượt hơn nhưng thời gian chạy lâu hơn.
 
 4.2. Đầu vào

@@ -49,47 +49,6 @@ S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm đặc trưng và prototype của 
 %% --- Đầu vào và tiền xử lý ---
 \mathcal{D}_{\mathrm{train}},\,N & Tập dữ liệu và tổng số mẫu huấn luyện. & \pageref{eq:ch3_dataset} \\
 X_i,\,R_i,\,y_i & Ảnh X-quang, bệnh sử và nhãn của mẫu thứ $i$. & \pageref{eq:ch3_dataset} \\
-\boldsymbol{u}_i,\,\boldsymbol{m}_i & Chuỗi chỉ số token và attention mask của mẫu $i$. & \pageref{eq:ch3_text_tokenization} \\
-\mathcal{T}_t,\,L & Phép xử lý văn bản và chiều dài chuỗi. & \pageref{eq:ch3_text_tokenization} \\
-
-%% --- Bộ mã hóa và thích nghi miền ---
-\mathcal{E}_I,\,\mathcal{P}_I & Bộ mã hóa thị giác và phép chiếu đặc trưng. & \pageref{eq:ch3_global_visual_embedding} \\
-\boldsymbol{g}_i^I,\,D & Đặc trưng ảnh toàn cục và số chiều không gian chung. & \pageref{eq:ch3_global_visual_embedding} \\
-\boldsymbol{L}_{i,m}^I & Các token thị giác sinh từ vùng cục bộ $m$. & \pageref{eq:ch3_local_encoding} \\
-\boldsymbol{L}_i^I,\,P & Chuỗi token cục bộ và tổng số token cục bộ. & \pageref{eq:ch3_local_encoding} \\
-\boldsymbol{B}_i,\,\mathcal{P}_s & Tọa độ chuẩn hóa hộp cục bộ và phép chiếu tọa độ. & \pageref{eq:ch3_spatial_encoding} \\
-\gamma,\,\widetilde{\boldsymbol{L}}_i^I & Hệ số vị trí học được và chuỗi token đã nhúng tọa độ. & \pageref{eq:ch3_spatial_encoding} \\
-e_{i,p},\,a_{i,p} & Điểm chú ý và trọng số pooling của token thứ $p$. & \pageref{eq:ch3_phase1_visual_pooling} \\
-\boldsymbol{W}_g,\,\boldsymbol{W}_\ell,\,\boldsymbol{w}_a & Trọng số học được của mô-đun attention pooling. & \pageref{eq:ch3_phase1_visual_pooling} \\
-\boldsymbol{z}_i^I,\,\lambda_\ell & Đặc trưng thị giác pha~1 và hệ số đóng góp cục bộ. & \pageref{eq:ch3_phase1_visual_pooling} \\
-\mathcal{E}_T,\,\mathcal{P}_T & Bộ mã hóa văn bản và phép chiếu tương ứng. & \pageref{eq:ch3_text_encoder} \\
-\boldsymbol{H}_i^T,\,\boldsymbol{z}_i^T & Chuỗi đặc trưng token và đặc trưng văn bản toàn cục. & \pageref{eq:ch3_text_encoder} \\
-\boldsymbol{W},\,\boldsymbol{W}' & Trọng số tiền huấn luyện và trọng số sau cập nhật LoRA. & \pageref{eq:ch3_lora} \\
-\boldsymbol{A},\,\boldsymbol{B},\,r & Các ma trận hạng thấp và hạng của LoRA. & \pageref{eq:ch3_lora} \\
-
-%% --- Huấn luyện khớp ngữ nghĩa pha 1 ---
-s_{ij} & Độ tương đồng cosine giữa ảnh $i$ và văn bản $j$. & \pageref{eq:ch3_contrastive_similarity} \\
-q_{ij},\,\rho & Xác suất mục tiêu mềm và hệ số ưu tiên cặp. & \pageref{eq:ch3_semantic_target} \\
-B & Kích thước mini-batch (hoặc số lần lấy mẫu lặp). & \pageref{eq:ch3_semantic_target} \\
-p_{ij}^{I\rightarrow T},\,p_{ji}^{T\rightarrow I} & Xác suất dự đoán ghép cặp ảnh-văn bản và văn bản-ảnh. & \pageref{eq:ch3_semantic_target} \\
-\tau_{\mathrm{SM}} & Nhiệt độ khớp ngữ nghĩa. & \pageref{eq:ch3_semantic_target} \\
-\mathcal{L}_{\mathrm{SM}} & Hàm mất mát khớp ngữ nghĩa hai chiều (pha~1). & \pageref{eq:ch3_phase1_loss} \\
-
-%% --- Dung hợp chú ý chéo ---
-\boldsymbol{V}_i & Chuỗi đặc trưng thị giác kết hợp. & \pageref{eq:ch3_visual_sequence} \\
-\boldsymbol{A}_i^{I\leftarrow T},\,\boldsymbol{A}_i^{T\leftarrow I} & Phân bố chú ý chéo giữa hai phương thức. & \pageref{eq:ch3_attention} \\
-\boldsymbol{W}_Q,\,\boldsymbol{W}_K,\,\boldsymbol{W}_V & Ma trận query, key, value trong mô-đun chú ý chéo. & \pageref{eq:ch3_attention} \\
-\boldsymbol{h}_i^I,\,\boldsymbol{h}_i^T & Biểu diễn đặc trưng sau dung hợp. & \pageref{eq:ch3_image_from_text} \\
-\boldsymbol{z}_i^F & Đặc trưng tổng hợp cuối cùng cho bộ phân loại. & \pageref{eq:ch3_fused_representation} \\
-
-%% --- Bộ phân loại và huấn luyện pha 2 ---
-\boldsymbol{c}_k,\,N_k & Tâm đặc trưng thực nghiệm và số mẫu huấn luyện lớp $k$. & \pageref{eq:ch3_prototype} \\
-r_{ik} & Độ tương đồng cosine giữa mẫu $i$ và tâm lớp $k$. & \pageref{eq:ch3_cosine_similarity} \\
-\ell_{ik},\,\alpha_c,\,b_k & Logit, hệ số tỷ lệ cố định và độ lệch riêng lớp $k$. & \pageref{eq:ch3_classifier_logit} \\
-E_k,\,\beta & Số mẫu hiệu dụng của lớp $k$ và hệ số bão hòa. & \pageref{eq:ch3_class_weight} \\
-w_k & Trọng số phạt tổn thất của lớp $k$. & \pageref{eq:ch3_class_weight} \\
-\widetilde{y}_{ik},\,\varepsilon & Mục tiêu huấn luyện sau làm trơn nhãn và hệ số làm trơn. & \pageref{eq:ch3_phase2_loss} \\
-\mathcal{L}_{\mathrm{P2}} & Hàm mất mát phân loại có trọng số (pha~2). & \pageref{eq:ch3_phase2_loss} \\
 
 %% --- Độ đo phân loại ---
 TP_c,\,FP_c,\,TN_c,\,FN_c & Các trường hợp dương/âm tính thật/giả của lớp $c$. & \pageref{eq:ch4_accuracy} \\

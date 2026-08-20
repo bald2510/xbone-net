@@ -150,13 +150,13 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 \begin{itemize}
 \item Các mô hình ngôn ngữ trực quan được tiền huấn luyện trên dữ liệu tổng quát hoặc dữ liệu y khoa, đóng vai trò bộ mã hóa đặc trưng hình ảnh và văn bản.
 
-\item Các phương pháp xử lý ảnh X-quang độ phân giải cao nhằm khai thác đồng thời đặc trưng toàn cục và đặc trưng cục bộ của vùng tổn thương.
+\item Các phương pháp biểu diễn ảnh X-quang bằng đơn vị toàn cục và chuỗi đơn vị mảnh ảnh từ bộ mã hóa thị giác tiền huấn luyện.
 
 \item Các chiến lược dung hợp đa phương thức, bao gồm phép nối đặc trưng và cơ chế chú ý chéo, để kết hợp biểu diễn hình ảnh với thông tin bệnh sử lâm sàng.
 
 \item Các phương pháp tinh chỉnh hiệu quả tham số cho mô hình tiền huấn luyện quy mô lớn, tập trung vào việc giới hạn số tham số cần cập nhật trong quá trình huấn luyện.
 
-\item Các kiến trúc đầu phân lớp đa lớp trên dữ liệu mất cân bằng, bao gồm bộ phân lớp tuyến tính và bộ phân lớp dựa trên tâm lớp.
+\item Đầu phân lớp tuyến tính kết hợp hàm mất mát có trọng số để xử lý bài toán phân lớp đa lớp trên dữ liệu mất cân bằng.
 
 \item Các phương pháp phát hiện dữ liệu ngoài phân phối và trực quan hóa bản đồ tích phân gradient nhằm hỗ trợ đánh giá độ tin cậy và khả năng giải thích của mô hình.
 
@@ -214,7 +214,7 @@ Khóa luận được tổ chức thành năm chương như sau:
 
 \textbf{Chương 2: Các công trình nghiên cứu liên quan.} Chương này tổng quan các nghiên cứu về mô hình ngôn ngữ trực quan, phân lớp ảnh X-quang xương, xử lý ảnh độ phân giải cao, dung hợp đa phương thức, tinh chỉnh hiệu quả tham số, phát hiện dữ liệu ngoài phân phối và khả năng giải thích mô hình. Trên cơ sở đó, chương xác định khoảng trống nghiên cứu và định vị phương pháp đề xuất so với các công trình trước.
 
-\textbf{Chương 3: Phương pháp đề xuất.} Chương này mô tả kiến trúc XBone-Net, quy trình xử lý ảnh và văn bản, cơ chế dung hợp hai chiều, bộ phân lớp dựa trên tâm lớp, các hàm mất mát và chiến lược huấn luyện hai giai đoạn với LoRA. Quy trình phát hiện dữ liệu ngoài phân phối và giải thích dự đoán cũng được trình bày trong chương này.
+\textbf{Chương 3: Phương pháp đề xuất.} Chương này mô tả kiến trúc XBone-Net, quy trình xử lý ảnh và văn bản, cơ chế dung hợp hai chiều, đầu phân lớp tuyến tính, các hàm mất mát và chiến lược huấn luyện hai giai đoạn với LoRA. Quy trình phát hiện dữ liệu ngoài phân phối và giải thích dự đoán cũng được trình bày trong chương này.
 
 \textbf{Chương 4: Thực nghiệm và kết quả.} Chương này giới thiệu các bộ dữ liệu, thiết lập thực nghiệm, mô hình đối sánh và các độ đo đánh giá. Các kết quả không mẫu, mẫu hạn chế, toàn bộ mẫu, nghiên cứu loại bỏ thành phần, đánh giá hiệu quả tính toán, phát hiện dữ liệu ngoài phân phối và giải thích mô hình được phân tích nhằm làm rõ ưu điểm, hạn chế và sự đánh đổi của phương pháp đề xuất.
 

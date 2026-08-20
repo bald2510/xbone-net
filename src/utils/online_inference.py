@@ -37,32 +37,24 @@ from src.utils.explainability import (
 )
 from src.utils.ood import (
     MultimodalEnsembleOODDetector,
-    OODDetector,
     calibrate_ood_threshold,
 )
 from src.utils.trainer import resolve_pad_token_id
 
 
-OOD_METHODS = (
-    "cosine_centroids",
-    "mahalanobis_centroid",
-    "knn",
-    "entropy",
-    "multimodal_ensemble",
-)
+OOD_METHOD = "multimodal_ensemble"
 
 
 @dataclass(frozen=True)
 class OODCalibration:
-    """Các detector và ngưỡng OOD được khớp trên validation-ID."""
+    """Detector ensemble và ngưỡng OOD được khớp trên validation-ID."""
 
-    normalized_detector: OODDetector
-    raw_detector: OODDetector
-    multimodal_ensemble_detector: Optional[MultimodalEnsembleOODDetector]
+    detector: MultimodalEnsembleOODDetector
     reference_image_ids: np.ndarray
     reference_visual_embeddings: np.ndarray
-    thresholds: dict[str, float]
-    calibration_counts: dict[str, int]
+    reference_labels: np.ndarray
+    threshold: float
+    calibration_count: int
     target_id_fpr: float
 
 
@@ -325,128 +317,33 @@ def fit_locked_confidence_calibration(loaded) -> ConfidenceCalibration:
     return fit_temperature_scaling(validation["logits"], validation["labels"])
 
 
-def _score_method(
-    method: str,
-    normalized_detector: OODDetector,
-    raw_detector: OODDetector,
-    *,
-    fused_embedding: np.ndarray,
-    fused_embedding_raw: np.ndarray,
-    logits: np.ndarray,
-    knn_k: int,
-    visual_global_embedding: Optional[np.ndarray] = None,
-    text_global_embedding: Optional[np.ndarray] = None,
-    multimodal_ensemble_detector: Optional[MultimodalEnsembleOODDetector] = None,
-) -> np.ndarray:
-    """Tính điểm OOD bằng phương pháp được lựa chọn.
-
-    Parameters
-    ----------
-    method : str
-        Phương pháp hoặc chế độ xử lý được chọn.
-    normalized_detector : OODDetector
-        Giá trị ``normalized_detector`` được sử dụng trong phép xử lý.
-    raw_detector : OODDetector
-        Giá trị ``raw_detector`` được sử dụng trong phép xử lý.
-    fused_embedding : np.ndarray
-        Biểu diễn đặc trưng cần xử lý.
-    fused_embedding_raw : np.ndarray
-        Biểu diễn đặc trưng cần xử lý.
-    logits : np.ndarray
-        Giá trị ``logits`` được sử dụng trong phép xử lý.
-    knn_k : int
-        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
-    visual_global_embedding : Optional[np.ndarray]
-        Biểu diễn đặc trưng ảnh toàn cục.
-    text_global_embedding : Optional[np.ndarray]
-        Biểu diễn đặc trưng văn bản toàn cục.
-    multimodal_ensemble_detector : Optional[MultimodalEnsembleOODDetector]
-        Bộ phát hiện Multi-modal Ensemble OOD không dùng fused_embedding.
-
-    Returns
-    -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
-
-    Raises
-    ------
-    ValueError
-        Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
-    """
-    if method == "cosine_centroids":
-        return normalized_detector.score_cosine_centroids(fused_embedding)
-    if method == "mahalanobis_centroid":
-        return raw_detector.score_mahalanobis_centroid(fused_embedding_raw)
-    if method == "knn":
-        return normalized_detector.score_knn(fused_embedding, k=knn_k)
-    if method == "entropy":
-        return normalized_detector.score_entropy(logits)
-    if method == "multimodal_ensemble":
-        if multimodal_ensemble_detector is None:
-            raise ValueError(
-                "multimodal_ensemble_detector must be provided for multimodal_ensemble method"
-            )
-        vis = (
-            visual_global_embedding
-            if visual_global_embedding is not None
-            else fused_embedding
-        )
-        return multimodal_ensemble_detector.score(
-            vis,
-            text_embeddings=text_global_embedding,
-            logits=logits,
-        )
-    raise ValueError(f"Unsupported OOD method: {method}")
-
-
-def _calibration_scores(
-    method: str,
-    normalized_detector: OODDetector,
-    raw_detector: OODDetector,
+def _ensemble_scores(
+    detector: MultimodalEnsembleOODDetector,
     arrays: Mapping[str, np.ndarray],
-    knn_k: int,
-    multimodal_ensemble_detector: Optional[MultimodalEnsembleOODDetector] = None,
 ) -> np.ndarray:
-    """Thực hiện bước calibration các điểm trong quy trình hiện tại.
+    """Tính điểm ensemble từ feature archive ảnh--văn bản.
 
     Parameters
     ----------
-    method : str
-        Phương pháp hoặc chế độ xử lý được chọn.
-    normalized_detector : OODDetector
-        Giá trị ``normalized_detector`` được sử dụng trong phép xử lý.
-    raw_detector : OODDetector
-        Giá trị ``raw_detector`` được sử dụng trong phép xử lý.
-    arrays : Mapping[str, np.ndarray]
-        Giá trị ``arrays`` được sử dụng trong phép xử lý.
-    knn_k : int
-        Giá trị ``knn_k`` được sử dụng trong phép xử lý.
-    multimodal_ensemble_detector : Optional[MultimodalEnsembleOODDetector]
-        Bộ phát hiện Multi-modal Ensemble OOD.
+    detector : MultimodalEnsembleOODDetector
+        Detector ensemble đã được khớp trên train/validation-ID.
+    arrays : Mapping[str, numpy.ndarray]
+        Feature archive chứa biểu diễn ảnh và, nếu có, biểu diễn văn bản.
 
     Returns
     -------
-    np.ndarray
-        Kết quả được tạo bởi bước xử lý của hàm.
+    numpy.ndarray
+        Điểm OOD ensemble; giá trị lớn hơn biểu thị bất thường mạnh hơn.
     """
-    return _score_method(
-        method,
-        normalized_detector,
-        raw_detector,
-        fused_embedding=np.asarray(arrays["fused_embeddings"]),
-        fused_embedding_raw=np.asarray(arrays["fused_embeddings_raw"]),
-        logits=np.asarray(arrays["logits"]),
-        knn_k=knn_k,
-        visual_global_embedding=np.asarray(
-            arrays.get("visual_global_embeddings", arrays["fused_embeddings"])
-        ),
-        text_global_embedding=(
-            np.asarray(arrays["text_global_embeddings"])
-            if "text_global_embeddings" in arrays
-            else None
-        ),
-        multimodal_ensemble_detector=multimodal_ensemble_detector,
+    visual = np.asarray(
+        arrays.get("visual_global_embeddings", arrays["fused_embeddings"])
     )
+    text = (
+        np.asarray(arrays["text_global_embeddings"])
+        if "text_global_embeddings" in arrays
+        else None
+    )
+    return detector.score(visual, text_embeddings=text)
 
 
 def fit_locked_ood_calibration(
@@ -518,15 +415,6 @@ def fit_locked_ood_calibration(
             "CTCH train feature archive does not contain one global visual "
             "embedding per reference image."
         )
-    normalized_detector = OODDetector().fit(
-        np.asarray(train["fused_embeddings"]),
-        train_labels,
-    )
-    raw_detector = OODDetector().fit(
-        np.asarray(train["fused_embeddings_raw"]),
-        train_labels,
-    )
-
     train_vis = np.asarray(
         train.get("visual_global_embeddings", train["fused_embeddings"]),
         dtype=np.float64,
@@ -546,43 +434,27 @@ def fit_locked_ood_calibration(
         else None
     )
 
-    multimodal_ensemble_detector = MultimodalEnsembleOODDetector(
+    detector = MultimodalEnsembleOODDetector(
         knn_k=knn_k,
     ).fit(
         visual_embeddings=train_vis,
-        labels=train_labels,
         text_embeddings=train_txt,
-        logits=np.asarray(train.get("logits", validation["logits"])),
         val_visual_embeddings=val_vis,
         val_text_embeddings=val_txt,
-        val_logits=np.asarray(validation["logits"]),
+    )
+    scores = _ensemble_scores(detector, validation)
+    threshold = calibrate_ood_threshold(
+        scores,
+        target_id_fpr=target_id_fpr,
     )
 
-    thresholds: dict[str, float] = {}
-    counts: dict[str, int] = {}
-    for method in OOD_METHODS:
-        scores = _calibration_scores(
-            method,
-            normalized_detector,
-            raw_detector,
-            validation,
-            knn_k,
-            multimodal_ensemble_detector=multimodal_ensemble_detector,
-        )
-        thresholds[method] = calibrate_ood_threshold(
-            scores,
-            target_id_fpr=target_id_fpr,
-        )
-        counts[method] = int(len(scores))
-
     return OODCalibration(
-        normalized_detector=normalized_detector,
-        raw_detector=raw_detector,
-        multimodal_ensemble_detector=multimodal_ensemble_detector,
+        detector=detector,
         reference_image_ids=reference_image_ids,
         reference_visual_embeddings=reference_visual_embeddings,
-        thresholds=thresholds,
-        calibration_counts=counts,
+        reference_labels=train_labels,
+        threshold=threshold,
+        calibration_count=int(len(scores)),
         target_id_fpr=float(target_id_fpr),
     )
 
@@ -970,8 +842,8 @@ class OnlineInferenceEngine:
         similarities = references @ query_array
         limit = min(max(0, int(count)), len(similarities))
         order = np.argsort(-similarities, kind="stable")[:limit]
-        labels = self.ood.normalized_detector.ref_labels
-        if labels is None or len(labels) != len(references):
+        labels = np.asarray(self.ood.reference_labels, dtype=np.int64)
+        if len(labels) != len(references):
             raise RuntimeError("CTCH-train reference labels are unavailable.")
 
         nearest: list[SimilarImageReference] = []
@@ -997,7 +869,6 @@ class OnlineInferenceEngine:
         image: Image.Image,
         clinical_text: str,
         *,
-        ood_method: str = "mahalanobis_centroid",
         ig_steps: int = 16,
         compute_faithfulness: bool = False,
         compute_global_ig: bool = False,
@@ -1011,8 +882,6 @@ class OnlineInferenceEngine:
             Ảnh hoặc biểu diễn ảnh đầu vào.
         clinical_text : str
             Văn bản hoặc biểu diễn văn bản đầu vào.
-        ood_method : str, optional
-            Phương pháp hoặc chế độ xử lý được chọn.
         ig_steps : int, optional
             Giá trị ``ig_steps`` được sử dụng trong phép xử lý.
         compute_faithfulness : bool, optional
@@ -1035,8 +904,6 @@ class OnlineInferenceEngine:
         clinical_text = str(clinical_text).strip()
         if not clinical_text:
             raise ValueError("Clinical text must not be empty.")
-        if ood_method not in OOD_METHODS:
-            raise ValueError(f"Unsupported OOD method: {ood_method}")
         if int(ig_steps) < 2:
             raise ValueError("Integrated Gradients requires at least two steps.")
 
@@ -1045,7 +912,7 @@ class OnlineInferenceEngine:
             image.convert("RGB"),
             clinical_text,
         )
-        fused_raw, logits, cached = _forward_and_cache(self.loaded, inputs)
+        _, logits, cached = _forward_and_cache(self.loaded, inputs)
         raw_probabilities = torch.softmax(logits, dim=-1)[0]
         raw_probabilities_array = raw_probabilities.detach().cpu().numpy()
         logits_array = logits.detach().cpu().numpy()
@@ -1069,8 +936,6 @@ class OnlineInferenceEngine:
             int(similar_image_count),
         )
 
-        fused_embedding_raw = fused_raw.cpu().numpy()
-        fused_embedding = F.normalize(fused_raw, dim=-1).cpu().numpy()
         if self.ood is None:
             score = float("nan")
             threshold = float("nan")
@@ -1079,20 +944,12 @@ class OnlineInferenceEngine:
             vis_emb = cached["visual_global_embedding"].detach().cpu().numpy()
             txt_emb = cached["text_tokens"][:, 0].detach().cpu().numpy()
             score = float(
-                _score_method(
-                    ood_method,
-                    self.ood.normalized_detector,
-                    self.ood.raw_detector,
-                    fused_embedding=fused_embedding,
-                    fused_embedding_raw=fused_embedding_raw,
-                    logits=logits_array,
-                    knn_k=self.knn_k,
-                    visual_global_embedding=vis_emb,
-                    text_global_embedding=txt_emb,
-                    multimodal_ensemble_detector=self.ood.multimodal_ensemble_detector,
+                self.ood.detector.score(
+                    vis_emb,
+                    text_embeddings=txt_emb,
                 )[0]
             )
-            threshold = float(self.ood.thresholds[ood_method])
+            threshold = float(self.ood.threshold)
             is_ood = bool(score > threshold)
 
         # Không công bố nhãn hoặc confidence khi mẫu bị phát hiện là OOD.
@@ -1105,7 +962,7 @@ class OnlineInferenceEngine:
                 confidence_is_calibrated=confidence_is_calibrated,
                 calibration_temperature=calibration_temperature,
                 class_labels=self.class_labels,
-                ood_method=ood_method,
+                ood_method=OOD_METHOD,
                 ood_score=score,
                 ood_threshold=threshold,
                 is_ood=True,
@@ -1238,7 +1095,7 @@ class OnlineInferenceEngine:
             confidence_is_calibrated=confidence_is_calibrated,
             calibration_temperature=calibration_temperature,
             class_labels=self.class_labels,
-            ood_method=ood_method,
+            ood_method=OOD_METHOD,
             ood_score=score,
             ood_threshold=threshold,
             is_ood=False,

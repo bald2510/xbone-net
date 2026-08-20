@@ -6,15 +6,18 @@
 \begin{tabular}{|L{2.05cm}|L{2.55cm}|C{1.0cm}|C{1.0cm}|C{1.0cm}|*{3}{C{1.55cm}|}}
 \hline
 \textbf{Kịch bản} & \textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\ \hline
-\multirow{9}{*}{OOD CTCH} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}7135 & \cellcolor{gray!12}0{,}1559 & \cellcolor{gray!12}0{,}7308 \\ \cline{2-8}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}123 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}7666 & \cellcolor{gray!12}0{,}1395 & \cellcolor{gray!12}0{,}7308 \\ \cline{2-8}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}456 & \cellcolor{gray!12}669 & \cellcolor{gray!12}26 & \cellcolor{gray!12}0{,}6950 & \cellcolor{gray!12}0{,}1399 & \cellcolor{gray!12}0{,}6538 \\ \cline{2-8}
- & Chỉ pha 2 & 42 & 669 & 26 & 0{,}7589 & 0{,}1946 & 0{,}6538 \\ \cline{2-8}
- & Chỉ pha 2 & 123 & 669 & 26 & 0{,}7097 & 0{,}2039 & 0{,}6154 \\ \cline{2-8}
- & Chỉ pha 2 & 456 & 669 & 26 & 0{,}7033 & 0{,}1949 & 0{,}7692 \\ \cline{2-8}
- & Nối đặc trưng & 42 & 669 & 26 & 0{,}7321 & 0{,}1166 & 0{,}7308 \\ \cline{2-8}
- & Nối đặc trưng & 123 & 669 & 26 & 0{,}7484 & 0{,}1285 & 0{,}7308 \\ \cline{2-8}
- & Nối đặc trưng & 456 & 669 & 26 & 0{,}7212 & 0{,}1046 & 0{,}6923 \\ \hline
+\multirow{12}{*}{OOD CTCH} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}18 & \cellcolor{gray!12}0{,}7736 & \cellcolor{gray!12}0{,}1521 & \cellcolor{gray!12}0{,}6667 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}123 & \cellcolor{gray!12}669 & \cellcolor{gray!12}18 & \cellcolor{gray!12}0{,}7713 & \cellcolor{gray!12}0{,}1365 & \cellcolor{gray!12}0{,}6667 \\ \cline{2-8}
+ & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}456 & \cellcolor{gray!12}669 & \cellcolor{gray!12}18 & \cellcolor{gray!12}0{,}7346 & \cellcolor{gray!12}0{,}1533 & \cellcolor{gray!12}0{,}5556 \\ \cline{2-8}
+ & BioMedCLIP (FFT) & 42 & 669 & 18 & 0{,}7574 & 0{,}1679 & 0{,}5000 \\ \cline{2-8}
+ & BioMedCLIP (FFT) & 123 & 669 & 18 & 0{,}7503 & 0{,}1385 & 0{,}7222 \\ \cline{2-8}
+ & BioMedCLIP (FFT) & 456 & 669 & 18 & 0{,}6440 & 0{,}1051 & 0{,}7222 \\ \cline{2-8}
+ & Chỉ pha 2 & 42 & 669 & 18 & 0{,}7922 & 0{,}2194 & 0{,}5556 \\ \cline{2-8}
+ & Chỉ pha 2 & 123 & 669 & 18 & 0{,}7951 & 0{,}2310 & 0{,}6667 \\ \cline{2-8}
+ & Chỉ pha 2 & 456 & 669 & 18 & 0{,}7333 & 0{,}2086 & 0{,}7778 \\ \cline{2-8}
+ & Nối đặc trưng & 42 & 669 & 18 & 0{,}7139 & 0{,}1103 & 0{,}6111 \\ \cline{2-8}
+ & Nối đặc trưng & 123 & 669 & 18 & 0{,}7015 & 0{,}1167 & 0{,}6667 \\ \cline{2-8}
+ & Nối đặc trưng & 456 & 669 & 18 & 0{,}7404 & 0{,}0894 & 0{,}6667 \\ \hline
 \end{tabular}%
 }
 \caption{Kết quả cảnh báo OOD của từng hạt giống trên kịch bản OOD CTCH bằng điểm tổ hợp đa phương thức}
@@ -29,15 +32,18 @@
 \begin{tabular}{|L{2.05cm}|L{2.55cm}|C{1.0cm}|C{1.0cm}|C{1.0cm}|*{3}{C{1.55cm}|}}
 \hline
 \textbf{Kịch bản} & \textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{AUROC-OOD} & \textbf{AUPR-Out} & \textbf{\makecell{FPR@\\95\%TPR}} \\ \hline
-\multirow{9}{*}{BTXRD} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9142 & \cellcolor{gray!12}0{,}8873 & \cellcolor{gray!12}0{,}4773 \\ \cline{2-8}
+\multirow{12}{*}{BTXRD} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}42 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9142 & \cellcolor{gray!12}0{,}8873 & \cellcolor{gray!12}0{,}4773 \\ \cline{2-8}
  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}123 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9490 & \cellcolor{gray!12}0{,}9214 & \cellcolor{gray!12}0{,}2520 \\ \cline{2-8}
  & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}456 & \cellcolor{gray!12}669 & \cellcolor{gray!12}750 & \cellcolor{gray!12}0{,}9330 & \cellcolor{gray!12}0{,}9069 & \cellcolor{gray!12}0{,}3520 \\ \cline{2-8}
- & Chỉ pha 2 & 42 & 669 & 750 & 0{,}9536 & 0{,}9250 & 0{,}2693 \\ \cline{2-8}
- & Chỉ pha 2 & 123 & 669 & 750 & 0{,}9553 & 0{,}9361 & 0{,}2307 \\ \cline{2-8}
- & Chỉ pha 2 & 456 & 669 & 750 & 0{,}9450 & 0{,}9256 & 0{,}2427 \\ \cline{2-8}
- & Nối đặc trưng & 42 & 669 & 750 & 0{,}9336 & 0{,}9054 & 0{,}4347 \\ \cline{2-8}
- & Nối đặc trưng & 123 & 669 & 750 & 0{,}9422 & 0{,}9094 & 0{,}4867 \\ \cline{2-8}
- & Nối đặc trưng & 456 & 669 & 750 & 0{,}9418 & 0{,}9096 & 0{,}3653 \\ \hline
+ & BioMedCLIP (FFT) & 42 & 669 & 750 & 0{,}9972 & 0{,}9960 & 0{,}0013 \\ \cline{2-8}
+ & BioMedCLIP (FFT) & 123 & 669 & 750 & 0{,}9934 & 0{,}9923 & 0{,}0013 \\ \cline{2-8}
+ & BioMedCLIP (FFT) & 456 & 669 & 750 & 0{,}9660 & 0{,}9490 & 0{,}2280 \\ \cline{2-8}
+ & Chỉ pha 2 & 42 & 669 & 750 & 0{,}9406 & 0{,}9107 & 0{,}3573 \\ \cline{2-8}
+ & Chỉ pha 2 & 123 & 669 & 750 & 0{,}9424 & 0{,}9242 & 0{,}2973 \\ \cline{2-8}
+ & Chỉ pha 2 & 456 & 669 & 750 & 0{,}9219 & 0{,}8893 & 0{,}5227 \\ \cline{2-8}
+ & Nối đặc trưng & 42 & 669 & 750 & 0{,}9202 & 0{,}8955 & 0{,}4400 \\ \cline{2-8}
+ & Nối đặc trưng & 123 & 669 & 750 & 0{,}9320 & 0{,}9005 & 0{,}5360 \\ \cline{2-8}
+ & Nối đặc trưng & 456 & 669 & 750 & 0{,}9268 & 0{,}8964 & 0{,}4120 \\ \hline
 \end{tabular}%
 }
 \caption{Kết quả cảnh báo OOD của từng hạt giống trên kịch bản BTXRD bằng điểm tổ hợp đa phương thức}

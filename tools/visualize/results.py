@@ -70,6 +70,69 @@ CONFIG_DISPLAY_NAMES = {
     "proposed": "XBone-Net",
 }
 
+CANONICAL_MODEL_ORDER: dict[str, int] = {
+    # 1. ResNet
+    "fft_resnet50": 10,
+    "resnet50": 10,
+    "resnet": 10,
+    "ResNet-50": 10,
+    "ResNet": 10,
+
+    # 2. DenseNet
+    "fft_densenet": 20,
+    "densenet": 20,
+    "DenseNet-121": 20,
+    "DenseNet": 20,
+
+    # 3. CLIP
+    "clip_zeroshot": 30,
+    "fft_clip": 30,
+    "clip": 30,
+    "CLIP": 30,
+
+    # 4. MedCLIP
+    "medclip_zeroshot": 40,
+    "fft_medclip": 40,
+    "medclip": 40,
+    "MedCLIP": 40,
+
+    # 5. PubMedCLIP
+    "pubmedclip_zeroshot": 50,
+    "fft_pubmedclip": 50,
+    "lora_pubmedclip": 51,
+    "pubmedclip": 50,
+    "PubMedCLIP": 50,
+    "LoRA-PubMedCLIP": 51,
+
+    # 6. BiomedCLIP
+    "biomedclip_zeroshot": 60,
+    "fft_biomedclip": 60,
+    "lora_biomedclip": 61,
+    "biomedclip": 60,
+    "BiomedCLIP": 60,
+    "LoRA-BiomedCLIP": 61,
+
+    # 7. XBone-Net
+    "ours_xbone_net": 70,
+    "ours_xbone_net_v2": 71,
+    "ours_xbone_net_v3": 72,
+    "proposed": 70,
+    "XBone-Net": 70,
+    "XBone-Net v2": 71,
+    "XBone-Net v3": 72,
+}
+
+
+def get_model_order_key(config_or_name: Any) -> int:
+    """Trả về thứ tự ưu tiên sắp xếp cho mô hình."""
+    s = str(config_or_name).strip()
+    if s in CANONICAL_MODEL_ORDER:
+        return CANONICAL_MODEL_ORDER[s]
+    s_lower = s.lower()
+    if s_lower in CANONICAL_MODEL_ORDER:
+        return CANONICAL_MODEL_ORDER[s_lower]
+    return 999
+
 
 def resolve_path(path: str | Path) -> Path:
     """Xác định đường dẫn tuyệt đối của tài nguyên.
@@ -587,12 +650,20 @@ def generate_latex_table(
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
     frame = frame.copy()
+    if "config" in frame.columns:
+        frame["_model_rank"] = frame["config"].map(get_model_order_key)
+    elif "model" in frame.columns:
+        frame["_model_rank"] = frame["model"].map(get_model_order_key)
+    else:
+        frame["_model_rank"] = 0
+
     if "category" in frame.columns:
         frame["_cat_rank"] = frame["category"].map(_shot_sort_key)
-        if "dataset" in frame.columns:
-            frame = frame.sort_values(by=["dataset", "_cat_rank"], kind="stable").drop(columns=["_cat_rank"]).reset_index(drop=True)
-        else:
-            frame = frame.sort_values(by=["_cat_rank"], kind="stable").drop(columns=["_cat_rank"]).reset_index(drop=True)
+        sort_cols = ["dataset", "_cat_rank", "_model_rank"] if "dataset" in frame.columns else ["_cat_rank", "_model_rank"]
+        frame = frame.sort_values(by=sort_cols, kind="stable").drop(columns=["_cat_rank", "_model_rank"]).reset_index(drop=True)
+    else:
+        sort_cols = ["dataset", "_model_rank"] if "dataset" in frame.columns else ["_model_rank"]
+        frame = frame.sort_values(by=sort_cols, kind="stable").drop(columns=["_model_rank"]).reset_index(drop=True)
 
     selected = list(columns)
     if not selected:
@@ -2829,16 +2900,16 @@ def plot_full_shot_comparison(
             "#e377c2",
         ),
         (
-            "fft_medclip",
-            "Baselines / Full fine-tuning",
-            "MedCLIP",
-            "#bcbd22",
-        ),
-        (
             "fft_clip",
             "Baselines / Full fine-tuning",
             "CLIP",
             REPORT_PALETTE["purple"],
+        ),
+        (
+            "fft_medclip",
+            "Baselines / Full fine-tuning",
+            "MedCLIP",
+            "#bcbd22",
         ),
         (
             "fft_pubmedclip",
@@ -2967,14 +3038,14 @@ def plot_full_shot_comparison(
 
 
 FULL_SHOT_BASELINE_ORDER = (
-    "lora_biomedclip",
-    "lora_pubmedclip",
-    "fft_biomedclip",
-    "fft_pubmedclip",
-    "fft_clip",
-    "fft_medclip",
     "fft_resnet50",
     "fft_densenet",
+    "fft_clip",
+    "fft_medclip",
+    "fft_pubmedclip",
+    "fft_biomedclip",
+    "lora_pubmedclip",
+    "lora_biomedclip",
 )
 
 
@@ -3783,7 +3854,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=(
             DEFAULT_RESULTS_ROOT
-            / "ctch/proposed/ours_xbone_net/analysis/aggregated_results.json"
+            / "summary/ood/ood_benchmark_summary.json"
         ),
     )
     ood_cmd.add_argument(
@@ -3794,12 +3865,8 @@ def _build_parser() -> argparse.ArgumentParser:
     ood_cmd.add_argument(
         "--methods",
         nargs="+",
-        default=[
-            "cosine_centroids",
-            "mahalanobis_centroid",
-            "knn",
-            "entropy",
-        ],
+        choices=["multimodal_ensemble"],
+        default=["multimodal_ensemble"],
     )
     ood_cmd.add_argument(
         "--csv-output",
@@ -3824,7 +3891,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=(
             DEFAULT_RESULTS_ROOT
-            / "ctch/proposed/ours_xbone_net/analysis/aggregated_results.json"
+            / "summary/ood/ood_benchmark_summary.json"
         ),
     )
     ood_metrics.add_argument(
@@ -3834,8 +3901,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ood_metrics.add_argument(
         "--method",
-        default="mahalanobis_centroid",
-        choices=["cosine_centroids", "mahalanobis_centroid", "knn", "entropy"],
+        default="multimodal_ensemble",
+        choices=["multimodal_ensemble"],
     )
     ood_metrics.add_argument("--title", default=None)
     ood_metrics.add_argument("--dpi", type=int, default=300)
@@ -3844,7 +3911,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=(
             DEFAULT_RESULTS_ROOT
-            / "summary/ood/mahalanobis_semantic_btxrd_metrics.png"
+            / "summary/ood/multimodal_ensemble_semantic_btxrd_metrics.png"
         ),
     )
 
@@ -3857,7 +3924,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=(
             DEFAULT_RESULTS_ROOT
-            / "ctch/proposed/ours_xbone_net/analysis/aggregated_results.json"
+            / "summary/ood/ood_benchmark_summary.json"
         ),
     )
     ood_heatmaps.add_argument(
@@ -3868,12 +3935,8 @@ def _build_parser() -> argparse.ArgumentParser:
     ood_heatmaps.add_argument(
         "--methods",
         nargs="+",
-        default=[
-            "cosine_centroids",
-            "mahalanobis_centroid",
-            "knn",
-            "entropy",
-        ],
+        choices=["multimodal_ensemble"],
+        default=["multimodal_ensemble"],
     )
     ood_heatmaps.add_argument(
         "--output-dir",
@@ -4071,6 +4134,11 @@ def _build_parser() -> argparse.ArgumentParser:
     ablation_statistics.add_argument("--alpha", type=float, default=0.05)
     ablation_statistics.add_argument("--random-seed", type=int, default=2026)
     ablation_statistics.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Generate statistical tables and protocol without forest plots.",
+    )
+    ablation_statistics.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_RESULTS_ROOT / "summary" / "ablation" / "statistics",
@@ -4139,8 +4207,8 @@ def generate_full_shot_classification_tables(
     models = [
         "fft_resnet50",
         "fft_densenet",
-        "fft_medclip",
         "fft_clip",
+        "fft_medclip",
         "fft_pubmedclip",
         "fft_biomedclip",
         "ours_xbone_net",
@@ -4149,6 +4217,11 @@ def generate_full_shot_classification_tables(
         frame["config"].isin(models)
         & frame["category"].isin(["Baselines / Full fine-tuning", "Proposed"])
     ].copy()
+    frame["_model_rank"] = frame["config"].map(get_model_order_key)
+    if "dataset" in frame.columns:
+        frame = frame.sort_values(by=["dataset", "_model_rank"], kind="stable").drop(columns=["_model_rank"]).reset_index(drop=True)
+    else:
+        frame = frame.sort_values(by=["_model_rank"], kind="stable").drop(columns=["_model_rank"]).reset_index(drop=True)
 
     # 1. Bảng phân loại: Acc, BAcc, Macro-F1
     cls_cols = ["dataset", "config", "accuracy_mean", "balanced_accuracy_mean", "f1_macro_mean"]
@@ -4535,59 +4608,13 @@ def generate_few_shot_efficiency_table(output_file: Path) -> None:
     print(f"Few-shot efficiency tables (split into 2) saved to: {output_file}")
 
 
-def _generate_ood_table_legacy(output_file: Path) -> None:
-    """Sinh ood table legacy cho bước xử lý hiện tại.
-
-    Parameters
-    ----------
-    output_file : Path
-        Đường dẫn tài nguyên được sử dụng.
-    """
-    lines = [
-        r"\begin{table}[H]",
-        r"\centering",
-        r"\small",
-        r"\begin{tabular}{|l|l|c|c|c|}",
-        r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Kịch bản}} & \multicolumn{1}{c|}{\textbf{Phương pháp}} & \multicolumn{1}{c|}{\textbf{AUROC-OOD $\uparrow$}} & \multicolumn{1}{c|}{\textbf{AUPR-Out $\uparrow$}} & \multicolumn{1}{c|}{\textbf{FPR@95\%TPR $\downarrow$}} \\ \hline",
-        r"\multirow{6}{*}{Semantic OOD}",
-        r"& \textbf{Mahalanobis} & $\mathbf{0{.}6070\pm0{.}0123}$ & $\mathbf{0{.}5892\pm0{.}0145}$ & $\mathbf{0{.}8939\pm0{.}0572}$ \\ \cline{2-5}",
-        r"& kNN         & $0{.}6046\pm0{.}0199$ & $0{.}5810\pm0{.}0182$ & $0{.}9015\pm0{.}0262$ \\ \cline{2-5}",
-        r"& MSP         & $0{.}5672\pm0{.}0040$ & $0{.}5420\pm0{.}0085$ & $0{.}9242\pm0{.}0131$ \\ \cline{2-5}",
-        r"& Entropy     & $0{.}5719\pm0{.}0072$ & $0{.}5488\pm0{.}0090$ & $0{.}9394\pm0{.}0347$ \\ \cline{2-5}",
-        r"& Energy      & $0{.}5962\pm0{.}0232$ & $0{.}5735\pm0{.}0210$ & $0{.}9242\pm0{.}0131$ \\ \cline{2-5}",
-        r"& Max-logit   & $0{.}5968\pm0{.}0235$ & $0{.}5740\pm0{.}0215$ & $0{.}9242\pm0{.}0131$ \\ \hline",
-        r"\multirow{2}{*}{Cross-dataset OOD--BTXRD}",
-        r"& \textbf{Mahalanobis} & $\mathbf{0{.}8429\pm0{.}0208}$ & $\mathbf{0{.}8240\pm0{.}0225}$ & $\mathbf{0{.}6533\pm0{.}0335}$ \\ \cline{2-5}",
-        r"& kNN         & $0{.}7843\pm0{.}0140$ & $0{.}7610\pm0{.}0152$ & $0{.}7831\pm0{.}0104$ \\ \hline",
-        r"\multirow{6}{*}{Bệnh sử không tương hợp khác lớp}",
-        r"& Mahalanobis & $0{.}7106\pm0{.}0091$ & $0{.}6912\pm0{.}0105$ & $0{.}8032\pm0{.}0238$ \\ \cline{2-5}",
-        r"& \textbf{kNN} & $\mathbf{0{.}7412\pm0{.}0119}$ & $\mathbf{0{.}7250\pm0{.}0130}$ & $\mathbf{0{.}7519\pm0{.}0312}$ \\ \cline{2-5}",
-        r"& MSP         & $0{.}6350\pm0{.}0059$ & $0{.}6120\pm0{.}0070$ & $0{.}8974\pm0{.}0195$ \\ \cline{2-5}",
-        r"& Entropy     & $0{.}6575\pm0{.}0129$ & $0{.}6340\pm0{.}0140$ & $0{.}8640\pm0{.}0220$ \\ \cline{2-5}",
-        r"& Energy      & $0{.}7293\pm0{.}0101$ & $0{.}7105\pm0{.}0110$ & $0{.}8191\pm0{.}0113$ \\ \cline{2-5}",
-        r"& Max-logit   & $0{.}7253\pm0{.}0122$ & $0{.}7080\pm0{.}0132$ & $0{.}8231\pm0{.}0242$ \\ \hline",
-        r"\end{tabular}",
-        r"\caption{Kết quả OOD hậu xử lý của XBone-Net trên CTCH; chữ đậm biểu thị kết quả tốt nhất trong từng kịch bản chính}",
-        r"\label{tab:ood_canonical_results}",
-        r"\end{table}",
-    ]
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    with output_file.open("w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
-    print(f"OOD summary table saved to: {output_file}")
-
-
 OOD_SCENARIO_NAMES = {
     "semantic_ood": "OOD ngữ nghĩa",
     "domain_ood_btxrd": "BTXRD",
 }
 
 OOD_METHOD_NAMES = {
-    "cosine_centroids": "Cosine theo tâm lớp",
-    "mahalanobis_centroid": "Mahalanobis theo tâm lớp",
-    "knn": "kNN",
-    "entropy": "Entropy",
+    "multimodal_ensemble": "Ensemble đa phương thức",
 }
 
 OOD_METRICS = {
@@ -4970,12 +4997,12 @@ def generate_ablation_ood_table(
 
     root_path = resolve_path(results_root)
     experiments = [
-        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net (Đề xuất)"},
+        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
     ]
     scenarios = [
-        {"name": "OOD CTCH (26 ca ngoại lai)", "file": "ctch_ood.npz"},
+        {"name": "OOD CTCH", "file": "ctch_ood.npz"},
         {"name": "BTXRD", "file": "btxrd_test.npz"},
     ]
 
@@ -5000,7 +5027,6 @@ def generate_ablation_ood_table(
                 knn_k=10, knn_reduction="kth"
             ).fit(
                 visual_embeddings=train["visual_global_embeddings"],
-                labels=train["labels"],
                 text_embeddings=train.get("text_global_embeddings"),
                 val_visual_embeddings=val["visual_global_embeddings"],
                 val_text_embeddings=val.get("text_global_embeddings"),
@@ -5026,17 +5052,19 @@ def generate_ablation_ood_table(
                 )
 
     lines = [
-        r"\begin{table}[H]",
+        r"% Please add the following required packages to your document preamble:",
+        r"% \usepackage{multirow}",
+        r"% \usepackage{graphicx}",
+        r"\begin{table}[htbp]",
         r"\centering",
-        r"\small",
-        r"\resizebox{\columnwidth}{!}{%",
+        r"\resizebox{\textwidth}{!}{%",
         r"\begin{tabular}{|l|l|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Kịch bản}} & "
-        r"\multicolumn{1}{c|}{\textbf{Biểu diễn}} & "
-        r"\textbf{AUROC-OOD $\uparrow$} & "
-        r"\textbf{AUPR-Out $\uparrow$} & "
-        r"\textbf{FPR@95\%TPR $\downarrow$} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Kịch bản}} &",
+        r"  \multicolumn{1}{c|}{\textbf{Cấu hình}} &",
+        r"  \textbf{AUROC-OOD $\uparrow$} &",
+        r"  \textbf{AUPR-Out $\uparrow$} &",
+        r"  \textbf{FPR@95\%TPR $\downarrow$} \\ \hline",
     ]
 
     for sc_idx, sc in enumerate(scenarios):
@@ -5106,7 +5134,7 @@ def generate_ablation_ood_table(
         [
             r"\end{tabular}%",
             r"}",
-            r"\caption{Đánh giá khả năng phát hiện OOD (Multi-modal Ensemble) giữa các biến thể kiến trúc}",
+            r"\caption{Đánh giá cảnh báo OOD hậu xử lý của XBone-Net và hai biến thể}",
             r"\label{tab:ablation_ood}",
             r"\end{table}",
             "",
@@ -5132,7 +5160,7 @@ def generate_ablation_explainability_table(
     """Sinh bảng so sánh chỉ số giải thích tích phân gradient giữa các biến thể ablation theo định dạng chuẩn."""
     root_path = resolve_path(results_root)
     experiments = [
-        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net (Đề xuất)"},
+        {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
     ]
@@ -5144,103 +5172,79 @@ def generate_ablation_explainability_table(
             summaries[item["label"]] = json.load(f)
 
     lines = [
-        r"\begin{table}[H]",
+        r"% Please add the following required packages to your document preamble:",
+        r"% \usepackage{multirow}",
+        r"% \usepackage{graphicx}",
+        r"\begin{table}[htbp]",
         r"\centering",
-        r"\small",
         r"\resizebox{\textwidth}{!}{%",
         r"\begin{tabular}{|l|l|c|c|c|}",
         r"\hline",
-        r"\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} & "
-        r"\multicolumn{1}{c|}{\textbf{Chỉ số}} & "
-        r"\multicolumn{1}{c|}{\cellcolor{gray!12}\textbf{XBone-Net}} & "
-        r"\multicolumn{1}{c|}{\textbf{Chỉ pha 2}} & "
-        r"\multicolumn{1}{c|}{\textbf{Nối đặc trưng}} \\ \hline",
+        r"\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} &",
+        r"  \multicolumn{1}{c|}{\textbf{Chỉ số}} &",
+        r"  \cellcolor{gray!12}\textbf{XBone-Net} &",
+        r"  \textbf{Chỉ pha 2} &",
+        r"  \textbf{Nối đặc trưng} \\ \hline",
     ]
 
     # Group 1: Text Faithfulness
     lines.append(
-        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\Văn bản lâm sàng\end{tabular}} & "
+        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ văn bản lâm sàng\end{tabular}} & "
         r"AUC Khôi phục theo IG $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
         rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ & "
         rf"${summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
     )
     lines.append(
-        r" & $\Delta\text{AUC}$ (Ngẫu nhiên $-$ IG) $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{+{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
-        rf"$\mathbf{{+{summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
-        rf"$+{summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
-    )
-    lines.append(
         r" & AUC Loại bỏ theo IG $\downarrow$ & "
-        rf"\cellcolor{{gray!12}}${summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
         rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
         rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
     )
 
     # Group 2: Image Faithfulness
     lines.append(
-        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\Ảnh X-quang\end{tabular}} & "
+        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực \\ ảnh X-quang\end{tabular}} & "
         r"AUC Khôi phục theo IG $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
+        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}$ & "
         rf"$\mathbf{{{summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
         rf"${summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
     )
     lines.append(
-        r" & $\Delta\text{AUC}$ (Ngẫu nhiên $-$ IG) $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{+{summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}}}$ & "
-        rf"$+{summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ & "
-        rf"$+{summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.random_minus_targeted_deletion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
-    )
-    lines.append(
         r" & AUC Loại bỏ theo IG $\downarrow$ & "
-        rf"\cellcolor{{gray!12}}${summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
+        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
         rf"${summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
         rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
     )
 
     # Group 3: Source Intervention
-    drop_img_xbone = summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
+    drop_img_xbone = summaries['XBone-Net']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
     drop_img_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
     drop_img_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
 
-    drop_txt_xbone = summaries['XBone-Net (Đề xuất)']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
+    drop_txt_xbone = summaries['XBone-Net']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
     drop_txt_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
     drop_txt_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
 
-    dom_xbone = summaries['XBone-Net (Đề xuất)']['source_role_summary']['dominant_source_counts']
-    dom_p2 = summaries['Chỉ pha 2']['source_role_summary']['dominant_source_counts']
-    dom_concat = summaries['Nối đặc trưng']['source_role_summary']['dominant_source_counts']
-
-    pct_img_xbone = dom_xbone['global_image'] / (dom_xbone['global_image'] + dom_xbone['clinical_text']) * 100
-    pct_img_p2 = dom_p2['global_image'] / (dom_p2['global_image'] + dom_p2['clinical_text']) * 100
-    pct_img_concat = dom_concat['global_image'] / (dom_concat['global_image'] + dom_concat['clinical_text']) * 100
-
     lines.append(
-        r"\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\thông tin\end{tabular}} & "
-        r"Mức giảm xác suất khi che Ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_img_xbone:.4f}}}$ (${drop_img_xbone*100:.2f}\%$) & "
-        rf"${drop_img_p2:.4f}$ (${drop_img_p2*100:.2f}\%$) & "
-        rf"${drop_img_concat:.4f}$ (${drop_img_concat*100:.2f}\%$) \\ \cline{{2-5}}"
+        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\ thông tin\end{tabular}} & "
+        r"\begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$\end{tabular} & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_img_xbone:.4f}}}$ & "
+        rf"${drop_img_p2:.4f}$ & "
+        rf"${drop_img_concat:.4f}$ \\ \cline{{2-5}}"
     )
     lines.append(
-        r" & Mức giảm xác suất khi che Văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_txt_xbone:.4f}}}$ (${drop_txt_xbone*100:.2f}\%$) & "
-        rf"${drop_txt_p2:.4f}$ (${drop_txt_p2*100:.2f}\%$) & "
-        rf"${drop_txt_concat:.4f}$ (${drop_txt_concat*100:.2f}\%$) \\ \cline{{2-5}}"
-    )
-    lines.append(
-        r" & Tỷ lệ ca có Ảnh chi phối lớn nhất & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{pct_img_xbone:.2f}\%}}$ (${dom_xbone['global_image']}/44$) & "
-        rf"${pct_img_p2:.2f}\%$ (${dom_p2['global_image']}/44$) & "
-        rf"${pct_img_concat:.2f}\%$ (${dom_concat['global_image']}/44$) \\ \hline"
+        r" & \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$\end{tabular} & "
+        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_txt_xbone:.4f}}}$ & "
+        rf"${drop_txt_p2:.4f}$ & "
+        rf"${drop_txt_concat:.4f}$ \\ \hline"
     )
 
     lines.extend(
         [
             r"\end{tabular}%",
             r"}",
-            r"\caption{Đánh giá độ trung thực giải thích (IG) và can thiệp nguồn giữa các biến thể kiến trúc}",
+            r"\caption{Đánh giá IG và can thiệp nguồn của XBone-Net và hai biến thể trên 44 mẫu ở hạt giống 42}",
             r"\label{tab:ablation_explainability}",
             r"\end{table}",
             "",
@@ -5318,8 +5322,6 @@ def _classification_metric_values(
     ValueError
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
-    from sklearn.metrics import average_precision_score, roc_auc_score
-
     probabilities = np.asarray(probabilities, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.int64).reshape(-1)
     if probabilities.ndim != 2 or len(probabilities) != len(labels):
@@ -5329,7 +5331,6 @@ def _classification_metric_values(
         raise ValueError("Probability rows must have positive sums.")
     probabilities = probabilities / row_sums
     predictions = probabilities.argmax(axis=1)
-    class_order = np.arange(probabilities.shape[1])
     requested = set(metrics)
     values: dict[str, float] = {}
 
@@ -5363,38 +5364,17 @@ def _classification_metric_values(
             values["f1_macro"] = float(per_class_f1.mean())
 
     if "auroc_macro" in requested or "auprc_macro" in requested:
-        aurocs: list[float] = []
-        auprcs: list[float] = []
-        for class_id in class_order:
-            binary_labels = (labels == class_id).astype(np.int64)
-            if np.unique(binary_labels).size < 2:
-                continue
-            if "auroc_macro" in requested:
-                aurocs.append(
-                    float(
-                        roc_auc_score(
-                            binary_labels,
-                            probabilities[:, class_id],
-                        )
-                    )
-                )
-            if "auprc_macro" in requested:
-                auprcs.append(
-                    float(
-                        average_precision_score(
-                            binary_labels,
-                            probabilities[:, class_id],
-                        )
-                    )
-                )
+        rank_cache = _prepare_rank_metric_cache(probabilities, labels)
+        auroc, auprc = _weighted_rank_metrics(
+            rank_cache,
+            np.ones(len(labels), dtype=np.float64),
+            need_auroc="auroc_macro" in requested,
+            need_auprc="auprc_macro" in requested,
+        )
         if "auroc_macro" in requested:
-            values["auroc_macro"] = (
-                float(np.mean(aurocs)) if aurocs else float("nan")
-            )
+            values["auroc_macro"] = auroc
         if "auprc_macro" in requested:
-            values["auprc_macro"] = (
-                float(np.mean(auprcs)) if auprcs else float("nan")
-            )
+            values["auprc_macro"] = auprc
 
     if "ece_15" in requested:
         confidence = probabilities.max(axis=1)
@@ -6234,6 +6214,24 @@ def _format_p_value(value: float) -> str:
     return f"${value:.3f}$".replace(".", "{.}")
 
 
+def _holm_adjust_p_values(p_values: np.ndarray) -> np.ndarray:
+    """Hiệu chỉnh Holm và trả kết quả theo thứ tự đầu vào."""
+    values = np.asarray(p_values, dtype=np.float64)
+    if values.ndim != 1:
+        raise ValueError("Holm correction expects a one-dimensional array.")
+    order = np.argsort(values)
+    adjusted_sorted = np.empty_like(values)
+    running_max = 0.0
+    count = len(values)
+    for rank, index in enumerate(order):
+        candidate = min(1.0, (count - rank) * float(values[index]))
+        running_max = max(running_max, candidate)
+        adjusted_sorted[rank] = running_max
+    adjusted = np.empty_like(values)
+    adjusted[order] = adjusted_sorted
+    return adjusted
+
+
 def generate_paired_statistics_latex(
     frame: pd.DataFrame,
     output: str | Path,
@@ -6259,57 +6257,33 @@ def generate_paired_statistics_latex(
     required = (
         "variant",
         "metric",
-        "reference_mean",
-        "reference_ci_low",
-        "reference_ci_high",
-        "variant_mean",
-        "variant_ci_low",
-        "variant_ci_high",
         "delta_mean",
-        "delta_ci_low",
-        "delta_ci_high",
-        "p_raw",
+        "p_holm",
     )
     _require_columns(frame, required)
 
-    def estimate(mean: float, lower: float, upper: float) -> str:
-        """Ước lượng kết quả cho bước xử lý hiện tại.
+    def signed_delta(value: float) -> str:
+        """Định dạng chênh lệch có dấu với dấu phẩy thập phân."""
+        return f"${value:+.{precision}f}$".replace(".", "{,}")
 
-        Parameters
-        ----------
-        mean : float
-            Giá trị ``mean`` được sử dụng trong phép xử lý.
-        lower : float
-            Giá trị ``lower`` được sử dụng trong phép xử lý.
-        upper : float
-            Giá trị ``upper`` được sử dụng trong phép xử lý.
-
-        Returns
-        -------
-        str
-            Kết quả được tạo bởi bước xử lý của hàm.
-        """
-        return (
-            f"${mean:.{precision}f}$ "
-            f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
-        ).replace(".", "{.}")
+    def holm_p_value(value: float) -> str:
+        """Định dạng giá trị xác suất Holm với dấu phẩy thập phân."""
+        if value < 0.001:
+            return r"$<0{,}001$"
+        return f"${value:.3f}$".replace(".", "{,}")
 
     lines = [
         r"\begin{table}[H]",
         r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{3.5pt}",
-        r"\renewcommand{\arraystretch}{1.12}",
-        r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{llcccc}",
+        r"\small",
+        r"\renewcommand{\arraystretch}{1.15}",
+        r"\begin{tabular}{llcc}",
         r"\toprule",
         (
             r"\multicolumn{1}{c}{\textbf{Biến thể}} & "
             r"\multicolumn{1}{c}{\textbf{Độ đo}} & "
-            r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$p$}} \\"
+            r"\multicolumn{1}{c}{\textbf{$\Delta$}} & "
+            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
         ),
         r"\midrule",
     ]
@@ -6325,30 +6299,21 @@ def generate_paired_statistics_latex(
             metric_label = str(
                 PAIRED_STATISTIC_METRICS[str(row["metric"])]["latex"]
             )
-            delta_text = estimate(
-                float(row["delta_mean"]),
-                float(row["delta_ci_low"]),
-                float(row["delta_ci_high"]),
-            )
-            if float(row["p_raw"]) < 0.05:
-                delta_text = rf"\textbf{{{delta_text}}}"
+            delta_value = float(row["delta_mean"])
+            p_value = float(row["p_holm"])
+            delta_text = signed_delta(delta_value)
+            p_text = holm_p_value(p_value)
+            if p_value < 0.05:
+                color = "200, 0, 0" if delta_value > 0.0 else "0, 135, 0"
+                delta_text = rf"\textcolor[RGB]{{{color}}}{{\textbf{{{delta_text}}}}}"
+                p_text = rf"\textcolor[RGB]{{{color}}}{{\textbf{{{p_text}}}}}"
             lines.append(
                 " & ".join(
                     (
                         variant_cell,
                         metric_label,
-                        estimate(
-                            float(row["reference_mean"]),
-                            float(row["reference_ci_low"]),
-                            float(row["reference_ci_high"]),
-                        ),
-                        estimate(
-                            float(row["variant_mean"]),
-                            float(row["variant_ci_low"]),
-                            float(row["variant_ci_high"]),
-                        ),
                         delta_text,
-                        _format_p_value(float(row["p_raw"])),
+                        p_text,
                     )
                 )
                 + r" \\"
@@ -6359,13 +6324,13 @@ def generate_paired_statistics_latex(
         [
             r"\bottomrule",
             r"\end{tabular}%",
-            r"}",
             (
                 r"\caption{So sánh thống kê ghép cặp giữa XBone-Net và các "
-                r"biến thể leave-one-out. Giá trị trong ngoặc vuông là khoảng "
-                r"tin cậy bootstrap 95\%; $\Delta$ được tính bằng biến thể trừ "
-                r"XBone-Net. Giá trị $p$ thô thu được từ phép kiểm định ghép "
-                r"cặp và chưa được hiệu chỉnh cho nhiều phép so sánh.}"
+                r"biến thể loại bỏ thành phần. $\Delta$ được tính bằng biến thể "
+                r"trừ XBone-Net. Màu xanh lá biểu thị XBone-Net tốt hơn có ý "
+                r"nghĩa thống kê. Màu đỏ biểu thị biến thể tốt hơn có ý nghĩa "
+                r"thống kê. Văn bản thường biểu thị khác biệt chưa có ý nghĩa "
+                r"thống kê sau hiệu chỉnh Holm.}"
             ),
             r"\label{tab:ablation_paired_statistics}",
             r"\end{table}",
@@ -6433,7 +6398,7 @@ def generate_paired_metric_latex(
         """
         return (
             f"${mean:.{precision}f}$ "
-            f"$[{lower:.{precision}f};{upper:.{precision}f}]$"
+            f"$[{lower:.{precision}f}, {upper:.{precision}f}]$"
         ).replace(".", "{.}")
 
     label = str(PAIRED_STATISTIC_METRICS[metric]["latex"])
@@ -6448,10 +6413,10 @@ def generate_paired_metric_latex(
         r"\toprule",
         (
             r"\multicolumn{1}{c}{\textbf{Biến thể}} & "
-            r"\multicolumn{1}{c}{\textbf{XBone-Net [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{Biến thể [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$\Delta$ [KTC 95\%]}} & "
-            r"\multicolumn{1}{c}{\textbf{$p$}} \\"
+            r"\multicolumn{1}{c}{\shortstack{\textbf{XBone-Net}\\\textbf{[Khoảng tin cậy 95\%]}}} & "
+            r"\multicolumn{1}{c}{\shortstack{\textbf{Biến thể}\\\textbf{[Khoảng tin cậy 95\%]}}} & "
+            r"\multicolumn{1}{c}{\shortstack{\textbf{$\Delta$}\\\textbf{[Khoảng tin cậy 95\%]}}} & "
+            r"\multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\"
         ),
         r"\midrule",
     ]
@@ -6461,7 +6426,13 @@ def generate_paired_metric_latex(
             float(row["delta_ci_low"]),
             float(row["delta_ci_high"]),
         )
-        if float(row["p_raw"]) < 0.05:
+        if (
+            float(row["p_holm"]) < 0.05
+            and (
+                float(row["delta_ci_low"]) > 0.0
+                or float(row["delta_ci_high"]) < 0.0
+            )
+        ):
             delta = rf"\textbf{{{delta}}}"
         lines.append(
             " & ".join(
@@ -6478,7 +6449,7 @@ def generate_paired_metric_latex(
                         float(row["variant_ci_high"]),
                     ),
                     delta,
-                    _format_p_value(float(row["p_raw"])),
+                    _format_p_value(float(row["p_holm"])),
                 )
             )
             + r" \\"
@@ -6490,11 +6461,11 @@ def generate_paired_metric_latex(
             r"}",
             (
                 rf"\caption{{So sánh ghép cặp {label} giữa XBone-Net và các "
-                r"biến thể leave-one-out trên CTCH. Khoảng tin cậy 95\% được "
+                r"biến thể loại bỏ thành phần trên CTCH. Khoảng tin cậy 95\% được "
                 r"ước lượng theo từng phép so sánh (pointwise) bằng bootstrap "
                 r"phân tầng theo bệnh nhân và seed; "
-                r"$\Delta$ được tính bằng biến thể trừ XBone-Net. Giá trị $p$ "
-                r"là p-value thô và chưa được hiệu chỉnh cho nhiều phép so sánh.}"
+                r"$\Delta$ được tính bằng biến thể trừ XBone-Net. Giá trị "
+                r"$p_{\mathrm{Holm}}$ được hiệu chỉnh trong độ đo này cho hai biến thể.}"
             ),
             rf"\label{{tab:ablation_paired_{metric}}}",
             r"\end{table}",
@@ -6545,7 +6516,7 @@ def plot_ablation_forest(
         "delta_mean",
         "delta_ci_low",
         "delta_ci_high",
-        "p_raw",
+        "p_holm",
     )
     _require_columns(frame, required)
     plot_data = frame[frame["metric"].astype(str) == metric].copy()
@@ -6559,7 +6530,7 @@ def plot_ablation_forest(
     means = numeric_series(plot_data["delta_mean"]).to_numpy()
     lowers = numeric_series(plot_data["delta_ci_low"]).to_numpy()
     uppers = numeric_series(plot_data["delta_ci_high"]).to_numpy()
-    significant = numeric_series(plot_data["p_raw"]).to_numpy() < 0.05
+    significant = numeric_series(plot_data["p_holm"]).to_numpy() < 0.05
     higher_is_better = bool(
         PAIRED_STATISTIC_METRICS[metric]["higher_is_better"]
     )
@@ -6617,10 +6588,14 @@ def plot_ablation_forest(
     for position, upper, p_value in zip(
         positions,
         uppers,
-        numeric_series(plot_data["p_raw"]).to_numpy(),
+        numeric_series(plot_data["p_holm"]).to_numpy(),
     ):
         axis.annotate(
-            f"p={p_value:.3f}" if p_value >= 0.001 else "p<0.001",
+            (
+                f"p_Holm={p_value:.3f}"
+                if p_value >= 0.001
+                else "p_Holm<0.001"
+            ),
             xy=(upper, position),
             xytext=(6, 0),
             textcoords="offset points",
@@ -6687,6 +6662,7 @@ def run_leave_one_out_statistical_analysis(
     random_seed: int = 2026,
     test_method: str = "permutation",
     dpi: int = 300,
+    generate_plots: bool = True,
 ) -> dict[str, Path]:
     """Thực hiện leave one out statistical analysis cho bước xử lý hiện tại.
 
@@ -6784,7 +6760,14 @@ def run_leave_one_out_statistical_analysis(
             rows.append(row)
 
     frame = pd.DataFrame(rows)
+    frame["p_holm"] = np.nan
+    for metric in metrics:
+        mask = frame["metric"].astype(str) == str(metric)
+        frame.loc[mask, "p_holm"] = _holm_adjust_p_values(
+            frame.loc[mask, "p_raw"].to_numpy(dtype=float)
+        )
     frame["significant_raw"] = frame["p_raw"] < alpha
+    frame["significant_holm"] = frame["p_holm"] < alpha
     frame["ci_excludes_zero"] = (
         (frame["delta_ci_low"] > 0.0)
         | (frame["delta_ci_high"] < 0.0)
@@ -6829,7 +6812,8 @@ def run_leave_one_out_statistical_analysis(
             "n_permutations": (
                 int(n_permutations) if test_method == "permutation" else 0
             ),
-            "multiplicity_correction": "none; report pointwise raw p-values",
+            "multiplicity_correction": "Holm within each metric across variants",
+            "family_size": int(len(roots) - 1),
             "alpha": float(alpha),
         },
         "random_seed": int(random_seed),
@@ -6851,13 +6835,14 @@ def run_leave_one_out_statistical_analysis(
             metric=metric,
         )
         outputs[f"table_{metric}"] = metric_table
-        forest_output = plot_ablation_forest(
-            frame,
-            metric=metric,
-            output=destination_dir / f"forest_{metric}.png",
-            dpi=dpi,
-        )
-        outputs[f"forest_{metric}"] = forest_output
+        if generate_plots:
+            forest_output = plot_ablation_forest(
+                frame,
+                metric=metric,
+                output=destination_dir / f"forest_{metric}.png",
+                dpi=dpi,
+            )
+            outputs[f"forest_{metric}"] = forest_output
     return outputs
 
 
@@ -8399,6 +8384,55 @@ def load_aggregated_ood_frame(
     """
     source = resolve_path(input_file)
     payload = json.loads(source.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        records = [
+            record
+            for record in payload
+            if isinstance(record, Mapping)
+            and record.get("experiment") == "ctch/proposed/ours_xbone_net"
+        ]
+        if len(records) != 1:
+            raise ValueError(
+                "Expected exactly one CTCH XBone-Net record in benchmark "
+                f"summary: {source}"
+            )
+        record = records[0]
+        benchmark_aggregated = record.get("aggregated")
+        if not isinstance(benchmark_aggregated, Mapping):
+            raise ValueError(f"Missing aggregated benchmark results: {source}")
+        rows: list[dict[str, Any]] = []
+        for scenario in scenarios:
+            scenario_payload = benchmark_aggregated.get(scenario)
+            if not isinstance(scenario_payload, Mapping):
+                raise KeyError(
+                    f"OOD scenario '{scenario}' is missing from: {source}"
+                )
+            for method in methods:
+                metrics_payload = scenario_payload.get(method)
+                if not isinstance(metrics_payload, Mapping):
+                    raise KeyError(
+                        f"OOD method '{method}' is missing for scenario "
+                        f"'{scenario}' in: {source}"
+                    )
+                row: dict[str, Any] = {
+                    "scenario": OOD_SCENARIO_NAMES.get(scenario, scenario),
+                    "scenario_key": scenario,
+                    "method": OOD_METHOD_NAMES.get(method, method),
+                    "method_key": method,
+                    "num_seeds": len(record.get("seeds", [])),
+                }
+                for metric, metadata in OOD_METRICS.items():
+                    row[str(metadata["column"])] = float(
+                        metrics_payload[f"{metric}_mean"]
+                    )
+                    row[str(metadata["std_column"])] = float(
+                        metrics_payload[f"{metric}_std"]
+                    )
+                rows.append(row)
+        return pd.DataFrame(rows)
+
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"Unsupported aggregate result structure: {source}")
     ood_payload = payload.get("ood")
     if not isinstance(ood_payload, Mapping):
         raise ValueError(f"Missing 'ood' object in aggregate result: {source}")
@@ -8525,7 +8559,7 @@ def plot_ood_metric_summary(
     output: str | Path,
     *,
     scenarios: Sequence[str],
-    method: str = "mahalanobis_centroid",
+    method: str = "multimodal_ensemble",
     title: str | None = None,
     dpi: int = 300,
 ) -> Path:
@@ -8795,6 +8829,7 @@ def main() -> None:
             random_seed=args.random_seed,
             test_method=args.test_method,
             dpi=args.dpi,
+            generate_plots=not args.skip_plots,
         )
         for name, output in outputs.items():
             print(f"{name} saved to: {output}")

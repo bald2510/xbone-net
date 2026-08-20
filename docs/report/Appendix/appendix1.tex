@@ -223,7 +223,7 @@ Dữ liệu ban đầu gồm 12.949 bệnh án. Tuy nhiên, các hồ sơ này c
 \node[flowbox, below=of step3] (step4) {\textbf{4. Loại các ca tái khám}\quad Còn lại: 7.070 hồ sơ};
 \node[flowbox, below=of step4] (step5) {\textbf{5. Chỉ giữ lần khám đầu tiên}\quad Còn lại: 6.575 hồ sơ};
 \node[flowbox, below=of step5] (step6) {\textbf{6. Lọc và chuẩn hóa nhãn}\quad Còn lại: 3.641 hồ sơ};
-\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3.293 hồ sơ};
+\node[flowbox, below=of step6] (step7) {\textbf{7. Loại các hồ sơ có dụng cụ y tế}\quad Còn lại: 3.267 hồ sơ};
 \draw[flowarrow] (step1) -- (step2);
 \draw[flowarrow] (step2) -- (step3);
 \draw[flowarrow] (step3) -- (step4);
@@ -245,12 +245,12 @@ Bảng~\ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \begin{tabular}{|l|l|l|}
 \hline
 \textbf{Thành phần}                    & \textbf{Số lượng sử dụng} & \textbf{Vai trò}                          \\ \hline
-\texttt{images/}          & 3.293            & Lưu ảnh X-quang đầu vào được liên kết bởi manifest.                  \\ \hline
+\texttt{images/}          & 3.267            & Lưu ảnh X-quang đầu vào được liên kết bởi manifest.                  \\ \hline
 \texttt{reports/} &
-  \begin{tabular}[c]{@{}l@{}}3.293 cặp song ngữ \\ (6.586 tệp)\end{tabular}  &
+  \begin{tabular}[c]{@{}l@{}}3.267 cặp song ngữ \\ (6.534 tệp)\end{tabular}  &
   \begin{tabular}[c]{@{}l@{}}Mỗi ảnh được chọn có một bệnh sử lâm sàng \\ tiếng Việt và một bản tiếng Anh tương ứng.\end{tabular} \\ \hline
 \texttt{ctch-labels.csv} & 3.249           & Chứa định danh ảnh và 22 cột chỉ báo lớp. \\ \hline
-\texttt{ctch-ood.csv} & 44           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
+\texttt{ctch-ood.csv} & 18           & Chứa định danh và thông tin các mẫu ngoài phân phối. \\ \hline
 \texttt{ctch-split.csv} &
   3.249  &
   \begin{tabular}[c]{@{}l@{}}Ánh xạ mỗi ảnh vào \texttt{train}, \\ \texttt{validate} hoặc \texttt{test}.\end{tabular} \\ \hline
@@ -260,7 +260,7 @@ Bảng~\ref{tab:appendix-ctch-storage} mô tả các thành phần liên quan đ
 \label{tab:appendix-ctch-storage}
 \end{table}
 
-Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3.293 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3.293 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
+Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có định dạng đồng nhất. Toàn bộ 3.267 tệp lưu trữ đều có phần mở rộng JPEG và được mã hóa chuẩn JPEG với toàn bộ 3.267 ảnh giải mã thành công. Khi nạp dữ liệu, mỗi ảnh được chuyển sang RGB trước khi tạo tensor, bảo đảm đầu vào ba kênh cho mô hình.
 
 \begin{table}[H]
 \centering
@@ -271,19 +271,19 @@ Bảng~\ref{tab:appendix-ctch-image-properties} cho thấy dữ liệu ảnh có
 \begin{tabularx}{\textwidth}{|L{4.2cm}|X|}
 \hline
 \textbf{Thuộc tính} & \textbf{Kết quả kiểm tra} \\ \hline
-Phần mở rộng & 3.293 tệp \texttt{.jpg}. \\ \hline
-Chế độ màu khi giải mã & 3.293 ảnh \texttt{RGB}. \\ \hline
-Định dạng mã hóa & 3.293 JPEG. \\ \hline
+Phần mở rộng & 3.267 tệp \texttt{.jpg}. \\ \hline
+Chế độ màu khi giải mã & 3.267 ảnh \texttt{RGB}. \\ \hline
+Định dạng mã hóa & 3.267 JPEG. \\ \hline
 Chiều rộng & Nhỏ nhất 1.186 px, trung vị 1.213 px, lớn nhất 2.836 px. \\ \hline
 Chiều cao & Nhỏ nhất 1.213 px, trung vị 1.713 px, lớn nhất 2.880 px. \\ \hline
-Khả năng giải mã & 3.293/3.293 tệp được đọc thành công. \\ \hline
+Khả năng giải mã & 3.267/3.267 tệp được đọc thành công. \\ \hline
 \end{tabularx}%
 }
 \end{table}
 
 Dữ liệu nguồn gồm 3.641 hồ sơ đã được lựa chọn sơ bộ từ các ca khám tại Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh. Mỗi hồ sơ liên kết thông tin bệnh án với một ảnh đại diện cho vị trí cần khảo sát. Quá trình sàng lọc tiếp tục loại những ca có nẹp, đinh hoặc phương tiện kết hợp xương vì các cấu trúc này có thể che khuất tổn thương và tạo dấu hiệu thị giác ngoài mục tiêu phân loại.
 
-Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo phạm vi nghiên cứu, đồng thời giúp đảm bảo chất lượng dữ liệu đầu vào là đồng nhất. Phần còn lại gồm 3.293 mẫu, được tách thành 3.249 mẫu trong phân phối phục vụ phân loại và 44 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
+Hiện tại 374 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo phạm vi nghiên cứu, đồng thời giúp đảm bảo chất lượng dữ liệu đầu vào là đồng nhất. Phần còn lại gồm 3.267 mẫu, được tách thành 3.249 mẫu trong phân phối phục vụ phân loại và 18 mẫu ngoài phân phối về ngữ nghĩa. Hai quần thể không giao nhau theo ảnh hoặc theo mã nhóm người bệnh.
 
 \begin{table}[H]
 \centering
@@ -294,14 +294,14 @@ Hiện tại 348 hồ sơ có dụng cụ y tế bị loại nhằm đảm bảo
 \hline
 \textbf{Giai đoạn} & \textbf{Số hồ sơ} \\ \hline
 Hồ sơ nguồn & 3.641 \\ \hline
-Loại do có dụng cụ y tế & 348 \\ \hline
-Còn lại sau sàng lọc & 3.293 \\ \hline
+Loại do có dụng cụ y tế & 374 \\ \hline
+Còn lại sau sàng lọc & 3.267 \\ \hline
 Quần thể trong phân phối & 3.249 \\ \hline
-Quần thể ngoài phân phối & 44 \\ \hline
+Quần thể ngoài phân phối & 18 \\ \hline
 \end{tabular}%
 \end{table}
 
-Quần thể ngoài phân phối gồm 34 mẫu thuộc nhóm chấn thương và 10 mẫu thuộc nhóm viêm nhiễm, nhưng biểu hiện cụ thể không thuộc 22 lớp đích. Cách tổ chức này tạo một kịch bản ngoài dữ liệu trong cùng nguồn bệnh viện, qua đó giảm mức trộn lẫn giữa sai lệch ngữ nghĩa với thay đổi thiết bị hoặc cơ sở thu nhận. Tuy nhiên, số lượng 44 mẫu còn nhỏ nên khoảng bất định của các độ đo ngoài phân phối cần được trình bày và kết quả không nên được khái quát thành mọi dạng bất thường lâm sàng.
+Quần thể ngoài phân phối gồm 6 mẫu thuộc nhóm chấn thương, 7 mẫu thuộc nhóm viêm nhiễm và 5 mẫu thuộc nhóm u xương, nhưng biểu hiện cụ thể không thuộc 22 lớp đích. Cách tổ chức này tạo một kịch bản ngoài dữ liệu trong cùng nguồn bệnh viện, qua đó giảm mức trộn lẫn giữa sai lệch ngữ nghĩa với thay đổi thiết bị hoặc cơ sở thu nhận. Tuy nhiên, số lượng 18 mẫu còn nhỏ nên khoảng bất định của các độ đo ngoài phân phối cần được trình bày và kết quả không nên được khái quát thành mọi dạng bất thường lâm sàng.
 
 
 \subsubsection{Nguồn văn bản và kiểm soát rò rỉ nhãn}
@@ -333,7 +333,7 @@ Trong bước tạo thư mục \texttt{reports/}, ba trường được giữ l�
 Bệnh sử tiếng Anh được tạo ngoại tuyến từ bản tiếng Việt bằng gói \texttt{deep-translator} phiên bản 1.11.4 với lớp \texttt{GoogleTranslator}, thiết lập ngôn ngữ nguồn là tiếng Việt (\texttt{vi}) và ngôn ngữ đích là tiếng Anh (\texttt{en}) \cite{DeepTranslator}. Nội dung của từng trường được dịch riêng, trong khi tên trường, thứ tự trường và định danh liên kết với ảnh được giữ nguyên. Các đoạn tiếng Việt đã dịch được lưu trong một tệp bộ nhớ đệm JSON, do đó khi một đoạn xuất hiện lại, quy trình tái sử dụng đúng bản dịch đã lưu thay vì gửi một yêu cầu mới. Cơ chế này làm cho các câu lặp lại nhận cùng một bản dịch và hỗ trợ tái lập dữ liệu đã tạo.
 
 \paragraph{Đánh giá độ tương đồng ngữ nghĩa của bản dịch.}
-Chất lượng bản dịch được sàng lọc tự động bằng mô hình MiniLM đa ngôn ngữ \texttt{paraphrase-multilingual-MiniLM-L12-v2} \cite{ParaphraseMultilingualMiniLM}. Phép đánh giá chỉ chạy trên 3.293 ảnh còn lại sau sàng lọc và có tệp ảnh hợp lệ, không chạy trên các tệp vật lý ngoài manifest. Với mỗi trường có nội dung ở cả hai ngôn ngữ, câu tiếng Việt và câu tiếng Anh được mã hóa riêng với độ dài tối đa 256 token. Vector câu được tạo bằng trung bình có mặt nạ trên các token hợp lệ, sau đó chuẩn hóa theo chuẩn $L_2$ và tính cosine similarity giữa hai ngôn ngữ. Điểm càng gần 1 biểu thị hai biểu diễn càng gần nhau về ngữ nghĩa. Ngưỡng 0,70 chỉ được dùng để gắn cờ các cặp cần rà soát, không được xem là tiêu chuẩn tuyệt đối về tính đúng đắn y khoa.
+Chất lượng bản dịch được sàng lọc tự động bằng mô hình MiniLM đa ngôn ngữ \texttt{paraphrase-multilingual-MiniLM-L12-v2} \cite{ParaphraseMultilingualMiniLM}. Phép đánh giá chỉ chạy trên 3.267 ảnh còn lại sau sàng lọc và có tệp ảnh hợp lệ, không chạy trên các tệp vật lý ngoài manifest. Với mỗi trường có nội dung ở cả hai ngôn ngữ, câu tiếng Việt và câu tiếng Anh được mã hóa riêng với độ dài tối đa 256 token. Vector câu được tạo bằng trung bình có mặt nạ trên các token hợp lệ, sau đó chuẩn hóa theo chuẩn $L_2$ và tính cosine similarity giữa hai ngôn ngữ. Điểm càng gần 1 biểu thị hai biểu diễn càng gần nhau về ngữ nghĩa. Ngưỡng 0,70 chỉ được dùng để gắn cờ các cặp cần rà soát, không được xem là tiêu chuẩn tuyệt đối về tính đúng đắn y khoa.
 
 Trung bình phản ánh mức điểm chung nhưng nhạy với phần đuôi điểm thấp, còn trung vị mô tả vị trí trung tâm bền vững hơn trước các trường hợp ngoại lệ. Bảng~\ref{tab:appendix-ctch-translation-similarity} báo cáo cả hai đại lượng trên 9.542 cặp trường song ngữ được liên kết.
 
@@ -345,10 +345,10 @@ Trung bình phản ánh mức điểm chung nhưng nhạy với phần đuôi đ
 \begin{tabular}{|L{5.0cm}|r|r|r|r|}
 \hline
 \textbf{Trường bệnh sử} & \textbf{Số cặp} & \textbf{Trung bình} & \textbf{Trung vị} & \textbf{Dưới 0,70} \\ \hline
-Lý do vào viện & 3.293 & 0,7264 & 0,7767 & 1.083 (32,89\%) \\ \hline
-Diễn tiến bệnh & 3.293 & 0,7462 & 0,7747 & 839 (25,48\%) \\ \hline
-Tiền sử cá nhân & 2.956 & 0,5330 & 0,4737 & 2.474 (83,69\%) \\ \hline
-Toàn bộ & 9.542 & 0,6733 & 0,7234 & 4.396 (46,07\%) \\ \hline
+Lý do vào viện & 3.267 & 0,7264 & 0,7767 & 1.083 (33,15\%) \\ \hline
+Diễn tiến bệnh & 3.267 & 0,7462 & 0,7747 & 839 (25,68\%) \\ \hline
+Tiền sử cá nhân & 2.930 & 0,5330 & 0,4737 & 2.474 (84,44\%) \\ \hline
+Toàn bộ & 9.464 & 0,6733 & 0,7234 & 4.396 (46,45\%) \\ \hline
 \end{tabular}
 \end{table}
 
@@ -365,12 +365,12 @@ Khác với BTXRD, bệnh sử CTCH là dữ liệu được trích từ bệnh 
 \hline
 \textbf{Phép kiểm tra} & \textbf{Kết quả} \\ \hline
 Định danh trong phân phối là duy nhất & 3.249/3.249 (100\%) \\ \hline
-Định danh ngoài phân phối là duy nhất & 44/44 (100\%) \\ \hline
+Định danh ngoài phân phối là duy nhất & 18/18 (100\%) \\ \hline
 Giao nhau theo ảnh giữa quần thể trong và ngoài phân phối & 0 mẫu \\ \hline
 Giao nhau theo người bệnh giữa quần thể trong và ngoài phân phối & 0 người bệnh \\ \hline
-Mẫu được chọn có ảnh giải mã được & 3.293/3.293 (100\%) \\ \hline
-Mẫu được chọn có đủ bệnh sử tiếng Việt và tiếng Anh & 3.293/3.293 (100\%) \\ \hline
-Tệp bệnh sử được liên kết có nội dung khác rỗng & 6.586/6.586 (100\%) \\ \hline
+Mẫu được chọn có ảnh giải mã được & 3.267/3.267 (100\%) \\ \hline
+Mẫu được chọn có đủ bệnh sử tiếng Việt và tiếng Anh & 3.267/3.267 (100\%) \\ \hline
+Tệp bệnh sử được liên kết có nội dung khác rỗng & 6.534/6.534 (100\%) \\ \hline
 Nhãn trong phân phối có đúng một lớp trong 22 lớp & 3.249/3.249 (100\%) \\ \hline
 \texttt{class\_id}, tên lớp và cột một-nóng nhất quán & 3.249/3.249 (100\%) \\ \hline
 Giao nhau theo người bệnh giữa \texttt{train}/\texttt{validate}/\texttt{test} & 0/0/0 \\ \hline
@@ -380,7 +380,7 @@ Quy mô \texttt{train}/\texttt{validate}/\texttt{test} & 2.265/315/669 \\ \hline
 \label{tab:appendix-ctch-integrity-verification}
 \end{table}
 
-Trong 3.293 bệnh sử tiếng Anh được liên kết, trường lý do vào viện và diễn tiến bệnh có nội dung ở toàn bộ mẫu, còn trường tiền sử có nội dung ở 2.956 mẫu (89,77\%) và không có dữ liệu ở 337 mẫu. Hai con số tương ứng giống nhau ở nguồn tiếng Việt, nên tổng cộng có 5.912/6.586 tệp (89,77\%) chứa nội dung tiền sử. Việc thiếu tiền sử được giữ như trạng thái dữ liệu nguồn, không được nội suy bằng câu giả lập.
+Trong 3.267 bệnh sử tiếng Anh được liên kết, trường lý do vào viện và diễn tiến bệnh có nội dung ở toàn bộ mẫu, còn trường tiền sử có nội dung ở 2.930 mẫu (89,68\%) và không có dữ liệu ở 337 mẫu. Hai con số tương ứng giống nhau ở nguồn tiếng Việt, nên tổng cộng có 5.860/6.534 tệp (89,68\%) chứa nội dung tiền sử. Việc thiếu tiền sử được giữ như trạng thái dữ liệu nguồn, không được nội suy bằng câu giả lập.
 \input{Appendix/model_details}
 
 \chapter{Kết quả chi tiết theo từng hạt giống}
@@ -449,6 +449,6 @@ Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net
 
 Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống của XBone-Net và hai biến thể trên kịch bản OOD ngữ nghĩa và BTXRD. Cả ba cấu hình sử dụng cùng điểm tổ hợp đa phương thức hậu xử lý. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu của từng kịch bản.
 
-Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản OOD ngữ nghĩa sử dụng đủ 26 mẫu đã được xác nhận trong danh sách đánh giá và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối. AUPR-Out và FPR@95\%TPR chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ mẫu trong--ngoài phân phối giữa hai kịch bản, vì vậy kết luận được đưa ra cùng AUROC-OOD và cỡ mẫu ghi trong bảng. Kết quả xác nhận cảnh báo OOD có hiệu lực rõ hơn trong dịch chuyển khác bộ dữ liệu, còn kịch bản OOD ngữ nghĩa gần miền vẫn có FPR@95\%TPR cao.
+Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản OOD ngữ nghĩa sử dụng đủ 18 mẫu đã được xác nhận trong danh sách đánh giá và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối. AUPR-Out và FPR@95\%TPR chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ mẫu trong--ngoài phân phối giữa hai kịch bản, vì vậy kết luận được đưa ra cùng AUROC-OOD và cỡ mẫu ghi trong bảng. Kết quả xác nhận cảnh báo OOD có hiệu lực rõ hơn trong dịch chuyển khác bộ dữ liệu, còn kịch bản OOD ngữ nghĩa gần miền vẫn có FPR@95\%TPR cao.
 
 \input{tables/appendix/table_ood_per_seed}

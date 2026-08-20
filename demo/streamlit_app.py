@@ -27,7 +27,6 @@ import streamlit as st
 
 from src.datasets.preprocessing import letterbox_square
 from src.utils.online_inference import (
-    OOD_METHODS,
     OnlineInferenceEngine,
     render_global_ig_overlay,
 )
@@ -36,14 +35,6 @@ from src.utils.online_inference import (
 LOGO_PATH = PROJECT_ROOT / "docs" / "report" / "images" / "logo-khtn.png"
 CTCH_IMAGE_ROOT = PROJECT_ROOT / "data" / "CTCH" / "images"
 ANALYSIS_STATE_KEY = "xbonenet_analysis"
-
-METHOD_LABELS = {
-    "mahalanobis_centroid": "Mahalanobis–centroid",
-    "cosine_centroids": "Cosine–centroid",
-    "knn": "Cosine kNN (k=5)",
-    "entropy": "Entropy dự đoán",
-    "multimodal_ensemble": "Multi-modal ensemble",
-}
 
 TEXT_ATTRIBUTION_CMAP = LinearSegmentedColormap.from_list(
     "xbonenet_text_ig",
@@ -374,7 +365,6 @@ def analysis_signature(
     *,
     seed: int,
     device: str,
-    method: str,
     ig_steps: int,
     similar_image_count: int,
 ) -> str:
@@ -390,8 +380,6 @@ def analysis_signature(
         Hạt giống phục vụ khả năng tái lập.
     device : str
         Thiết bị thực thi phép tính.
-    method : str
-        Phương pháp hoặc chế độ xử lý được chọn.
     ig_steps : int
         Giá trị ``ig_steps`` được sử dụng trong phép xử lý.
     similar_image_count : int
@@ -410,7 +398,6 @@ def analysis_signature(
             clinical_text.strip(),
             str(seed),
             str(device),
-            str(method),
             str(ig_steps),
             str(similar_image_count),
         ]
@@ -499,7 +486,7 @@ def show_reproducibility(result, engine: OnlineInferenceEngine) -> None:
                     f"target_id_fpr={engine.ood.target_id_fpr}",
                     (
                         "calibration_id_count="
-                        f"{engine.ood.calibration_counts[result.ood_method]}"
+                        f"{engine.ood.calibration_count}"
                     ),
                 ]
             )
@@ -797,12 +784,7 @@ def main() -> None:
             index=0,
             help="Auto ưu tiên CUDA khi khả dụng.",
         )
-        method = st.selectbox(
-            "Phương pháp OOD",
-            list(OOD_METHODS),
-            index=list(OOD_METHODS).index("mahalanobis_centroid"),
-            format_func=lambda value: METHOD_LABELS[value],
-        )
+        st.caption("OOD: Multi-modal ensemble ảnh–văn bản")
         ig_steps = st.slider(
             "Số bước Integrated Gradients",
             min_value=8,
@@ -820,7 +802,7 @@ def main() -> None:
         )
         st.info(
             "Ngưỡng OOD là phân vị 95% của CTCH validation-ID và được khóa "
-            "riêng cho từng seed/phương pháp. Điểm lớn hơn biểu thị bằng chứng "
+            "cho checkpoint hiện tại. Điểm ensemble lớn hơn biểu thị bằng chứng "
             "OOD mạnh hơn."
         )
 
@@ -868,7 +850,6 @@ def main() -> None:
             clinical_text,
             seed=int(seed),
             device=str(device),
-            method=str(method),
             ig_steps=int(ig_steps),
             similar_image_count=int(similar_image_count),
         )
@@ -890,7 +871,6 @@ def main() -> None:
                 result = engine.predict(
                     image,
                     clinical_text,
-                    ood_method=str(method),
                     ig_steps=int(ig_steps),
                     compute_global_ig=True,
                     similar_image_count=int(similar_image_count),

@@ -29,18 +29,18 @@ OOD_METRICS = (
     ("fpr_at_95tpr", "\\makecell{FPR@\\\\95\\%TPR}"),
 )
 FULL_SHOT_MODELS = (
-    ("BiomedCLIP", "baselines/full_finetuned/fft_BiomedCLIP"),
-    ("CLIP", "baselines/full_finetuned/fft_clip"),
+    ("ResNet-50", "baselines/full_finetuned/fft_resnet50"),
     ("DenseNet-121", "baselines/full_finetuned/fft_densenet"),
+    ("CLIP", "baselines/full_finetuned/fft_clip"),
     ("MedCLIP", "baselines/full_finetuned/fft_medclip"),
     ("PubMedCLIP", "baselines/full_finetuned/fft_pubmedclip"),
-    ("ResNet-50", "baselines/full_finetuned/fft_resnet50"),
-    ("LoRA-BiomedCLIP", "baselines/peft_finetuned/lora_BiomedCLIP"),
+    ("BiomedCLIP", "baselines/full_finetuned/fft_biomedclip"),
     ("LoRA-PubMedCLIP", "baselines/peft_finetuned/lora_pubmedclip"),
+    ("LoRA-BiomedCLIP", "baselines/peft_finetuned/lora_biomedclip"),
     ("XBone-Net", "proposed/ours_xbone_net"),
 )
 FEW_SHOT_MODELS = (
-    ("LoRA-BiomedCLIP", "lora_BiomedCLIP"),
+    ("LoRA-BiomedCLIP", "lora_biomedclip"),
     ("LoRA-PubMedCLIP", "lora_pubmedclip"),
     ("XBone-Net", "ours_xbone_net"),
 )
@@ -63,10 +63,7 @@ OOD_SCENARIOS = (
     ("BTXRD", "domain_ood_btxrd"),
 )
 OOD_METHODS = (
-    ("Cosine theo tâm lớp", "cosine_centroids"),
-    ("Mahalanobis theo tâm lớp", "mahalanobis_centroid"),
-    ("kNN", "knn"),
-    ("Entropy", "entropy"),
+    ("Ensemble đa phương thức", "multimodal_ensemble"),
 )
 REPORT_PALETTE = {
     "blue": "#1F77B4",
@@ -786,7 +783,7 @@ def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
         shaded = {
             index
             for index, row in enumerate(part_rows)
-            if row["method_key"] == "mahalanobis_centroid"
+            if row["method_key"] == "multimodal_ensemble"
         }
         tables.append(
             longtable(
@@ -807,7 +804,7 @@ def write_ood_table(output: Path, rows: list[dict[str, Any]]) -> Path:
                 ],
                 caption=(
                     "Kết quả OOD hậu xử lý của từng hạt giống trên kịch bản "
-                    f"{scenario}; các hàng Mahalanobis theo tâm lớp được tô xám."
+                    f"{scenario}; các hàng ensemble đa phương thức được tô xám."
                 ),
                 label="tab:appendix-ood-seeds" if part_index == 0 else None,
                 shaded_rows=shaded,
@@ -949,7 +946,7 @@ def plot_ood_seed_metrics(
                 row
                 for row in rows
                 if row["scenario_key"] == scenario_key
-                and row["method_key"] == "mahalanobis_centroid"
+                and row["method_key"] == "multimodal_ensemble"
             ]
             selected.sort(key=lambda row: int(row["seed"]))
             axis.plot(
@@ -1023,7 +1020,7 @@ def build_outputs(results_root: Path, output_dir: Path, dpi: int) -> list[Path]:
             dpi,
         ),
         plot_ood_seed_metrics(
-            output_dir / "ood_mahalanobis_by_seed.png",
+            output_dir / "ood_multimodal_ensemble_by_seed.png",
             ood,
             dpi,
         ),
@@ -1043,7 +1040,7 @@ def build_outputs(results_root: Path, output_dir: Path, dpi: int) -> list[Path]:
                 }
                 for row in ood
                 if row["scenario_key"] == scenario_key
-                and row["method_key"] == "mahalanobis_centroid"
+                and row["method_key"] == "multimodal_ensemble"
             }
             for _, scenario_key in OOD_SCENARIOS
         },

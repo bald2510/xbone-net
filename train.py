@@ -47,7 +47,7 @@ from src.utils.losses import (
 )
 from src.utils.trainer import BioMedCLIPDataCollator, SFTrainer, resolve_pad_token_id
 from src.utils.logging import TrainingLogger, XBoneTrainerCallback
-from src.utils.ood import OODDetector
+from src.utils.ood import MultimodalEnsembleOODDetector, calibrate_ood_threshold
 from src.utils.centroids import (
     EmpiricalCentroidUpdateCallback,
     compute_empirical_centroids,
@@ -1338,15 +1338,10 @@ def run_ood_calibration(
             "p2_report_type='xray' or 'clinical'."
         )
 
-    if not hasattr(model.head, "prototypes"):
-        raise ValueError(
-            "OOD calibration requires a classifier head that exposes "
-            "class centers."
-        )
-
     model.eval()
 
-    all_features = []
+    all_visual_features = []
+    all_text_features = []
     all_labels = []
 
     with torch.no_grad():
@@ -1374,85 +1369,55 @@ def run_ood_calibration(
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
 
-            outputs = model(
-                images=images,
+            image_features, text_features, *_ = model._encode_modalities(
+                images,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                return_features=True,
+            )
+            image_global = (
+                image_features[:, 0]
+                if image_features.ndim == 3
+                else image_features
+            )
+            text_global = (
+                text_features[:, 0]
+                if text_features.ndim == 3
+                else text_features
             )
 
-            if not (
-                isinstance(outputs, tuple)
-                and len(outputs) == 3
-            ):
-                raise RuntimeError(
-                    "Expected model to return "
-                    "(logits, fused_features, class_centers)."
-                )
-
-            _, fused_features, _ = outputs
-
-            fused_features = F.normalize(
-                fused_features,
-                dim=-1,
+            all_visual_features.append(
+                F.normalize(image_global, dim=-1).cpu().numpy()
             )
-
-            all_features.append(
-                fused_features.cpu().numpy()
+            all_text_features.append(
+                F.normalize(text_global, dim=-1).cpu().numpy()
             )
             all_labels.append(
                 labels.cpu().numpy()
             )
 
-    all_features = np.concatenate(
-        all_features,
-        axis=0,
-    )
     all_labels = np.concatenate(
         all_labels,
         axis=0,
     )
+    all_visual_features = np.concatenate(all_visual_features, axis=0)
+    all_text_features = np.concatenate(all_text_features, axis=0)
 
-    learned_prototypes = F.normalize(
-        model.head.prototypes.detach(),
-        dim=-1,
-    ).cpu().numpy()
-
-    detector = OODDetector()
-
-    # OODDetector đã hỗ trợ optional learned prototypes.
-    detector.fit(
-        embeddings=all_features,
-        labels=all_labels,
-        prototypes=learned_prototypes,
+    detector = MultimodalEnsembleOODDetector().fit(
+        visual_embeddings=all_visual_features,
+        text_embeddings=all_text_features,
+        val_visual_embeddings=all_visual_features,
+        val_text_embeddings=all_text_features,
     )
-
     id_scores = detector.score(
-        all_features,
-        method="mahalanobis_centroid",
+        all_visual_features,
+        text_embeddings=all_text_features,
     )
-
-    calibrated_threshold = float(
-        np.percentile(
-            id_scores,
-            (1.0 - fpr_threshold) * 100.0,
-        )
+    calibrated_threshold = calibrate_ood_threshold(
+        id_scores,
+        target_id_fpr=fpr_threshold,
     )
 
     os.makedirs(output_dir, exist_ok=True)
-
-    class_ids = np.asarray(
-        sorted(detector.class_means.keys()),
-        dtype=np.int64,
-    )
-
-    class_means = np.stack(
-        [
-            detector.class_means[class_id]
-            for class_id in class_ids
-        ],
-        axis=0,
-    )
 
     output_path = os.path.join(
         output_dir,
@@ -1461,10 +1426,17 @@ def run_ood_calibration(
 
     np.savez(
         output_path,
-        class_ids=class_ids,
-        class_means=class_means,
-        shared_cov_inv=detector.shared_cov_inv,
-        learned_prototypes=learned_prototypes,
+        method="multimodal_ensemble",
+        reference_visual_embeddings=all_visual_features,
+        reference_text_embeddings=all_text_features,
+        reference_labels=all_labels,
+        visual_score_mean=detector.scalers["vis"][0],
+        visual_score_std=detector.scalers["vis"][1],
+        text_score_mean=detector.scalers["txt"][0],
+        text_score_std=detector.scalers["txt"][1],
+        knn_k=detector.knn_k,
+        knn_reduction=detector.knn_reduction,
+        knn_metric=detector.knn_metric,
         calibrated_threshold=calibrated_threshold,
         fpr_threshold=float(fpr_threshold),
         id_scores_mean=float(id_scores.mean()),

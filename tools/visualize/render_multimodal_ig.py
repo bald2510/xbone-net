@@ -5,7 +5,7 @@ và kết xuất theo đúng cấu trúc:
 - Header: Nhãn đúng (tiếng Việt) | Dự đoán (tiếng Việt) (%)
 - (a) Ảnh X-quang đầu vào
 - (b) Tích phân gradient trên ảnh toàn cục (Heatmap overlay turbo)
-- (d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử (toàn bộ từ đã giải mã và ghép nối)
+- (c) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử (toàn bộ từ đã giải mã và ghép nối)
 """
 
 from __future__ import annotations
@@ -141,7 +141,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Áp dụng bộ phát hiện OOD trước khi giải thích lớp.",
     )
-    parser.add_argument("--ood-method", default="mahalanobis_centroid")
     parser.add_argument("--ig-steps", type=int, default=24)
     parser.add_argument(
         "--output",
@@ -165,7 +164,7 @@ def _draw_token_attribution(axis: plt.Axes, tokens: list[str], scores: np.ndarra
     """
     axis.set_axis_off()
     axis.set_title(
-        "(d) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử\n"
+        "(c) Tích phân gradient trên các đơn vị từ ngữ của bệnh sử\n"
         "Màu xanh biểu thị tác động phản đối; màu cam biểu thị tác động ủng hộ",
         loc="center",
         fontsize=12,
@@ -259,7 +258,6 @@ def main() -> None:
         result = engine.predict(
             image,
             clinical_text,
-            ood_method=args.ood_method,
             ig_steps=args.ig_steps,
             compute_faithfulness=True,
             compute_global_ig=True,
@@ -292,7 +290,7 @@ def main() -> None:
         height_ratios=[1.25, 0.75],
         wspace=0.10,
         hspace=0.25,
-        top=0.90,
+        top=0.84,
     )
     original_axis = figure.add_subplot(grid[0, 0])
     global_axis = figure.add_subplot(grid[0, 1])

@@ -166,8 +166,11 @@ def _case_and_pair_rows(seed: int):
     feature_key = str(metrics.get("feature_key", ""))
     if not feature_key:
         raise ValueError("BTXRD OOD metrics do not identify their feature_key.")
-    if not primary_methods:
-        raise ValueError("BTXRD OOD protocol has no primary methods.")
+    if primary_methods != ["multimodal_ensemble"]:
+        raise ValueError(
+            "BTXRD OOD protocol must contain only multimodal_ensemble; "
+            f"found {primary_methods}. Regenerate the OOD artifacts."
+        )
     if len(image_ids) != len(btxrd_ids) or len(image_ids) != len(predictions):
         raise ValueError("BTXRD feature arrays have inconsistent row counts.")
     if np.any(btxrd_ids < 0) or np.any(btxrd_ids >= len(BTXRD_CLASS_NAMES)):

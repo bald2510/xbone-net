@@ -131,47 +131,51 @@ Quy trình toán học và dòng chảy dữ liệu của cơ chế LoRA đượ
     \end{equation}
     Trong đó, $\alpha$ là một hằng số tỷ lệ cố định. Việc nhân thêm hệ số điều chỉnh $\frac{\alpha}{r}$ đóng vai trò quan trọng trong việc ổn định hóa quá trình tối ưu hóa, giúp giảm thiểu tối đa việc phải tinh chỉnh lại các siêu tham số huấn luyện khác (như tốc độ học) khi người dùng thay đổi giá trị của hạng $r$.
 
-        \item \textbf{Tích hợp vào kiến trúc Transformer:}
+    \item \textbf{Tích hợp vào kiến trúc Transformer:}
     Trong cấu hình XBone-Net, LoRA không chỉ được gắn vào các phép chiếu Query, Key và Value mà còn được gắn vào phép chiếu đầu ra chú ý và hai lớp tuyến tính của MLP trong mỗi khối Transformer. ViT-B/16 cài đặt ba phép chiếu Query-Key-Value bằng một ma trận gộp $W_{QKV}$, trong khi PubMedBERT sử dụng ba ma trận riêng $W_Q$, $W_K$ và $W_V$. Bảng~\ref{tab:ch3_lora_targets} liệt kê đầy đủ các ma trận đích theo đúng cấu hình mã nguồn.
 
-        \end{enumerate}
+    \end{enumerate}
 
-        \begin{table}[H]
-        \centering
-        \small
-        \resizebox{\textwidth}{!}{%
-        \begin{tabular}{|l|l|l|l|}
-        \hline
-        \textbf{Bộ mã hóa} &
-        \textbf{Mô-đun trong mã nguồn} &
-        \textbf{Ma trận được gắn LoRA} &
-        \textbf{Vai trò} \\ \hline
-        ViT-B/16 & \texttt{attn.qkv} &
-        $W_{QKV}^{(v)}\in\mathbb{R}^{3D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
-        Chiếu đồng thời Query, Key và Value. \\ \hline
-        ViT-B/16 & \texttt{attn.proj} &
-        $W_{O}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
-        Chiếu đầu ra của chú ý đa đầu. \\ \hline
-        ViT-B/16 & \texttt{mlp.fc1}, \texttt{mlp.fc2} &
-        $W_{1}^{(v)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$,
-        $W_{2}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
-        Mở rộng rồi thu hẹp chiều trong MLP. \\ \hline
-        PubMedBERT & \texttt{query}, \texttt{key}, \texttt{value} &
-        $W_Q^{(t)},W_K^{(t)},W_V^{(t)}\in
-        \mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
-        Ba phép chiếu Query, Key và Value riêng biệt. \\ \hline
-        PubMedBERT & \texttt{attention.output.dense} &
-        $W_O^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
-        Chiếu đầu ra của chú ý đa đầu. \\ \hline
-        PubMedBERT & \texttt{intermediate.dense}, \texttt{output.dense} &
-        $W_{1}^{(t)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$,
-        $W_{2}^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
-        Mở rộng rồi thu hẹp chiều trong mạng truyền thẳng. \\ \hline
-        \end{tabular}%
-        }
-        \caption{Các ma trận được gắn LoRA trong hai bộ mã hóa của XBone-Net}
-        \label{tab:ch3_lora_targets}
-        \end{table}
+% Please add the following required packages to your document preamble:
+% \usepackage{graphicx}
+\begin{table}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|l|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Bộ mã hóa}} &
+  \multicolumn{1}{c|}{\textbf{Mô-đun trong mã nguồn}} &
+  \multicolumn{1}{c|}{\textbf{Ma trận được gắn LoRA}} &
+  \multicolumn{1}{c|}{\textbf{Vai trò}} \\ \hline
+ViT-B/16 &
+  \texttt{attn.qkv} &
+  $W_{QKV}^{(v)}\in\mathbb{R}^{3D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+  \begin{tabular}[c]{@{}l@{}}Chiếu đồng thời Query, Key \\ và Value.\end{tabular} \\ \hline
+ViT-B/16 &
+  \texttt{attn.proj} &
+  $W_{O}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+  Chiếu đầu ra của chú ý đa đầu. \\ \hline
+ViT-B/16 &
+  \texttt{mlp.fc1}, \texttt{mlp.fc2} &
+  $W_{1}^{(v)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$, $W_{2}^{(v)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
+  \begin{tabular}[c]{@{}l@{}}Mở rộng rồi thu hẹp chiều \\ trong MLP.\end{tabular} \\ \hline
+PubMedBERT &
+  \begin{tabular}[c]{@{}l@{}}\texttt{query}, \texttt{key}, \\ \texttt{value}\end{tabular} &
+  $W_Q^{(t)},W_K^{(t)},W_V^{(t)}\in \mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+  \begin{tabular}[c]{@{}l@{}}Ba phép chiếu Query, Key \\ và Value riêng biệt.\end{tabular} \\ \hline
+PubMedBERT &
+  \texttt{attention.output.dense} &
+  $W_O^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$ &
+  Chiếu đầu ra của chú ý đa đầu. \\ \hline
+PubMedBERT &
+  \begin{tabular}[c]{@{}l@{}}\texttt{intermediate.dense}, \\ \texttt{output.dense}\end{tabular} &
+  $W_{1}^{(t)}\in\mathbb{R}^{4D_{\mathrm{enc}}\times D_{\mathrm{enc}}}$, $W_{2}^{(t)}\in\mathbb{R}^{D_{\mathrm{enc}}\times4D_{\mathrm{enc}}}$ &
+  \begin{tabular}[c]{@{}l@{}}Mở rộng rồi thu hẹp chiều \\ trong mạng truyền thẳng.\end{tabular} \\ \hline
+\end{tabular}%
+}
+\caption{Các ma trận được gắn LoRA trong hai bộ mã hóa của XBone-Net}
+\label{tab:ch3_lora_targets}
+\end{table}
 
 Với $D_{\mathrm{enc}}=768$, kích thước trung gian của MLP là $4D_{\mathrm{enc}}=3072$. Các adapter được chèn vào các ma trận trên ở cả 12 khối Transformer của mỗi bộ mã hóa; mỗi ma trận có một cặp tham số hạng thấp $(A,B)$ riêng và không chia sẻ adapter với ma trận khác. Cấu hình chính sử dụng $r=16$, $\alpha=32$ và tỷ lệ bỏ học LoRA bằng $0{,}1$. Các độ chệch, lớp embedding, LayerNorm và hai lớp chiếu cuối từ 768 xuống 512 chiều không được gắn LoRA; trọng số nền của chúng tiếp tục được giữ cố định. Mô-đun chú ý chéo, mạng dung hợp và đầu phân lớp cũng không sử dụng LoRA mà được tối ưu trực tiếp trong giai đoạn thứ hai.
 
@@ -489,7 +493,6 @@ Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để t�
 %     \label{fig:ch3_phase2}
 % \end{figure}
 
-% Trong giai đoạn thứ hai, hai nhánh mã hóa tạo chuỗi đặc trưng toàn cục và cục bộ. Các chuỗi này được đưa qua mô-đun chú ý chéo để tạo vectơ tổng hợp $\boldsymbol{z}_{i}$. tâm lớp thực nghiệm sử dụng các vectơ của tập huấn luyện để ước lượng tâm lớp và tính xác suất dự đoán. Trọng số nền của BiomedCLIP tiếp tục được giữ cố định, trong khi LoRA, thành phần biểu diễn ảnh cục bộ và mô-đun dung hợp tiếp tục được cập nhật, với mục tiêu giúp biểu diễn đa phương thức có tính phân biệt giữa các lớp.
 
 % Do số mẫu của các lớp có thể chênh lệch lớn, hàm mất mát sử dụng trọng số lớp dựa trên số lượng mẫu hiệu dụng \cite{Cui2019ClassBalanced}. Với $n_k$ là số mẫu của lớp $k$, trọng số sau khi chuẩn hóa và giới hạn trên được tính trực tiếp bởi:
 
@@ -524,9 +527,6 @@ Sau giai đoạn này, hai bộ mã hóa đã được điều chỉnh để t�
 
 % Trong Công thức~\ref{eq:ch3_phase2_loss}, các lớp hiếm nhận trọng số lớn hơn, còn làm trơn nhãn hạn chế việc phân phối dự đoán tập trung tuyệt đối vào một lớp.
 
-% Các tâm lớp được khởi tạo từ toàn bộ tập huấn luyện trước lần lặp đầu tiên. Trong mỗi lần lặp, chúng được giữ cố định như bộ nhớ đệm và không nhận gradient. Ngay sau lần lặp, mô hình chuyển sang chế độ đánh giá, tính lại đặc trưng của tập huấn luyện bằng trạng thái tham số mới nhất, cập nhật các tâm theo Công thức \ref{eq:ch3_prototype}, rồi mới đánh giá trên tập kiểm định. Trạng thái tốt nhất được lựa chọn theo độ đo đã định trước. Cuối cùng, các tâm được tính lại từ tập huấn luyện bằng trạng thái này. Tập kiểm thử không tham gia cập nhật tham số, ước lượng tâm hoặc lựa chọn mô hình.
-
-% Kết quả của quá trình ngoại tuyến là tập tham số LoRA, mô-đun dung hợp, trạng thái bộ mã hóa và các tâm lớp đã được xác định từ dữ liệu huấn luyện. Các thành phần này được cố định và chuyển sang quy trình trực tuyến để xử lý từng ca mới mà không thực hiện thêm bất kỳ bước cập nhật nào.
 
 \subsection{Giai đoạn 2: học dung hợp và phân lớp}
 \label{subsec:ch3_phase2}
@@ -826,28 +826,23 @@ Nhờ phép cộng gộp này, mô hình suy luận hoạt động với cấu t
     \end{itemize}
 \end{enumerate}
 
-\subsection{Giải thích kết quả phân loại}
-\label{subsec:ch3_integrated_gradients}
-
-Đối với một mẫu cần khảo sát, hệ thống có thể thực hiện thêm phép phân tích
-Integrated Gradients (IG) \cite{Sundararajan2017IntegratedGradients} để xác
-định những thành phần ảnh và văn bản làm thay đổi logit của lớp được dự đoán.
-Quy trình gồm bốn bước: chọn lớp đích, xác định mốc tham chiếu, tích lũy gradient
-trên đường nội suy từ mốc đến đầu vào thật, rồi tổng hợp quy đóng thành điểm cho
-từng điểm ảnh hoặc từ tố. Toàn bộ tham số mô hình được giữ cố định; đạo hàm chỉ
-được tính theo đầu vào của phương thức đang được giải thích và không được dùng
-để cập nhật mô hình.
+Sau khi mô hình đưa ra nhãn dự đoán, hệ thống có thể sử dụng phương pháp tích
+phân gradient \cite{Sundararajan2017IntegratedGradients} để xác định những vùng
+ảnh và đơn vị văn bản làm thay đổi điểm số của nhãn đó. Lớp có xác suất lớn nhất
+trên cặp đầu vào đầy đủ được cố định làm lớp đích trong toàn bộ phép phân tích.
+Khi giải thích ảnh, văn bản của mẫu được giữ nguyên. Ngược lại, khi giải thích
+văn bản, ảnh X-quang được giữ nguyên. Các tham số mô hình cũng được giữ cố định
+vì gradient chỉ được tính theo đầu vào cần giải thích và không dùng để cập nhật
+mô hình.
 
 Với tập nhãn $\mathcal{Y}=\{y_1,y_2,\ldots,y_K\}$, gọi
-$\widehat{y}=y_{\widehat{k}}\in\mathcal{Y}$ là nhãn được dự đoán trên cặp
-đầu vào đầy đủ, trong đó $\widehat{k}$ là chỉ số có xác suất lớn nhất. Ký hiệu
+$\widehat{y}=y_{\widehat{k}}\in\mathcal{Y}$ là nhãn dự đoán và
 $F_{\widehat{k}}(\boldsymbol{u})=s_{\widehat{k}}\in\mathbb{R}$ là logit của
-lớp đích khi đầu vào của phương thức đang giải thích là $\boldsymbol{u}$; đầu
-vào của phương thức còn lại luôn được giữ cố định tại giá trị của mẫu đang xét.
-Với mốc tham chiếu $\boldsymbol{u}^{0}$, quy đóng IG của thành phần thứ $j$ là
+lớp này tại đầu vào $\boldsymbol{u}$. Nếu $\boldsymbol{u}^{0}$ là mốc tham
+chiếu, mức đóng góp của thành phần thứ $j$ được xác định bởi
 \begin{equation}
 \operatorname{IG}_{j}
-\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
+\!\left(\boldsymbol{u},\boldsymbol{u}^{0}\right)
 =
 \left(u_j-u_j^{0}\right)
 \int_{0}^{1}
@@ -860,77 +855,51 @@ Với mốc tham chiếu $\boldsymbol{u}^{0}$, quy đóng IG của thành phần
 \,\mathrm{d}\beta.
 \label{eq:ch3_integrated_gradients}
 \end{equation}
-Ở đây, $\beta\in[0,1]$ tham số hóa đường thẳng từ mốc tham chiếu đến đầu vào.
-Trực giác của công thức là lấy trung bình gradient trên toàn bộ đường đi này,
-sau đó nhân với độ chênh giữa đầu vào thật và mốc tham chiếu. Quy đóng dương có
-độ lớn cao cho biết thành phần tương ứng làm tăng logit $s_{\widehat{k}}$ so với
-mốc đã chọn. Việc cố định lớp đích ở $\widehat{k}$ giúp toàn bộ phép tính giải
-thích cùng một quyết định của mô hình.
+Trong đó, $\beta\in[0,1]$ xác định các điểm trên đường nội suy từ mốc tham chiếu
+đến đầu vào thật. Tích phân được xấp xỉ bằng quy tắc hình thang với 24 điểm nội
+suy, đồng bộ với thiết lập đánh giá ở Chương~4. Mức đóng góp dương cho biết thành
+phần đang xét làm tăng logit của lớp dự đoán so với mốc tham chiếu, còn mức đóng
+góp âm cho biết thành phần đó làm giảm logit. Do lớp đích được giữ cố định, các
+mức đóng góp đều giải thích cùng một quyết định phân loại.
 
-Trong thực nghiệm, tích phân được xấp xỉ bằng quy tắc hình thang tại
-$n_{\mathrm{IG}}=24$ điểm nội suy đều. Ký hiệu
-$\beta_q=q/(n_{\mathrm{IG}}-1)$ và
-\begin{equation}
-g_j(\beta_q)
-=
-\frac{\partial F_{\widehat{k}}
-\!\left(
-\boldsymbol{u}^{0}
-+\beta_q\left(\boldsymbol{u}-\boldsymbol{u}^{0}\right)
-\right)}
-{\partial u_j}.
-\end{equation}
-Khi đó,
-\begin{equation}
-\operatorname{IG}_{j}
-\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
-\approx
-\left(u_j-u_j^{0}\right)
-\frac{1}{n_{\mathrm{IG}}-1}
-\left[
-\frac{1}{2}g_j(\beta_0)
-+\sum_{q=1}^{n_{\mathrm{IG}}-2}g_j(\beta_q)
-+\frac{1}{2}g_j(\beta_{n_{\mathrm{IG}}-1})
-\right].
-\label{eq:ch3_ig_trapezoidal}
-\end{equation}
+Mốc tham chiếu của ảnh là một nền đen được biểu diễn bằng tenxơ không tại đầu
+vào của phép giải thích. Mốc tham chiếu của văn bản là văn bản trống, nghĩa là
+không chứa từ nội dung. Trong mã nguồn, các vị trí nội dung được thay bằng đặc
+trưng của đơn vị đệm, còn các đơn vị đặc biệt cần thiết cho bộ mã hóa được giữ
+nguyên. Hai mốc này cũng được sử dụng khi đánh giá mức phụ thuộc của dự đoán vào
+từng nguồn thông tin ở Mục~\ref{subsec:ablation_explainability_results}.
 
-Mốc tham chiếu và cách giữ cố định phương thức còn lại được xác định như sau:
-\begin{itemize}
-    \item \textbf{Ảnh X-quang:}
-    $\boldsymbol{u}=v$ là tenxơ ảnh sau đúng chuỗi tiền xử lý dùng khi huấn
-    luyện, còn $\boldsymbol{u}^{0}=v^{0}=\boldsymbol{0}$ là tenxơ không trong
-    chính không gian đầu vào đã chuẩn hóa. Vì vậy, không nên đồng nhất mốc này
-    với một ``ảnh đen'' trong không gian ảnh thô. Khi tính IG cho ảnh, văn bản
-    $t$ của ca đang xét được giữ cố định.
+Kết quả trên ảnh được tổng hợp qua ba kênh màu để tạo bản đồ nhiệt, trong đó màu
+nóng biểu thị những vị trí có độ lớn đóng góp cao đối với lớp dự đoán. Kết quả
+trên văn bản được tổng hợp theo chiều đặc trưng của từng đơn vị, trong đó màu
+cam biểu thị tác động ủng hộ và màu xanh biểu thị tác động phản đối lớp dự đoán.
+Các đơn vị đệm và đơn vị đặc biệt không được hiển thị như nội dung giải thích.
+Khi toàn bộ đóng góp dương gần bằng không, độ lớn tuyệt đối được dùng làm quy tắc
+dự phòng để tránh tạo bản đồ rỗng.
 
-    \item \textbf{Văn bản lâm sàng:}
-    $\boldsymbol{u}=\operatorname{WordEmbedding}(t_{\mathrm{seq}})$ là chuỗi
-    word embedding trước khi đi qua PubMedBERT. Đây là vị trí mà mã nguồn thực
-    hiện nội suy; các nhúng vị trí và phân đoạn vẫn được PubMedBERT xử lý theo
-    kiến trúc gốc. Tại các vị trí từ tố nội dung, $\boldsymbol{u}^{0}$ dùng word
-    embedding của token đệm; các token đặc biệt được giữ nguyên. Khi tính IG
-    cho văn bản, ảnh $v$ được giữ cố định.
-\end{itemize}
+Độ trung thực của mức đóng góp được kiểm tra bằng cách lần lượt loại bỏ hoặc
+khôi phục các vùng ảnh kích thước $16\times16$ và các đơn vị văn bản theo thứ tự
+đóng góp giảm dần. Nếu các thành phần được xếp hạng cao thực sự quan trọng đối
+với quyết định, xác suất của lớp đích được kỳ vọng giảm nhanh khi chúng bị thay
+bằng mốc tham chiếu và tăng nhanh khi chúng được khôi phục. Hệ thống còn thay
+toàn bộ ảnh bằng nền đen hoặc toàn bộ nội dung văn bản bằng văn bản trống, sau đó
+so sánh xác suất lớp đích với đầu vào đầy đủ. Mức giảm xác suất lớn hơn cho thấy
+dự đoán phụ thuộc nhiều hơn vào nguồn thông tin bị che trong phép can thiệp đã
+chọn.
 
-Để tạo kết quả trực quan, quy đóng có dấu được cộng theo ba kênh tại mỗi điểm
-ảnh và theo chiều embedding tại mỗi vị trí từ tố. Phần dương của tổng này được
-dùng làm điểm liên quan; nếu toàn bộ phần dương gần bằng không, tổng trị tuyệt
-đối được dùng làm phương án dự phòng để tránh bản đồ rỗng. Các token đệm và
-token đặc biệt không được hiển thị như từ tố nội dung có liên quan.
-
-IG thỏa tính đầy đủ theo nghĩa tổng quy đóng xấp xỉ chênh lệch logit giữa đầu
-vào và mốc tham chiếu:
+Tích phân gradient thỏa tính đầy đủ theo nghĩa tổng mức đóng góp xấp xỉ chênh
+lệch logit giữa đầu vào và mốc tham chiếu:
 \begin{equation}
 \sum_j
 \operatorname{IG}_{j}
-\!\left(\boldsymbol{u};\boldsymbol{u}^{0}\right)
+\!\left(\boldsymbol{u},\boldsymbol{u}^{0}\right)
 \approx
 F_{\widehat{k}}(\boldsymbol{u})
 -F_{\widehat{k}}(\boldsymbol{u}^{0}).
 \label{eq:ch3_ig_completeness}
 \end{equation}
-Sai số của quan hệ này được dùng để kiểm tra chất lượng xấp xỉ số. Bản đồ ảnh
-và điểm từ tố chỉ phản ánh độ nhạy của logit dọc theo đường nội suy đã chọn;
-chúng không tự thân chứng minh quan hệ nhân quả, không xác nhận vị trí tổn
-thương và không thay thế đánh giá của chuyên gia.
+Sai số của quan hệ này được dùng để kiểm tra chất lượng xấp xỉ số. Tuy nhiên,
+bản đồ ảnh, điểm văn bản và mức giảm xác suất chỉ phản ánh sự phụ thuộc của dự
+đoán đối với đầu vào, lớp đích và mốc tham chiếu đã chọn. Các kết quả này không
+chứng minh quan hệ nhân quả, không xác nhận vị trí tổn thương, không bảo đảm tính
+đúng lâm sàng và không thay thế đánh giá của chuyên gia.

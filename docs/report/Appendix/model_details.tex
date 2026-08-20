@@ -16,12 +16,11 @@ XBone-Net sử dụng trọng số công bố của BiomedCLIP với định dan
 \multicolumn{1}{|C{3.4cm}|}{\textbf{Thành phần}} &
 \multicolumn{1}{C{5.0cm}|}{\textbf{Cấu hình}} &
 \multicolumn{1}{C{6.0cm}|}{\textbf{Vai trò}} \\ \hline
-Ảnh toàn cục & Một ảnh $224\times224$ & Giữ bố cục giải phẫu chung của ảnh X-quang. \\ \hline
-Ảnh cục bộ & Bốn vùng $224\times224$ được cắt từ ảnh gốc & Giữ chi tiết tại các vùng được quy trình toàn cục--cục bộ lựa chọn. \\ \hline
+Ảnh đầu vào & Một ảnh $224\times224$ & Là đầu vào duy nhất của bộ mã hóa thị giác, không sử dụng nhánh ảnh bổ sung. \\ \hline
 Mảnh ảnh & Lưới $14\times14$, mỗi mảnh $16\times16$ & Tạo 196 đơn vị biểu diễn không gian và một đơn vị đại diện cho mỗi ảnh. \\ \hline
 Văn bản & Tối đa 256 đơn vị biểu diễn & Chuỗi dài hơn bị cắt, chuỗi ngắn hơn được đệm và mặt nạ chú ý loại các vị trí đệm. \\ \hline
 Văn bản khuyết & \texttt{no clinical information available.} & Là chuỗi thay thế cố định khi trường văn bản rỗng. \\ \hline
-Chiều biểu diễn & $D=512$ & Là chiều chung của ảnh, văn bản, dung hợp và tâm lớp. \\ \hline
+Chiều biểu diễn & $D=512$ & Là chiều chung của chuỗi ảnh, chuỗi văn bản, biểu diễn dung hợp và đầu phân lớp. \\ \hline
 \end{tabular}%
 }
 \caption{Cấu hình đầu vào và mô hình nền tảng của XBone-Net}
@@ -32,7 +31,7 @@ Văn bản được đọc bằng mã hóa UTF-8, loại khoảng trắng ở ha
 
 \section{Kích thước biểu diễn qua các thành phần}
 
-Gọi $B$ là kích thước lô và $K$ là số lớp. Cấu hình chính sử dụng $K=22$ trên CTCH và $K=10$ trên BTXRD. Bảng~\ref{tab:appendix-model-tensor-shapes} trình bày kích thước đầu ra tại các bước chính. Các kích thước này không phụ thuộc vào độ phân giải ban đầu của ảnh vì ảnh toàn cục và các vùng cục bộ đều được đưa về $224\times224$ trước khi mã hóa.
+Gọi $B$ là kích thước lô và $K$ là số lớp. Cấu hình chính sử dụng $K=22$ trên CTCH và $K=10$ trên BTXRD. Bảng~\ref{tab:appendix-model-tensor-shapes} trình bày kích thước đầu ra tại các bước chính. Các kích thước này không phụ thuộc vào độ phân giải ban đầu vì ảnh đầu vào duy nhất được đưa về $224\times224$ trước khi mã hóa.
 
 \begin{table}[H]
 \centering
@@ -44,13 +43,11 @@ Gọi $B$ là kích thước lô và $K$ là số lớp. Cấu hình chính sử
 \textbf{Kích thước} &
 \multicolumn{1}{C{6.0cm}|}{\textbf{Diễn giải}} \\ \hline
 Chuỗi của một ảnh sau ViT & $B\times197\times512$ & Một đơn vị đại diện và 196 đơn vị mảnh ảnh. \\ \hline
-Một vùng ảnh cục bộ sau gộp & $B\times5\times512$ & Một đơn vị đại diện và lưới gộp $2\times2$. \\ \hline
-Bốn vùng ảnh cục bộ & $B\times20\times512$ & Ghép năm đơn vị của mỗi vùng theo thứ tự xác định. \\ \hline
-Chuỗi thị giác dùng cho dung hợp & $B\times21\times512$ & Một biểu diễn ảnh toàn cục và 20 đơn vị ảnh cục bộ đã bổ sung tọa độ. \\ \hline
+Chuỗi thị giác dùng cho dung hợp & $B\times197\times512$ & Chuỗi đầu ra gốc gồm một đơn vị đại diện và 196 đơn vị mảnh ảnh, không qua nhánh ảnh bổ sung hoặc bước gom trung gian. \\ \hline
 Chuỗi văn bản & $B\times256\times512$ & Một đơn vị đại diện, các đơn vị nội dung và các vị trí đệm. \\ \hline
 Biểu diễn ảnh nhận ngữ cảnh văn bản & $B\times512$ & Kết quả truy vấn văn bản bằng biểu diễn ảnh toàn cục. \\ \hline
 Biểu diễn văn bản nhận ngữ cảnh ảnh & $B\times512$ & Kết quả truy vấn các đơn vị ảnh cục bộ bằng biểu diễn văn bản toàn cục. \\ \hline
-Biểu diễn dung hợp & $B\times512$ & Đầu vào của bộ phân lớp theo tâm lớp và các điểm OOD hậu xử lý. \\ \hline
+Biểu diễn dung hợp & $B\times512$ & Đầu vào của đầu phân lớp tuyến tính và các điểm OOD hậu xử lý. \\ \hline
 Logit phân lớp & $B\times K$ & Điểm của từng lớp trước Softmax. \\ \hline
 \end{tabular}%
 }
@@ -58,7 +55,7 @@ Logit phân lớp & $B\times K$ & Điểm của từng lớp trước Softmax. \
 \label{tab:appendix-model-tensor-shapes}
 \end{table}
 
-Trong pha 1, bốn vùng cục bộ được tổng hợp bằng trọng số chú ý có điều kiện theo biểu diễn ảnh toàn cục. Bản tóm tắt cục bộ được nhân với hệ số $0{,}25$ trước khi cộng với biểu diễn toàn cục và chuẩn hóa. Trong pha 2, cấu hình chính không nén 20 đơn vị ảnh cục bộ bằng truy vấn học được mà truyền trực tiếp toàn bộ chuỗi này vào mô-đun dung hợp.
+Trong pha 1, mạng nền trả về biểu diễn toàn cục đã chuẩn hóa của ảnh và văn bản để tối ưu mục tiêu khớp ngữ nghĩa. Trong pha 2, mạng nền trả về trực tiếp chuỗi gồm đơn vị đại diện và các đơn vị nội dung của từng phương thức. Cấu hình chính truyền các chuỗi gốc này vào mô-đun dung hợp mà không tạo nhánh ảnh bổ sung hoặc gom các đơn vị ảnh qua một mô-đun trung gian.
 
 \section{Cấu hình thích nghi hạng thấp}
 
@@ -84,11 +81,11 @@ Văn bản PubMedBERT &
 \label{tab:appendix-model-lora-targets}
 \end{table}
 
-Các tham số học được ngoài LoRA gồm phép chiếu tọa độ của vùng ảnh, hệ số tọa độ khởi tạo bằng $0{,}1$, hàm chấm điểm dùng để tổng hợp ảnh cục bộ, mô-đun chú ý chéo, mạng dung hợp và độ lệch theo lớp của đầu phân loại. Các tâm lớp là thống kê của biểu diễn tập huấn luyện nên không được tối ưu trực tiếp bằng lan truyền ngược.
+Các tham số học được ngoài LoRA gồm các phép chiếu đầu vào, hai mô-đun chú ý chéo, mạng dung hợp cùng trọng số và độ lệch của đầu phân lớp tuyến tính. Tất cả các thành phần này được tối ưu trực tiếp trong pha 2 bằng lan truyền ngược.
 
 \section{Dung hợp và đầu phân lớp}
 
-Mô-đun dung hợp sử dụng chú ý chéo hai chiều với tám đầu chú ý, chiều ẩn 512 và tỷ lệ bỏ học $0{,}1$. Ở chiều thứ nhất, biểu diễn ảnh toàn cục truy vấn các đơn vị văn bản không đệm. Ở chiều còn lại, biểu diễn văn bản toàn cục truy vấn 20 đơn vị ảnh cục bộ. Hai kết quả được cộng thặng dư với biểu diễn toàn cục tương ứng, chuẩn hóa lớp, nối với nhau và đưa qua mạng hai lớp để tạo biểu diễn dung hợp 512 chiều.
+Mô-đun dung hợp sử dụng chú ý chéo hai chiều với tám đầu chú ý, chiều ẩn 512 và tỷ lệ bỏ học $0{,}1$. Ở chiều thứ nhất, biểu diễn ảnh toàn cục truy vấn các đơn vị văn bản không đệm. Ở chiều còn lại, biểu diễn văn bản toàn cục truy vấn 196 đơn vị mảnh ảnh từ chuỗi đầu ra gốc của BiomedCLIP. Hai kết quả được cộng thặng dư với biểu diễn toàn cục tương ứng, chuẩn hóa lớp, nối với nhau và đưa qua mạng hai lớp để tạo biểu diễn dung hợp 512 chiều.
 
 \begin{table}[htbp]
 \centering
@@ -110,15 +107,12 @@ Tỷ lệ bỏ học &
 Mạng dung hợp &
   $1024\rightarrow512\rightarrow512$ &
   \begin{tabular}[c]{@{}l@{}}Sử dụng GELU giữa hai lớp \\ tuyến tính và chuẩn hóa đầu ra.\end{tabular} \\ \hline
-Hệ số logit của đầu tâm lớp &
-  $15{,}0$ &
-  \begin{tabular}[c]{@{}l@{}}Nhân với độ tương đồng cosine \\ trước khi cộng độ lệch lớp.\end{tabular} \\ \hline
-Độ lệch theo lớp &
-  Có, khởi tạo bằng 0 &
-  \begin{tabular}[c]{@{}l@{}}Được tối ưu trong pha 2 để hiệu \\ chỉnh ranh giới quyết định theo lớp.\end{tabular} \\ \hline
-Cập nhật tâm lớp &
-  Mỗi vòng huấn luyện &
-  \begin{tabular}[c]{@{}l@{}}Tính lại từ toàn bộ tập huấn luyện \\ trước khi đánh giá trên tập xác thực.\end{tabular} \\ \hline
+Đầu phân lớp &
+  Tuyến tính $512\rightarrow K$ &
+  \begin{tabular}[c]{@{}l@{}}Ánh xạ biểu diễn dung hợp \\ thành $K$ điểm số lớp.\end{tabular} \\ \hline
+Tham số đầu phân lớp &
+  Trọng số và độ lệch &
+  \begin{tabular}[c]{@{}l@{}}Được tối ưu cùng mô-đun dung hợp \\ bằng lan truyền ngược trong pha 2.\end{tabular} \\ \hline
 \end{tabular}%
 }
 \caption{Cấu hình mô-đun dung hợp và đầu phân lớp}
@@ -127,7 +121,7 @@ Cập nhật tâm lớp &
 
 \section{Cấu hình huấn luyện}
 
-Hai pha sử dụng AdamW, lịch tốc độ học cosine, tỷ lệ khởi động $0{,}1$, hệ số suy giảm trọng số $10^{-4}$ và kích thước lô 16. Huấn luyện sử dụng bfloat16 trên ba hạt giống 42, 123 và 456. Pha 1 lựa chọn trạng thái có mất mát xác thực thấp nhất, còn pha 2 lựa chọn trạng thái có Macro-F1 xác thực cao nhất. Tập kiểm thử không tham gia dừng sớm, lựa chọn trạng thái hoặc cập nhật tâm lớp.
+Hai pha sử dụng AdamW, lịch tốc độ học cosine, tỷ lệ khởi động $0{,}1$, hệ số suy giảm trọng số $10^{-4}$ và kích thước lô 16. Huấn luyện sử dụng bfloat16 trên ba hạt giống 42, 123 và 456. Pha 1 lựa chọn trạng thái có mất mát xác thực thấp nhất, còn pha 2 lựa chọn trạng thái có Macro-F1 xác thực cao nhất. Tập kiểm thử không tham gia dừng sớm, lựa chọn trạng thái hoặc cập nhật tham số.
 
 \begin{table}[H]
 \centering
@@ -139,13 +133,13 @@ Hai pha sử dụng AdamW, lịch tốc độ học cosine, tỷ lệ khởi đ�
 \textbf{Pha 1} &
 \textbf{Pha 2} &
 \multicolumn{1}{C{5.2cm}|}{\textbf{Diễn giải}} \\ \hline
-Mục tiêu & Khớp ngữ nghĩa & Phân lớp theo tâm lớp & Pha 1 căn chỉnh ảnh--văn bản, pha 2 tối ưu biểu diễn dung hợp cho lớp đích. \\ \hline
+Mục tiêu & Khớp ngữ nghĩa & Phân lớp tuyến tính & Pha 1 căn chỉnh ảnh--văn bản, pha 2 tối ưu biểu diễn dung hợp và biên quyết định cho lớp đích. \\ \hline
 Tốc độ học & $5\times10^{-5}$ & $10^{-4}$ & Áp dụng cho các tham số được phép cập nhật trong từng pha. \\ \hline
 Số vòng tối đa & 30 & 50 & Đánh giá và lưu trạng thái sau mỗi vòng. \\ \hline
 Dừng sớm & 3 vòng & 5 vòng & Dừng khi độ đo lựa chọn không cải thiện. \\ \hline
 Độ đo lựa chọn & Mất mát xác thực & Macro-F1 xác thực & Chiều tối ưu lần lượt là giảm và tăng. \\ \hline
 Đích mềm cùng lớp & $\rho=0{,}50$ & Không áp dụng & Giảm việc xem cặp khác mẫu nhưng cùng lớp là âm hoàn toàn. \\ \hline
-Làm trơn nhãn & Không áp dụng & $\varepsilon=0{,}05$ & Giới hạn việc phân phối mục tiêu tập trung tuyệt đối vào một lớp. \\ \hline
+Làm trơn nhãn & Không áp dụng & $\varepsilon=0{,}1$ & Giới hạn việc phân phối mục tiêu tập trung tuyệt đối vào một lớp. \\ \hline
 Trọng số lớp & Không áp dụng & Số lượng hiệu dụng & Giới hạn trọng số lớn nhất bằng $5{,}0$. \\ \hline
 \end{tabular}%
 }
@@ -153,4 +147,4 @@ Trọng số lớp & Không áp dụng & Số lượng hiệu dụng & Giới h�
 \label{tab:appendix-model-training-phases}
 \end{table}
 
-Hai bộ dữ liệu chỉ khác nhau ở số lớp và hệ số số lượng hiệu dụng. CTCH sử dụng $K=22$ và $\beta=0{,}999$, trong khi BTXRD sử dụng $K=10$ và $\beta=0{,}99$. Các cấu hình còn lại trong Bảng~\ref{tab:appendix-model-training-phases} được giữ giống nhau. Trong thiết lập ít mẫu, chỉ tập huấn luyện được lấy tối đa 1, 10 hoặc 20 mẫu trên mỗi lớp theo từng hạt giống. Tập xác thực và tập kiểm thử được giữ nguyên.
+Hai bộ dữ liệu khác nhau ở số lớp, với $K=22$ trên CTCH và $K=10$ trên BTXRD. Cả hai cấu hình chính đều dùng hệ số số lượng hiệu dụng mặc định $\beta=0{,}999$. Các cấu hình còn lại trong Bảng~\ref{tab:appendix-model-training-phases} được giữ giống nhau. Trong thiết lập ít mẫu, chỉ tập huấn luyện được lấy tối đa 1, 10 hoặc 20 mẫu trên mỗi lớp theo từng hạt giống. Tập xác thực và tập kiểm thử được giữ nguyên.
