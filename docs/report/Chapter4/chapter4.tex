@@ -246,7 +246,7 @@ Xử lý mất cân bằng lớp & Hệ số số lượng hiệu dụng 0,999 v
 
 \subsection{Các độ đo}
 \label{sec:evaluation_metrics}
-Hai bộ dữ liệu BTXRD (10 lớp) và CTCH (22 lớp) được đánh giá theo bài toán phân lớp đa lớp qua bốn nhóm độ đo: phân lớp, phát hiện dữ liệu ngoài phân phối (OOD), giải thích tích phân gradient, và hiệu quả tham số cùng chi phí huấn luyện--suy luận.
+Hai bộ dữ liệu BTXRD (10 lớp) và CTCH (22 lớp) được đánh giá theo bài toán phân lớp đa lớp qua bốn nhóm độ đo: phân lớp, phát hiện dữ liệu ngoài phân phối (OOD), giải thích tích phân gradient, và hiệu quả tham số cùng chi phí huấn luyện-suy luận.
 
 \subsubsection{Độ đo phân lớp}
 
@@ -341,7 +341,7 @@ s_{\mathrm{OOD}}(x_{\mathrm{OOD}})=s_{\mathrm{OOD}}(x_{\mathrm{ID}})
 \label{eq:ch4_auroc_ood}
 \end{equation}
 
-\paragraph{AUPR-Out:} Diện tích dưới đường cong độ chính xác--độ nhạy khi coi dữ liệu OOD là lớp dương \cite{Hendrycks2017MSP,Liang2018ODIN}:
+\paragraph{AUPR-Out:} Diện tích dưới đường cong độ chính xác-độ nhạy khi coi dữ liệu OOD là lớp dương \cite{Hendrycks2017MSP,Liang2018ODIN}:
 \begin{equation}
 \operatorname{AUPR\text{-}Out}
 =\sum_{k=1}^{K}
@@ -415,7 +415,7 @@ Chi phí suy luận được đánh giá qua số phép toán dấu phẩy độ
 Thực nghiệm này nhằm đánh giá hiệu năng phân loại của XBone-Net so với các mô hình đối chứng, đồng thời phân tích mức độ đánh đổi giữa số lượng tham số cần cập nhật, chi phí huấn luyện và chi phí suy luận so với mô hình BiomedCLIP tinh chỉnh toàn bộ trên hai bộ dữ liệu BTXRD và CTCH.
 
 \subsection{Nội dung}
-Thực nghiệm sử dụng hai nhóm đối chứng được tinh chỉnh toàn bộ. Nhóm chỉ dùng ảnh X-quang gồm ResNet-50 \cite{ResNet} và DenseNet-121 \cite{DenseNet}, đều khởi tạo từ ImageNet. Nhóm nhận cặp ảnh--văn bản gồm CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP}, khởi tạo từ các trọng số tiền huấn luyện tương ứng. Tất cả mô hình được đánh giá trên cùng phân hoạch dữ liệu của BTXRD và CTCH qua ba hạt giống 42, 123 và 456. Chi phí huấn luyện được đo lường so sánh với BiomedCLIP trên cùng phần cứng NVIDIA GeForce RTX 5060 Ti (độ chính xác số học bf16, kích thước lô 16) và lấy trung bình qua ba hạt giống. Số lượng tham số và chi phí suy luận được đo trên hạt giống 42 trong cùng điều kiện môi trường.
+Thực nghiệm sử dụng hai nhóm đối chứng được tinh chỉnh toàn bộ. Nhóm chỉ dùng ảnh X-quang gồm ResNet-50 \cite{ResNet} và DenseNet-121 \cite{DenseNet}, đều khởi tạo từ ImageNet. Nhóm nhận cặp ảnh-văn bản gồm CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP}, khởi tạo từ các trọng số tiền huấn luyện tương ứng. Tất cả mô hình được đánh giá trên cùng phân hoạch dữ liệu của BTXRD và CTCH qua ba hạt giống 42, 123 và 456. Chi phí huấn luyện được đo lường so sánh với BiomedCLIP trên cùng phần cứng NVIDIA GeForce RTX 5060 Ti (độ chính xác số học bf16, kích thước lô 16) và lấy trung bình qua ba hạt giống. Số lượng tham số và chi phí suy luận được đo trên hạt giống 42 trong cùng điều kiện môi trường.
 
 \subsection{Kết quả}
 
@@ -425,7 +425,7 @@ Bảng~\ref{tab:classification_full_data} trình bày kết quả trên tập ki
 
 \input{tables/chapter4/table_full_shot_classification}
 
-Về kết quả quan sát, XBone-Net đạt độ chính xác $0{,}8302$ và điểm F1 vĩ mô $0{,}6240$ trên bộ dữ liệu BTXRD; các giá trị tương ứng trên bộ dữ liệu CTCH là $0{,}6183$ và $0{,}5727$. Mô hình vượt trội rõ rệt so với hai mô hình chỉ dùng ảnh là ResNet-50 và DenseNet-121. So với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ tham số, XBone-Net đạt điểm F1 vĩ mô trung bình cao nhất trên cả hai bộ dữ liệu, đạt độ chính xác cao nhất trên CTCH và tương đương BiomedCLIP trên BTXRD ($0{,}8302$ so với $0{,}8311$), trong khi độ chính xác cân bằng duy trì ở mức cạnh tranh.
+Về kết quả quan sát, XBone-Net đạt độ chính xác $0{,}8302$ và điểm F1 vĩ mô $0{,}6240$ trên bộ dữ liệu BTXRD; các giá trị tương ứng trên bộ dữ liệu CTCH là $0{,}6183$ và $0{,}5727$. Mô hình vượt trội rõ rệt so với hai mô hình chỉ dùng ảnh là ResNet-50 và DenseNet-121. So với nhóm mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ tham số, XBone-Net đạt điểm F1 vĩ mô trung bình cao nhất trên cả hai bộ dữ liệu, đạt độ chính xác cao nhất trên CTCH và tương đương BiomedCLIP trên BTXRD ($0{,}8302$ so với $0{,}8311$), trong khi độ chính xác cân bằng duy trì ở mức cạnh tranh.
 
 Để đánh giá ý nghĩa thống kê của các chênh lệch, Hình~\ref{fig:paired_baseline_classification_btxrd} và Hình~\ref{fig:paired_baseline_classification_ctch} biểu diễn biểu đồ chênh lệch ghép cặp của ba độ đo phân loại. Trục hoành thể hiện mức chênh lệch $\Delta = \text{XBone-Net} - \text{mô hình đối chứng}$. Thanh ngang biểu diễn khoảng tin cậy 95\% ước lượng qua $10.000$ lần lấy mẫu lại có hoàn lại theo bệnh nhân và hạt giống. Các điểm đặc biểu thị khác biệt có ý nghĩa thống kê sau hiệu chỉnh đa so sánh ($p_{\mathrm{Holm}} < 0{,}05$), còn điểm rỗng biểu thị khác biệt chưa đủ bằng chứng xác nhận ($p_{\mathrm{Holm}} \ge 0{,}05$).
 
@@ -447,11 +447,11 @@ Kết quả kiểm định ghép cặp trên hai biểu đồ cho thấy rõ hai
 
 Đối với nhóm mô hình chỉ dùng ảnh (ResNet-50 và DenseNet-121), XBone-Net vượt trội có ý nghĩa thống kê trên cả ba độ đo ở cả hai bộ dữ liệu ($p_{\mathrm{Holm}} < 0{,}001$, khoảng tin cậy 95\% hoàn toàn nằm bên phải mốc 0). Mức tăng điểm F1 vĩ mô đạt từ $+0{,}2522$ đến $+0{,}2955$ trên BTXRD và từ $+0{,}1367$ đến $+0{,}1573$ trên CTCH. Chênh lệch này cho thấy toàn bộ cấu hình XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh trong giao thức hiện tại. Do các mô hình đồng thời khác nhau về nguồn đầu vào và kiến trúc, phép so sánh này không tách riêng đóng góp của văn bản, vùng ảnh cục bộ hoặc từng thành phần huấn luyện.
 
-Đối với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ, trên bộ dữ liệu CTCH, XBone-Net vượt trội có ý nghĩa thống kê trước MedCLIP và PubMedCLIP ở cả độ chính xác ($\Delta$ từ $+0{,}0583$ đến $+0{,}0663$) và điểm F1 vĩ mô ($\Delta$ từ $+0{,}0524$ đến $+0{,}0566$, $p_{\mathrm{Holm}} < 0{,}05$), đồng thời đạt hiệu năng tương đương với CLIP và BiomedCLIP ($p_{\mathrm{Holm}} \ge 0{,}150$). Trên bộ dữ liệu BTXRD, mô hình vượt trội có ý nghĩa về độ chính xác trước PubMedCLIP ($\Delta = +0{,}0418$, $p_{\mathrm{Holm}} = 0{,}002$) và CLIP ($\Delta = +0{,}0267$, $p_{\mathrm{Holm}} = 0{,}046$), trong khi chênh lệch điểm F1 vĩ mô và độ chính xác cân bằng chưa đạt mức ý nghĩa sau hiệu chỉnh ($p_{\mathrm{Holm}} \ge 0{,}276$).
+Đối với nhóm mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ, trên bộ dữ liệu CTCH, XBone-Net vượt trội có ý nghĩa thống kê trước MedCLIP và PubMedCLIP ở cả độ chính xác ($\Delta$ từ $+0{,}0583$ đến $+0{,}0663$) và điểm F1 vĩ mô ($\Delta$ từ $+0{,}0524$ đến $+0{,}0566$, $p_{\mathrm{Holm}} < 0{,}05$), đồng thời đạt hiệu năng tương đương với CLIP và BiomedCLIP ($p_{\mathrm{Holm}} \ge 0{,}150$). Trên bộ dữ liệu BTXRD, mô hình vượt trội có ý nghĩa về độ chính xác trước PubMedCLIP ($\Delta = +0{,}0418$, $p_{\mathrm{Holm}} = 0{,}002$) và CLIP ($\Delta = +0{,}0267$, $p_{\mathrm{Holm}} = 0{,}046$), trong khi chênh lệch điểm F1 vĩ mô và độ chính xác cân bằng chưa đạt mức ý nghĩa sau hiệu chỉnh ($p_{\mathrm{Holm}} \ge 0{,}276$).
 
-Nhìn chung, XBone-Net đạt hiệu năng phân loại cạnh tranh với các mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ trong khi chỉ cập nhật một phần nhỏ tham số. Tuy nhiên, phép so sánh đối chứng này không tự xác nhận vai trò riêng của quy trình hai pha hoặc chú ý chéo hai chiều; ảnh hưởng của các thành phần được đánh giá riêng trong nghiên cứu loại bỏ thành phần.
+Nhìn chung, XBone-Net đạt hiệu năng phân loại cạnh tranh với các mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ trong khi chỉ cập nhật một phần nhỏ tham số. Tuy nhiên, phép so sánh đối chứng này không tự xác nhận vai trò riêng của quy trình hai pha hoặc chú ý chéo hai chiều; ảnh hưởng của các thành phần được đánh giá riêng trong nghiên cứu loại bỏ thành phần.
 
-Các kết quả Macro-AUROC và Macro-AUPRC cùng kiểm định ghép cặp tương ứng được chuyển xuống Phụ lục~\ref{sec:appendix_probability_ranking}. Phân tích bổ sung này cho thấy XBone-Net không dẫn đầu đồng thời về chất lượng xếp hạng xác suất và có Macro-AUROC thấp hơn một số mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Kết quả được giữ lại để thể hiện đầy đủ sự đánh đổi, nhưng không được dùng để mở rộng kết luận chính vốn dựa trên ba độ đo quyết định lớp.
+Các kết quả Macro-AUROC và Macro-AUPRC cùng kiểm định ghép cặp tương ứng được chuyển xuống Phụ lục~\ref{sec:appendix_probability_ranking}. Phân tích bổ sung này cho thấy XBone-Net không dẫn đầu đồng thời về chất lượng xếp hạng xác suất và có Macro-AUROC thấp hơn một số mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ. Kết quả được giữ lại để thể hiện đầy đủ sự đánh đổi, nhưng không được dùng để mở rộng kết luận chính vốn dựa trên ba độ đo quyết định lớp.
 
 \subsubsection{Hiệu quả tham số, chi phí huấn luyện và suy luận}
 \label{subsec:rq1_efficiency_results}
@@ -466,7 +466,7 @@ Về tài nguyên huấn luyện, XBone-Net giảm từ $60{,}3\%$ đến $61{,}
 Khi suy luận, XBone-Net cần khoảng $82{,}318$ tỷ phép tính dấu phẩy động cho mỗi mẫu (tăng $1{,}6\%$) và bộ nhớ đồ họa tăng thêm khoảng $11{,}8$ MiB. Kết quả cho thấy ưu thế của mô hình nằm ở khả năng thích nghi hiệu quả với ít tham số và bộ nhớ huấn luyện, thay vì giảm tài nguyên tính toán khi triển khai suy luận.
 
 \subsection{Kết luận}
-Thực nghiệm cho thấy XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh và có kết quả cạnh tranh với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Lợi ích tài nguyên tập trung ở số tham số cần cập nhật và bộ nhớ GPU trong huấn luyện; đổi lại, mô hình cần thời gian huấn luyện dài hơn và không làm giảm chi phí suy luận.
+Thực nghiệm cho thấy XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh và có kết quả cạnh tranh với nhóm mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ. Lợi ích tài nguyên tập trung ở số tham số cần cập nhật và bộ nhớ GPU trong huấn luyện; đổi lại, mô hình cần thời gian huấn luyện dài hơn và không làm giảm chi phí suy luận.
 
 \section[Khảo sát ảnh hưởng của các thành phần]{Khảo sát ảnh hưởng của các\\thành phần}
 \label{sec:component_evaluation_results}

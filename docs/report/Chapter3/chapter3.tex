@@ -510,10 +510,6 @@ Cặp đầu vào $(v,t)$ được đưa qua hai bộ mã hóa của BiomedCLIP.
 
 Hai đặc trưng toàn cục đồng thời được chuyển đến bộ cảnh báo dữ liệu ngoài phân phối ở Mục~\ref{sec:ch3_multimodal_knn_ood}. Sau khi chuẩn hóa theo chuẩn $L_2$, hệ thống tính khoảng cách tới láng giềng thứ $k$ trong ngân hàng tham chiếu của ảnh và văn bản, chuẩn hóa hai khoảng cách bằng thống kê trên tập xác thực trong phân phối rồi lấy giá trị lớn hơn làm điểm cảnh báo:
 \begin{equation}
-\widetilde{y}_v=\frac{y_v^0}{\|y_v^0\|_2},
-\qquad
-\widetilde{y}_t=\frac{y_t^0}{\|y_t^0\|_2},
-\qquad
 s_{\mathrm{OOD}}=\max\left\{\widetilde d_v,\widetilde d_t\right\}.
 \end{equation}
 Khi $s_{\mathrm{OOD}}>\tau_{\mathrm{alert}}$, giao diện trả về cảnh báo và không công bố nhãn hoặc độ tin cậy cho ca đó. Đây là cơ chế thận trọng ở tầng trình bày kết quả, không phải bằng chứng rằng mẫu chắc chắn nằm ngoài phân phối. Ngược lại, trường hợp không vượt ngưỡng cũng không xác nhận mẫu an toàn hoặc thuộc phân phối huấn luyện.
@@ -565,8 +561,8 @@ Nếu có tham số nhiệt độ được ước lượng trên tập xác th�
 \,\mathrm{d}\beta.
 \label{eq:ch3_integrated_gradients}
 \end{equation}
-Trong đó, $\beta\in[0,1]$ xác định đường nội suy từ mốc tham chiếu đến đầu vào thật. Số điểm nội suy là tham số của quá trình trực tuyến, trong khi phân tích thực nghiệm ở Mục~\ref{subsec:ablation_explainability_results} cố định 24 điểm cho mọi cấu hình. Mốc ảnh là nền đen và mốc văn bản là văn bản trống. Trong phép tính cho văn bản, các vị trí nội dung dùng đặc trưng của đơn vị đệm, còn các đơn vị đặc biệt cần thiết cho bộ mã hóa được giữ nguyên.
+Trong đó, $\beta\in[0,1]$ xác định đường nội suy từ mốc tham chiếu đến đầu vào thật. Mốc ảnh là nền đen và mốc văn bản là văn bản trống. Trong phép tính cho văn bản, các vị trí nội dung dùng đặc trưng của đơn vị đệm, còn các đơn vị đặc biệt cần thiết cho bộ mã hóa được giữ nguyên.
 
-Kết quả ảnh được biểu diễn bằng bản đồ nhiệt, trong đó màu nóng cho biết các vị trí có độ lớn đóng góp cao. Kết quả văn bản dùng màu cam cho tác động ủng hộ và màu xanh cho tác động phản đối lớp dự đoán. Khi được yêu cầu, hệ thống có thể tính thêm các đường loại bỏ và khôi phục cùng mức giảm xác suất khi thay toàn bộ ảnh hoặc văn bản bằng mốc tham chiếu. Các phép đo này đánh giá mức phụ thuộc của dự đoán vào từng nguồn thông tin và được trình bày chi tiết ở Chương~4.
+Kết quả ảnh được biểu diễn bằng bản đồ nhiệt, trong đó màu nóng cho biết các vị trí có độ lớn đóng góp cao. Kết quả văn bản dùng màu cam cho tác động ủng hộ và màu xanh cho tác động phản đối lớp dự đoán. Khi được yêu cầu, hệ thống có thể tính thêm các đường loại bỏ và khôi phục cùng mức giảm xác suất khi thay toàn bộ ảnh hoặc văn bản bằng mốc tham chiếu. Các phép đo này đánh giá mức phụ thuộc của dự đoán vào từng nguồn thông tin và được trình bày chi tiết ở Chương \ref{Chapter4}.
 
 Tích phân gradient và các phép can thiệp chỉ mô tả phản ứng của mô hình đối với lớp đích, đầu vào và mốc tham chiếu đã chọn. Vì vậy, kết quả không chứng minh quan hệ nhân quả, không xác nhận vị trí tổn thương, không bảo đảm tính đúng lâm sàng và không thay thế đánh giá của chuyên gia.

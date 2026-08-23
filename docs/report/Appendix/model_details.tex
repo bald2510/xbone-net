@@ -71,7 +71,7 @@ LoRA \cite{Hu2022LoRA} được chèn vào cả bộ mã hóa ảnh và bộ mã
   \multicolumn{1}{c|}{\textbf{Ý nghĩa}} \\ \hline
 Thị giác ViT-B/16 &
   \begin{tabular}[c]{@{}l@{}}attn.qkv, attn.proj,\\ mlp.fc1, mlp.fc2\end{tabular} &
-  \begin{tabular}[c]{@{}l@{}}Thích nghi các phép chiếu \\ truy vấn--khóa--giá trị, đầu \\ ra chú ý và hai lớp của mạng \\ truyền thẳng trong mỗi khối \\ thị giác.\end{tabular} \\ \hline
+  \begin{tabular}[c]{@{}l@{}}Thích nghi các phép chiếu \\ truy vấn-khóa-giá trị, đầu \\ ra chú ý và hai lớp của mạng \\ truyền thẳng trong mỗi khối \\ thị giác.\end{tabular} \\ \hline
 Văn bản PubMedBERT &
   \begin{tabular}[c]{@{}l@{}}query, key, value,\\ attention.output.dense,\\ intermediate.dense,\\ output.dense\end{tabular} &
   \begin{tabular}[c]{@{}l@{}}Thích nghi các phép chiếu tự \\ chú ý, đầu ra chú ý và hai phép \\ chiếu của mạng truyền thẳng \\ trong mỗi khối văn bản.\end{tabular} \\ \hline
@@ -133,7 +133,7 @@ Hai pha sử dụng AdamW, lịch tốc độ học cosine, tỷ lệ khởi đ�
 \textbf{Pha 1} &
 \textbf{Pha 2} &
 \multicolumn{1}{C{5.2cm}|}{\textbf{Diễn giải}} \\ \hline
-Mục tiêu & Khớp ngữ nghĩa & Phân lớp tuyến tính & Pha 1 căn chỉnh ảnh--văn bản, pha 2 tối ưu biểu diễn dung hợp và biên quyết định cho lớp đích. \\ \hline
+Mục tiêu & Khớp ngữ nghĩa & Phân lớp tuyến tính & Pha 1 căn chỉnh ảnh-văn bản, pha 2 tối ưu biểu diễn dung hợp và biên quyết định cho lớp đích. \\ \hline
 Tốc độ học & $5\times10^{-5}$ & $10^{-4}$ & Áp dụng cho các tham số được phép cập nhật trong từng pha. \\ \hline
 Số vòng tối đa & 30 & 50 & Đánh giá và lưu trạng thái sau mỗi vòng. \\ \hline
 Dừng sớm & 3 vòng & 5 vòng & Dừng khi độ đo lựa chọn không cải thiện. \\ \hline
