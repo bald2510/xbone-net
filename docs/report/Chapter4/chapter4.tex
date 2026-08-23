@@ -477,7 +477,7 @@ Thực nghiệm này kiểm tra xem quy trình huấn luyện hai pha và cơ ch
 \subsection{Nội dung}
 Thực nghiệm được thực hiện trên bộ dữ liệu CTCH với hai biến thể của XBone-Net, Chỉ pha 2 và Nối đặc trưng. Biến thể Chỉ pha 2 bỏ lần huấn luyện pha 1 và khởi tạo trực tiếp cho pha phân lớp. Biến thể Nối đặc trưng giữ nguyên pha 1 nhưng thay thiết lập dung hợp ở pha 2 bằng phép nối. Ngoài yếu tố được thay đổi, các cấu hình dùng chung được giữ nguyên.
 \subsection{Kết quả}
-Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với hai biến thể qua ba hạt giống trên bộ dữ liệu CTCH bằng ba độ đo quyết định lớp. XBone-Net đạt độ chính xác $0{,}6183$ và macro-F1 $0{,}5727$, cao hơn lần lượt $0{,}6099$ và $0{,}5628$ của biến thể Chỉ pha 2, đồng thời cao hơn $0{,}5825$ và $0{,}5622$ của biến thể Nối đặc trưng. Tuy nhiên, biến thể Nối đặc trưng đạt độ chính xác cân bằng $0{,}6199$, cao hơn mức $0{,}5935$ của XBone-Net. Như vậy, cấu hình đầy đủ có lợi thế quan sát được về độ chính xác và macro-F1, nhưng không dẫn đầu đồng thời cả ba độ đo.
+Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với hai biến thể qua ba hạt giống trên bộ dữ liệu CTCH bằng ba độ đo quyết định lớp. XBone-Net đạt độ chính xác $0{,}6183$ và macro-F1 $0{,}5727$, cao hơn lần lượt $0{,}6004$ và $0{,}5497$ của biến thể Chỉ pha 2, đồng thời cao hơn $0{,}5825$ và $0{,}5477$ của biến thể Nối đặc trưng. Tuy nhiên, biến thể Nối đặc trưng đạt độ chính xác cân bằng $0{,}5983$, cao hơn mức $0{,}5935$ của XBone-Net. Như vậy, cấu hình đầy đủ có lợi thế quan sát được về độ chính xác và macro-F1, nhưng không dẫn đầu đồng thời cả ba độ đo.
 
 \input{tables/chapter4/table_ablation_leave_one_out_classification}
 
@@ -532,7 +532,7 @@ Bảng~\ref{tab:ablation_explainability} tổng hợp độ trung thực của t
 
 \input{tables/chapter4/table_ablation_explainability}
 
-Đối với văn bản lâm sàng, biến thể Chỉ pha 2 đạt AUC khôi phục cao nhất ở mức $0{,}4318$, chỉ nhỉnh hơn XBone-Net ở mức $0{,}4299$; BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất là $0{,}2199$. Đối với ảnh X-quang, XBone-Net đạt AUC khôi phục cao nhất với $0{,}4023$, trong khi BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất với $0{,}1586$. Như vậy, không cấu hình nào dẫn đầu đồng thời ở cả hai hướng đánh giá và cả hai nguồn thông tin.
+Đối với văn bản lâm sàng, XBone-Net đạt AUC khôi phục cao nhất ở mức $0{,}4399$, tiếp theo là biến thể Chỉ pha 2 ở mức $0{,}4318$; BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất là $0{,}2199$. Đối với ảnh X-quang, XBone-Net cũng đạt AUC khôi phục cao nhất với $0{,}4023$, trong khi BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất với $0{,}1586$. Như vậy, XBone-Net có giá trị khôi phục quan sát được cao nhất ở cả hai nguồn thông tin, nhưng không dẫn đầu ở các phép loại bỏ và che toàn bộ nguồn.
 
 Khi che toàn bộ từng nguồn thông tin, xác suất lớp đích của XBone-Net giảm $0{,}3187$ đối với ảnh và $0{,}2725$ đối với văn bản. Mức giảm khi che ảnh của Chỉ pha 2 cao hơn nhẹ ở mức $0{,}3203$, còn XBone-Net có mức giảm khi che văn bản cao nhất trong bốn cấu hình. Các giá trị này cho thấy dự đoán của XBone-Net nhạy với cả ảnh và bệnh sử lâm sàng dưới hai mốc tham chiếu đã chọn, nhưng không cho thấy cấu hình đầy đủ phụ thuộc mạnh hơn mọi đối chứng ở cả hai nguồn.
 
