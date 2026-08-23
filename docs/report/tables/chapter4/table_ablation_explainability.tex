@@ -8,46 +8,16 @@
 \hline
 \multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} &
   \multicolumn{1}{c|}{\textbf{Chỉ số}} &
-  \cellcolor{gray!30}\textbf{XBone-Net} &
+  \cellcolor{gray!12}\textbf{XBone-Net} &
   \textbf{Chỉ pha 2} &
   \textbf{Nối đặc trưng} &
-  \textbf{\begin{tabular}[c]{@{}c@{}}BiomedCLIP \\ tinh chỉnh toàn bộ\end{tabular}} \\ \hline
-\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ văn bản lâm sàng\end{tabular}} &
-  AUC Khôi phục theo IG $\uparrow$ &
-  \cellcolor{gray!30}$0.4299$ &
-  $\mathbf{0.4318}$ &
-  $0.3519$ &
-  $0.2953$ \\ \cline{2-6} 
- &
-  AUC Loại bỏ theo IG $\downarrow$ &
-  \cellcolor{gray!30}$0.2811$ &
-  $0.2909$ &
-  $0.2339$ &
-  $\mathbf{0.2199}$ \\ \hline
-\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ ảnh X-quang\end{tabular}} &
-  AUC Khôi phục theo IG $\uparrow$ &
-  \cellcolor{gray!30}$\mathbf{0.4023}$ &
-  $0.3880$ &
-  $0.3561$ &
-  $0.3471$ \\ \cline{2-6} 
- &
-  AUC Loại bỏ theo IG $\downarrow$ &
-  \cellcolor{gray!30}$0.2997$ &
-  $0.2730$ &
-  $0.2394$ &
-  $\mathbf{0.1586}$ \\ \hline
-\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\ thông tin\end{tabular}} &
-  \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$\end{tabular} &
-  \cellcolor{gray!30}$0.3187$ &
-  $\mathbf{0.3203}$ &
-  $0.3164$ &
-  $0.3132$ \\ \cline{2-6} 
- &
-  \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$\end{tabular} &
-  \cellcolor{gray!30}$\mathbf{0.2725}$ &
-  $0.2176$ &
-  $0.2678$ &
-  $0.2065$ \\ \hline
+  \textbf{BiomedCLIP tinh chỉnh toàn bộ} \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ văn bản lâm sàng\end{tabular}} & AUC Khôi phục theo IG $\uparrow$ & \cellcolor{gray!12}$\mathbf{0.4399}$ & $0.4318$ & $0.3519$ & $0.2953$ \\ \cline{2-6}
+ & AUC Loại bỏ theo IG $\downarrow$ & \cellcolor{gray!12}$0.2811$ & $0.2909$ & $0.2339$ & $\mathbf{0.2199}$ \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ ảnh X-quang\end{tabular}} & AUC Khôi phục theo IG $\uparrow$ & \cellcolor{gray!12}$\mathbf{0.4023}$ & $0.3880$ & $0.3561$ & $0.3471$ \\ \cline{2-6}
+ & AUC Loại bỏ theo IG $\downarrow$ & \cellcolor{gray!12}$0.2997$ & $0.2730$ & $0.2394$ & $\mathbf{0.1586}$ \\ \hline
+\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\ thông tin\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$\end{tabular} & \cellcolor{gray!12}$0.3187$ & $\mathbf{0.3203}$ & $0.3164$ & $0.3132$ \\ \cline{2-6}
+ & \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$\end{tabular} & \cellcolor{gray!12}$\mathbf{0.2725}$ & $0.2176$ & $0.2678$ & $0.2065$ \\ \hline
 \end{tabular}%
 }
 \caption{Đánh giá tích phân gradient và can thiệp nguồn trên toàn bộ 669 mẫu kiểm thử CTCH ở hạt giống 42}

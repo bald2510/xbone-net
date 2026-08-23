@@ -4137,6 +4137,22 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_RESULTS_ROOT / "summary" / "run_all_table.csv",
     )
     fst.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+        help=(
+            "Root containing the aligned per-seed prediction archives. "
+            "When provided, both full-shot tables are recomputed from the "
+            "same archives used by the paired statistical tests."
+        ),
+    )
+    fst.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[42, 123, 456],
+    )
+    fst.add_argument(
         "--classification-output",
         type=Path,
         default=DEFAULT_RESULTS_ROOT / "summary" / "classification" / "table_full_shot_classification.tex",
@@ -4528,9 +4544,10 @@ def generate_full_shot_classification_tables(
     classification_output: Path,
     ranking_output: Path,
     precision: int = 4,
+    results_root: Path | None = None,
+    seeds: Sequence[int] = (42, 123, 456),
 ) -> tuple[Path, Path]:
     """Sinh hai bảng phân loại full-shot: Bảng 1 (độ đo phân loại Acc, BAcc, Macro-F1) và Bảng 2 (độ đo xếp hạng AUROC, AUPRC)."""
-    frame = load_frame(input_file)
     models = [
         "fft_resnet50",
         "fft_densenet",
@@ -4540,10 +4557,70 @@ def generate_full_shot_classification_tables(
         "fft_biomedclip",
         "ours_xbone_net",
     ]
-    frame = frame[
-        frame["config"].isin(models)
-        & frame["category"].isin(["Baselines / Full fine-tuning", "Proposed"])
-    ].copy()
+    if results_root is None:
+        frame = load_frame(input_file)
+        frame = frame[
+            frame["config"].isin(models)
+            & frame["category"].isin(["Baselines / Full fine-tuning", "Proposed"])
+        ].copy()
+    else:
+        root = resolve_path(results_root)
+        metric_names = (
+            "accuracy",
+            "balanced_accuracy",
+            "f1_macro",
+            "auroc_macro",
+            "auprc_macro",
+        )
+        rows: list[dict[str, Any]] = []
+        for dataset in ("btxrd", "ctch"):
+            common_image_ids: np.ndarray | None = None
+            common_labels: np.ndarray | None = None
+            for config in models:
+                experiment_root = (
+                    root / dataset / "proposed" / config
+                    if config == "ours_xbone_net"
+                    else root / dataset / "baselines" / "full_finetuned" / config
+                )
+                per_seed: list[dict[str, float]] = []
+                for seed in seeds:
+                    source = (
+                        experiment_root
+                        / f"seed_{int(seed)}"
+                        / "analysis"
+                        / "features"
+                        / f"{dataset}_test.npz"
+                    )
+                    archive = _load_aligned_prediction_archive(
+                        source,
+                        expected_image_ids=common_image_ids,
+                        expected_labels=common_labels,
+                    )
+                    if common_image_ids is None:
+                        common_image_ids = archive["image_id"]
+                        common_labels = archive["labels"]
+                    per_seed.append(
+                        _classification_metric_values(
+                            archive["probabilities"],
+                            archive["labels"],
+                            metric_names,
+                        )
+                    )
+                row: dict[str, Any] = {
+                    "dataset": dataset.upper(),
+                    "config": config,
+                }
+                for metric in metric_names:
+                    values = np.asarray(
+                        [seed_values[metric] for seed_values in per_seed],
+                        dtype=np.float64,
+                    )
+                    row[f"{metric}_mean"] = float(values.mean())
+                    row[f"{metric}_std"] = (
+                        float(values.std(ddof=1)) if len(values) > 1 else 0.0
+                    )
+                rows.append(row)
+        frame = pd.DataFrame(rows)
     frame["_model_rank"] = frame["config"].map(get_model_order_key)
     if "dataset" in frame.columns:
         frame = frame.sort_values(by=["dataset", "_model_rank"], kind="stable").drop(columns=["_model_rank"]).reset_index(drop=True)
@@ -9265,6 +9342,8 @@ def main() -> None:
             args.classification_output,
             args.ranking_output,
             precision=args.precision,
+            results_root=args.results_root,
+            seeds=args.seeds,
         )
         print(f"Classification table saved to: {cls_out}")
         print(f"Ranking table saved to: {rank_out}")
