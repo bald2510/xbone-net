@@ -3491,7 +3491,7 @@ def plot_grouped_paired_forest(
     plt = _load_pyplot()
     from matplotlib.lines import Line2D
 
-    figure_height = max(3.8, 0.70 * len(comparator_values) + 1.8)
+    figure_height = max(4.4, 0.70 * len(comparator_values) + 2.2)
     figure, axis = plt.subplots(figsize=(10.8, figure_height))
     positions = np.arange(len(comparator_values), dtype=float)
     position_map = {
@@ -3644,12 +3644,22 @@ def plot_grouped_paired_forest(
                 label="Khoảng tin cậy 95%",
             )
         )
-    legend_handles = metric_handles + significance_handles + interval_handles
-    legend_columns = min(4, len(legend_handles))
-    axis.legend(
+    semantic_handles = significance_handles + interval_handles
+    if len(metric_handles) == len(semantic_handles):
+        legend_handles = [
+            handle
+            for pair in zip(metric_handles, semantic_handles)
+            for handle in pair
+        ]
+        legend_columns = len(metric_handles)
+    else:
+        legend_handles = metric_handles + semantic_handles
+        legend_columns = min(4, len(legend_handles))
+    legend_rows = math.ceil(len(legend_handles) / legend_columns)
+    figure.legend(
         handles=legend_handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.18),
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.015),
         ncol=legend_columns,
         frameon=False,
         fontsize=12.5,
@@ -3660,7 +3670,11 @@ def plot_grouped_paired_forest(
     )
 
     destination = _prepare_plot_output(output)
-    figure.tight_layout(rect=(0.0, 0.13, 1.0, 1.0))
+    bottom_margin = min(
+        0.34,
+        (0.62 + 0.34 * legend_rows) / figure.get_figheight(),
+    )
+    figure.tight_layout(rect=(0.0, bottom_margin, 1.0, 1.0))
     figure.savefig(destination, dpi=dpi, bbox_inches="tight")
     plt.close(figure)
     return destination
