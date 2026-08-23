@@ -133,11 +133,11 @@ Mặc dù các mô hình học sâu đa phương thức đã đạt được nhi
 
 Các mục tiêu cụ thể của đề tài bao gồm:
 \begin{enumerate}
-\item Xây dựng XBone-Net bằng cách thích nghi BioMedCLIP với LoRA, quy trình huấn luyện hai giai đoạn và mô-đun dung hợp ảnh-văn bản cho bài toán phân lớp X-quang xương.
+\item Xây dựng XBone-Net bằng cách thích nghi BiomedCLIP với LoRA, quy trình huấn luyện hai giai đoạn và mô-đun dung hợp ảnh-văn bản cho bài toán phân lớp X-quang xương.
 
-\item Đánh giá hiệu năng phân lớp của XBone-Net so với các mô hình đối chứng trong thiết lập toàn bộ dữ liệu, đồng thời định lượng sự đánh đổi giữa số tham số cập nhật và chi phí suy luận.
+\item Đánh giá hiệu năng phân lớp của XBone-Net so với các mô hình đối chứng trong thiết lập toàn bộ dữ liệu, đồng thời định lượng sự đánh đổi giữa số tham số cập nhật, chi phí huấn luyện và chi phí suy luận.
 
-\item Thực hiện các thí nghiệm loại bỏ và thay thế thành phần để xác định ảnh hưởng của quy trình huấn luyện và cơ chế dung hợp đến các nhóm độ đo khác nhau.
+\item Thực hiện các thí nghiệm loại bỏ và thay thế thành phần để xác định ảnh hưởng của quy trình huấn luyện và cơ chế dung hợp đến hiệu năng phân loại.
 
 \item Đánh giá hai đầu ra hỗ trợ của hệ thống gồm cảnh báo dữ liệu ngoài phân phối bằng các điểm bất thường hậu xử lý và truy vết nguồn phụ thuộc của dự đoán bằng tích phân gradient kết hợp can thiệp đầu vào.
 \end{enumerate}
@@ -176,11 +176,11 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Để đạt được các mục tiêu đã đề ra, nghiên cứu tập trung trả lời các câu hỏi sau:
 
 \begin{itemize}
-\item \textbf{Câu hỏi nghiên cứu 1:} Trong tác vụ phân loại, XBone-Net đạt mức hiệu năng phân lớp nào so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận?
+\item \textbf{Câu hỏi nghiên cứu 1:} Trong tác vụ phân loại, XBone-Net đạt mức hiệu năng phân lớp nào so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật, chi phí huấn luyện và chi phí suy luận?
 
-\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện và cơ chế dung hợp, ảnh hưởng như thế nào đến quyết định lớp và chất lượng xếp hạng?
+\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện hai pha và cơ chế dung hợp, ảnh hưởng như thế nào đến hiệu năng phân loại của mô hình?
 
-\item \textbf{Câu hỏi nghiên cứu 3:} Điểm cảnh báo hậu xử lý được xây dựng từ không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối được xác định trước ở mức nào, và giới hạn của cảnh báo này khác nhau ra sao giữa dịch chuyển gần miền và dịch chuyển khác bộ dữ liệu?
+\item \textbf{Câu hỏi nghiên cứu 3:} Điểm cảnh báo hậu xử lý được xây dựng từ không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu CTCH trong phân phối với các bệnh lý gần miền nằm ngoài không gian nhãn ở mức nào, và kết quả khác nhau ra sao giữa XBone-Net, hai biến thể cùng BiomedCLIP tinh chỉnh toàn bộ?
 
 \item \textbf{Câu hỏi nghiên cứu 4:} Tích phân gradient kết hợp với can thiệp đầu vào phản ánh mức phụ thuộc của dự đoán XBone-Net vào thông tin hình ảnh và văn bản như thế nào?
 
@@ -193,11 +193,11 @@ Các đóng góp của đề tài tập trung vào quy trình thích nghi, cách
 \clearpage
 
 \begin{enumerate}
-\item \textbf{Quy trình thích nghi XBone-Net:} Đề xuất và hiện thực hóa quy trình thích nghi BioMedCLIP cho phân lớp X-quang xương bằng LoRA, huấn luyện hai pha và chú ý chéo hai chiều, nhằm hạn chế số tham số cần cập nhật trong khi khai thác biểu diễn ảnh-văn bản. CTCH sử dụng bệnh sử có sẵn trong bệnh án, trong khi BTXRD sử dụng văn bản tổng hợp từ siêu dữ liệu. Vì hai nguồn văn bản không có mức độ xác thực lâm sàng tương đương nên kết quả trên từng bộ dữ liệu được diễn giải riêng.
+\item \textbf{Quy trình thích nghi XBone-Net:} Đề xuất và hiện thực hóa quy trình thích nghi BiomedCLIP cho phân lớp X-quang xương bằng LoRA, huấn luyện hai pha và chú ý chéo hai chiều, nhằm hạn chế số tham số cần cập nhật trong khi khai thác biểu diễn ảnh-văn bản. CTCH sử dụng bệnh sử có sẵn trong bệnh án, trong khi BTXRD sử dụng văn bản tổng hợp từ siêu dữ liệu. Vì hai nguồn văn bản không có mức độ xác thực lâm sàng tương đương nên kết quả trên từng bộ dữ liệu được diễn giải riêng.
 
-\item \textbf{Bằng chứng về hiệu năng, thành phần và chi phí:} Đánh giá XBone-Net với các mô hình đối chứng trong thiết lập sử dụng toàn bộ dữ liệu, khảo sát riêng vai trò của quy trình huấn luyện hai pha và cơ chế dung hợp, đồng thời đo số tham số cập nhật, số phép toán, thông lượng, độ trễ và bộ nhớ GPU cực đại. Qua đó, phân tích làm rõ mức hiệu năng phân lớp cạnh tranh, lợi ích về tham số cập nhật và phần chi phí suy luận phải đánh đổi.
+\item \textbf{Bằng chứng về hiệu năng, thành phần và chi phí:} Đánh giá XBone-Net với các mô hình đối chứng trong thiết lập sử dụng toàn bộ dữ liệu, khảo sát riêng vai trò của quy trình huấn luyện hai pha và cơ chế dung hợp, đồng thời đo số tham số cập nhật, thời gian và bộ nhớ GPU cực đại trong huấn luyện, cùng số phép toán, thông lượng, độ trễ và bộ nhớ GPU khi suy luận. Qua đó, phân tích làm rõ mức hiệu năng phân lớp cạnh tranh, lợi ích về tham số cập nhật và bộ nhớ huấn luyện, cũng như phần thời gian huấn luyện và chi phí suy luận phải đánh đổi.
 
-\item \textbf{Đánh giá cảnh báo dữ liệu ngoài phân phối:} Xây dựng điểm cảnh báo hậu xử lý từ biểu diễn ảnh và văn bản, sau đó đánh giá trong hai kịch bản được xác định trước: dịch chuyển gần miền trên CTCH và dịch chuyển khác bộ dữ liệu sang BTXRD. Đây là tín hiệu bổ trợ, không phải cơ chế bảo đảm phát hiện hoặc từ chối dự đoán tự động.
+\item \textbf{Đánh giá cảnh báo dữ liệu ngoài phân phối:} Xây dựng điểm cảnh báo hậu xử lý từ biểu diễn ảnh và văn bản, sau đó đánh giá khả năng phân biệt mẫu CTCH trong phân phối với các bệnh lý gần miền nằm ngoài không gian nhãn của CTCH. Đây là tín hiệu bổ trợ, không phải cơ chế bảo đảm phát hiện hoặc từ chối dự đoán tự động.
 
 \item \textbf{Truy vết nguồn phụ thuộc của dự đoán:} Kết hợp tích phân gradient với can thiệp đầu vào để khảo sát mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản. Phân tích cung cấp bằng chứng thăm dò về độ trung thực của thứ tự quy đóng và hỗ trợ truy vết đầu ra, nhưng không xác lập đóng góp nhân quả, khả năng định vị tổn thương hoặc độ đúng lâm sàng.
 

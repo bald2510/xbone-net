@@ -13,6 +13,12 @@ params:
   k_shot: null
   seed: ${seed}
 
+  # Pass the RGB image directly to the backbone's native preprocessing.
+  # For XBone-Net and BiomedCLIP baselines this is the original BiomedCLIP
+  # resize, center-crop and normalization pipeline; no padding stage is added.
+  preprocess:
+    strategy: direct_resize
+
   # Multi-class classification (10 leaf classes, ordered by frequency)
   task_type: "multiclass"
   num_classes: 10

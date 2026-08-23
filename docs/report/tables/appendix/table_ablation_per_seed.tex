@@ -3,20 +3,20 @@
 \footnotesize
 \renewcommand{\arraystretch}{1.08}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{|L{2.65cm}|C{1.0cm}|*{5}{C{1.45cm}|}}
+\begin{tabular}{|L{3.3cm}|C{1.3cm}|*{3}{C{2.0cm}|}}
 \hline
-\textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} & \textbf{Macro-AUROC} & \textbf{Macro-AUPRC} \\ \hline
-\rowcolor{gray!12}XBone-Net & 42 & 0{,}6024 & 0{,}5788 & 0{,}5589 & 0{,}8990 & 0{,}5839 \\ \hline
-\rowcolor{gray!12}XBone-Net & 123 & 0{,}6114 & 0{,}5966 & 0{,}5645 & 0{,}8943 & 0{,}5719 \\ \hline
-\rowcolor{gray!12}XBone-Net & 456 & 0{,}6413 & 0{,}6051 & 0{,}5948 & 0{,}9127 & 0{,}6153 \\ \hline
-Chỉ pha 2 & 42 & 0{,}6173 & 0{,}5611 & 0{,}5767 & 0{,}9200 & 0{,}6097 \\ \hline
-Chỉ pha 2 & 123 & 0{,}6188 & 0{,}5904 & 0{,}5815 & 0{,}9093 & 0{,}5975 \\ \hline
-Chỉ pha 2 & 456 & 0{,}5934 & 0{,}6067 & 0{,}5604 & 0{,}9352 & 0{,}6176 \\ \hline
-Nối đặc trưng & 42 & 0{,}5605 & 0{,}6274 & 0{,}5529 & 0{,}9493 & 0{,}6204 \\ \hline
-Nối đặc trưng & 123 & 0{,}5830 & 0{,}5990 & 0{,}5596 & 0{,}9291 & 0{,}6164 \\ \hline
-Nối đặc trưng & 456 & 0{,}5904 & 0{,}6333 & 0{,}5741 & 0{,}9399 & 0{,}6236 \\ \hline
+\textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{Accuracy} & \textbf{BAcc} & \textbf{Macro-F1} \\ \hline
+\rowcolor{gray!30}XBone-Net & 42 & 0{,}6024 & 0{,}5788 & 0{,}5589 \\ \hline
+\rowcolor{gray!30}XBone-Net & 123 & 0{,}6114 & 0{,}5966 & 0{,}5645 \\ \hline
+\rowcolor{gray!30}XBone-Net & 456 & 0{,}6413 & 0{,}6051 & 0{,}5948 \\ \hline
+Chỉ pha 2 & 42 & 0{,}6099 & 0{,}5529 & 0{,}5624 \\ \hline
+Chỉ pha 2 & 123 & 0{,}5979 & 0{,}5223 & 0{,}5286 \\ \hline
+Chỉ pha 2 & 456 & 0{,}5934 & 0{,}5904 & 0{,}5582 \\ \hline
+Nối đặc trưng & 42 & 0{,}5785 & 0{,}6016 & 0{,}5507 \\ \hline
+Nối đặc trưng & 123 & 0{,}5830 & 0{,}5699 & 0{,}5302 \\ \hline
+Nối đặc trưng & 456 & 0{,}5859 & 0{,}6233 & 0{,}5621 \\ \hline
 \end{tabular}%
 }
-\caption{Kết quả phân loại của từng hạt giống trong nghiên cứu loại bỏ thành phần trên CTCH. Cấu hình đầy đủ được tô xám.}
+\caption{Kết quả phân loại của từng hạt giống trong nghiên cứu loại bỏ thành phần trên CTCH, được tính từ cùng tệp dự đoán dùng cho kiểm định ghép cặp. Cấu hình đầy đủ được tô xám.}
 \label{tab:appendix-ablation-seeds}
 \end{table}

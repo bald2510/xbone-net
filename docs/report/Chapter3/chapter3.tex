@@ -13,7 +13,7 @@ Nhóm nghiên cứu đề xuất XBone-Net cho bài toán phân loại đa lớp
     \label{fig:ch3_overview}
 \end{figure}
 
-Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện để thích nghi trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được dưa vào mô-đun phân loại. Định danh mô hình nền tảng, kích thước biểu diễn, vị trí chèn LoRA và cấu hình tái lập đầy đủ được trình bày tại Phụ lục~\ref{AppendixModelDetails}.
+Như minh họa trong Hình \ref{fig:ch3_overview}, XBone-Net kế thừa bộ mã hóa thị giác và bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}. Các tham số nền được giữ cố định để bảo toàn tri thức y sinh đã học trước, trong khi các ma trận thích nghi hạng thấp LoRA \cite{Hu2022LoRA} được huấn luyện để thích nghi trên dữ liệu đích. Sau bước mã hóa, mô-đun dung hợp kết hợp đặc trưng toàn cục và cục bộ của hai phương thức. Biểu diễn tổng hợp cuối cùng được đưa vào mô-đun phân loại. Định danh mô hình nền tảng, kích thước biểu diễn, vị trí chèn LoRA và cấu hình tái lập đầy đủ được trình bày tại Phụ lục~\ref{AppendixModelDetails}.
 
 Mỗi mẫu dữ liệu được ký hiệu bởi bộ ba gồm ảnh X-quang, thông tin lâm sàng và nhãn lớp. Tập huấn luyện có dạng:
 
@@ -95,7 +95,7 @@ Bổ sung cho các bằng chứng hình thái được trích xuất từ ảnh 
 
 Kết thúc hai nhánh mã hóa, mỗi mẫu được biểu diễn bởi chuỗi đặc trưng ảnh $\boldsymbol{V}_{i}$, ma trận đặc trưng văn bản $\boldsymbol{H}_{i}^{T}$ và các vectơ toàn cục tương ứng. Mặc dù các biểu diễn này kế thừa tri thức y sinh từ BiomedCLIP, sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu X-quang xương đích vẫn đòi hỏi hai bộ mã hóa được thích nghi trước khi thực hiện dung hợp.
 
-\section{Thích nghi tham số hiệu quả bằng LoRA}
+\section[Thích nghi tham số hiệu quả bằng LoRA]{Thích nghi tham số\\hiệu quả bằng LoRA}
 
 Trong quá trình thích nghi các mô hình lớn như PubMedBERT hay ViT trong BiomedCLIP cho các tác vụ y sinh hạ nguồn, phương pháp tinh chỉnh toàn bộ tham số đòi hỏi chi phí tính toán và bộ nhớ lưu trữ cực kỳ lớn. Để giải quyết rào cản này, phương pháp thích nghi tham số hạng thấp LoRA \cite{Hu2022LoRA} được áp dụng. Phương pháp này hoạt động dựa trên giả thuyết rằng sự thay đổi trọng số của các lớp liên kết dày đặc trong quá trình học thực chất nằm trong một không gian có "hạng nội tại" rất thấp.
 
@@ -309,7 +309,7 @@ LoRA chỉ điều chỉnh cách từng bộ mã hóa biểu diễn dữ liệu 
 
 % Kết quả của quá trình trên là vectơ đa phương thức $\boldsymbol{z}_{i}$, trong đó thông tin ảnh và văn bản đã được tổng hợp trong cùng một biểu diễn. Vectơ này là đầu vào trực tiếp của bộ phân lớp, do đó quyết định cuối cùng không còn dựa trên từng phương thức riêng lẻ mà dựa trên quan hệ đã học giữa chúng.
 
-\section{mô-đun dung hợp đa phương thức với chú ý chéo hai chiều}
+\section[Mô-đun dung hợp đa phương thức với chú ý chéo hai chiều]{Mô-đun dung hợp\\đa phương thức với\\chú ý chéo hai chiều}
 
 Sau khi đi qua các bộ mã hóa chuyên biệt, ta thu được các ma trận biểu diễn đặc trưng đầy đủ chứa cả thông tin toàn cục lẫn cục bộ của hai nhánh:
 \begin{itemize}
@@ -585,7 +585,7 @@ Quy trình lan truyền tiến, tính toán hàm mất mát và cập nhật tr�
     Trong đó, $\eta$ là tốc độ học được thiết lập theo lịch trình cosine.
 \end{enumerate}
 
-\section{Phát hiện dữ liệu lệch phân phối bằng thuật toán k-NN đa phương thức}
+\section[Phát hiện dữ liệu lệch phân phối bằng thuật toán k-NN đa phương thức]{Phát hiện dữ liệu lệch phân phối\\bằng thuật toán k-NN\\đa phương thức}
 \label{sec:ch3_multimodal_knn_ood}
 
 Sau hai giai đoạn huấn luyện, hệ thống sử dụng các biểu diễn đơn phương thức để xây dựng điểm bất thường đa phương thức $s_{\mathrm{OOD}}$ theo

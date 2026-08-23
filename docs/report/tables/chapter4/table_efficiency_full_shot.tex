@@ -5,10 +5,10 @@
 \begin{tabular}{|l|l|c|c|c|}
 \hline
 \multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Tổng tham số}} & \multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} & \multicolumn{1}{c|}{\textbf{Tỷ lệ (\%)}} \\ \hline
-\multirow{2}{*}{BTXRD} & BiomedCLIP (FFT) & 196,433,675 & 196,433,675 & 100.00\% \\ \cline{2-5}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,342,539 & \cellcolor{gray!12}8,439,818 & \cellcolor{gray!12}4.13\% \\ \hline
-\multirow{2}{*}{CTCH} & BiomedCLIP (FFT) & 196,439,831 & 196,439,831 & 100.00\% \\ \cline{2-5}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}204,348,695 & \cellcolor{gray!12}8,445,974 & \cellcolor{gray!12}4.13\% \\ \hline
+\multirow{2}{*}{BTXRD} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & 196,433,675 & 196,433,675 & 100.00\% \\ \cline{2-5}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}204,342,539 & \cellcolor{gray!30}8,439,818 & \cellcolor{gray!30}4.13\% \\ \hline
+\multirow{2}{*}{CTCH} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & 196,439,831 & 196,439,831 & 100.00\% \\ \cline{2-5}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}204,348,695 & \cellcolor{gray!30}8,445,974 & \cellcolor{gray!30}4.13\% \\ \hline
 \end{tabular}%
 }
 \caption{Số lượng tham số khi sử dụng toàn bộ dữ liệu}
@@ -21,11 +21,28 @@
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|l|c|c|c|c|}
 \hline
-\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\textbf{Thông lượng}} & \multicolumn{1}{c|}{\textbf{Độ trễ}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ GPU}} \\ \hline
-\multirow{2}{*}{BTXRD} & BiomedCLIP (FFT) & 81.032 & 64.7 & 15.48 & 770.7 \\ \cline{2-6}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}82.318 & \cellcolor{gray!12}68.2 & \cellcolor{gray!12}15.26 & \cellcolor{gray!12}782.4 \\ \hline
-\multirow{2}{*}{CTCH} & BiomedCLIP (FFT) & 81.032 & 75.6 & 13.77 & 770.7 \\ \cline{2-6}
- & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}82.318 & \cellcolor{gray!12}64.1 & \cellcolor{gray!12}16.17 & \cellcolor{gray!12}782.5 \\ \hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{Pha 1 (giờ GPU)}} & \multicolumn{1}{c|}{\textbf{Pha 2 (giờ GPU)}} & \multicolumn{1}{c|}{\textbf{Tổng (giờ GPU)}} & \multicolumn{1}{c|}{\textbf{Bộ nhớ cực đại (MiB)}} \\ \hline
+\multirow{2}{*}{BTXRD} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & -- & $0{,}4647\pm0{,}1293$ & $0{,}4647\pm0{,}1293$ & $3.816{,}7\pm0{,}0$ \\ \cline{2-6}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}$0{,}4080\pm0{,}0621$ & \cellcolor{gray!30}$0{,}5194\pm0{,}1012$ & \cellcolor{gray!30}$0{,}9274\pm0{,}0518$ & \cellcolor{gray!30}$1.515{,}5\pm2{,}3$ \\ \hline
+\multirow{2}{*}{CTCH} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & -- & $0{,}3411\pm0{,}0800$ & $0{,}3411\pm0{,}0800$ & $3.816{,}8\pm0{,}0$ \\ \cline{2-6}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}$0{,}3318\pm0{,}0591$ & \cellcolor{gray!30}$0{,}5224\pm0{,}0845$ & \cellcolor{gray!30}$0{,}8542\pm0{,}0925$ & \cellcolor{gray!30}$1.455{,}0\pm43{,}0$ \\ \hline
+\end{tabular}%
+}
+\caption{Chi phí huấn luyện, trình bày dưới dạng trung bình $\pm$ độ lệch chuẩn qua ba hạt giống. Các phép đo dùng cùng GPU NVIDIA GeForce RTX 5060 Ti, độ chính xác số học bf16 và kích thước lô 16. Giờ GPU chỉ tính thời gian thực thi các pha huấn luyện.}
+\label{tab:training_cost_full_shot}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Dữ liệu}} & \multicolumn{1}{c|}{\textbf{Mô hình}} & \multicolumn{1}{c|}{\textbf{GFLOPs}} & \multicolumn{1}{c|}{\makecell{\textbf{Thông lượng}\\\textbf{(mẫu/giây)}}} & \multicolumn{1}{c|}{\makecell{\textbf{Độ trễ}\\\textbf{(ms)}}} & \multicolumn{1}{c|}{\makecell{\textbf{Bộ nhớ GPU}\\\textbf{(MiB)}}} \\ \hline
+\multirow{2}{*}{BTXRD} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & 81.032 & 64.7 & 15.48 & 770.7 \\ \cline{2-6}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}82.318 & \cellcolor{gray!30}68.2 & \cellcolor{gray!30}15.26 & \cellcolor{gray!30}782.4 \\ \hline
+\multirow{2}{*}{CTCH} & \makecell[l]{BiomedCLIP\\tinh chỉnh toàn bộ} & 81.032 & 75.6 & 13.77 & 770.7 \\ \cline{2-6}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}82.318 & \cellcolor{gray!30}64.1 & \cellcolor{gray!30}16.17 & \cellcolor{gray!30}782.5 \\ \hline
 \end{tabular}%
 }
 \caption{Chi phí tính toán và tốc độ suy luận khi sử dụng toàn bộ dữ liệu}

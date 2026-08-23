@@ -250,7 +250,7 @@ class BTXRDDataset(Dataset):
         print(
             f"[Dataset] Initialized '{split.upper()}' with {len(self.df)} samples. "
             f"Dual reports: {self.has_dual_reports}. "
-            f"Preprocess: {self.preprocess_cfg.get('strategy', 'letterbox')}. "
+            f"Preprocess: {self.preprocess_cfg.get('strategy', 'direct_resize')}. "
             f"Text-only: {self.text_only}. "
             f"Reports shuffled: {self.shuffle_reports}."
         )

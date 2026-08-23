@@ -1,11 +1,4 @@
-"""Công cụ trực quan hóa và xuất từng ảnh thành phần của quy trình tiền xử lý ảnh X-quang:
-1. Quy trình padding (proposed):
-   - 01_anh_dau_vao.png (Ảnh gốc W x H)
-   - 02_buoc1_giam_kich_thuoc.png (Co cạnh dài về 224px: W' x H')
-   - 03_buoc2_noi_suy_bac_ba.png (Nội suy Bicubic: W' x H')
-   - 04_buoc3_them_vung_dem.png (Đệm viền đen Canvas: 224x224)
-
-2. Quy trình center crop (biomedclip):
+"""Xuất các thành phần của quy trình tiền xử lý ảnh gốc BiomedCLIP:
    - 01_anh_dau_vao.png (Ảnh gốc W x H)
    - 02_buoc1_giam_kich_thuoc.png (Co cạnh ngắn về 224px: W_res x H_res)
    - 03_buoc2_noi_suy_bac_ba.png (Nội suy Bicubic: W_res x H_res)
@@ -35,7 +28,7 @@ if sys.platform == "win32":
 def parse_args() -> argparse.Namespace:
     """Phân tích các tham số dòng lệnh phục vụ xuất từng ảnh thành phần."""
     parser = argparse.ArgumentParser(
-        description="Export individual preprocessing step components for Padding (proposed) and CenterCrop (biomedclip)."
+        description="Export the native BiomedCLIP resize and center-crop steps."
     )
     parser.add_argument("--image", required=True, help="Đường dẫn tới tệp ảnh X-quang đầu vào.")
     parser.add_argument(
@@ -46,62 +39,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-size", type=int, default=224, help="Kích thước cạnh chuẩn (mặc định 224).")
     parser.add_argument("--dpi", type=int, default=200, help="Độ phân giải DPI khi lưu ảnh.")
     return parser.parse_args()
-
-
-def export_padding_components(source: Image.Image, output_dir: Path, target_size: int = 224, dpi: int = 200) -> list[Path]:
-    """Xuất từng ảnh thành phần của quy trình Letterbox Padding (proposed).
-
-    Parameters
-    ----------
-    source : Image.Image
-        Ảnh X-quang đầu vào gốc.
-    output_dir : Path
-        Thư mục lưu các tệp ảnh thành phần.
-    target_size : int, optional
-        Kích thước mục tiêu (mặc định 224).
-    dpi : int, optional
-        Độ phân giải DPI khi lưu.
-
-    Returns
-    -------
-    list[Path]
-        Danh sách đường dẫn các tệp ảnh thành phần đã lưu.
-    """
-    pad_dir = output_dir / "padding_proposed"
-    pad_dir.mkdir(parents=True, exist_ok=True)
-
-    source_rgb = source.convert("RGB")
-    orig_w, orig_h = source_rgb.size
-
-    # Bước 1: Tính tỷ lệ cạnh dài
-    scale = min(target_size / orig_w, target_size / orig_h)
-    new_w = max(1, min(target_size, round(orig_w * scale)))
-    new_h = max(1, min(target_size, round(orig_h * scale)))
-
-    # Bước 2: Nội suy Bicubic
-    bicubic_resized = source_rgb.resize((new_w, new_h), resample=Image.Resampling.BICUBIC)
-
-    # Bước 3: Đệm Canvas vuông màu đen
-    canvas = Image.new("RGB", (target_size, target_size), color=(0, 0, 0))
-    offset_x = (target_size - new_w) // 2
-    offset_y = (target_size - new_h) // 2
-    padded_img = canvas.copy()
-    padded_img.paste(bicubic_resized, (offset_x, offset_y))
-
-    components = [
-        (source_rgb, f"01_anh_dau_vao_{orig_w}x{orig_h}.png"),
-        (bicubic_resized, f"02_buoc1_giam_kich_thuoc_{new_w}x{new_h}.png"),
-        (bicubic_resized, f"03_buoc2_noi_suy_bac_ba_{new_w}x{new_h}.png"),
-        (padded_img, f"04_buoc3_them_vung_dem_{target_size}x{target_size}.png"),
-    ]
-
-    saved_paths = []
-    for img, filename in components:
-        p = pad_dir / filename
-        img.save(p, dpi=(dpi, dpi))
-        saved_paths.append(p)
-
-    return saved_paths
 
 
 def export_centercrop_components(source: Image.Image, output_dir: Path, target_size: int = 224, dpi: int = 200) -> list[Path]:
@@ -178,15 +115,9 @@ def main() -> None:
     print(f"  • Thư mục xuất  : {output_dir}")
     print("=" * 80)
 
-    # 1. Xuất các thành phần quy trình padding (proposed)
-    pad_paths = export_padding_components(source_image, output_dir, args.target_size, args.dpi)
-    print("  [Thành công] Đã lưu các thành phần của quy trình padding (proposed):")
-    for p in pad_paths:
-        print(f"    -> {p.relative_to(PROJECT_ROOT)}")
-
-    # 2. Xuất các thành phần quy trình center crop (biomedclip)
+    # Xuất các thành phần của transform gốc BiomedCLIP.
     crop_paths = export_centercrop_components(source_image, output_dir, args.target_size, args.dpi)
-    print("\n  [Thành công] Đã lưu các thành phần của quy trình center crop (biomedclip):")
+    print("  [Thành công] Đã lưu các thành phần của quy trình center crop (BiomedCLIP):")
     for p in crop_paths:
         print(f"    -> {p.relative_to(PROJECT_ROOT)}")
 

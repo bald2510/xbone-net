@@ -19,6 +19,8 @@ model:
 dataset:
   params:
     preprocess:
+      # Compatibility name: delegates unchanged RGB input to the original
+      # BiomedCLIP resize/center-crop/normalization transform.
       strategy: direct_resize
 
 params:

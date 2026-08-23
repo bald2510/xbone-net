@@ -147,7 +147,7 @@ Quy trình được thực hiện trên toàn bộ 3.746 cặp văn bản--nhãn
 \begin{enumerate}
     \item \textbf{Kiểm tra trực tiếp:} chuẩn hóa chữ hoa--chữ thường và rà soát mỗi báo cáo để tìm sự xuất hiện nguyên văn của tên bệnh đích cùng các biến thể tên đã định nghĩa trước.
     \item \textbf{Tạo câu nhắc lớp:} tạo một câu nhắc theo cùng mẫu \textit{Clinical history associated with [disease label]} cho từng lớp trong 10 lớp bệnh.
-    \item \textbf{Mã hóa ngữ nghĩa:} mã hóa báo cáo và các câu nhắc lớp bằng bộ mã hóa văn bản BioMedCLIP, sau đó chuẩn hóa embedding và tính độ tương đồng cosin giữa mỗi báo cáo với cả 10 câu nhắc.
+    \item \textbf{Mã hóa ngữ nghĩa:} mã hóa báo cáo và các câu nhắc lớp bằng bộ mã hóa văn bản BiomedCLIP, sau đó chuẩn hóa embedding và tính độ tương đồng cosin giữa mỗi báo cáo với cả 10 câu nhắc.
     \item \textbf{Tính cosine margin:} với mẫu $i$ có nhãn đúng $y_i$, tính
     \begin{equation}
         m_i = \cos(r_i,p_{y_i}) - \max_{c\ne y_i}\cos(r_i,p_c),
@@ -390,76 +390,52 @@ Trong 3.267 bệnh sử tiếng Anh được liên kết, trường lý do vào 
 
 Phụ lục này công bố các kết quả riêng của ba hạt giống ngẫu nhiên 42, 123 và 456 nhằm bổ trợ cho các giá trị trung bình và độ lệch chuẩn được trình bày trong Chương~\ref{Chapter4}. Sự thay đổi giữa các hạt giống được sử dụng để đánh giá độ nhạy của quy trình huấn luyện theo khởi tạo trên cùng một phép chia dữ liệu. Các giá trị này không được diễn giải như độ bất định do thay đổi tập dữ liệu.
 
-Các kết quả gồm phân loại khi sử dụng toàn bộ dữ liệu, hai biến thể loại bỏ thành phần và đánh giá dữ liệu ngoài phân phối bằng hậu xử lý. Đây là các nội dung trong Chương~\ref{Chapter4} có đủ kết quả cho cả ba hạt giống và có thể đối chiếu trực tiếp với các bảng tổng hợp. Phép đo hiệu quả và đánh giá định lượng bằng tích phân gradient được thực hiện ở hạt giống 42 nên được trình bày trong chương chính mà không lặp lại thành bảng ba hạt giống.
+Các nội dung được báo cáo chi tiết gồm: hiệu năng phân loại khi sử dụng toàn bộ dữ liệu huấn luyện, phân tích bổ sung về xếp hạng xác suất, khảo sát loại bỏ thành phần, kiểm định thống kê và khoảng tin cậy ghép cặp, cùng đánh giá khả năng cảnh báo dữ liệu ngoài phân phối (OOD). Đây là các nội dung trong Chương~\ref{Chapter4} có đủ kết quả cho cả ba hạt giống và có thể đối chiếu trực tiếp với các bảng tổng hợp. Chi phí huấn luyện được tổng hợp qua ba hạt giống trong chương chính, còn phép đo tham số, chi phí suy luận và đánh giá định lượng bằng tích phân gradient được thực hiện trên hạt giống 42.
 
 \section{Phân loại khi sử dụng toàn bộ dữ liệu huấn luyện}
 
-Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-full-shot-seeds-ctch} trình bày năm độ đo phân loại của từng mô hình tại từng hạt giống. Việc giữ đồng thời Accuracy, Balanced Accuracy, Macro-F1, Macro-AUROC và Macro-AUPRC cho phép kiểm tra liệu thứ hạng trung bình trong Chương~\ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo cụ thể.
+Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-full-shot-seeds-ctch} trình bày ba độ đo phân loại (Accuracy, Balanced Accuracy và Macro-F1) của từng mô hình tại từng hạt giống. Việc theo dõi đồng thời ba độ đo này cho phép kiểm tra liệu thứ hạng trung bình trong Chương~\ref{Chapter4} có xuất hiện nhất quán hay phụ thuộc vào một lần khởi tạo ngẫu nhiên cụ thể.
 
 \input{tables/appendix/table_full_shot_per_seed}
 
-Các hàng XBone-Net trong hai bảng dùng đúng cấu hình hiện tại với chiến lược  huấn luyện LoRA hai pha, chú ý chéo hai chiều và đầu phân lớp tuyến tính. Số liệu theo từng hạt giống xác nhận kết luận của chương chính rằng XBone-Net có hiệu năng phân loại cạnh tranh nhưng không dẫn đầu đồng thời trên mọi độ đo và mọi bộ dữ liệu.
+Các hàng XBone-Net trong hai bảng dùng đúng cấu hình hiện tại với chiến lược huấn luyện LoRA hai pha, chú ý chéo hai chiều và đầu phân lớp tuyến tính. Số liệu theo từng hạt giống xác nhận kết luận của chương chính rằng XBone-Net có hiệu năng phân loại cạnh tranh nhưng không dẫn đầu đồng thời trên mọi độ đo và mọi bộ dữ liệu.
+
+\subsection{Phân tích bổ sung về xếp hạng xác suất}
+\label{sec:appendix_probability_ranking}
+
+Macro-AUROC và Macro-AUPRC phản ánh khả năng phân biệt theo điểm số khi lần lượt xem từng lớp là lớp dương. Hai độ đo này được báo cáo để minh bạch hóa đầy đủ kết quả, nhưng không phải tiêu chí kết luận chính của bài toán phân loại và không thuộc phạm vi trả lời câu hỏi nghiên cứu về ảnh hưởng của các thành phần. Bảng~\ref{tab:classification_full_data_ranking} trình bày kết quả trung bình qua ba hạt giống trong thiết lập huấn luyện bằng toàn bộ dữ liệu.
+
+\input{tables/appendix/table_full_shot_ranking}
+
+Trên BTXRD, AUROC vĩ mô của XBone-Net là $0{,}8045$ và AUPRC vĩ mô là $0{,}5865$; các giá trị tương ứng trên CTCH là $0{,}9020$ và $0{,}5904$. Mô hình không dẫn đầu đồng thời ở hai độ đo này; đặc biệt, AUROC vĩ mô thấp hơn nhiều mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Bảng~\ref{tab:paired_baseline_ranking} công bố kiểm định ghép cặp tương ứng để làm rõ cả các chênh lệch có lợi và bất lợi cho XBone-Net.
+
+\input{tables/appendix/table_paired_baseline_ranking}
+
+Kết quả kiểm định cho thấy XBone-Net có lợi thế về Macro-AUPRC trước các mô hình chỉ dùng ảnh trong một số so sánh, nhưng bất lợi về Macro-AUROC trước nhiều mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Do đó, các kết quả này được diễn giải như một sự đánh đổi bổ sung và không thay thế kết luận dựa trên Accuracy, Balanced Accuracy cùng Macro-F1 trong chương chính.
 
 \section{Nghiên cứu loại bỏ từng thành phần}
 
-Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net và hai biến thể được dùng trực tiếp để trả lời RQ2 tại từng hạt giống trên CTCH. Biến thể Chỉ pha 2 loại bỏ pha khớp ngữ nghĩa, còn biến thể Nối đặc trưng thay chú ý chéo hai chiều bằng phép nối đặc trưng. Số liệu xác nhận rằng cấu hình đầy đủ đạt Accuracy trung bình cao nhất, trong khi Nối đặc trưng thuận lợi hơn ở Balanced Accuracy, Macro-AUROC và Macro-AUPRC. Vì vậy, không thành phần nào tạo ưu thế đồng thời trên toàn bộ độ đo.
+Bảng~\ref{tab:appendix-ablation-seeds} trình bày kết quả của XBone-Net và hai biến thể được dùng trực tiếp để trả lời câu hỏi nghiên cứu về vai trò của các thành phần tại từng hạt giống trên CTCH. Biến thể Chỉ pha 2 loại bỏ pha khớp ngữ nghĩa, còn biến thể Nối đặc trưng thay chú ý chéo hai chiều bằng phép nối đặc trưng. Số liệu xác nhận rằng cấu hình đầy đủ đạt Accuracy và Macro-F1 trung bình cao nhất, trong khi Nối đặc trưng đạt Balanced Accuracy trung bình cao hơn. Vì vậy, không thành phần đơn lẻ nào tạo ưu thế đồng thời trên cả ba độ đo quyết định lớp.
 
 \input{tables/appendix/table_ablation_per_seed}
 
-\section{Khoảng tin cậy của các so sánh ghép cặp}
+\section{Chi tiết kiểm định thống kê và khoảng tin cậy ghép cặp}
+\label{sec:appendix_paired_statistics_and_ci}
 
-Các bảng trong chương chính giữ lại chênh lệch quan sát được và giá trị $p$ sau hiệu chỉnh Holm để làm rõ kết luận kiểm định. Bảng~\ref{tab:appendix-paired-baseline-classification-confidence-intervals} trình bày khoảng tin cậy của các độ đo phân loại, còn Bảng~\ref{tab:appendix-paired-baseline-ranking-confidence-intervals} trình bày các độ đo xếp hạng. Bảng~\ref{tab:appendix-ablation-paired-confidence-intervals} bổ sung khoảng tin cậy cho các biến thể loại bỏ thành phần. Tất cả phép lấy mẫu lại đều giữ cặp dự đoán trên cùng bệnh nhân và dùng chung chỉ số hạt giống giữa hai cấu hình được so sánh. Theo quy tắc ở Chương~\ref{Chapter4}, kết luận ý nghĩa thống kê chỉ dựa trên $p_{\mathrm{Holm}}<0{,}05$. Khoảng tin cậy trong phụ lục mô tả độ bất định và không phải điều kiện quyết định thứ hai. Vì vậy, khoảng tin cậy chứa 0 không tự hủy kết luận của kiểm định hoán vị, còn khoảng tin cậy không chứa 0 cũng không tự tạo ra kết luận có ý nghĩa khi $p_{\mathrm{Holm}}\geq0{,}05$.
+Phần này cung cấp toàn bộ số liệu thống kê chi tiết và khoảng tin cậy Bootstrap 95\% nhằm đối chiếu, bổ trợ cho các biểu đồ trực quan đã trình bày trong Chương~\ref{Chapter4}. Đối với thực nghiệm so sánh với các mô hình đối chứng, Bảng~\ref{tab:appendix-paired-baseline-classification-confidence-intervals} báo cáo khoảng tin cậy 95\% của mức chênh lệch ghép cặp trên cả ba độ đo phân loại qua ba hạt giống. Đối với khảo sát loại bỏ thành phần, Bảng~\ref{tab:appendix-ablation-paired-statistics} và Bảng~\ref{tab:appendix-ablation-paired-confidence-intervals} cung cấp lần lượt các giá trị kiểm định chênh lệch quan sát $\widehat{\Delta}$, mức ý nghĩa hiệu chỉnh $p_{\mathrm{Holm}}$ và khoảng tin cậy 95\% cho các cấu hình biến thể trên CTCH.
+
+Tất cả các phép phân tích đều sử dụng quy trình lấy mẫu lại ghép cặp chéo trên cùng bệnh nhân và hạt giống với $N_{\mathrm{boot}} = N_{\mathrm{perm}} = 10.000$. Theo đúng quy tắc đã thiết lập, kết luận về ý nghĩa thống kê được xác định duy nhất dựa trên tiêu chuẩn $p_{\mathrm{Holm}} < 0{,}05$ từ kiểm định hoán vị. Khoảng tin cậy Bootstrap 95\% được cung cấp nhằm mô tả độ bất định và độ lớn của chênh lệch, không đóng vai trò là điều kiện quyết định độc lập. Vì vậy, các trường hợp khoảng tin cậy cắt qua mốc 0 nhưng đạt $p_{\mathrm{Holm}} < 0{,}05$ (hoặc ngược lại) ở các ca sát ngưỡng vẫn tuân thủ kết luận của kiểm định hoán vị và được diễn giải thận trọng trên phân hoạch thực nghiệm hiện tại.
 
 \input{tables/appendix/table_paired_baseline_classification_confidence_intervals}
 
-\input{tables/appendix/table_paired_baseline_ranking_confidence_intervals}
+\input{tables/appendix/table_ablation_paired_statistics}
 
 \input{tables/appendix/table_ablation_paired_confidence_intervals}
 
 \section{Kết quả đánh giá dữ liệu ngoài phân phối}
 
-Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống của XBone-Net và hai biến thể trên kịch bản OOD ngữ nghĩa và BTXRD. Cả ba cấu hình sử dụng cùng điểm tổ hợp đa phương thức hậu xử lý. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu của từng kịch bản.
+Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống của XBone-Net, hai biến thể và BiomedCLIP tinh chỉnh toàn bộ trên kịch bản OOD CTCH. Cả bốn cấu hình sử dụng cùng điểm tổ hợp đa phương thức hậu xử lý. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu.
 
-Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối. Kịch bản OOD ngữ nghĩa sử dụng đủ 18 mẫu đã được xác nhận trong danh sách đánh giá và kịch bản BTXRD sử dụng đủ 750 mẫu ngoài phân phối. AUPR-Out và FPR@95\%TPR chịu ảnh hưởng của chênh lệch quy mô và tỷ lệ mẫu trong--ngoài phân phối giữa hai kịch bản, vì vậy kết luận được đưa ra cùng AUROC-OOD và cỡ mẫu ghi trong bảng. Kết quả xác nhận cảnh báo OOD có hiệu lực rõ hơn trong dịch chuyển khác bộ dữ liệu, còn kịch bản OOD ngữ nghĩa gần miền vẫn có FPR@95\%TPR cao.
+Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối và đủ 18 mẫu bệnh lý ngoài không gian nhãn đã được xác nhận trong danh sách đánh giá. Kết quả theo từng hạt giống cho thấy FPR@95\%TPR còn cao ở cả bốn cấu hình, do đó bộ phát hiện chỉ được xem là tín hiệu cảnh báo bổ sung đối với các trường hợp gần miền.
 
 \input{tables/appendix/table_ood_per_seed}
-
-
-% \subsection{Khả năng chuyển giao trực tiếp của các mô hình nền tảng}
-% \label{sec:foundation_transfer}
-
-% \subsubsection{Kết quả phân loại không mẫu}
-% \label{subsec:foundation_model_evaluation}
-% Kết quả không mẫu được sử dụng để khảo sát mức độ phù hợp ban đầu của các mô hình nền tảng với hai bài toán đích trước khi thực hiện bất kỳ bước thích nghi nào. Bảng~\ref{tab:ch4draft_zeroshot} trình bày kết quả của CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP} khi toàn bộ tham số được giữ cố định và mỗi lớp được biểu diễn bằng cùng một khuôn câu nhắc.
-
-% \input{tables/chapter4/table_zero_shot}
-
-% Trên BTXRD, BiomedCLIP đạt độ chính xác $0{,}1453$, độ chính xác cân bằng $0{,}1261$, điểm F1 trung bình theo lớp $0{,}0837$ và Macro-AUPRC $0{,}1656$, cao nhất trong bốn mô hình ở các độ đo này. Trong khi đó, Macro-AUROC cao nhất thuộc về CLIP với giá trị $0{,}6051$. Độ chính xác cân bằng của các mô hình chỉ dao động từ $0{,}0991$ đến $0{,}1261$ và điểm F1 trung bình theo lớp không vượt quá $0{,}0837$, cho thấy một câu nhắc chung chưa đủ để phân biệt ổn định các nhóm u xương có tên gọi và biểu hiện hình ảnh chuyên biệt. Việc CLIP đạt Macro-AUROC cao hơn nhưng có điểm F1 thấp hơn BiomedCLIP cũng cho thấy chất lượng xếp hạng chưa chuyển trực tiếp thành quyết định đa lớp phù hợp.
-
-% Trên CTCH, BiomedCLIP đạt kết quả cao nhất ở cả năm độ đo, gồm độ chính xác $0{,}2720$, độ chính xác cân bằng $0{,}3898$, điểm F1 trung bình theo lớp $0{,}2698$, Macro-AUROC $0{,}8976$ và Macro-AUPRC $0{,}3244$. Tuy nhiên, khoảng cách lớn giữa Macro-AUROC và điểm F1 cho thấy biểu diễn tiền huấn luyện có khả năng sắp thứ tự mẫu tương đối tốt nhưng ranh giới quyết định trực tiếp từ câu nhắc vẫn chưa phù hợp với không gian 22 lớp của CTCH.
-
-% \subsubsection{Ý nghĩa đối với lựa chọn mô hình nền tảng}
-% \label{subsec:BiomedCLIP_transfer_analysis}
-% BiomedCLIP được lựa chọn làm mô hình nền tảng của XBone-Net dựa trên phạm vi tiền huấn luyện y sinh, kiến trúc hai bộ mã hóa và khả năng thích nghi bằng LoRA. Kết quả không mẫu được sử dụng để phân tích khả năng chuyển giao trực tiếp, không phải để lựa chọn mô hình dựa trên tập kiểm thử. Kết quả ở Bảng~\ref{tab:ch4draft_zeroshot} cho thấy biểu diễn của BiomedCLIP phù hợp tương đối với các khái niệm giải phẫu và bệnh lý xương, đặc biệt trên CTCH, nhưng không chứng minh rằng mô hình có thể được sử dụng trực tiếp cho bài toán đích. Vì vậy, các phần tiếp theo lần lượt khảo sát vai trò của văn bản đi kèm, hiệu quả của thích nghi miền, ảnh hưởng của từng thành phần và khả năng duy trì thông tin ảnh cục bộ.
-
-% \subsection{Vai trò của ảnh và văn bản}
-% \label{sec:modality_role}
-
-% \subsubsection{Kết quả trên CTCH và BTXRD}
-% \label{subsec:rq1_modality_results}
-% Bảng~\ref{tab:rq1_modality} so sánh cấu hình đa phương thức với hai cấu hình chỉ sử dụng một nguồn đầu vào. Các cấu hình sử dụng cùng tập chia và thiết lập tối ưu ở pha phân lớp. Tuy nhiên, các cấu hình đơn phương thức không thực hiện pha khớp ảnh--văn bản. Vì vậy, chênh lệch quan sát được phản ánh hiệu quả của toàn bộ thiết lập đa phương thức, không phải đóng góp biên thuần túy của riêng phương thức được bổ sung.
-
-% \input{tables/chapter4/table_rq1_modality}
-
-% Trên CTCH, XBone-Net sử dụng đồng thời ảnh và bệnh sử đạt độ chính xác cân bằng $0{,}5844\pm0{,}0454$ và điểm F1 trung bình theo lớp $0{,}5558\pm0{,}0072$. Cấu hình chỉ ảnh đạt lần lượt $0{,}4405\pm0{,}0082$ và $0{,}3984\pm0{,}0176$, trong khi cấu hình chỉ bệnh sử đạt $0{,}5401\pm0{,}0149$ và $0{,}4770\pm0{,}0133$. Chênh lệch điểm F1 lần lượt là $0{,}1574$ và $0{,}0788$ điểm theo hướng có lợi cho thiết lập đa phương thức. Kết quả cho thấy toàn bộ thiết lập kết hợp ảnh và bệnh sử khai thác được thông tin bổ sung giữa hai nguồn, nhưng không tách riêng được ảnh hưởng của phương thức khỏi ảnh hưởng của pha khớp ảnh--văn bản.
-
-% Trên BTXRD, cấu hình ảnh kết hợp văn bản tổng hợp đạt điểm F1 trung bình theo lớp $0{,}6010\pm0{,}0034$, cao hơn cấu hình chỉ ảnh $0{,}2845$ điểm và cao hơn cấu hình chỉ văn bản $0{,}0695$ điểm. Kết quả cho thấy mô hình có thể khai thác quan hệ giữa ảnh và chuỗi văn bản trong thiết lập này. Tuy nhiên, văn bản BTXRD được sinh từ siêu dữ liệu và chịu ảnh hưởng của các cờ nhóm bệnh, do đó mức cải thiện không được diễn giải tương đương với lợi ích của bệnh sử lâm sàng tự nhiên trên CTCH.
-
-% \subsubsection{Phân tích tính nhất quán ảnh-văn bản}
-% \label{subsec:image_text_consistency}
-% Khi bệnh sử của mỗi mẫu CTCH được thay bằng bệnh sử của một mẫu thuộc lớp khác, điểm F1 trung bình theo lớp giảm từ $0{,}5558\pm0{,}0072$ xuống $0{,}3039\pm0{,}0048$. Trên BTXRD, điểm F1 giảm từ $0{,}6010\pm0{,}0034$ xuống $0{,}0068\pm0{,}0014$, đồng thời Macro-AUROC giảm từ $0{,}9243\pm0{,}0298$ xuống $0{,}4124\pm0{,}0644$. Phép can thiệp cho thấy mô hình nhạy với tính nhất quán của cặp ảnh--văn bản, thay vì chỉ hưởng lợi từ sự hiện diện độc lập của hai đầu vào.
-
-% Mức suy giảm trên BTXRD lớn hơn đáng kể so với CTCH vì phép ghép bắt buộc chọn văn bản khác lớp và văn bản tổng hợp mang tín hiệu liên hệ mạnh với nhãn. Do đó, kết quả BTXRD chỉ xác nhận độ nhạy của mô hình đối với quan hệ ghép cặp trong thiết lập văn bản có điều kiện theo siêu dữ liệu. Trên CTCH, sự suy giảm khi ghép sai cùng với kết quả đơn phương thức cho thấy mô hình sử dụng quan hệ ảnh--bệnh sử, nhưng chưa phải ước lượng đóng góp biên thuần túy của bệnh sử.
-
-% \subsubsection{Tổng kết}
-% Thiết lập đa phương thức có điểm F1 trung bình theo lớp quan sát được cao hơn các thiết lập đơn phương thức trên cả hai bộ dữ liệu, đồng thời phép ghép sai làm hiệu năng giảm rõ rệt. Do các đối chứng đơn phương thức không thực hiện pha khớp ảnh--văn bản và chưa có khoảng tin cậy ghép cặp kèm p-value cho phép so sánh này, kết quả chỉ cho thấy XBone-Net sử dụng quan hệ liên phương thức, không được dùng để khẳng định ưu thế thống kê của kiến trúc đa phương thức. CTCH là nguồn bằng chứng chính cho kịch bản bệnh sử thực, còn BTXRD chỉ phản ánh thiết lập văn bản tổng hợp có điều kiện.

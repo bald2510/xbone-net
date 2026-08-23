@@ -1,6 +1,6 @@
 """Tạo hình trực quan Integrated Gradients (IG) đa phương thức chuẩn cho mọi mô hình.
 
-Hỗ trợ mọi biến thể mô hình (proposed, xbone_letterbox, fft_biomedclip,...)
+Hỗ trợ mọi biến thể mô hình (proposed, các ablation, fft_biomedclip,...)
 và kết xuất theo đúng cấu trúc:
 - Header: Nhãn đúng (tiếng Việt) | Dự đoán (tiếng Việt) (%)
 - (a) Ảnh X-quang đầu vào

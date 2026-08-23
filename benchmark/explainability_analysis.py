@@ -1,4 +1,4 @@
-"""Đánh giá IG end-to-end trên ảnh letterbox và văn bản lâm sàng.
+"""Đánh giá IG end-to-end trên ảnh đã tiền xử lý và văn bản lâm sàng.
 
 Giao thức này dùng chung cho XBone-Net và các baseline đa phương thức: ảnh được
 đánh giá trong không gian pixel đã chuẩn hóa, văn bản được đánh giá trên đường
@@ -114,12 +114,36 @@ def _logits_from_features(
     text_features: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Chạy fusion và linear head sau khi thay một nhánh đặc trưng."""
+    supplied_batches = [
+        int(value.shape[0])
+        for value in (image_features, text_features)
+        if value is not None
+    ]
+    batch_size = max(supplied_batches, default=1)
+    if supplied_batches and any(size not in (1, batch_size) for size in supplied_batches):
+        raise ValueError(f"Incompatible feature batch sizes: {supplied_batches}")
+
+    def expand_batch(value):
+        if value is None or not torch.is_tensor(value):
+            return value
+        if int(value.shape[0]) == batch_size:
+            return value
+        if int(value.shape[0]) != 1:
+            raise ValueError(
+                f"Cannot expand cached tensor with batch {value.shape[0]} to {batch_size}."
+            )
+        return value.expand(batch_size, *value.shape[1:])
+
     fused = model._fuse_modalities(
-        cached["image_features"] if image_features is None else image_features,
-        cached["text_features"] if text_features is None else text_features,
-        cached["full_image_padding"],
-        cached["image_padding"],
-        cached["text_padding"],
+        expand_batch(
+            cached["image_features"] if image_features is None else image_features
+        ),
+        expand_batch(
+            cached["text_features"] if text_features is None else text_features
+        ),
+        expand_batch(cached["full_image_padding"]),
+        expand_batch(cached["image_padding"]),
+        expand_batch(cached["text_padding"]),
     )
     return model.head(fused)
 
@@ -170,6 +194,36 @@ def _target_outputs(
     return float(probability), float(target_logit), float(margin)
 
 
+def _batched_target_outputs(
+    model,
+    cached: dict[str, Any],
+    target_class: int,
+    *,
+    image_features: torch.Tensor | None = None,
+    text_features: torch.Tensor | None = None,
+) -> np.ndarray:
+    """Trả probability, logit và margin cho một lô can thiệp."""
+    with torch.no_grad():
+        logits = _logits_from_features(
+            model,
+            cached,
+            image_features=image_features,
+            text_features=text_features,
+        )
+        probabilities = torch.softmax(logits, dim=-1)[:, target_class]
+        target_logits = logits[:, target_class]
+        alternatives = logits.clone()
+        alternatives[:, target_class] = -torch.inf
+        margins = target_logits - alternatives.max(dim=1).values
+    return (
+        torch.stack((probabilities, target_logits, margins), dim=1)
+        .detach()
+        .cpu()
+        .numpy()
+        .astype(np.float64, copy=False)
+    )
+
+
 def _integrated_gradients_image(
     model,
     cached: dict[str, Any],
@@ -182,22 +236,38 @@ def _integrated_gradients_image(
         raise ValueError("Integrated Gradients requires at least two steps.")
     pixels = pixels.detach()
     baseline = torch.zeros_like(pixels)
-    gradient_sum = torch.zeros_like(pixels)
-    for index, alpha in enumerate(
-        torch.linspace(0.0, 1.0, steps, device=pixels.device)
-    ):
-        interpolated = (baseline + alpha * (pixels - baseline)).detach()
-        interpolated.requires_grad_(True)
-        image_features = _encode_image_features(model, interpolated)
-        logits = _logits_from_features(
-            model,
-            cached,
-            image_features=image_features,
-        )
-        gradient = torch.autograd.grad(
-            logits[0, target_class], interpolated, retain_graph=False
-        )[0]
-        gradient_sum += gradient * (0.5 if index in (0, steps - 1) else 1.0)
+    alphas = torch.linspace(
+        0.0,
+        1.0,
+        steps,
+        device=pixels.device,
+        dtype=pixels.dtype,
+    ).view(steps, 1, 1, 1)
+    interpolated = (
+        baseline + alphas * (pixels - baseline)
+    ).detach()
+    interpolated.requires_grad_(True)
+    image_features = _encode_image_features(model, interpolated)
+    logits = _logits_from_features(
+        model,
+        cached,
+        image_features=image_features,
+    )
+    gradients = torch.autograd.grad(
+        logits[:, target_class].sum(),
+        interpolated,
+        retain_graph=False,
+    )[0]
+    weights = torch.ones(
+        steps,
+        1,
+        1,
+        1,
+        device=pixels.device,
+        dtype=pixels.dtype,
+    )
+    weights[[0, -1]] = 0.5
+    gradient_sum = (gradients * weights).sum(dim=0, keepdim=True)
     attribution = (pixels - baseline) * gradient_sum / (steps - 1)
     signed = attribution.sum(dim=1)
     relevance = torch.relu(signed)
@@ -216,30 +286,46 @@ def _integrated_gradients_text(
     if steps < 2:
         raise ValueError("Integrated Gradients requires at least two steps.")
     text, baseline, transformer, projection = _text_embedding_path(model, cached)
-    gradient_sum = torch.zeros_like(text)
-    for index, alpha in enumerate(
-        torch.linspace(0.0, 1.0, steps, device=text.device)
-    ):
-        interpolated = (baseline + alpha * (text - baseline)).detach()
-        interpolated.requires_grad_(True)
-        text_features = _prepare_text_features(
-            cached,
-            _encode_text_embeddings(
-                transformer,
-                projection,
-                interpolated,
-                cached["text_attention_mask"],
-            ),
-        )
-        logits = _logits_from_features(
-            model,
-            cached,
-            text_features=text_features,
-        )
-        gradient = torch.autograd.grad(
-            logits[0, target_class], interpolated, retain_graph=False
-        )[0]
-        gradient_sum += gradient * (0.5 if index in (0, steps - 1) else 1.0)
+    alphas = torch.linspace(
+        0.0,
+        1.0,
+        steps,
+        device=text.device,
+        dtype=text.dtype,
+    ).view(steps, 1, 1)
+    interpolated = (
+        baseline + alphas * (text - baseline)
+    ).detach()
+    interpolated.requires_grad_(True)
+    attention_mask = cached["text_attention_mask"].expand(steps, -1)
+    text_features = _prepare_text_features(
+        cached,
+        _encode_text_embeddings(
+            transformer,
+            projection,
+            interpolated,
+            attention_mask,
+        ),
+    )
+    logits = _logits_from_features(
+        model,
+        cached,
+        text_features=text_features,
+    )
+    gradients = torch.autograd.grad(
+        logits[:, target_class].sum(),
+        interpolated,
+        retain_graph=False,
+    )[0]
+    weights = torch.ones(
+        steps,
+        1,
+        1,
+        device=text.device,
+        dtype=text.dtype,
+    )
+    weights[[0, -1]] = 0.5
+    gradient_sum = (gradients * weights).sum(dim=0, keepdim=True)
     attribution = (text - baseline) * gradient_sum / (steps - 1)
     signed = attribution.sum(dim=-1)
     relevance = torch.relu(signed)
@@ -290,7 +376,7 @@ def _image_perturbation_curves(
     random_trials: int,
     seed: int,
 ) -> dict[str, np.ndarray]:
-    """Đánh giá deletion/insertion theo patch 16x16 của ảnh letterbox."""
+    """Đánh giá deletion/insertion theo patch 16x16 của ảnh đã tiền xử lý."""
     if random_trials < 1:
         raise ValueError("random_trials must be positive.")
     baseline = torch.zeros_like(pixels)
@@ -322,17 +408,7 @@ def _image_perturbation_curves(
     ]
     fractions = np.linspace(0.0, 1.0, 11, dtype=np.float64)
     output = _empty_curves()
-
-    def evaluate(current: torch.Tensor) -> tuple[float, float, float]:
-        """Mã hóa ảnh đã can thiệp rồi trả probability, logit và margin."""
-        with torch.no_grad():
-            image_features = _encode_image_features(model, current)
-        return _target_outputs(
-            model,
-            cached,
-            target_class,
-            image_features=image_features,
-        )
+    intervention_batches: list[torch.Tensor] = []
 
     for fraction in fractions:
         count = min(len(patches), int(round(float(fraction) * len(patches))))
@@ -342,9 +418,7 @@ def _image_perturbation_curves(
             y_slice, x_slice = patches[int(patch_index)]
             deleted[:, :, y_slice, x_slice] = baseline[:, :, y_slice, x_slice]
             inserted[:, :, y_slice, x_slice] = pixels[:, :, y_slice, x_slice]
-        targeted = evaluate(deleted)
-        insertion = evaluate(inserted)
-        random_values = []
+        random_images = []
         for order in random_orders:
             random_pixels = pixels.clone()
             for patch_index in order[:count].tolist():
@@ -352,8 +426,33 @@ def _image_perturbation_curves(
                 random_pixels[:, :, y_slice, x_slice] = baseline[
                     :, :, y_slice, x_slice
                 ]
-            random_values.append(evaluate(random_pixels))
-        random_mean = np.asarray(random_values, dtype=np.float64).mean(axis=0)
+            random_images.append(random_pixels)
+        intervention_batches.append(
+            torch.cat([deleted, inserted, *random_images], dim=0)
+        )
+
+    image_batch = torch.cat(intervention_batches, dim=0)
+    output_chunks: list[np.ndarray] = []
+    for chunk in image_batch.split(36, dim=0):
+        with torch.no_grad():
+            image_features = _encode_image_features(model, chunk)
+            output_chunks.append(
+                _batched_target_outputs(
+                    model,
+                    cached,
+                    target_class,
+                    image_features=image_features,
+                )
+            )
+    all_outputs = np.concatenate(output_chunks, axis=0).reshape(
+        len(fractions),
+        2 + random_trials,
+        3,
+    )
+    for batch_outputs in all_outputs:
+        targeted = tuple(float(value) for value in batch_outputs[0])
+        insertion = tuple(float(value) for value in batch_outputs[1])
+        random_mean = batch_outputs[2:].mean(axis=0)
         _append_curve_outputs(output, targeted, random_mean, insertion)
     return {
         "fractions": fractions,
@@ -386,25 +485,7 @@ def _text_perturbation_curves(
     ]
     fractions = np.linspace(0.0, 1.0, 11, dtype=np.float64)
     output = _empty_curves()
-
-    def evaluate(embeddings: torch.Tensor) -> tuple[float, float, float]:
-        """Mã hóa embedding văn bản đã can thiệp và chấm lớp mục tiêu."""
-        with torch.no_grad():
-            features = _prepare_text_features(
-                cached,
-                _encode_text_embeddings(
-                    transformer,
-                    projection,
-                    embeddings,
-                    cached["text_attention_mask"],
-                ),
-            )
-        return _target_outputs(
-            model,
-            cached,
-            target_class,
-            text_features=features,
-        )
+    intervention_batches: list[torch.Tensor] = []
 
     for fraction in fractions:
         count = min(len(candidates), int(round(float(fraction) * len(candidates))))
@@ -414,15 +495,49 @@ def _text_perturbation_curves(
             selected = ranking[:count]
             deleted[:, selected] = baseline[:, selected]
             inserted[:, selected] = text[:, selected]
-        targeted = evaluate(deleted)
-        insertion = evaluate(inserted)
-        random_values = []
+        random_embeddings = []
         for order in random_orders:
             random_text = text.clone()
             selected = candidates[order[:count]]
             random_text[:, selected] = baseline[:, selected]
-            random_values.append(evaluate(random_text))
-        random_mean = np.asarray(random_values, dtype=np.float64).mean(axis=0)
+            random_embeddings.append(random_text)
+        intervention_batches.append(
+            torch.cat([deleted, inserted, *random_embeddings], dim=0)
+        )
+
+    text_batch = torch.cat(intervention_batches, dim=0)
+    output_chunks: list[np.ndarray] = []
+    for chunk in text_batch.split(64, dim=0):
+        attention_mask = cached["text_attention_mask"].expand(
+            chunk.shape[0], -1
+        )
+        with torch.no_grad():
+            text_features = _prepare_text_features(
+                cached,
+                _encode_text_embeddings(
+                    transformer,
+                    projection,
+                    chunk,
+                    attention_mask,
+                ),
+            )
+            output_chunks.append(
+                _batched_target_outputs(
+                    model,
+                    cached,
+                    target_class,
+                    text_features=text_features,
+                )
+            )
+    all_outputs = np.concatenate(output_chunks, axis=0).reshape(
+        len(fractions),
+        2 + random_trials,
+        3,
+    )
+    for batch_outputs in all_outputs:
+        targeted = tuple(float(value) for value in batch_outputs[0])
+        insertion = tuple(float(value) for value in batch_outputs[1])
+        random_mean = batch_outputs[2:].mean(axis=0)
         _append_curve_outputs(output, targeted, random_mean, insertion)
     return {
         "fractions": fractions,
@@ -699,6 +814,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--random-trials", type=int, default=16)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument(
+        "--refresh-summary",
+        action="store_true",
+        help="Tạo lại summary.json từ samples.json hiện có mà không chạy lại IG.",
+    )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--no-strict-fingerprint", action="store_true")
     parser.add_argument("--input-only", action="store_true", help=argparse.SUPPRESS)
@@ -715,9 +835,15 @@ def main() -> None:
     """Chạy benchmark và ghi ``samples.json`` cùng ``summary.json``."""
     args = _parser().parse_args()
     summary_path = args.output_dir / "summary.json"
-    if summary_path.is_file() and not args.overwrite:
+    samples_path = args.output_dir / "samples.json"
+    if summary_path.is_file() and not args.overwrite and not args.refresh_summary:
         print(f"[Resume] Explainability summary exists: {summary_path}")
         return
+    if args.refresh_summary and not samples_path.is_file():
+        raise FileNotFoundError(
+            "--refresh-summary requires an existing samples.json: "
+            f"{samples_path}"
+        )
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
@@ -756,6 +882,11 @@ def main() -> None:
             raise ValueError(f"Expected {scenario} features.")
         if provenance.get("checkpoint_sha256") != loaded.checkpoint_sha256:
             raise ValueError("Feature archive and checkpoint checksums differ.")
+        if provenance.get("config_sha256") != loaded.provenance.get("config_sha256"):
+            raise ValueError(
+                "Feature archive and evaluated configuration checksums differ. "
+                "Re-export the feature archive before running explainability."
+            )
 
     dataset = _ctch_test_dataset(loaded)
     index_by_id = {
@@ -781,8 +912,21 @@ def main() -> None:
     loaded.model.eval()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
-    samples_path = args.output_dir / "samples.json"
-    for position, image_id in enumerate(selected_ids):
+    if samples_path.is_file() and not args.overwrite:
+        records = json.loads(samples_path.read_text(encoding="utf-8"))
+        if not isinstance(records, list):
+            raise ValueError(f"Partial explainability output is not a list: {samples_path}")
+        completed_ids = [str(record.get("image_id")) for record in records]
+        expected_prefix = selected_ids[: len(completed_ids)].astype(str).tolist()
+        if completed_ids != expected_prefix:
+            raise ValueError(
+                "Partial explainability output does not match the selected "
+                "CTCH-test prefix. Use --overwrite to restart."
+            )
+        print(f"[Resume] Loaded {len(records)}/{len(selected_ids)} samples")
+
+    for position in range(len(records), len(selected_ids)):
+        image_id = selected_ids[position]
         print(f"[Explain {position + 1}/{len(selected_ids)}] {image_id}")
         records.append(
             _sample_explanation(
@@ -795,11 +939,20 @@ def main() -> None:
                 seed=args.selection_seed + position,
             )
         )
-        samples_path.write_text(
-            json.dumps(records, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        if (position + 1) % 10 == 0:
+            samples_path.write_text(
+                json.dumps(records, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
+    samples_path.write_text(
+        json.dumps(records, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    preprocess_strategy = str(
+        dataset.preprocess_cfg.get("strategy", "direct_resize")
+    )
     summary = {
         "type": "ctch_explainability_evaluation",
         "source_experiment": args.experiment,
@@ -808,7 +961,11 @@ def main() -> None:
         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "protocol": {
             "analysis_mode": "input_only",
-            "image_preprocessing": "letterbox_224_then_biomedclip_transform",
+            "image_preprocessing": (
+                "biomedclip_native_resize_center_crop_normalize"
+                if preprocess_strategy == "direct_resize"
+                else preprocess_strategy
+            ),
             "classifier": "linear_head",
             "target": "predicted_class",
             "sampling": "all_test_samples" if args.all_test_samples else "stratified",

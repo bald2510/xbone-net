@@ -160,7 +160,7 @@ class FracAtlasDataset(Dataset):
         print(
             f"[FracAtlasDataset] Loaded '{split.upper()}' split with "
             f"{len(self.df)} samples. "
-            f"Preprocess: {self.preprocess_cfg.get('strategy', 'letterbox')}. "
+            f"Preprocess: {self.preprocess_cfg.get('strategy', 'direct_resize')}. "
             f"Image layout: {image_layout}"
         )
 

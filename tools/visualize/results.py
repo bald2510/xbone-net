@@ -3400,6 +3400,272 @@ def plot_full_shot_paired_forest(
     return destination, csv_destination
 
 
+def plot_grouped_paired_forest(
+    input_file: str | Path,
+    output: str | Path,
+    *,
+    dataset: str,
+    metrics: Sequence[str] = (
+        "accuracy",
+        "balanced_accuracy",
+        "f1_macro",
+    ),
+    comparator_column: str = "baseline",
+    delta_column: str = "delta_xbone_minus_baseline",
+    invert_delta: bool = False,
+    show_confidence_intervals: bool = True,
+    alpha: float = 0.05,
+    dpi: int = 300,
+) -> Path:
+    """Vẽ nhiều độ đo ghép cặp trên cùng một biểu đồ kiểu forest.
+
+    Mỗi điểm biểu diễn chênh lệch ghép cặp và thanh ngang biểu diễn
+    khoảng tin cậy 95 phần trăm. Trạng thái điểm đặc hoặc rỗng biểu diễn
+    kết luận sau hiệu chỉnh Holm.
+
+    Parameters
+    ----------
+    input_file : str | Path
+        Tệp CSV chứa kết quả kiểm định ghép cặp.
+    output : str | Path
+        Tệp ảnh đầu ra.
+    dataset : str
+        Tên bộ dữ liệu hiển thị trên biểu đồ.
+    metrics : Sequence[str], optional
+        Các độ đo cần biểu diễn.
+    comparator_column : str, optional
+        Cột chứa tên mô hình hoặc biến thể đối chứng.
+    delta_column : str, optional
+        Cột chứa chênh lệch ghép cặp.
+    invert_delta : bool, optional
+        Đảo dấu chênh lệch để thống nhất thành XBone-Net trừ đối chứng.
+    show_confidence_intervals : bool, optional
+        Vẽ khoảng tin cậy ghép cặp 95 phần trăm nếu có.
+    alpha : float, optional
+        Ngưỡng ý nghĩa dùng cho giá trị p sau hiệu chỉnh Holm.
+    dpi : int, optional
+        Độ phân giải ảnh đầu ra.
+
+    Returns
+    -------
+    Path
+        Đường dẫn ảnh đã tạo.
+    """
+    if not metrics:
+        raise ValueError("At least one paired metric is required.")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be between zero and one.")
+
+    metric_specs = {
+        "accuracy": ("Độ chính xác", "blue", "o"),
+        "balanced_accuracy": ("Độ chính xác cân bằng", "orange", "s"),
+        "f1_macro": ("Macro-F1", "green", "D"),
+        "auroc_macro": ("Macro-AUROC", "purple", "^"),
+        "auprc_macro": ("Macro-AUPRC", "cyan", "v"),
+    }
+    unknown_metrics = [metric for metric in metrics if metric not in metric_specs]
+    if unknown_metrics:
+        raise ValueError(f"Unsupported paired metrics: {unknown_metrics}")
+
+    frame = load_frame(input_file)
+    required = ["metric", comparator_column, delta_column, "p_holm"]
+    if show_confidence_intervals:
+        required.extend(("delta_ci_low", "delta_ci_high"))
+    _require_columns(frame, required)
+    plot_data = frame[frame["metric"].astype(str).isin(metrics)].copy()
+    if plot_data.empty:
+        raise ValueError("No rows are available for the requested paired metrics.")
+
+    comparator_values = _ordered_unique(plot_data[comparator_column].astype(str))
+    canonical_labels = [
+        CONFIG_DISPLAY_NAMES.get(config, config)
+        for config in FULL_SHOT_BASELINE_ORDER
+    ]
+    canonical_rank = {
+        label: index for index, label in enumerate(canonical_labels)
+    }
+    comparator_values.sort(
+        key=lambda value: (canonical_rank.get(value, 999), value)
+    )
+
+    plt = _load_pyplot()
+    from matplotlib.lines import Line2D
+
+    figure_height = max(3.8, 0.70 * len(comparator_values) + 1.8)
+    figure, axis = plt.subplots(figsize=(10.8, figure_height))
+    positions = np.arange(len(comparator_values), dtype=float)
+    position_map = {
+        comparator: position
+        for comparator, position in zip(comparator_values, positions)
+    }
+    if len(metrics) == 1:
+        offsets = np.asarray([0.0])
+    else:
+        offsets = np.linspace(-0.24, 0.24, len(metrics))
+
+    plotted_values: list[float] = [0.0]
+    for metric_index, metric in enumerate(metrics):
+        label, palette_key, marker = metric_specs[metric]
+        color = REPORT_PALETTE[palette_key]
+        subset = plot_data[plot_data["metric"].astype(str) == metric]
+        for _, row in subset.iterrows():
+            comparator = str(row[comparator_column])
+            if comparator not in position_map:
+                continue
+            delta = float(row[delta_column])
+            if invert_delta:
+                delta = -delta
+            y_position = position_map[comparator] + float(offsets[metric_index])
+            significant = float(row["p_holm"]) < alpha
+            plotted_values.append(delta)
+
+            if show_confidence_intervals:
+                lower = float(row["delta_ci_low"])
+                upper = float(row["delta_ci_high"])
+                if invert_delta:
+                    lower, upper = -upper, -lower
+                plotted_values.extend((lower, upper))
+                axis.errorbar(
+                    delta,
+                    y_position,
+                    xerr=np.asarray([[delta - lower], [upper - delta]]),
+                    fmt="none",
+                    ecolor=color,
+                    elinewidth=2.0,
+                    capsize=4,
+                    capthick=1.6,
+                    alpha=0.90,
+                    zorder=2,
+                )
+            else:
+                axis.hlines(
+                    y_position,
+                    min(0.0, delta),
+                    max(0.0, delta),
+                    color=color,
+                    linewidth=1.6,
+                    alpha=0.38,
+                    zorder=1,
+                )
+
+            axis.plot(
+                delta,
+                y_position,
+                marker=marker,
+                markersize=8.5,
+                markerfacecolor=color if significant else "white",
+                markeredgecolor=color,
+                markeredgewidth=1.8,
+                linestyle="none",
+                zorder=3,
+            )
+
+    for row_index in range(len(comparator_values)):
+        if row_index % 2 == 1:
+            axis.axhspan(
+                row_index - 0.5,
+                row_index + 0.5,
+                color="#F2F2F2",
+                zorder=0,
+            )
+    axis.axvline(0.0, color="#222222", linewidth=1.25, zorder=1)
+    axis.set_yticks(positions, labels=comparator_values)
+    axis.invert_yaxis()
+    axis.set_xlabel("Chênh lệch ghép cặp (XBone-Net - đối chứng)")
+    axis.set_title(str(dataset), pad=10, fontweight="bold")
+    axis.grid(
+        axis="x",
+        color="#BDBDBD",
+        linestyle="--",
+        linewidth=0.8,
+        alpha=0.75,
+    )
+    axis.set_axisbelow(True)
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+    axis.spines["left"].set_visible(False)
+    axis.tick_params(axis="y", length=0, pad=8)
+
+    limits = np.asarray(plotted_values, dtype=np.float64)
+    span = float(np.nanmax(limits) - np.nanmin(limits))
+    padding = max(0.015, 0.14 * span)
+    axis.set_xlim(
+        float(np.nanmin(limits) - padding),
+        float(np.nanmax(limits) + padding),
+    )
+
+    metric_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker=metric_specs[metric][2],
+            linestyle="none",
+            markerfacecolor=REPORT_PALETTE[metric_specs[metric][1]],
+            markeredgecolor=REPORT_PALETTE[metric_specs[metric][1]],
+            markersize=9.5,
+            label=metric_specs[metric][0],
+        )
+        for metric in metrics
+    ]
+    significance_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            markerfacecolor="#555555",
+            markeredgecolor="#555555",
+            markersize=9.5,
+            label=r"Có ý nghĩa ($p_{\mathrm{Holm}}<0{,}05$)",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            markerfacecolor="white",
+            markeredgecolor="#555555",
+            markeredgewidth=1.6,
+            markersize=9.5,
+            label="Chưa được xác nhận",
+        ),
+    ]
+    interval_handles = []
+    if show_confidence_intervals:
+        interval_handles.append(
+            Line2D(
+                [0],
+                [0],
+                color="#555555",
+                linewidth=2.0,
+                marker="|",
+                markersize=9.5,
+                markeredgewidth=1.6,
+                label="Khoảng tin cậy 95%",
+            )
+        )
+    legend_handles = metric_handles + significance_handles + interval_handles
+    legend_columns = min(4, len(legend_handles))
+    axis.legend(
+        handles=legend_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.18),
+        ncol=legend_columns,
+        frameon=False,
+        fontsize=12.5,
+        handlelength=1.8,
+        handletextpad=0.7,
+        columnspacing=1.4,
+        labelspacing=0.8,
+    )
+
+    destination = _prepare_plot_output(output)
+    figure.tight_layout(rect=(0.0, 0.13, 1.0, 1.0))
+    figure.savefig(destination, dpi=dpi, bbox_inches="tight")
+    plt.close(figure)
+    return destination
+
+
 def _add_shared_input(parser: argparse.ArgumentParser) -> None:
     """Thực hiện bước add shared đầu vào trong quy trình hiện tại.
 
@@ -3776,6 +4042,58 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    paired_grouped_forest = subparsers.add_parser(
+        "paired-grouped-forest",
+        help=(
+            "Plot several paired metrics on one forest-style chart. Filled "
+            "markers denote Holm-adjusted significance."
+        ),
+    )
+    paired_grouped_forest.add_argument("--input", type=Path, required=True)
+    paired_grouped_forest.add_argument("--output", type=Path, required=True)
+    paired_grouped_forest.add_argument("--dataset", required=True)
+    paired_grouped_forest.add_argument(
+        "--metrics",
+        nargs="+",
+        choices=(
+            "accuracy",
+            "balanced_accuracy",
+            "f1_macro",
+            "auroc_macro",
+            "auprc_macro",
+        ),
+        default=["accuracy", "balanced_accuracy", "f1_macro"],
+    )
+    paired_grouped_forest.add_argument(
+        "--comparator-column",
+        default="baseline",
+    )
+    paired_grouped_forest.add_argument(
+        "--delta-column",
+        default="delta_xbone_minus_baseline",
+    )
+    paired_grouped_forest.add_argument(
+        "--invert-delta",
+        action="store_true",
+        help="Invert the stored delta so the plot always shows XBone-Net minus comparator.",
+    )
+    interval_visibility = paired_grouped_forest.add_mutually_exclusive_group()
+    interval_visibility.add_argument(
+        "--show-confidence-intervals",
+        dest="show_confidence_intervals",
+        action="store_true",
+        help="Draw paired 95 percent confidence intervals (default).",
+    )
+    interval_visibility.add_argument(
+        "--hide-confidence-intervals",
+        dest="show_confidence_intervals",
+        action="store_false",
+        help="Hide paired 95 percent confidence intervals.",
+    )
+    paired_grouped_forest.set_defaults(show_confidence_intervals=True)
+    paired_grouped_forest.add_argument("--alpha", type=float, default=0.05)
+    paired_grouped_forest.add_argument("--dpi", type=int, default=300)
+
     aggregate_confusion = subparsers.add_parser(
         "aggregate-confusion",
         help="Pool and plot a multiclass confusion matrix across seeds.",
@@ -4023,6 +4341,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_RESULTS_ROOT / "summary" / "run_all_table.csv",
     )
     leave_one_out.add_argument(
+        "--results-root",
+        type=Path,
+        default=DEFAULT_RESULTS_ROOT,
+        help=(
+            "Root containing the aligned CTCH prediction archives used by "
+            "the paired tests."
+        ),
+    )
+    leave_one_out.add_argument(
         "--output",
         type=Path,
         default=(
@@ -4082,6 +4409,11 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     ablation_exp.add_argument("--seed", type=int, default=42)
+    ablation_exp.add_argument(
+        "--summary-directory",
+        default="explainability_full_test",
+        help="Analysis subdirectory containing full-test explainability summaries.",
+    )
 
     ablation_statistics = subparsers.add_parser(
         "ablation-statistics",
@@ -4108,8 +4440,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "accuracy",
             "balanced_accuracy",
             "f1_macro",
-            "auroc_macro",
-            "auprc_macro",
             "ece_15",
             "brier_score",
         ),
@@ -4126,9 +4456,8 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("permutation", "bootstrap"),
         default="permutation",
         help=(
-            "Use the crossed patient/seed permutation test, or a centered "
-            "paired bootstrap test. The bootstrap test is much faster for "
-            "Macro-AUROC and Macro-AUPRC."
+            "Use the crossed patient/seed permutation test or a centered "
+            "paired bootstrap test."
         ),
     )
     ablation_statistics.add_argument("--alpha", type=float, default=0.05)
@@ -4163,8 +4492,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "accuracy",
             "balanced_accuracy",
             "f1_macro",
-            "auroc_macro",
-            "auprc_macro",
             "ece_15",
         ),
         default="f1_macro",
@@ -4683,12 +5010,7 @@ ABLATION_VARIANTS = (
     {
         "group": "Đầu vào",
         "path": "architecture/preprocess/direct_resize_current",
-        "label": "Resize trực tiếp, không letterbox",
-    },
-    {
-        "group": "Đầu vào",
-        "path": "architecture/preprocess/xbone_letterbox",
-        "label": "Letterbox",
+        "label": "Tiền xử lý gốc BiomedCLIP",
     },
     {
         "group": "Đầu vào",
@@ -4794,8 +5116,6 @@ LEAVE_ONE_OUT_METRICS = (
         False,
     ),
     ("Macro-F1", "f1_macro_mean", "f1_macro_std", False),
-    ("Macro-AUROC", "auroc_macro_mean", "auroc_macro_std", False),
-    ("Macro-AUPRC", "auprc_macro_mean", "auprc_macro_std", False),
 )
 
 
@@ -4826,17 +5146,23 @@ def generate_ablation_leave_one_out_table(
         / "table_ablation_leave_one_out_classification.tex"
     ),
     precision: int = 4,
+    results_root: Union[str, Path, None] = DEFAULT_RESULTS_ROOT,
+    seeds: Sequence[int] = (42, 123, 456),
 ) -> Path:
     """Sinh ablation leave one out table cho bước xử lý hiện tại.
 
     Parameters
     ----------
-    input_file : str | Path
+    aggregated_results_file : str | Path
         Đường dẫn tài nguyên được sử dụng.
     output_file : str | Path
         Đường dẫn tài nguyên được sử dụng.
     precision : int, optional
         Giá trị ``precision`` được sử dụng trong phép xử lý.
+    results_root : str | Path | None, optional
+        Thư mục chứa các tệp dự đoán ghép cặp.
+    seeds : Sequence[int], optional
+        Các hạt giống được tổng hợp.
 
     Returns
     -------
@@ -4848,7 +5174,38 @@ def generate_ablation_leave_one_out_table(
     ValueError
         Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
     """
-    frame = load_frame(input_file)
+    frame = load_frame(aggregated_results_file)
+    if results_root is not None:
+        roots, probabilities, labels, _, _ = _load_leave_one_out_predictions(
+            results_root,
+            seeds=seeds,
+        )
+        metric_names = ("accuracy", "balanced_accuracy", "f1_macro")
+        archive_rows: list[dict[str, Any]] = []
+        for experiment, _, _ in roots:
+            per_seed = [
+                _classification_metric_values(
+                    probabilities[experiment][int(seed)],
+                    labels,
+                    metric_names,
+                )
+                for seed in seeds
+            ]
+            row: dict[str, Any] = {
+                "experiment": experiment,
+                "n_seeds": len(per_seed),
+            }
+            for metric in metric_names:
+                values = np.asarray(
+                    [seed_values[metric] for seed_values in per_seed],
+                    dtype=np.float64,
+                )
+                row[f"{metric}_mean"] = float(values.mean())
+                row[f"{metric}_std"] = (
+                    float(values.std(ddof=1)) if len(values) > 1 else 0.0
+                )
+            archive_rows.append(row)
+        frame = pd.DataFrame(archive_rows)
     required = {
         "experiment",
         "n_seeds",
@@ -4969,7 +5326,7 @@ def generate_ablation_leave_one_out_table(
             r"\bottomrule",
             r"\end{tabular}%",
             r"}",
-            r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net trên CTCH}",
+            r"\caption{Nghiên cứu loại bỏ từng thành phần của XBone-Net trên CTCH. Các độ đo được tính từ cùng tệp dự đoán dùng cho kiểm định ghép cặp}",
             r"\label{tab:ablation_leave_one_out_classification}",
             r"\end{table}",
             "",
@@ -5000,10 +5357,13 @@ def generate_ablation_ood_table(
         {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
+        {
+            "exp": "ctch/baselines/full_finetuned/fft_biomedclip",
+            "label": "BiomedCLIP tinh chỉnh toàn bộ",
+        },
     ]
     scenarios = [
         {"name": "OOD CTCH", "file": "ctch_ood.npz"},
-        {"name": "BTXRD", "file": "btxrd_test.npz"},
     ]
 
     data: dict[str, dict[str, list[dict[str, float]]]] = {
@@ -5134,7 +5494,7 @@ def generate_ablation_ood_table(
         [
             r"\end{tabular}%",
             r"}",
-            r"\caption{Đánh giá cảnh báo OOD hậu xử lý của XBone-Net và hai biến thể}",
+            r"\caption{Đánh giá cảnh báo OOD hậu xử lý trên CTCH}",
             r"\label{tab:ablation_ood}",
             r"\end{table}",
             "",
@@ -5156,20 +5516,88 @@ def generate_ablation_explainability_table(
         / "table_ablation_explainability.tex"
     ),
     seed: int = 42,
+    summary_directory: str = "explainability_full_test",
 ) -> Path:
-    """Sinh bảng so sánh chỉ số giải thích tích phân gradient giữa các biến thể ablation theo định dạng chuẩn."""
+    """Sinh bảng so sánh IG trên toàn bộ tập kiểm thử CTCH."""
     root_path = resolve_path(results_root)
     experiments = [
         {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
+        {
+            "exp": "ctch/baselines/full_finetuned/fft_biomedclip",
+            "label": "BiomedCLIP tinh chỉnh toàn bộ",
+        },
     ]
 
     summaries: dict[str, dict[str, Any]] = {}
     for item in experiments:
-        p = root_path / f"{item['exp']}/seed_{seed}/analysis/explainability/summary.json"
+        p = (
+            root_path
+            / item["exp"]
+            / f"seed_{seed}"
+            / "analysis"
+            / summary_directory
+            / "summary.json"
+        )
         with open(p, "r", encoding="utf-8") as f:
             summaries[item["label"]] = json.load(f)
+
+    sample_counts = {int(summary["sample_count"]) for summary in summaries.values()}
+    if len(sample_counts) != 1:
+        raise ValueError(
+            "Explainability summaries must use one common sample count, "
+            f"received {sorted(sample_counts)}."
+        )
+    sampling_modes = {
+        str(summary.get("protocol", {}).get("sampling"))
+        for summary in summaries.values()
+    }
+    if sampling_modes != {"all_test_samples"}:
+        raise ValueError(
+            "Explainability summaries must cover all CTCH test samples, "
+            f"received sampling modes {sorted(sampling_modes)}."
+        )
+    sample_count = next(iter(sample_counts))
+
+    row_specs = (
+        (
+            r"Độ trung thực\\ văn bản lâm sàng",
+            r"AUC Khôi phục theo IG $\uparrow$",
+            "clinical_text_input_faithfulness.insertion_auc",
+            False,
+        ),
+        (
+            r"Độ trung thực\\ văn bản lâm sàng",
+            r"AUC Loại bỏ theo IG $\downarrow$",
+            "clinical_text_input_faithfulness.deletion_auc",
+            True,
+        ),
+        (
+            r"Độ trung thực\\ ảnh X-quang",
+            r"AUC Khôi phục theo IG $\uparrow$",
+            "global_image_faithfulness.insertion_auc",
+            False,
+        ),
+        (
+            r"Độ trung thực\\ ảnh X-quang",
+            r"AUC Loại bỏ theo IG $\downarrow$",
+            "global_image_faithfulness.deletion_auc",
+            True,
+        ),
+        (
+            r"Can thiệp nguồn\\ thông tin",
+            r"\begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$\end{tabular}",
+            "source_target_probability_drop.global_image",
+            False,
+        ),
+        (
+            r"Can thiệp nguồn\\ thông tin",
+            r"\begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$\end{tabular}",
+            "source_target_probability_drop.clinical_text",
+            False,
+        ),
+    )
 
     lines = [
         r"% Please add the following required packages to your document preamble:",
@@ -5178,73 +5606,44 @@ def generate_ablation_explainability_table(
         r"\begin{table}[htbp]",
         r"\centering",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|l|l|c|c|c|}",
+        r"\begin{tabular}{|l|l|c|c|c|c|}",
         r"\hline",
         r"\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} &",
         r"  \multicolumn{1}{c|}{\textbf{Chỉ số}} &",
         r"  \cellcolor{gray!12}\textbf{XBone-Net} &",
         r"  \textbf{Chỉ pha 2} &",
-        r"  \textbf{Nối đặc trưng} \\ \hline",
+        r"  \textbf{Nối đặc trưng} &",
+        r"  \textbf{BiomedCLIP tinh chỉnh toàn bộ} \\ \hline",
     ]
-
-    # Group 1: Text Faithfulness
-    lines.append(
-        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực\\ văn bản lâm sàng\end{tabular}} & "
-        r"AUC Khôi phục theo IG $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{summaries['XBone-Net']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
-        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ & "
-        rf"${summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
-    )
-    lines.append(
-        r" & AUC Loại bỏ theo IG $\downarrow$ & "
-        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
-        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}$ & "
-        rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['clinical_text_input_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
-    )
-
-    # Group 2: Image Faithfulness
-    lines.append(
-        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Độ trung thực \\ ảnh X-quang\end{tabular}} & "
-        r"AUC Khôi phục theo IG $\uparrow$ & "
-        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}$ & "
-        rf"$\mathbf{{{summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}}}$ & "
-        rf"${summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.insertion_auc']['mean']:.4f}$ \\ \cline{{2-5}}"
-    )
-    lines.append(
-        r" & AUC Loại bỏ theo IG $\downarrow$ & "
-        rf"\cellcolor{{gray!12}}${summaries['XBone-Net']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
-        rf"${summaries['Chỉ pha 2']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}$ & "
-        rf"$\mathbf{{{summaries['Nối đặc trưng']['explanation_aggregate']['global_image_faithfulness.deletion_auc']['mean']:.4f}}}$ \\ \hline"
-    )
-
-    # Group 3: Source Intervention
-    drop_img_xbone = summaries['XBone-Net']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
-    drop_img_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
-    drop_img_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.global_image']['mean']
-
-    drop_txt_xbone = summaries['XBone-Net']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
-    drop_txt_p2 = summaries['Chỉ pha 2']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
-    drop_txt_concat = summaries['Nối đặc trưng']['explanation_aggregate']['source_target_probability_drop.clinical_text']['mean']
-
-    lines.append(
-        r"\multirow{2}{*}{\begin{tabular}[c]{@{}l@{}}Can thiệp nguồn\\ thông tin\end{tabular}} & "
-        r"\begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Ảnh ($\Delta p_{\mathrm{img}}$) $\uparrow$\end{tabular} & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_img_xbone:.4f}}}$ & "
-        rf"${drop_img_p2:.4f}$ & "
-        rf"${drop_img_concat:.4f}$ \\ \cline{{2-5}}"
-    )
-    lines.append(
-        r" & \begin{tabular}[c]{@{}l@{}}Mức giảm xác suất \\ khi che Văn bản ($\Delta p_{\mathrm{txt}}$) $\uparrow$\end{tabular} & "
-        rf"\cellcolor{{gray!12}}$\mathbf{{{drop_txt_xbone:.4f}}}$ & "
-        rf"${drop_txt_p2:.4f}$ & "
-        rf"${drop_txt_concat:.4f}$ \\ \hline"
-    )
+    labels = [str(item["label"]) for item in experiments]
+    for row_index, (group_label, metric_label, metric_key, minimize) in enumerate(
+        row_specs
+    ):
+        values = [
+            float(summaries[label]["explanation_aggregate"][metric_key]["mean"])
+            for label in labels
+        ]
+        optimum = min(values) if minimize else max(values)
+        group_cell = (
+            rf"\multirow{{2}}{{*}}{{\begin{{tabular}}[c]{{@{{}}l@{{}}}}{group_label}\end{{tabular}}}}"
+            if row_index % 2 == 0
+            else ""
+        )
+        cells = [group_cell, metric_label]
+        for label, value in zip(labels, values):
+            body = f"{value:.4f}"
+            if np.isclose(value, optimum, rtol=1e-9, atol=1e-12):
+                body = rf"\mathbf{{{body}}}"
+            prefix = r"\cellcolor{gray!12}" if label == "XBone-Net" else ""
+            cells.append(rf"{prefix}${body}$")
+        row_end = r" \\ \cline{2-6}" if row_index % 2 == 0 else r" \\ \hline"
+        lines.append(" & ".join(cells) + row_end)
 
     lines.extend(
         [
             r"\end{tabular}%",
             r"}",
-            r"\caption{Đánh giá IG và can thiệp nguồn của XBone-Net và hai biến thể trên 44 mẫu ở hạt giống 42}",
+            rf"\caption{{Đánh giá tích phân gradient và can thiệp nguồn trên toàn bộ {sample_count} mẫu kiểm thử CTCH ở hạt giống {seed}}}",
             r"\label{tab:ablation_explainability}",
             r"\end{table}",
             "",
@@ -6568,7 +6967,7 @@ def plot_ablation_forest(
         )
     axis.axvline(0.0, color="#222222", linestyle="--", linewidth=1.1)
     variant_names = {
-        "Direct resize": "Không dùng letterbox",
+        "Direct resize": "Tiền xử lý gốc BiomedCLIP",
         "Mean pooling": "Gộp trung bình",
         "Concat": "Nối đặc trưng",
         "Linear head": "Đầu tuyến tính",
@@ -8795,6 +9194,7 @@ def main() -> None:
             args.input,
             args.output,
             precision=args.precision,
+            results_root=args.results_root,
         )
         print(f"Leave-one-out LaTeX table saved to: {output}")
         return
@@ -8813,6 +9213,7 @@ def main() -> None:
             results_root=args.results_root,
             output_file=args.output,
             seed=args.seed,
+            summary_directory=args.summary_directory,
         )
         print(f"Ablation explainability LaTeX table saved to: {output}")
         return
@@ -9025,6 +9426,22 @@ def main() -> None:
         )
         print(f"Full-shot paired forest plot saved to: {output}")
         print(f"Paired effect estimates saved to: {csv_output}")
+        return
+
+    if args.command == "paired-grouped-forest":
+        output = plot_grouped_paired_forest(
+            args.input,
+            args.output,
+            dataset=args.dataset,
+            metrics=args.metrics,
+            comparator_column=args.comparator_column,
+            delta_column=args.delta_column,
+            invert_delta=args.invert_delta,
+            show_confidence_intervals=args.show_confidence_intervals,
+            alpha=args.alpha,
+            dpi=args.dpi,
+        )
+        print(f"Grouped paired forest plot saved to: {output}")
         return
 
     if args.command == "aggregate-confusion":

@@ -3,7 +3,7 @@
 Hợp nhất toàn bộ quy trình trích xuất đặc trưng cho mọi mô hình và mọi kịch bản:
 - Kịch bản ID: ctch_train, ctch_val, ctch_test
 - Kịch bản OOD: ctch_ood, btxrd_test, report_mismatch_cross_class, report_mismatch_same_class
-- Hỗ trợ: XBone-Net letterbox, các ablation, full fine-tuning, PEFT LoRA và zero-shot CLIP/BiomedCLIP.
+- Hỗ trợ: XBone-Net, các ablation, full fine-tuning, PEFT LoRA và zero-shot CLIP/BiomedCLIP với transform gốc của backbone.
 """
 
 from __future__ import annotations
@@ -467,10 +467,27 @@ def export_features_for_experiment(
                     archive_path,
                     expected_source_experiment=experiment,
                 )
-                if int(provenance.get("seed", -1)) == int(seed):
+                if loaded is None:
+                    loaded = load_evaluated_classification_model(
+                        experiment,
+                        seed,
+                        device=device,
+                    )
+                archive_matches_model = (
+                    int(provenance.get("seed", -1)) == int(seed)
+                    and provenance.get("config_sha256")
+                    == loaded.provenance.get("config_sha256")
+                    and provenance.get("checkpoint_sha256")
+                    == loaded.provenance.get("checkpoint_sha256")
+                )
+                if archive_matches_model:
                     feature_dict[sc] = arrays
                     print(f"  [Đã có sẵn] {sc}.npz ({experiment}, seed={seed})")
                     continue
+                print(
+                    f"  [Tính lại] {sc}.npz không khớp config/checkpoint hiện tại "
+                    f"({experiment}, seed={seed})"
+                )
             except Exception:
                 pass
 

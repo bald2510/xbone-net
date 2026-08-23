@@ -25,7 +25,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import streamlit as st
 
-from src.datasets.preprocessing import letterbox_square
 from src.utils.online_inference import (
     OnlineInferenceEngine,
     render_global_ig_overlay,
@@ -417,30 +416,21 @@ def show_preprocessing(image: Image.Image, engine: OnlineInferenceEngine) -> Non
         Engine đang giữ config đã khóa của checkpoint.
     """
 
-    preprocess_cfg = getattr(engine.loaded.cfg.dataset.params, "preprocess", {})
-    strategy = str(getattr(preprocess_cfg, "strategy", "letterbox")).lower()
     with st.expander("Xem các bước preprocessing", expanded=False):
         source_column, processed_column = st.columns(2)
         source_column.image(
             bounded_image(image, 360, 280),
             caption=f"1. Ảnh gốc · {image.width}×{image.height} px",
         )
-        if strategy == "letterbox":
-            processed = letterbox_square(image, size=224, pad_value="black")
-            caption = "2. Letterbox · 224×224 px"
-            description = (
-                "Ảnh giữ nguyên tỷ lệ và được đệm đen thành 224×224 trước "
-                "transform chuẩn hóa của BiomedCLIP."
-            )
-        else:
-            processed = image.convert("RGB").resize((224, 224), Image.Resampling.BICUBIC)
-            caption = "2. Minh họa direct resize · 224×224 px"
-            description = (
-                "Checkpoint hiện dùng direct_resize: ảnh gốc được chuyển trực tiếp "
-                "cho transform resize/crop/normalize của BiomedCLIP, không letterbox."
-            )
+        processed = image.convert("RGB")
+        caption = "2. Đầu vào RGB cho transform gốc BiomedCLIP"
+        description = (
+            "Ảnh RGB gốc được chuyển trực tiếp cho transform nguyên bản của "
+            "BiomedCLIP, gồm resize, center crop và chuẩn hóa. Ứng dụng không "
+            "thực hiện một bước đổi kích thước hoặc đệm viền riêng trước đó."
+        )
         st.caption(description)
-        processed_column.image(processed, caption=caption)
+        processed_column.image(bounded_image(processed, 360, 280), caption=caption)
 
 
 def show_reproducibility(result, engine: OnlineInferenceEngine) -> None:

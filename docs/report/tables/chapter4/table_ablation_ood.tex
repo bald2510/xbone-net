@@ -11,14 +11,16 @@
   \textbf{AUROC-OOD $\uparrow$} &
   \textbf{AUPR-Out $\uparrow$} &
   \textbf{FPR@95\%TPR $\downarrow$} \\ \hline
-\multirow{3}{*}{OOD CTCH} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.7598\pm0.0219$ & \cellcolor{gray!12}$0.1473\pm0.0094$ & \cellcolor{gray!12}$\mathbf{0.6296\pm0.0642}$ \\ \cline{2-5}
- & Chỉ pha 2 & $\mathbf{0.7735\pm0.0349}$ & $\mathbf{0.2197\pm0.0112}$ & $0.6667\pm0.1111$ \\ \cline{2-5}
- & Nối đặc trưng & $0.7186\pm0.0199$ & $0.1055\pm0.0143$ & $0.6481\pm0.0321$ \\ \hline
-\multirow{3}{*}{BTXRD} & \cellcolor{gray!12}XBone-Net & \cellcolor{gray!12}$0.9321\pm0.0174$ & \cellcolor{gray!12}$0.9052\pm0.0171$ & \cellcolor{gray!12}$\mathbf{0.3604\pm0.1129}$ \\ \cline{2-5}
- & Chỉ pha 2 & $\mathbf{0.9350\pm0.0114}$ & $\mathbf{0.9081\pm0.0176}$ & $0.3924\pm0.1167$ \\ \cline{2-5}
- & Nối đặc trưng & $0.9263\pm0.0059$ & $0.8975\pm0.0027$ & $0.4627\pm0.0650$ \\ \hline
+\multirow{4}{*}{\begin{tabular}[c]{@{}l@{}}OOD \\ CTCH\end{tabular}} &
+  \cellcolor{gray!12}XBone-Net &
+  \cellcolor{gray!12}$0.7598\pm0.0219$ &
+  \cellcolor{gray!12}$0.1473\pm0.0094$ &
+  \cellcolor{gray!12}$\mathbf{0.6296\pm0.0642}$ \\ \cline{2-5}
+ & Chỉ pha 2                                                                & $\mathbf{0.7735\pm0.0349}$ & $\mathbf{0.2197\pm0.0112}$ & $0.6667\pm0.1111$ \\ \cline{2-5}
+ & Nối đặc trưng                                                            & $0.7186\pm0.0199$          & $0.1055\pm0.0143$          & $0.6481\pm0.0321$ \\ \cline{2-5}
+ & \begin{tabular}[c]{@{}l@{}}BiomedCLIP \\ tinh chỉnh toàn bộ\end{tabular} & $0.7172\pm0.0635$          & $0.1372\pm0.0314$          & $0.6481\pm0.1283$ \\ \hline
 \end{tabular}%
 }
-\caption{Đánh giá cảnh báo ngoài phân phối hậu xử lý của XBone-Net và hai biến thể}
+\caption{Đánh giá cảnh báo OOD hậu xử lý trên CTCH}
 \label{tab:ablation_ood}
 \end{table}

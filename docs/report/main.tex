@@ -68,8 +68,10 @@
 
 \begin{document}
 
+\hypersetup{pageanchor=false}
 \pagestyle{empty}
 \include{Title/title}
+\hypersetup{pageanchor=true}
 % Sau trang Title, các bạn chèn nhận xét của GVHD và GVPB. Nhận xét sẽ được giáo vụ phát sau buổi bảo vệ để các bạn đóng quyển.
 
 % Lời cam đoan
@@ -86,12 +88,14 @@
 % Lưu số trang La Mã trước khi vào đề cương để Mục lục nối tiếp ngay sau Lời cảm ơn
 \newcounter{savedromanpage}
 \setcounter{savedromanpage}{\value{page}}
+\hypersetup{pageanchor=false}
 \pagenumbering{gobble}
 \include{Appendix/decuong}
 
 % Phục hồi số trang La Mã nối tiếp (ii, iii...) cho Mục lục và Tóm tắt
-\setcounter{page}{\value{savedromanpage}}
 \pagenumbering{roman}
+\setcounter{page}{\value{savedromanpage}}
+\hypersetup{pageanchor=true}
 \pagestyle{plain}
 
 % Mục lục, danh sách hình, danh sách bảng
@@ -129,7 +133,10 @@
 %\DeclareNameAlias{sortname}{last-first}
 %\DeclareNameAlias{default}{last-first}
 
+\begingroup
+\setlength{\emergencystretch}{3em}
 \printbibliography[heading=subbibliography, title={Tiếng Anh}, notkeyword=Viet]
+\endgroup
 
 % Mỗi refsection duy trì hệ thống đánh số tài liệu tham khảo riêng.
 

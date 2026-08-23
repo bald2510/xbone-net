@@ -1,6 +1,6 @@
 \chapter{Thực nghiệm và kết quả}
 \label{Chapter4}
-Chương này trình bày thiết kế thực nghiệm và kết quả theo bốn câu hỏi nghiên cứu đã nêu ở Chương~\ref{Chapter1}. Câu hỏi thứ nhất xem xét hiệu năng phân lớp và đánh đổi chi phí. Câu hỏi thứ hai đánh giá ảnh hưởng của các thành phần. Câu hỏi thứ ba xác định khả năng và giới hạn của cảnh báo dữ liệu ngoài phân phối hậu xử lý. Câu hỏi thứ tư khảo sát mức phụ thuộc của dự đoán vào ảnh và văn bản qua tích phân gradient kết hợp can thiệp đầu vào. Các cấu hình có huấn luyện được đánh giá trên ba hạt giống 42, 123 và 456, sau đó giá trị tổng hợp được báo cáo dưới dạng trung bình $\pm$ độ lệch chuẩn. Riêng phân tích tích phân gradient sử dụng hạt giống 42 trên 44 mẫu chuẩn hóa. Kết quả theo từng hạt giống và các phân tích bổ sung được trình bày tại Phụ lục~\ref{AppendixSeedResults}.
+Chương này trình bày thiết kế thực nghiệm và kết quả theo bốn câu hỏi nghiên cứu đã nêu ở Chương~\ref{Chapter1}. Câu hỏi thứ nhất xem xét hiệu năng phân lớp và đánh đổi chi phí. Câu hỏi thứ hai đánh giá ảnh hưởng của các thành phần. Câu hỏi thứ ba xác định khả năng và giới hạn của cảnh báo dữ liệu ngoài phân phối hậu xử lý. Câu hỏi thứ tư khảo sát mức phụ thuộc của dự đoán vào ảnh và văn bản qua tích phân gradient kết hợp can thiệp đầu vào. Các cấu hình có huấn luyện được đánh giá trên ba hạt giống 42, 123 và 456, sau đó giá trị tổng hợp được báo cáo dưới dạng trung bình $\pm$ độ lệch chuẩn. Riêng phân tích tích phân gradient sử dụng hạt giống 42 trên toàn bộ 669 mẫu kiểm thử CTCH. Kết quả theo từng hạt giống và các phân tích bổ sung được trình bày tại Phụ lục~\ref{AppendixSeedResults}.
 
 \section{Thiết kế thực nghiệm}
 \label{sec:experimental_design}
@@ -200,7 +200,7 @@ Reason for admission: Right hand wound. Disease history: The patient had his rig
 \label{tab:ctch_example}
 \end{table}
 
-CTCH là nguồn bằng chứng chính của khóa luận vì mỗi ảnh được liên kết với bệnh sử lâm sàng có sẵn và phép chia được thực hiện theo người bệnh. Bộ dữ liệu này đồng thời cung cấp quần thể ngoài không gian nhãn để khảo sát cảnh báo dữ liệu ngoài phân phối. Phân tích nguồn thông tin sử dụng một tập con chuẩn hóa gồm 44 mẫu kiểm thử tại hạt giống 42.
+CTCH là nguồn bằng chứng chính của khóa luận vì mỗi ảnh được liên kết với bệnh sử lâm sàng có sẵn và phép chia được thực hiện theo người bệnh. Bộ dữ liệu này đồng thời cung cấp quần thể ngoài không gian nhãn để khảo sát cảnh báo dữ liệu ngoài phân phối. Phân tích nguồn thông tin sử dụng toàn bộ 669 mẫu kiểm thử tại hạt giống 42.
 
 
 \subsection{Cấu hình thí nghiệm}
@@ -228,7 +228,7 @@ Phần mềm            & Python 3.11.15, Torch 2.11.0+cu128 và CUDA 12.8      
 \begin{tabular}{|l|l|}
 \hline
 \textbf{Thành phần}      & \textbf{Cấu hình}                           \\ \hline
-Đầu vào ảnh              & 1 ảnh qua phép biến đổi chuẩn của BiomedCLIP    \\ \hline
+Đầu vào ảnh              & 1 ảnh kích thước 224x224                     \\ \hline
 Bộ tối ưu và kích thước lô & AdamW, 16                                  \\ \hline
 Hệ số suy giảm trọng số  & $10^{-4}$                                   \\ \hline
 Lịch tốc độ học          & cosine                                      \\ \hline
@@ -246,103 +246,46 @@ Xử lý mất cân bằng lớp & Hệ số số lượng hiệu dụng 0,999 v
 
 \subsection{Các độ đo}
 \label{sec:evaluation_metrics}
-Hai bộ dữ liệu BTXRD và CTCH được thiết lập dưới dạng bài toán phân lớp đa lớp, với BTXRD có 10 lớp và CTCH có 22 lớp. Các độ đo được chia theo bốn mục tiêu gồm phân lớp, phát hiện dữ liệu ngoài phân phối, đánh giá tích phân gradient và đánh giá hiệu quả tham số cùng chi phí suy luận.
+Hai bộ dữ liệu BTXRD (10 lớp) và CTCH (22 lớp) được đánh giá theo bài toán phân lớp đa lớp qua bốn nhóm độ đo: phân lớp, phát hiện dữ liệu ngoài phân phối (OOD), giải thích tích phân gradient, và hiệu quả tham số cùng chi phí huấn luyện--suy luận.
 
 \subsubsection{Độ đo phân lớp}
 
-Gọi $N$ là số mẫu, $C$ là số lớp và $TP_c$, $FP_c$, $FN_c$ lần lượt là số dương đúng, dương sai và âm sai khi xem lớp $c$ là lớp dương. Ký hiệu $\mathcal{C}_v$ chỉ các lớp có cả mẫu dương và mẫu âm trong phép đánh giá một đối với tất cả.
+Gọi $N$ là số mẫu, $C$ là số lớp; $TP_c$, $FP_c$, $FN_c$ lần lượt là số dương đúng, dương sai và âm sai khi xét lớp $c$ là lớp dương.
 
-\paragraph{Độ chính xác}
-
-Độ chính xác là tỷ lệ mẫu được dự đoán đúng trên toàn bộ tập đánh giá:
+\paragraph{Độ chính xác (Accuracy):} Tỷ lệ mẫu được dự đoán đúng trên toàn bộ tập dữ liệu:
 \begin{equation}
 \operatorname{Accuracy}=\frac{\sum_{c=1}^{C}TP_c}{N}.
 \label{eq:ch4_accuracy}
 \end{equation}
 
-Độ đo này được dùng để mô tả hiệu năng tổng thể, nhưng có thể bị chi phối bởi các lớp có nhiều mẫu.
-
-\paragraph{Độ chính xác cân bằng}
-
-Độ chính xác cân bằng \cite{Brodersen2010BalancedAcc} là trung bình độ nhạy của các lớp:
+\paragraph{Độ chính xác cân bằng (Balanced Accuracy):} Trung bình độ nhạy giữa các lớp nhằm giảm thiểu ảnh hưởng của mất cân bằng dữ liệu \cite{Brodersen2010BalancedAcc}:
 \begin{equation}
 \operatorname{Balanced\ Accuracy}
 =\frac{1}{C}\sum_{c=1}^{C}\frac{TP_c}{TP_c+FN_c}.
 \label{eq:ch4_balanced_accuracy}
 \end{equation}
 
-Mỗi lớp đóng góp như nhau, vì vậy độ đo được dùng để hạn chế ảnh hưởng của mất cân bằng lớp.
-
-\paragraph{Độ chính xác dự đoán theo lớp}
-
-Độ chính xác dự đoán của lớp $c$ là tỷ lệ dự đoán lớp $c$ thực sự thuộc lớp đó:
+\paragraph{Độ chính xác dự đoán và độ nhạy theo lớp:} Đánh giá mức dương sai ($\operatorname{Precision}_c$) và mức bỏ sót ($\operatorname{Recall}_c$) của từng lớp:
 \begin{equation}
-\operatorname{Precision}_c=\frac{TP_c}{TP_c+FP_c}.
+\operatorname{Precision}_c=\frac{TP_c}{TP_c+FP_c},
 \label{eq:ch4_precision_def}
 \end{equation}
-
-Độ đo được dùng khi cần xem xét mức dự đoán dương sai của từng lớp và là thành phần của đường cong độ chính xác-độ nhạy.
-
-\paragraph{Độ nhạy theo lớp}
-
-Độ nhạy của lớp $c$ là tỷ lệ mẫu thuộc lớp $c$ được nhận diện:
 \begin{equation}
 \operatorname{Recall}_c=\frac{TP_c}{TP_c+FN_c}.
 \label{eq:ch4_recall_def}
 \end{equation}
 
-Độ đo phản ánh mức bỏ sót của từng lớp và tạo trục còn lại của đường cong độ chính xác-độ nhạy.
-
-\paragraph{Macro-F1}
-
-Điểm F1 trung bình theo lớp lấy trung bình điểm F1 của từng lớp:
+\paragraph{Macro-F1:} Trung bình cộng điểm F1 trên toàn bộ các lớp, là độ đo phân lớp chính của nghiên cứu:
 \begin{equation}
 \operatorname{Macro\text{-}F1}
 =\frac{1}{C}\sum_{c=1}^{C}\frac{2TP_c}{2TP_c+FP_c+FN_c}.
 \label{eq:ch4_macro_f1}
 \end{equation}
 
-Độ đo cân bằng giữa dự đoán dương đúng và mức bỏ sót ở từng lớp, đồng thời được dùng làm độ đo phân lớp chính của nghiên cứu.
+Các kết luận chính về hiệu năng phân loại được xây dựng từ Accuracy, Balanced Accuracy và Macro-F1, trong đó Macro-F1 là độ đo chính. Macro-AUROC và Macro-AUPRC chỉ được báo cáo như phân tích bổ sung về khả năng phân biệt theo điểm số tại Phụ lục~\ref{sec:appendix_probability_ranking}; hai độ đo này không thuộc phạm vi trả lời câu hỏi nghiên cứu về ảnh hưởng của các thành phần.
 
-\clearpage
-
-\paragraph{Macro-AUROC}
-
-Diện tích dưới đường cong đặc trưng hoạt động trung bình theo lớp \cite{Fawcett2006ROC} lấy trung bình diện tích dưới đường cong ROC của từng lớp theo chiến lược một đối với tất cả:
-\begin{equation}
-\operatorname{Macro\text{-}AUROC}
-=\frac{1}{|\mathcal{C}_v|}\sum_{c\in\mathcal{C}_v}\operatorname{AUROC}_c.
-\label{eq:ch4_macro_auroc}
-\end{equation}
-
-Trong đó, $\operatorname{AUROC}_c$ là xác suất một mẫu lớp $c$ được xếp hạng cao hơn một mẫu không thuộc lớp $c$. Độ đo này đánh giá chất lượng xếp hạng của mô hình trên toàn bộ các ngưỡng, trong đó giá trị cao hơn biểu thị khả năng phân biệt tốt hơn.
-
-\paragraph{Độ chính xác trung bình theo lớp}
-
-Độ chính xác trung bình của lớp $c$ tóm tắt đường cong độ chính xác-độ nhạy tại các ngưỡng xếp hạng:
-\begin{equation}
-\operatorname{AUPRC}_c=\sum_{k=1}^{K_c}(R_{c,k}-R_{c,k-1})P_{c,k}.
-\label{eq:ch4_auprc_class}
-\end{equation}
-
-Trong đó, $P_{c,k}$ và $R_{c,k}$ là độ chính xác dự đoán và độ nhạy tại ngưỡng thứ $k$, còn $K_c$ là số ngưỡng được xét. Độ đo được dùng để tổng hợp chất lượng xếp hạng của riêng lớp $c$.
-
-\paragraph{Macro-AUPRC}
-
-Điểm độ chính xác trung bình theo lớp \cite{Davis2006PR} lấy trung bình Average Precision trên các lớp hợp lệ:
-\begin{equation}
-\operatorname{Macro\text{-}AUPRC}
-=\frac{1}{|\mathcal{C}_v|}\sum_{c\in\mathcal{C}_v}\operatorname{AUPRC}_c.
-\label{eq:ch4_macro_auprc}
-\end{equation}
-
-Độ đo được tính bằng tổng bậc thang của Average Precision, không phải phép tích phân hình thang tổng quát dưới đường cong độ chính xác-độ nhạy. Giá trị cao hơn thường biểu thị kết quả thuận lợi hơn khi các lớp mất cân bằng.
-
-\clearpage
-
-\paragraph{Đánh giá thống kê ghép cặp}
-
-Nghiên cứu sử dụng bootstrap ghép cặp để tính khoảng tin cậy và kiểm định hoán vị ghép cặp để tính giá trị $p$. Gọi $X$ là XBone-Net, $B_k$ là mô hình đối sánh thứ $k$, $S=3$ là số hạt giống và $\mathcal{M}$ là độ đo cần xét. Chênh lệch trung bình giữa hai mô hình là:
+\paragraph{Đánh giá thống kê ghép cặp:}
+Gọi $X$ là XBone-Net, $B_k$ là mô hình đối chứng thứ $k$, $S=3$ là số hạt giống và $\mathcal{M}$ là độ đo đánh giá. Chênh lệch quan sát trung bình được xác định bởi:
 \begin{equation}
 \widehat{\Delta}_{k}
 =\frac{1}{S}\sum_{s=1}^{S}
@@ -352,53 +295,53 @@ Nghiên cứu sử dụng bootstrap ghép cặp để tính khoảng tin cậy v
 \right].
 \label{eq:ch4_paired_observed_delta}
 \end{equation}
-Với các độ đo phân lớp trên, $\widehat{\Delta}_{k}>0$ có nghĩa XBone-Net đạt giá trị cao hơn mô hình đối sánh.
-
-\textbf{Bootstrap ghép cặp.} Theo Efron và Tibshirani \cite{EfronTibshirani1993Bootstrap}, ở lần lặp thứ $b$, nghiên cứu lấy mẫu có hoàn lại các bệnh nhân trong từng lớp và ba hạt giống huấn luyện. Cùng tập bệnh nhân $\mathcal{I}_{b}$ và cùng dãy hạt giống $s_{1}^{(b)},\ldots,s_{S}^{(b)}$ được dùng cho cả hai mô hình. Chênh lệch tại lần lặp này là:
-\begin{equation}
-\widehat{\Delta}_{k}^{*(b)}
-=\frac{1}{S}\sum_{j=1}^{S}
-\left[
-\mathcal{M}\!\left(\mathbf{y}_{\mathcal{I}_{b}},
-\widehat{\mathbf{p}}_{X,s_{j}^{(b)},\mathcal{I}_{b}}\right)
--\mathcal{M}\!\left(\mathbf{y}_{\mathcal{I}_{b}},
-\widehat{\mathbf{p}}_{B_k,s_{j}^{(b)},\mathcal{I}_{b}}\right)
-\right].
-\label{eq:ch4_paired_bootstrap_delta}
-\end{equation}
-Khoảng tin cậy 95\% là hai phân vị $2{,}5\%$ và $97{,}5\%$ của các chênh lệch bootstrap $\{\widehat{\Delta}_{k}^{*(b)}\}_{b=1}^{N_{\mathrm{boot}}}$.
-
-\textbf{Kiểm định hoán vị ghép cặp.} Theo Good \cite{Good2005PermutationBootstrap}, giả thuyết không cho rằng hai mô hình không có chênh lệch có hệ thống. Ở mỗi lần hoán vị $r$, dự đoán của hai mô hình được hoán đổi với xác suất $0{,}5$ theo từng bệnh nhân; cùng quyết định hoán đổi được dùng cho mọi hạt giống, còn ba hạt giống được lấy mẫu có hoàn lại. Sau đó, chênh lệch $\widehat{\Delta}_{k}^{\pi(r)}$ được tính lại. Giá trị $p$ hai phía là:
-\begin{equation}
-p_{k}=\frac{
-1+\displaystyle\sum_{r=1}^{N_{\mathrm{perm}}}
-\mathbb{I}\!\left(
-\left|\widehat{\Delta}_{k}^{\pi(r)}\right|
-\geq \left|\widehat{\Delta}_{k}\right|
-\right)}{N_{\mathrm{perm}}+1}.
-\label{eq:ch4_paired_permutation_pvalue}
-\end{equation}
-Phân tích dùng $N_{\mathrm{boot}}=N_{\mathrm{perm}}=10\,000$, $\alpha=0{,}05$ và hạt giống 2026. Sáu giá trị $p$ trong mỗi độ đo được hiệu chỉnh Holm \cite{Holm1979Sequential}. Tiêu chuẩn duy nhất để kết luận khác biệt có ý nghĩa thống kê là $p_{\mathrm{Holm}}<0{,}05$. Dấu của $\widehat{\Delta}_{k}$ xác định hướng khác biệt, trong đó $\widehat{\Delta}_{k}>0$ nghiêng về XBone-Net và $\widehat{\Delta}_{k}<0$ nghiêng về mô hình đối chứng. Khoảng tin cậy bootstrap 95\% được báo cáo để mô tả độ bất định của chênh lệch, không được dùng như một điều kiện kiểm định bổ sung. Do khoảng tin cậy và giá trị $p$ đến từ hai thủ tục lấy mẫu lại khác nhau, chúng có thể không đồng thuận ở các trường hợp sát ngưỡng. Những trường hợp này vẫn được kết luận theo tiêu chuẩn kiểm định hoán vị được quy định ở trên, đồng thời phải được diễn giải thận trọng. Mọi kết luận chỉ áp dụng cho phân hoạch hiện tại.
+Trong đó $\widehat{\Delta}_k > 0$ biểu thị XBone-Net có kết quả cao hơn đối chứng.
+\begin{itemize}
+    \item \textbf{Bootstrap ghép cặp:} Lấy mẫu có hoàn lại đồng thời theo bệnh nhân $\mathcal{I}_b$ trong từng lớp và dãy hạt giống $s_1^{(b)}, \ldots, s_S^{(b)}$ cho cả hai mô hình qua $N_{\mathrm{boot}}=10.000$ lần lặp \cite{EfronTibshirani1993Bootstrap}:
+    \begin{equation}
+    \widehat{\Delta}_{k}^{*(b)}
+    =\frac{1}{S}\sum_{j=1}^{S}
+    \left[
+    \mathcal{M}\!\left(\mathbf{y}_{\mathcal{I}_{b}},
+    \widehat{\mathbf{p}}_{X,s_{j}^{(b)},\mathcal{I}_{b}}\right)
+    -\mathcal{M}\!\left(\mathbf{y}_{\mathcal{I}_{b}},
+    \widehat{\mathbf{p}}_{B_k,s_{j}^{(b)},\mathcal{I}_{b}}\right)
+    \right].
+    \label{eq:ch4_paired_bootstrap_delta}
+    \end{equation}
+    Khoảng tin cậy 95\% là hai phân vị $2{,}5\%$ và $97{,}5\%$ của phân phối $\{\widehat{\Delta}_{k}^{*(b)}\}_{b=1}^{N_{\mathrm{boot}}}$.
+    \item \textbf{Kiểm định hoán vị ghép cặp:} Hoán đổi ngẫu nhiên dự đoán của hai mô hình theo từng bệnh nhân với xác suất $0{,}5$ qua $N_{\mathrm{perm}}=10.000$ lần lặp \cite{Good2005PermutationBootstrap}. Giá trị $p$ hai phía được tính theo:
+    \begin{equation}
+    p_{k}=\frac{
+    1+\displaystyle\sum_{r=1}^{N_{\mathrm{perm}}}
+    \mathbb{I}\!\left(
+    \left|\widehat{\Delta}_{k}^{\pi(r)}\right|
+    \geq \left|\widehat{\Delta}_{k}\right|
+    \right)}{N_{\mathrm{perm}}+1}.
+    \label{eq:ch4_paired_permutation_pvalue}
+    \end{equation}
+    Các giá trị $p$ được hiệu chỉnh đa so sánh theo phương pháp Holm \cite{Holm1979Sequential}. Khác biệt được kết luận có ý nghĩa thống kê khi $p_{\mathrm{Holm}} < 0{,}05$.
+\end{itemize}
 
 \subsubsection{Độ đo phát hiện dữ liệu ngoài phân phối}
 
-Gọi $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập trong và ngoài phân phối, $N_{\mathrm{OOD}}=|\mathcal{D}_{\mathrm{OOD}}|$, còn $s_{\mathrm{OOD}}(x)$ là điểm bất thường đa phương thức đã định nghĩa ở Công thức~\ref{eq:ch3_ood_max_fusion}. Giá trị lớn hơn biểu thị mẫu khác biệt hơn so với ngân hàng tham chiếu trong phân phối.
+Gọi $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập dữ liệu trong và ngoài phân phối ($N_{\mathrm{OOD}}=|\mathcal{D}_{\mathrm{OOD}}|$), còn $s_{\mathrm{OOD}}(x)$ là điểm bất thường đa phương thức (Công thức~\ref{eq:ch3_ood_max_fusion}).
 
-\paragraph{AUROC-OOD}
-
-Diện tích dưới đường cong phân biệt dữ liệu ngoài phân phối \cite{Hendrycks2017MSP} là xác suất điểm của một mẫu ngoài phân phối cao hơn điểm của một mẫu trong phân phối, với trường hợp bằng điểm được tính một nửa:
+\paragraph{AUROC-OOD:} Xác suất điểm bất thường của mẫu OOD cao hơn mẫu ID trên toàn bộ dải ngưỡng \cite{Hendrycks2017MSP}:
 \begin{equation}
+\begin{aligned}
 \operatorname{AUROC}_{\mathrm{OOD}}
-=\Pr\!\left(s_{\mathrm{OOD}}(x_{\mathrm{OOD}})>s_{\mathrm{OOD}}(x_{\mathrm{ID}})\right)
-+\frac{1}{2}\Pr\!\left(s_{\mathrm{OOD}}(x_{\mathrm{OOD}})=s_{\mathrm{OOD}}(x_{\mathrm{ID}})\right).
+&=\Pr\!\left(
+s_{\mathrm{OOD}}(x_{\mathrm{OOD}})>s_{\mathrm{OOD}}(x_{\mathrm{ID}})
+\right) \\
+&\quad+\frac{1}{2}\Pr\!\left(
+s_{\mathrm{OOD}}(x_{\mathrm{OOD}})=s_{\mathrm{OOD}}(x_{\mathrm{ID}})
+\right).
+\end{aligned}
 \label{eq:ch4_auroc_ood}
 \end{equation}
 
-Độ đo được dùng để đánh giá khả năng xếp hạng hai phân phối trên mọi ngưỡng. Các giá trị cao hơn thường biểu thị mức phân biệt tốt hơn.
-
-\paragraph{AUPR-Out}
-
-Độ chính xác trung bình khi dữ liệu ngoài phân phối là lớp dương \cite{Hendrycks2017MSP,Liang2018ODIN} được tính bằng tổng bậc thang trên đường cong độ chính xác-độ nhạy:
+\paragraph{AUPR-Out:} Diện tích dưới đường cong độ chính xác--độ nhạy khi coi dữ liệu OOD là lớp dương \cite{Hendrycks2017MSP,Liang2018ODIN}:
 \begin{equation}
 \operatorname{AUPR\text{-}Out}
 =\sum_{k=1}^{K}
@@ -407,31 +350,23 @@ P^{\mathrm{OOD}}_k.
 \label{eq:ch4_aupr_out}
 \end{equation}
 
-Trong đó, $P^{\mathrm{OOD}}_k$ và $R^{\mathrm{OOD}}_k$ lần lượt là độ chính xác dự đoán và độ nhạy tại ngưỡng thứ $k$. Độ đo bổ sung cho AUROC-OOD khi tỷ lệ mẫu ngoài phân phối thay đổi giữa các kịch bản, trong đó giá trị cao hơn thường thuận lợi hơn.
-
-\paragraph{FPR@95\%TPR}
-
-Tỷ lệ chấp nhận nhầm tại điểm vận hành giữ lại 95\% mẫu trong phân phối \cite{Liang2018ODIN,Liu2020EnergyOOD} được xác định trên các điểm số của tập kiểm thử. Đặt $\tau_{95}^{\mathrm{test}}$ là ngưỡng thấp nhất giữ lại ít nhất 95\% mẫu trong phân phối của tập kiểm thử:
+\paragraph{FPR@95\%TPR:} Tỷ lệ chấp nhận nhầm mẫu OOD tại ngưỡng $\tau_{95}^{\mathrm{test}}$ giữ lại ít nhất 95\% mẫu ID trên tập kiểm thử \cite{Liang2018ODIN,Liu2020EnergyOOD} (giá trị càng thấp càng tốt):
 \begin{equation}
 \begin{aligned}
 \operatorname{FPR@95\%TPR}
 &=\frac{1}{N_{\mathrm{OOD}}}\sum_{x\in\mathcal{D}_{\mathrm{OOD}}}
 \mathbb{1}\!\left[s_{\mathrm{OOD}}(x)\leq\tau_{95}^{\mathrm{test}}\right],\\
-\Pr_{x\sim\mathcal{D}_{\mathrm{ID}}^{\mathrm{test}}}
+\text{với } \Pr_{x\sim\mathcal{D}_{\mathrm{ID}}^{\mathrm{test}}}
 &\!\left[s_{\mathrm{OOD}}(x)\leq\tau_{95}^{\mathrm{test}}\right]\geq0{,}95.
 \end{aligned}
 \label{eq:ch4_fpr95}
 \end{equation}
 
-FPR@95\%TPR là độ đo đánh giá, nên không sử dụng ngưỡng cảnh báo đã hiệu chỉnh trên tập xác thực. Ngưỡng cảnh báo triển khai được hiệu chỉnh riêng trên tập xác thực để giữ lại khoảng 95\% mẫu trong phân phối và chỉ dùng cho quyết định cảnh báo. Giá trị FPR@95\%TPR thấp hơn thường thuận lợi hơn.
-
 \subsubsection{Độ đo đánh giá tích phân gradient}
 
-Với mỗi mẫu, lớp đích $t$ được chọn là lớp có xác suất dự đoán lớn nhất. Gọi $F_t(\boldsymbol{u})$ là logit của lớp này tại đầu vào hoặc dãy đơn vị biểu diễn $\boldsymbol{u}$, $\boldsymbol{u}'$ là mốc tham chiếu và $L$ là số thành phần được đóng góp. Các đường loại bỏ và khôi phục dùng xác suất Softmax của cùng lớp dự đoán. Các độ đo dưới đây tập trung vào mức đóng góp và độ trung thực qua phép loại bỏ, khôi phục.
+Gọi $F_t(\boldsymbol{u})$ là logit của lớp dự đoán $t$ từ biểu diễn đầu vào $\boldsymbol{u}$, $\boldsymbol{u}'$ là mốc tham chiếu và $p_t(\cdot)$ là xác suất Softmax tương ứng.
 
-\paragraph{Mức đóng góp bằng tích phân gradient}
-
-Tích phân gradient \cite{Sundararajan2017IntegratedGradients} gán mức đóng góp cho thành phần $j$ dọc theo đoạn thẳng từ mốc tham chiếu đến đầu vào:
+\paragraph{Tích phân gradient (Integrated Gradients):} Xác định mức đóng góp của thành phần $j$ \cite{Sundararajan2017IntegratedGradients}, được xấp xỉ bằng quy tắc hình thang 24 điểm:
 \begin{equation}
 \operatorname{IG}_j(\boldsymbol{u})=(u_j-u'_j)
 \int_{0}^{1}\frac{\partial F_t\!\left(
@@ -440,45 +375,28 @@ Tích phân gradient \cite{Sundararajan2017IntegratedGradients} gán mức đón
 \label{eq:ch4_integrated_gradients}
 \end{equation}
 
-Trong đó, $\alpha$ là hệ số nội suy. Tích phân được xấp xỉ bằng quy tắc hình thang với 24 điểm. Thứ tự loại bỏ ưu tiên phần đóng góp dương đối với logit của lớp dự đoán. Chỉ khi toàn bộ phần đóng góp dương gần bằng 0, độ lớn tuyệt đối mới được dùng làm quy tắc dự phòng.
-
-\paragraph{Diện tích dưới đường cong loại bỏ}
-
-Theo phép đánh giá loại bỏ của Petsiuk và cộng sự \cite{Petsiuk2018RISE}, gọi $p_t(\boldsymbol{u}^{\mathrm{del}}(q))$ là xác suất lớp đích sau khi thay tỷ lệ $q$ đơn vị có mức đóng góp cao nhất bằng mốc tham chiếu. Diện tích dưới đường cong loại bỏ được xác định bởi:
+\paragraph{Độ trung thực qua phép loại bỏ ($\mathrm{AUC}_{\mathrm{del}}$) và khôi phục ($\mathrm{AUC}_{\mathrm{ins}}$):} Đánh giá sự biến thiên xác suất $p_t$ khi tuần tự thay thế (loại bỏ) hoặc khôi phục tỷ lệ $q$ các đơn vị quan trọng nhất theo thứ tự đóng góp \cite{Petsiuk2018RISE}:
 \begin{equation}
 \operatorname{AUC}_{\mathrm{del}}=
-\int_{0}^{1}p_t\!\left(\boldsymbol{u}^{\mathrm{del}}(q)\right)\,\mathrm{d}q.
+\int_{0}^{1}p_t\!\left(\boldsymbol{u}^{\mathrm{del}}(q)\right)\,\mathrm{d}q,
 \label{eq:ch4_deletion_auc}
 \end{equation}
-
-Tích phân được xấp xỉ bằng quy tắc hình thang tại các tỷ lệ can thiệp được định trước. Độ đo được dùng để kiểm tra liệu các đơn vị được tích phân gradient xếp hạng cao có làm xác suất lớp đích giảm nhanh hay không. Giá trị thấp hơn thường cung cấp bằng chứng thuận lợi hơn về độ trung thực.
-
-\paragraph{Diện tích dưới đường cong khôi phục}
-
-Theo phép đánh giá khôi phục của Petsiuk và cộng sự \cite{Petsiuk2018RISE}, gọi $p_t(\boldsymbol{u}^{\mathrm{ins}}(q))$ là xác suất lớp đích khi bắt đầu từ mốc tham chiếu và khôi phục tỷ lệ $q$ đơn vị theo thứ tự đóng góp giảm dần. Diện tích dưới đường cong khôi phục được xác định bởi:
 \begin{equation}
 \operatorname{AUC}_{\mathrm{ins}}=
 \int_{0}^{1}p_t\!\left(\boldsymbol{u}^{\mathrm{ins}}(q)\right)\,\mathrm{d}q.
 \label{eq:ch4_insertion_auc}
 \end{equation}
+$\mathrm{AUC}_{\mathrm{del}}$ càng thấp và $\mathrm{AUC}_{\mathrm{ins}}$ càng cao phản ánh giải thích có độ trung thực càng cao.
 
-Độ đo đánh giá khả năng các đơn vị được xếp hạng cao khôi phục xác suất lớp đích từ mốc tham chiếu. Giá trị cao hơn thường cho thấy xác suất được phục hồi sớm hơn.
-
-\paragraph{Mức giảm xác suất khi che nguồn thông tin}
-
-Dựa vào độ đo tính toàn diện của DeYoung và cộng sự \cite{DeYoung2020ERASER}. Gọi $p_t(x)$ là xác suất lớp đích tại đầu vào đầy đủ và $p_t(x_{\setminus m})$ là xác suất sau khi nguồn $m$ được thay bằng mốc tham chiếu. Mức giảm xác suất do che nguồn được tính bằng:
+\paragraph{Mức giảm xác suất khi che nguồn ($\Delta p_m$):} Đánh giá mức phụ thuộc vào từng phương thức $m \in \{\mathrm{img}, \mathrm{txt}\}$ \cite{DeYoung2020ERASER}:
 \begin{equation}
-\Delta p_m=p_t(x)-p_t(x_{\setminus m}),
-\qquad m\in\{\mathrm{img},\mathrm{txt}\}.
+\Delta p_m=p_t(x)-p_t(x_{\setminus m}).
 \label{eq:ch4_source_probability_drop}
 \end{equation}
 
-Giá trị dương cho thấy xác suất lớp đích giảm khi loại bỏ nguồn tương ứng. Đại lượng này phản ánh mức phụ thuộc của đầu ra theo mốc tham chiếu đã chọn.
+\subsubsection{Độ đo hiệu quả tham số và suy luận}
 
-\subsubsection{Độ đo hiệu quả suy luận}
-
-Gọi $\Theta_{\mathrm{pre}}$ là tập tham số của đồ thị huấn luyện trước khi hợp nhất LoRA và $\Theta_{\mathrm{train}}\subseteq\Theta_{\mathrm{pre}}$ là tập tham có thể huấn luyện. Tổng tham số, tham số huấn luyện và tỷ lệ tham số huấn luyện được tính bằng:
-
+Gọi $\Theta_{\mathrm{pre}}$ là tập tham số trước khi hợp nhất LoRA và $\Theta_{\mathrm{train}}$ là tập tham số huấn luyện. Tổng tham số $P_{\mathrm{total}}$, số tham số huấn luyện $P_{\mathrm{train}}$ và tỷ lệ cập nhật $r_{\mathrm{train}}$ được tính bởi:
 \begin{equation}
 P_{\mathrm{total}}=\sum_{\theta\in\Theta_{\mathrm{pre}}}|\theta|,
 \qquad
@@ -488,109 +406,115 @@ r_{\mathrm{train}}=100\frac{P_{\mathrm{train}}}{P_{\mathrm{total}}}.
 \label{eq:ch4_trainable_parameter_ratio}
 \end{equation}
 
-Đối với XBone-Net, $P_{\mathrm{train}}$ gồm tham số LoRA, mô-đun dung hợp và đầu phân lớp. Các tham số backbone còn lại được giữ cố định. Ba đại lượng trong bảng tham số được lấy trước khi hợp nhất LoRA nhằm phản ánh đúng số tham số cần cập nhật trong huấn luyện. Trước khi đo suy luận, trọng số LoRA được hợp nhất vào các lớp backbone nên không còn được tính như một nhánh tham số riêng.
-
-Nghiên cứu đồng thời báo cáo số phép toán dấu phẩy động trên mỗi mẫu, thông lượng, độ trễ trung bình và bộ nhớ đồ họa cực đại \cite{Canziani2017PracticalDNN,Reddi2020MLPerfInference}. Số phép toán được đếm trên các phép toán mà bộ đếm của PyTorch hỗ trợ, trong đó một phép nhân-cộng được tính là hai phép toán. Thông lượng và độ trễ sử dụng kích thước lô 1 trên 20 lô kiểm thử. Mỗi lô gồm 10 lượt khởi động và 10 lượt ghi thời gian. Thời gian chỉ bao gồm lan truyền tiến sau khi dữ liệu đã nằm trong bộ nhớ GPU, không bao gồm nạp dữ liệu và truyền dữ liệu từ CPU. Các phép đo được thực hiện trên cùng phần cứng, độ chính xác số học và đồ thị suy luận sau khi hợp nhất LoRA.
-
-\clearpage
+Chi phí suy luận được đánh giá qua số phép toán dấu phẩy động trên mỗi mẫu (FLOPs), thông lượng, độ trễ trung bình và bộ nhớ GPU cực đại \cite{Canziani2017PracticalDNN,Reddi2020MLPerfInference}. Các phép đo thực hiện với kích thước lô 1 trên 20 lô kiểm thử (gồm 10 lượt khởi động và 10 lượt đo thời gian lan truyền tiến) trên đồ thị suy luận sau khi đã hợp nhất trọng số LoRA vào mạng nền.
 
 \section{Kiểm tra hiệu năng phân lớp và đánh đổi chi phí}
 \label{sec:data_cost_performance}
 
 \subsection{Mục đích}
-Thực nghiệm này nhằm trả lời câu hỏi: XBone-Net đạt mức hiệu năng phân lớp như thế nào khi so với các mô hình đối chứng, đồng thời đánh đổi như thế nào giữa số tham số cần cập nhật và chi phí suy luận. Thực nghiệm tập trung vào hai khía cạnh gồm chất lượng dự đoán trên bộ dữ liệu CTCH và bộ BTXRD, cùng hiệu quả tham số và chi phí suy luận so với BiomedCLIP tinh chỉnh toàn bộ.
+Thực nghiệm này nhằm đánh giá hiệu năng phân loại của XBone-Net so với các mô hình đối chứng, đồng thời phân tích mức độ đánh đổi giữa số lượng tham số cần cập nhật, chi phí huấn luyện và chi phí suy luận so với mô hình BiomedCLIP tinh chỉnh toàn bộ trên hai bộ dữ liệu BTXRD và CTCH.
 
 \subsection{Nội dung}
-Nhóm đối chứng gồm ResNet-50 và DenseNet-121 chỉ nhận ảnh X-quang, cùng với CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP} nhận cặp ảnh-văn bản. Hai mạng nơ-ron tích chập được khởi tạo từ trọng số ImageNet, còn bốn mô hình ngôn ngữ trực quan sử dụng trọng số tiền huấn luyện tương ứng. Tất cả sáu mô hình được tinh chỉnh toàn bộ trong pha phân lớp. Việc so sánh được thực hiện trên cùng tập chia của bộ dữ liệu CTCH và bộ BTXRD với các hạt giống 42, 123 và 456. Sáu mô hình dùng chung cấu hình thực nghiệm trên cả hai bộ dữ liệu. Kết quả phân lớp được tổng hợp qua ba hạt giống. Phép đo tham số và chi phí suy luận chỉ so sánh XBone-Net với BiomedCLIP tinh chỉnh toàn bộ trong cùng môi trường phần cứng, cùng kích thước lô và cùng dữ liệu đầu vào.
+Thực nghiệm sử dụng hai nhóm đối chứng được tinh chỉnh toàn bộ. Nhóm chỉ dùng ảnh X-quang gồm ResNet-50 \cite{ResNet} và DenseNet-121 \cite{DenseNet}, đều khởi tạo từ ImageNet. Nhóm nhận cặp ảnh--văn bản gồm CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP}, khởi tạo từ các trọng số tiền huấn luyện tương ứng. Tất cả mô hình được đánh giá trên cùng phân hoạch dữ liệu của BTXRD và CTCH qua ba hạt giống 42, 123 và 456. Chi phí huấn luyện được đo lường so sánh với BiomedCLIP trên cùng phần cứng NVIDIA GeForce RTX 5060 Ti (độ chính xác số học bf16, kích thước lô 16) và lấy trung bình qua ba hạt giống. Số lượng tham số và chi phí suy luận được đo trên hạt giống 42 trong cùng điều kiện môi trường.
 
 \subsection{Kết quả}
 
 \subsubsection{Kết quả phân lớp trên toàn bộ dữ liệu}
 \label{subsec:full_data_results}
-Bảng~\ref{tab:classification_full_data} và Bảng~\ref{tab:classification_full_data_ranking} lần lượt trình bày các độ đo quyết định lớp và độ đo xếp hạng trong thiết lập sử dụng toàn bộ dữ liệu huấn luyện. Kiểm định thống kê được trình bày ở phần sau của thực nghiệm.
+Bảng~\ref{tab:classification_full_data} trình bày kết quả trên tập kiểm thử khi các mô hình được huấn luyện bằng toàn bộ dữ liệu huấn luyện.
 
 \input{tables/chapter4/table_full_shot_classification}
 
-\input{tables/chapter4/table_full_shot_ranking}
+Về kết quả quan sát, XBone-Net đạt độ chính xác $0{,}8302$ và điểm F1 vĩ mô $0{,}6240$ trên bộ dữ liệu BTXRD; các giá trị tương ứng trên bộ dữ liệu CTCH là $0{,}6183$ và $0{,}5727$. Mô hình vượt trội rõ rệt so với hai mô hình chỉ dùng ảnh là ResNet-50 và DenseNet-121. So với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ tham số, XBone-Net đạt điểm F1 vĩ mô trung bình cao nhất trên cả hai bộ dữ liệu, đạt độ chính xác cao nhất trên CTCH và tương đương BiomedCLIP trên BTXRD ($0{,}8302$ so với $0{,}8311$), trong khi độ chính xác cân bằng duy trì ở mức cạnh tranh.
 
-Về kết quả quyết định lớp, XBone-Net đạt độ chính xác $0{,}8302$ và điểm macro-F1 $0{,}6240$ trên bộ BTXRD, trong khi các giá trị tương ứng trên bộ dữ liệu CTCH là $0{,}6183$ và $0{,}5727$. Mô hình có kết quả quan sát cao hơn rõ rệt so với ResNet-50 và DenseNet-121 chỉ dùng ảnh. So với các mô hình ngôn ngữ trực quan, XBone-Net đạt điểm macro-F1 cao nhất trên cả hai bộ dữ liệu, đạt độ chính xác cao nhất trên bộ dữ liệu CTCH và gần bằng BiomedCLIP trên bộ BTXRD. Tuy nhiên, mô hình không tốt hơn mọi độ đo khi không đạt độ chính xác cân bằng cao nhất.
+Để đánh giá ý nghĩa thống kê của các chênh lệch, Hình~\ref{fig:paired_baseline_classification_btxrd} và Hình~\ref{fig:paired_baseline_classification_ctch} biểu diễn biểu đồ chênh lệch ghép cặp của ba độ đo phân loại. Trục hoành thể hiện mức chênh lệch $\Delta = \text{XBone-Net} - \text{mô hình đối chứng}$. Thanh ngang biểu diễn khoảng tin cậy 95\% ước lượng qua $10.000$ lần lấy mẫu lại có hoàn lại theo bệnh nhân và hạt giống. Các điểm đặc biểu thị khác biệt có ý nghĩa thống kê sau hiệu chỉnh đa so sánh ($p_{\mathrm{Holm}} < 0{,}05$), còn điểm rỗng biểu thị khác biệt chưa đủ bằng chứng xác nhận ($p_{\mathrm{Holm}} \ge 0{,}05$).
 
-Kết quả trên khả năng xếp hạng xác suất cho thấy bức tranh khác. XBone-Net có diện tích trung bình dưới đường cong đặc trưng hoạt động thấp hơn bốn mô hình ngôn ngữ trực quan trên hai bộ dữ liệu. Đối với diện tích trung bình dưới đường cong độ chính xác-độ nhạy, mô hình cũng không dẫn đầu về giá trị quan sát. Như vậy, XBone-Net tạo được quyết định lớp cuối cùng cạnh tranh, nhưng chưa sắp thứ tự mức tin cậy giữa các mẫu tốt bằng nhiều mô hình được tinh chỉnh toàn bộ. Hai nhóm độ đo phản ánh hai khía cạnh khác nhau, nên kết quả quyết định lớp tốt không đồng nghĩa xác suất dự đoán có chất lượng xếp hạng tốt hơn.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{images/chapter4/paired_classification_btxrd.png}
+    \caption{Biểu đồ chênh lệch ghép cặp của ba độ đo phân loại trên BTXRD}
+    \label{fig:paired_baseline_classification_btxrd}
+\end{figure}
 
-Nhằm kiểm chứng liệu các chênh lệch quan sát được có ý nghĩa thống kê hay không, Bảng~\ref{tab:paired_baseline_classification} và Bảng~\ref{tab:paired_baseline_ranking} lần lượt báo cáo chênh lệch ghép cặp và giá trị $p$ sau hiệu chỉnh Holm. Phân tích dùng 10.000 lần lấy mẫu bootstrap ghép cặp chéo bệnh nhân và hạt giống, cùng 10.000 lần hoán vị ghép cặp. Các khoảng tin cậy 95\% tương ứng được chuyển sang phụ lục, trong đó Bảng~\ref{tab:appendix-paired-baseline-classification-confidence-intervals} trình bày các độ đo phân loại và Bảng~\ref{tab:appendix-paired-baseline-ranking-confidence-intervals} trình bày các độ đo xếp hạng.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{images/chapter4/paired_classification_ctch.png}
+    \caption{Biểu đồ chênh lệch ghép cặp của ba độ đo phân loại trên CTCH}
+    \label{fig:paired_baseline_classification_ctch}
+\end{figure}
 
-\input{tables/chapter4/table_paired_baseline_classification}
+Kết quả kiểm định ghép cặp trên hai biểu đồ cho thấy rõ hai xu hướng chính:
 
-Kiểm định ghép cặp xác nhận XBone-Net tốt hơn có ý nghĩa so với ResNet-50 và DenseNet-121 về độ chính xác, độ chính xác cân bằng và điểm macro-F1 trên cả hai bộ dữ liệu. Mức tăng của điểm macro-F1 nằm trong khoảng từ $0{,}137$ đến $0{,}157$ trên bộ dữ liệu CTCH và từ $0{,}252$ đến $0{,}296$ trên bộ BTXRD. Mô hình cũng cải thiện có ý nghĩa khả năng xếp hạng chú trọng các lớp ít mẫu. Một cách giải thích phù hợp là XBone-Net khai thác đồng thời ảnh toàn cục, các vùng ảnh cục bộ và văn bản đi kèm, trong khi hai đối chứng này chỉ sử dụng ảnh. Nguồn thông tin bổ sung có thể giúp phân biệt những lớp có biểu hiện hình ảnh gần nhau hoặc ít mẫu. Tuy vậy, do các đối chứng còn khác nhau về kiến trúc và dữ liệu tiền huấn luyện, thực nghiệm này chỉ xác nhận lợi thế của cấu hình hoàn chỉnh, chưa cô lập được phần cải thiện do riêng văn bản hoặc từng nhánh ảnh tạo ra.
+Đối với nhóm mô hình chỉ dùng ảnh (ResNet-50 và DenseNet-121), XBone-Net vượt trội có ý nghĩa thống kê trên cả ba độ đo ở cả hai bộ dữ liệu ($p_{\mathrm{Holm}} < 0{,}001$, khoảng tin cậy 95\% hoàn toàn nằm bên phải mốc 0). Mức tăng điểm F1 vĩ mô đạt từ $+0{,}2522$ đến $+0{,}2955$ trên BTXRD và từ $+0{,}1367$ đến $+0{,}1573$ trên CTCH. Chênh lệch này cho thấy toàn bộ cấu hình XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh trong giao thức hiện tại. Do các mô hình đồng thời khác nhau về nguồn đầu vào và kiến trúc, phép so sánh này không tách riêng đóng góp của văn bản, vùng ảnh cục bộ hoặc từng thành phần huấn luyện.
 
-\input{tables/chapter4/table_paired_baseline_ranking}
+Đối với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ, trên bộ dữ liệu CTCH, XBone-Net vượt trội có ý nghĩa thống kê trước MedCLIP và PubMedCLIP ở cả độ chính xác ($\Delta$ từ $+0{,}0583$ đến $+0{,}0663$) và điểm F1 vĩ mô ($\Delta$ từ $+0{,}0524$ đến $+0{,}0566$, $p_{\mathrm{Holm}} < 0{,}05$), đồng thời đạt hiệu năng tương đương với CLIP và BiomedCLIP ($p_{\mathrm{Holm}} \ge 0{,}150$). Trên bộ dữ liệu BTXRD, mô hình vượt trội có ý nghĩa về độ chính xác trước PubMedCLIP ($\Delta = +0{,}0418$, $p_{\mathrm{Holm}} = 0{,}002$) và CLIP ($\Delta = +0{,}0267$, $p_{\mathrm{Holm}} = 0{,}046$), trong khi chênh lệch điểm F1 vĩ mô và độ chính xác cân bằng chưa đạt mức ý nghĩa sau hiệu chỉnh ($p_{\mathrm{Holm}} \ge 0{,}276$).
 
-So với các mô hình ngôn ngữ trực quan tinh chỉnh toàn bộ, XBone-Net chỉ tốt hơn ở một số đối sánh. Trên bộ dữ liệu CTCH, mô hình cải thiện có ý nghĩa độ chính xác và điểm macro-F1 trước MedCLIP và PubMedCLIP, nhưng chưa đủ bằng chứng xác nhận khác biệt với CLIP và BiomedCLIP. Trên bộ BTXRD, mô hình cải thiện có ý nghĩa độ chính xác trước CLIP và PubMedCLIP, trong khi chênh lệch điểm macro-F1 với cả bốn mô hình ngôn ngữ trực quan chưa được xác nhận. Vì vậy, XBone-Net có chất lượng quyết định lớp cạnh tranh, nhưng không tốt hơn toàn bộ nhóm đối chứng ảnh-văn bản.
+Nhìn chung, XBone-Net đạt hiệu năng phân loại cạnh tranh với các mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ trong khi chỉ cập nhật một phần nhỏ tham số. Tuy nhiên, phép so sánh đối chứng này không tự xác nhận vai trò riêng của quy trình hai pha hoặc chú ý chéo hai chiều; ảnh hưởng của các thành phần được đánh giá riêng trong nghiên cứu loại bỏ thành phần.
 
-Trường hợp độ chính xác trên BTXRD giữa XBone-Net và CLIP minh họa sự không đồng thuận giữa hai thủ tục. Chênh lệch bằng $+0{,}0267$ và $p_{\mathrm{Holm}}=0{,}046$, nên khác biệt được xem là có ý nghĩa theo tiêu chuẩn kiểm định hoán vị được quy định ở trên. Tuy nhiên, khoảng tin cậy bootstrap 95\% là $[-0{,}0098; +0{,}0689]$ và vẫn chứa 0. Vì vậy, kết quả này chỉ cung cấp bằng chứng sát ngưỡng trên phân hoạch hiện tại, không được diễn giải như một lợi thế ổn định của XBone-Net.
+Các kết quả Macro-AUROC và Macro-AUPRC cùng kiểm định ghép cặp tương ứng được chuyển xuống Phụ lục~\ref{sec:appendix_probability_ranking}. Phân tích bổ sung này cho thấy XBone-Net không dẫn đầu đồng thời về chất lượng xếp hạng xác suất và có Macro-AUROC thấp hơn một số mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Kết quả được giữ lại để thể hiện đầy đủ sự đánh đổi, nhưng không được dùng để mở rộng kết luận chính vốn dựa trên ba độ đo quyết định lớp.
 
-Kết quả trên phù hợp với vai trò của quy trình huấn luyện hai pha, cơ chế chú ý chéo hai chiều và đầu phân lớp tuyến tính. Hai pha huấn luyện giúp thích nghi biểu diễn ảnh và văn bản trước khi tối ưu trực tiếp biên quyết định phân lớp, trong khi cơ chế chú ý chéo cho phép trao đổi thông tin giữa hai phương thức. Sau đó, đầu phân lớp tuyến tính ánh xạ biểu diễn dung hợp thành điểm số lớp và được tối ưu cùng mô-đun dung hợp trong pha phân lớp. Việc chỉ cập nhật một phần nhỏ tham số của mạng nền có thể giúp duy trì tri thức tiền huấn luyện, nhưng cũng giới hạn mức độ điều chỉnh toàn bộ không gian xác suất. Đây là một cách giải thích hợp lý cho việc XBone-Net đạt kết quả quyết định lớp cạnh tranh nhưng khả năng xếp hạng chưa dẫn đầu. Tuy nhiên, diễn giải này dựa trên thiết kế mô hình và chưa chứng minh được quan hệ nhân quả. Vì vậy, cần thực nghiệm tách riêng quy trình huấn luyện, cơ chế dung hợp và đầu phân lớp để kiểm chứng.
-
-Nhận định chính của nhóm kết quả phân lớp là XBone-Net tận dụng đa phương thức để cải thiện rõ rệt so với các mô hình chỉ dùng ảnh và vẫn cạnh tranh với các mô hình ngôn ngữ trực quan dù cập nhật ít tham số hơn. Lợi ích tập trung ở quyết định lớp cuối cùng, không mở rộng đồng đều sang khả năng xếp hạng xác suất. Do đó, đóng góp nổi bật của mô hình là đạt sự cân bằng giữa chất lượng phân lớp và mức độ tham số cần cập nhật, thay vì vượt trội tuyệt đối trên mọi độ đo.
-
-\subsubsection{Hiệu quả tham số và chi phí suy luận}
+\subsubsection{Hiệu quả tham số, chi phí huấn luyện và suy luận}
 \label{subsec:rq1_efficiency_results}
-Số lượng tham số và chi phí tính toán của XBone-Net so với BiomedCLIP tinh chỉnh toàn bộ được trình bày tại Bảng~\ref{tab:efficiency_full_shot_params} và Bảng~\ref{tab:efficiency_full_shot_compute}.
+Số lượng tham số, chi phí huấn luyện và chi phí suy luận của XBone-Net so với BiomedCLIP tinh chỉnh toàn bộ được trình bày lần lượt tại Bảng~\ref{tab:efficiency_full_shot_params}, Bảng~\ref{tab:training_cost_full_shot} và Bảng~\ref{tab:efficiency_full_shot_compute}.
 
 \input{tables/chapter4/table_efficiency_full_shot}
 
-Trong quá trình huấn luyện, XBone-Net có tổng số $204.342.539$ tham số trên bộ dữ liệu ảnh X-quang u xương và $204.348.695$ tham số trên bộ dữ liệu Chấn thương Chỉnh hình. Trong đó, số tham số cần cập nhật lần lượt là $8.439.818$ và $8.445.974$, đều tương ứng khoảng $4{,}13\%$ tổng số tham số và giảm khoảng $95{,}70\%$ so với BiomedCLIP tinh chỉnh toàn bộ. Các tham số trước hợp nhất này có tính cả $5.013.504$ tham số của bộ điều hợp hạng thấp. Sau huấn luyện, các trọng số thích nghi được hợp nhất vào mạng nền và các ma trận bộ điều hợp được loại khỏi đồ thị suy luận, nên tổng số tham số giảm còn $199.329.035$ trên bộ dữ liệu ảnh X-quang u xương và $199.335.191$ trên bộ dữ liệu Chấn thương Chỉnh hình, thấp hơn khoảng $2{,}45\%$ so với đồ thị huấn luyện tương ứng. Vì vậy, giá trị khoảng $204{,}34$ triệu phản ánh cấu trúc dùng trong huấn luyện chứ không phải kích thước mô hình sau hợp nhất. Tuy nhiên, do vẫn giữ mô-đun dung hợp và đầu phân lớp, tổng số tham số sau hợp nhất của XBone-Net vẫn cao hơn BiomedCLIP tinh chỉnh toàn bộ khoảng $1{,}47\%$.
+Trong huấn luyện, XBone-Net chỉ cần cập nhật khoảng $8{,}44$ triệu tham số (chiếm khoảng $4{,}13\%$ tổng số tham số), giảm $95{,}70\%$ so với BiomedCLIP tinh chỉnh toàn bộ. Sau khi hợp nhất các trọng số của bộ điều hợp hạng thấp vào mạng nền, tổng số tham số khi suy luận là khoảng $199{,}33$ triệu, chỉ cao hơn mô hình đối chứng $1{,}47\%$ do giữ lại mô-đun dung hợp và đầu phân lớp.
 
-Về tốc độ suy luận, XBone-Net không tốt hơn BiomedCLIP tinh chỉnh toàn bộ: mô hình cần khoảng $82{,}318$ tỷ phép toán dấu phẩy động cho mỗi mẫu, cao hơn khoảng $1{,}6\%$, và bộ nhớ đồ họa cực đại cũng cao hơn khoảng $11{,}8$ MiB. Nhận định rút ra là tiết kiệm tham số huấn luyện không đồng nghĩa tiết kiệm chi phí suy luận, bởi vì ưu thế của XBone-Net nằm ở khả năng thích nghi với ít tham số cần cập nhật chứ không phải ở tốc độ, bộ nhớ hoặc khối lượng tính toán khi triển khai.
+Về tài nguyên huấn luyện, XBone-Net giảm từ $60{,}3\%$ đến $61{,}9\%$ bộ nhớ đồ họa cực đại (chỉ sử dụng khoảng $1.515{,}5$ MiB trên BTXRD và $1.455{,}0$ MiB trên CTCH). Tuy nhiên, tổng thời gian huấn luyện của mô hình cao hơn đối chứng ($0{,}9274$ giờ trên BTXRD và $0{,}8542$ giờ trên CTCH) do thực hiện thêm pha thích nghi biểu diễn trước khi phân lớp.
+
+Khi suy luận, XBone-Net cần khoảng $82{,}318$ tỷ phép tính dấu phẩy động cho mỗi mẫu (tăng $1{,}6\%$) và bộ nhớ đồ họa tăng thêm khoảng $11{,}8$ MiB. Kết quả cho thấy ưu thế của mô hình nằm ở khả năng thích nghi hiệu quả với ít tham số và bộ nhớ huấn luyện, thay vì giảm tài nguyên tính toán khi triển khai suy luận.
 
 \subsection{Kết luận}
-Thực nghiệm này cho thấy XBone-Net tốt hơn rõ rệt các mô hình chỉ dùng ảnh và đạt hiệu năng quyết định lớp cạnh tranh với các mô hình ngôn ngữ trực quan, nhưng chưa vượt trội toàn diện về độ chính xác cân bằng và khả năng xếp hạng xác suất. Thiết kế đa phương thức, quy trình huấn luyện hai pha và đầu phân lớp tuyến tính được tối ưu trực tiếp trên biểu diễn dung hợp là cách giải thích hợp lý cho chất lượng quyết định lớp. Đồng thời, việc chỉ cập nhật một phần tham số giúp duy trì tri thức tiền huấn luyện, còn mô-đun dung hợp tạo ra đánh đổi về chi phí suy luận. Nhận định nổi bật là XBone-Net đạt khả năng thích nghi tham số hiệu quả mà vẫn giữ chất lượng phân lớp cạnh tranh, nhưng không tối ưu đồng thời mọi độ đo và tài nguyên triển khai.
+Thực nghiệm cho thấy XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh và có kết quả cạnh tranh với nhóm mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Lợi ích tài nguyên tập trung ở số tham số cần cập nhật và bộ nhớ GPU trong huấn luyện; đổi lại, mô hình cần thời gian huấn luyện dài hơn và không làm giảm chi phí suy luận.
 
 \section[Khảo sát ảnh hưởng của các thành phần]{Khảo sát ảnh hưởng của các\\thành phần}
 \label{sec:component_evaluation_results}
 
 \subsection{Mục đích}
-Thực nghiệm này kiểm tra xem quy trình huấn luyện hai pha và cơ chế dung hợp bằng chú ý chéo hai chiều ảnh hưởng như thế nào đến quyết định lớp và chất lượng xếp hạng của XBone-Net. Mục tiêu là xác định ảnh hưởng quan sát được của từng lựa chọn kiến trúc trong cùng điều kiện đánh giá.
+Thực nghiệm này kiểm tra xem quy trình huấn luyện hai pha và cơ chế dung hợp bằng chú ý chéo hai chiều ảnh hưởng như thế nào đến quyết định lớp của XBone-Net. Mục tiêu là xác định ảnh hưởng quan sát được của từng lựa chọn kiến trúc trong cùng điều kiện đánh giá.
 
 \subsection{Nội dung}
 Thực nghiệm được thực hiện trên bộ dữ liệu CTCH với hai biến thể của XBone-Net, Chỉ pha 2 và Nối đặc trưng. Biến thể Chỉ pha 2 bỏ lần huấn luyện pha 1 và khởi tạo trực tiếp cho pha phân lớp. Biến thể Nối đặc trưng giữ nguyên pha 1 nhưng thay thiết lập dung hợp ở pha 2 bằng phép nối. Ngoài yếu tố được thay đổi, các cấu hình dùng chung được giữ nguyên.
 \subsection{Kết quả}
-Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với hai biến thể qua ba hạt giống trên bộ dữ liệu CTCH. Xét các giá trị quan sát, XBone-Net đạt độ chính xác $0{,}6183$ và macro-F1 $0{,}5727$, cao hơn lần lượt $0{,}6004$ và $0{,}5497$ của biến thể Chỉ pha 2, đồng thời cao hơn $0{,}5825$ và $0{,}5477$ của biến thể Nối đặc trưng. XBone-Net cũng đạt diện tích trung bình dưới đường cong độ chính xác-độ nhạy cao nhất ở mức $0{,}5904$. Tuy nhiên, biến thể Nối đặc trưng đạt độ chính xác cân bằng $0{,}5983$ và diện tích trung bình dưới đường cong đặc trưng hoạt động $0{,}9251$, cao hơn các giá trị tương ứng $0{,}5935$ và $0{,}9020$ của XBone-Net. Như vậy, cấu hình đầy đủ có lợi thế quan sát được về quyết định lớp, nhưng không tốt hơn hai biến thể trên mọi độ đo.
+Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với hai biến thể qua ba hạt giống trên bộ dữ liệu CTCH bằng ba độ đo quyết định lớp. XBone-Net đạt độ chính xác $0{,}6183$ và macro-F1 $0{,}5727$, cao hơn lần lượt $0{,}6099$ và $0{,}5628$ của biến thể Chỉ pha 2, đồng thời cao hơn $0{,}5825$ và $0{,}5622$ của biến thể Nối đặc trưng. Tuy nhiên, biến thể Nối đặc trưng đạt độ chính xác cân bằng $0{,}6199$, cao hơn mức $0{,}5935$ của XBone-Net. Như vậy, cấu hình đầy đủ có lợi thế quan sát được về độ chính xác và macro-F1, nhưng không dẫn đầu đồng thời cả ba độ đo.
 
 \input{tables/chapter4/table_ablation_leave_one_out_classification}
 
-Để đánh giá liệu các chênh lệch này có ổn định trên cùng các mẫu kiểm thử hay không, Bảng~\ref{tab:ablation_paired_statistics} trình bày kiểm định ghép cặp giữa từng biến thể và XBone-Net. Giá trị xác suất được tính bằng phép kiểm định hoán vị ghép cặp, sau đó được hiệu chỉnh theo phương pháp Holm trong từng độ đo cho hai phép so sánh. Chênh lệch được định nghĩa bằng kết quả của biến thể trừ kết quả của XBone-Net. Các khoảng tin cậy 95\% được trình bày riêng trong Bảng~\ref{tab:appendix-ablation-paired-confidence-intervals} ở phụ lục.
+Để đánh giá liệu các chênh lệch này có ổn định trên cùng các mẫu kiểm thử hay không, Hình~\ref{fig:ablation_paired_statistics} trình bày đồng thời ba độ đo quyết định lớp trong kiểm định ghép cặp giữa từng biến thể và XBone-Net. Giá trị xác suất được tính bằng phép kiểm định hoán vị ghép cặp, sau đó được hiệu chỉnh theo phương pháp Holm trong từng độ đo cho hai phép so sánh. Để thống nhất cách đọc với hai hình trước, chênh lệch được biểu diễn bằng kết quả của XBone-Net trừ kết quả của biến thể. Điểm ở bên phải mốc 0 có lợi cho XBone-Net, còn điểm ở bên trái có lợi cho biến thể. Thanh ngang biểu diễn khoảng tin cậy 95\% của từng chênh lệch, trong khi điểm đặc biểu thị khác biệt có ý nghĩa sau hiệu chỉnh Holm. Các giá trị chi tiết được trình bày tại Bảng~\ref{tab:appendix-ablation-paired-statistics}, còn các khoảng tin cậy 95\% được trình bày riêng trong Bảng~\ref{tab:appendix-ablation-paired-confidence-intervals} ở phụ lục.
 
-\input{tables/chapter4/table_ablation_paired_statistics}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{images/chapter4/paired_ablation_ctch.png}
+    \caption{Biểu đồ chênh lệch ghép cặp giữa XBone-Net và hai biến thể trên CTCH}
+    \label{fig:ablation_paired_statistics}
+\end{figure}
 
-Đối với biến thể Chỉ pha 2, kiểm định không xác nhận khác biệt có ý nghĩa thống kê ở cả năm độ đo vì các giá trị xác suất sau hiệu chỉnh Holm đều không nhỏ hơn $0{,}119$. Vì vậy, dù XBone-Net có giá trị trung bình cao hơn ở bốn trong năm độ đo, kết quả hiện tại chưa đủ bằng chứng để khẳng định pha khớp ngữ nghĩa tạo ra cải thiện ổn định trên tập kiểm thử cố định này.
+Đối với biến thể Chỉ pha 2, kiểm định không xác nhận khác biệt có ý nghĩa thống kê ở cả ba độ đo vì các giá trị xác suất sau hiệu chỉnh Holm đều không nhỏ hơn $0{,}119$. Vì vậy, dù XBone-Net có giá trị quan sát cao hơn ở ba độ đo trong bảng được dùng cho kiểm định, kết quả hiện tại chưa đủ bằng chứng để khẳng định pha khớp ngữ nghĩa tạo ra cải thiện ổn định trên tập kiểm thử cố định này.
 
-Đối với biến thể Nối đặc trưng, khác biệt duy nhất được xác nhận là diện tích trung bình dưới đường cong đặc trưng hoạt động. Biến thể này cao hơn XBone-Net $0{,}0231$ và giá trị xác suất sau hiệu chỉnh Holm bằng $0{,}021$. Độ chính xác quan sát được của XBone-Net cao hơn $0{,}0359$, nhưng giá trị xác suất sau hiệu chỉnh Holm bằng $0{,}052$ nên chưa đạt ngưỡng ý nghĩa $0{,}05$. Các độ đo còn lại cũng chưa cho thấy khác biệt có ý nghĩa thống kê.
+Đối với biến thể Nối đặc trưng, độ chính xác quan sát được của XBone-Net cao hơn $0{,}0359$, nhưng giá trị xác suất sau hiệu chỉnh Holm bằng $0{,}052$ nên chưa đạt ngưỡng ý nghĩa $0{,}05$. Chênh lệch độ chính xác cân bằng và macro-F1 cũng chưa được xác nhận, với các giá trị xác suất sau hiệu chỉnh lần lượt bằng $0{,}783$ và $0{,}292$.
 
-Một cách giải thích phù hợp với kết quả là phép nối giữ hai biểu diễn ảnh và văn bản tách biệt hơn trước đầu phân lớp, nhờ đó có thể bảo toàn thứ tự điểm số giữa các lớp và tạo lợi thế về khả năng xếp hạng. Trong khi đó, chú ý chéo hai chiều biến đổi hai nguồn thông tin theo ngữ cảnh của nhau và cấu hình đầy đủ đạt giá trị quan sát cao hơn về độ chính xác cùng macro-F1. Tuy nhiên, kiểm định chỉ xác nhận lợi thế xếp hạng của phép nối, nên các diễn giải về cơ chế chỉ là giả thuyết dựa trên thiết kế kiến trúc chứ chưa phải quan hệ nhân quả đã được chứng minh.
+XBone-Net đạt giá trị quan sát cao hơn về độ chính xác và macro-F1, trong khi phép nối đặc trưng đạt độ chính xác cân bằng cao hơn. Kết quả này cho thấy chú ý chéo hai chiều có thể ưu tiên quyết định lớp tổng thể, còn phép nối có thể duy trì kết quả đồng đều hơn giữa các lớp. Tuy nhiên, không chênh lệch nào trong ba độ đo được xác nhận sau hiệu chỉnh Holm, nên diễn giải về cơ chế chỉ là giả thuyết dựa trên thiết kế kiến trúc và chưa chứng minh được quan hệ nhân quả.
 
 \subsection{Kết luận}
-Thực nghiệm này cho thấy XBone-Net đạt độ chính xác và macro-F1 quan sát được cao hơn hai biến thể, nhưng kiểm định ghép cặp chưa xác nhận lợi thế này sau hiệu chỉnh đa so sánh. Việc loại bỏ pha khớp ngữ nghĩa không tạo ra khác biệt có ý nghĩa thống kê ở cả năm độ đo, còn phép nối đặc trưng cải thiện có ý nghĩa thống kê khả năng xếp hạng theo diện tích trung bình dưới đường cong đặc trưng hoạt động. Nhận định nổi bật là quy trình huấn luyện hai pha và chú ý chéo hai chiều không tạo lợi ích đồng đều trên mọi mục tiêu, đồng thời chưa có đủ bằng chứng để xem từng thành phần là nguyên nhân trực tiếp làm tăng hiệu năng phân lớp.
+Thực nghiệm này cho thấy XBone-Net đạt độ chính xác và macro-F1 quan sát được cao hơn hai biến thể, nhưng kiểm định ghép cặp chưa xác nhận lợi thế này sau hiệu chỉnh đa so sánh. Việc loại bỏ pha khớp ngữ nghĩa hoặc thay chú ý chéo hai chiều bằng phép nối đặc trưng đều chưa tạo ra khác biệt có ý nghĩa thống kê trên ba độ đo quyết định lớp. Nhận định nổi bật là chưa có đủ bằng chứng để xem riêng từng thành phần là nguyên nhân trực tiếp làm tăng hiệu năng phân lớp trên phân hoạch hiện tại.
 
 \section{Khảo sát khả năng cảnh báo dữ liệu ngoài phân phối}
 \label{subsec:ablation_ood_results}
 
 \subsection{Mục đích}
-Thực nghiệm này đánh giá khả năng phát hiện mẫu ngoài phân phối hậu xử lý được xây dựng từ không gian biểu diễn của XBone-Net có thể phân biệt dữ liệu trong phân phối với các dạng dữ liệu ngoài phân phối đã xác định, đồng thời khảo sát sự khác biệt giữa dịch chuyển gần miền và dịch chuyển sang bộ dữ liệu khác.
+Thực nghiệm này đánh giá khả năng bộ phát hiện hậu xử lý xây dựng từ không gian biểu diễn của từng mô hình phân biệt dữ liệu CTCH trong phân phối với các bệnh lý nằm ngoài không gian nhãn của CTCH.
 
 \subsection{Nội dung}
-Ba cấu hình được đánh giá gồm XBone-Net, Chỉ pha 2 và Nối đặc trưng. Dữ liệu huấn luyện CTCH được dùng để khớp bộ chấm điểm hậu xử lý, còn dữ liệu xác thực được dùng để chuẩn hóa điểm mà không sử dụng mẫu ngoài phân phối. Tập đánh giá gồm 669 mẫu CTCH trong phân phối, 18 mẫu ngoài không gian nhãn của CTCH và 750 mẫu từ bộ BTXRD. Ba độ đo AUROC-OOD, AUPR-Out và FPR@95\%TPR lần lượt phản ánh khả năng phân tách tổng thể, chất lượng xếp hạng khi coi mẫu ngoài phân phối là lớp dương và tỷ lệ chấp nhận nhầm tại ngưỡng đánh giá được xác định trên tập kiểm thử.
+Bốn cấu hình được đánh giá gồm XBone-Net, Chỉ pha 2, Nối đặc trưng và BiomedCLIP tinh chỉnh toàn bộ. Dữ liệu huấn luyện CTCH được dùng để khớp bộ chấm điểm hậu xử lý, còn dữ liệu xác thực được dùng để chuẩn hóa điểm mà không sử dụng mẫu ngoài phân phối. Tập đánh giá gồm 669 mẫu CTCH trong phân phối và 18 mẫu bệnh lý ngoài không gian nhãn của CTCH. Ba độ đo AUROC-OOD, AUPR-Out và FPR@95\%TPR lần lượt phản ánh khả năng phân tách tổng thể, chất lượng xếp hạng khi coi mẫu ngoài phân phối là lớp dương và tỷ lệ chấp nhận nhầm tại ngưỡng đánh giá được xác định trên tập kiểm thử.
 
 \subsection{Kết quả}
-Bảng~\ref{tab:ablation_ood} so sánh XBone-Net với hai biến thể khi cùng sử dụng điểm tổng hợp đa phương thức. Trong kịch bản gần miền, XBone-Net không tốt hơn hoàn toàn hai biến thể. Biến thể Chỉ pha 2 đạt khả năng phân tách và xếp hạng tổng thể cao nhất, còn XBone-Net đạt FPR@95\%TPR thấp nhất ở mức $0{,}6296$. Tuy nhiên, FPR@95\%TPR sử dụng $\tau_{95}^{\mathrm{test}}$ được xác định lại từ tập kiểm thử nên kết quả này chỉ mô tả một điểm trên đường cong đánh giá và không phải hành vi của ngưỡng triển khai.
+Bảng~\ref{tab:ablation_ood} so sánh bốn cấu hình khi cùng sử dụng điểm tổng hợp đa phương thức. Biến thể Chỉ pha 2 đạt AUROC-OOD $0{,}7735$ và AUPR-Out $0{,}2197$, cao nhất trong bốn cấu hình. XBone-Net đạt FPR@95\%TPR thấp nhất ở mức $0{,}6296$. BiomedCLIP tinh chỉnh toàn bộ đạt AUROC-OOD $0{,}7172$, AUPR-Out $0{,}1372$ và FPR@95\%TPR $0{,}6481$, do đó không tốt hơn XBone-Net đồng thời trên ba độ đo. Tuy nhiên, FPR@95\%TPR sử dụng $\tau_{95}^{\mathrm{test}}$ được xác định lại từ tập kiểm thử nên kết quả này chỉ mô tả một điểm trên đường cong đánh giá và không phải hành vi của ngưỡng triển khai.
 
 \input{tables/chapter4/table_ablation_ood}
 
-Khi chuyển sang bộ BTXRD, XBone-Net đạt khả năng phân tách tổng thể $0{,}9321$, chất lượng xếp hạng $0{,}9052$ và FPR@95\%TPR bằng $0{,}3604$. Biến thể Chỉ pha 2 vẫn nhỉnh hơn về hai độ đo xếp hạng, trong khi XBone-Net có FPR@95\%TPR thấp nhất. Cả ba cấu hình đều phân tách BTXRD tốt hơn kịch bản gần miền, cho thấy việc nhận diện dữ liệu từ một nguồn khác biệt lớn dễ hơn nhận diện các bệnh lý nằm gần không gian dữ liệu huấn luyện.
-
-
 \subsection{Kết luận}
-Thực nghiệm này cho thấy XBone-Net cạnh tranh với hai biến thể và đạt FPR@95\%TPR quan sát được thấp nhất trong cả hai kịch bản, nhưng không tốt hơn về khả năng phân tách và xếp hạng tổng thể. Nhận định quan trọng là hiệu quả phát hiện phụ thuộc nhiều vào dạng dịch chuyển hơn chênh lệch kiến trúc, trong đó thay đổi lớn giữa hai nguồn dữ liệu dễ nhận diện còn bệnh lý gần miền vẫn là trường hợp khó. Các kết quả chỉ mô tả khả năng xếp hạng trên tập kiểm thử và không được dùng để kết luận hiệu quả của một ngưỡng triển khai cố định.
+Thực nghiệm này cho thấy XBone-Net đạt FPR@95\%TPR quan sát được thấp nhất, nhưng biến thể Chỉ pha 2 tốt hơn về khả năng phân tách và xếp hạng tổng thể. BiomedCLIP tinh chỉnh toàn bộ không tạo ra lợi thế đồng đều so với XBone-Net hoặc hai biến thể. Nhận định quan trọng là các bệnh lý gần miền vẫn khó phát hiện đối với cả bốn cấu hình, thể hiện qua FPR@95\%TPR còn cao. Các kết quả chỉ mô tả khả năng xếp hạng trên tập kiểm thử và không được dùng để kết luận hiệu quả của một ngưỡng triển khai cố định.
 
 \section{Khảo sát mức phụ thuộc của dự đoán vào ảnh và văn bản}
 \label{subsec:ablation_explainability_results}
@@ -599,20 +523,20 @@ Thực nghiệm này cho thấy XBone-Net cạnh tranh với hai biến thể v�
 Thực nghiệm này đánh giá mức phụ thuộc của dự đoán vào ảnh và văn bản dựa vào tích phân gradient kết hợp với can thiệp đầu vào so với các biến thể kiến trúc.
 
 \subsection{Nội dung}
-Phân tích sử dụng hạt giống 42 của XBone-Net, Chỉ pha 2 và Nối đặc trưng. Từ tập kiểm thử của bộ dữ liệu CTCH, 44 mẫu được chọn với tối đa hai mẫu cho mỗi lớp và cùng hạt giống lấy mẫu 1907 cho mọi cấu hình. Lớp được mô hình dự đoán trên đầu vào được cố định làm lớp đích. Tích phân gradient được xấp xỉ bằng 24 điểm nội suy từ mốc tham chiếu đến đầu vào. Mốc tham chiếu của ảnh là một nền đen, còn mốc tham chiếu của văn bản là văn bản trống.
+Phân tích sử dụng hạt giống 42 của XBone-Net, Chỉ pha 2, Nối đặc trưng và BiomedCLIP tinh chỉnh toàn bộ trên cùng toàn bộ 669 mẫu kiểm thử CTCH mà không lọc theo dự đoán đúng hay sai. Lớp được từng mô hình dự đoán trên đầu vào đầy đủ được cố định làm lớp đích của chính mô hình đó. Tích phân gradient được xấp xỉ bằng 24 điểm nội suy từ mốc tham chiếu đến đầu vào. Mốc tham chiếu của ảnh là một nền đen, còn mốc tham chiếu của văn bản là văn bản trống. Cả bốn cấu hình đều chuyển ảnh RGB gốc trực tiếp cho quy trình resize, cắt vùng trung tâm và chuẩn hóa nguyên bản của BiomedCLIP, không thêm bước đệm viền riêng. Vì vậy, phép so sánh sử dụng cùng một quy trình tiền xử lý ảnh.
 
-Độ trung thực được đánh giá bằng cách loại bỏ hoặc khôi phục dần các vùng ảnh kích thước $16\times16$ và các đơn vị nội dung theo mức đóng góp giảm dần. Phép can thiệp nguồn thay toàn bộ ảnh hoặc toàn bộ đơn vị nội dung bằng mốc tham chiếu tương ứng, sau đó ghi nhận mức giảm xác suất của lớp đích so với đầu vào đầy đủ. Danh sách mẫu, mốc tham chiếu và mức can thiệp được áp dụng cho cả ba cấu hình, trong khi lớp đích được xác định riêng từ dự đoán của từng cấu hình.
+Độ trung thực được đánh giá bằng cách loại bỏ hoặc khôi phục dần các vùng ảnh kích thước $16\times16$ và các đơn vị nội dung theo mức đóng góp giảm dần. Tại mỗi tỷ lệ can thiệp, kết quả được đối chiếu với trung bình của 16 thứ tự loại bỏ ngẫu nhiên. Phép can thiệp nguồn thay toàn bộ ảnh hoặc toàn bộ đơn vị nội dung bằng mốc tham chiếu tương ứng, sau đó ghi nhận mức giảm xác suất của lớp đích so với đầu vào đầy đủ. Danh sách mẫu, mốc tham chiếu và mức can thiệp được áp dụng cho cả bốn cấu hình, trong khi lớp đích được xác định riêng từ dự đoán của từng cấu hình.
 
 \subsection{Kết quả}
-Bảng~\ref{tab:ablation_explainability} tổng hợp độ trung thực của tích phân gradient và mức giảm xác suất khi che từng nguồn thông tin trên 44 mẫu ở hạt giống 42. Do chỉ có một hạt giống và không có khoảng tin cậy ghép cặp giữa các cấu hình, mọi chênh lệch chỉ mang tính mô tả.
+Bảng~\ref{tab:ablation_explainability} tổng hợp độ trung thực của tích phân gradient và mức giảm xác suất khi che từng nguồn thông tin trên toàn bộ 669 mẫu kiểm thử ở hạt giống 42. Do chỉ có một hạt giống và không có khoảng tin cậy ghép cặp giữa các cấu hình, mọi chênh lệch chỉ mang tính mô tả.
 
 \input{tables/chapter4/table_ablation_explainability}
 
-Đối với văn bản lâm sàng, XBone-Net đạt giá trị khôi phục cao nhất với $0{,}4232$, tốt hơn biến thể Chỉ pha 2 và biến thể Nối đặc trưng. Tuy nhiên, trong phép loại bỏ, biến thể Nối đặc trưng lại đạt kết quả tốt nhất. Đối với ảnh X-quang, XBone-Net gần như bằng biến thể Chỉ pha 2 trong phép khôi phục và tiếp tục kém biến thể Nối đặc trưng trong phép loại bỏ. Vì hai hướng đánh giá không cùng chọn một cấu hình, XBone-Net chưa thể được xem là tốt hơn hai biến thể về độ trung thực của đóng góp.
+Đối với văn bản lâm sàng, biến thể Chỉ pha 2 đạt AUC khôi phục cao nhất ở mức $0{,}4318$, chỉ nhỉnh hơn XBone-Net ở mức $0{,}4299$; BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất là $0{,}2199$. Đối với ảnh X-quang, XBone-Net đạt AUC khôi phục cao nhất với $0{,}4023$, trong khi BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất với $0{,}1586$. Như vậy, không cấu hình nào dẫn đầu đồng thời ở cả hai hướng đánh giá và cả hai nguồn thông tin.
 
-Kết quả rõ hơn xuất hiện khi che toàn bộ từng nguồn thông tin. Với XBone-Net, che ảnh làm xác suất lớp đích giảm $0{,}3654$ và che văn bản làm giảm $0{,}2874$, trong đó cả hai mức giảm đều lớn hơn hai biến thể. Điều này cho thấy dự đoán của cấu hình đầy đủ phụ thuộc mạnh hơn vào cả ảnh và bệnh sử lâm sàng. Một cách giải thích phù hợp là huấn luyện hai pha kết hợp với chú ý chéo hai chiều tạo liên kết chặt hơn giữa hai nguồn biểu diễn, nên việc loại bỏ hoàn toàn một nguồn gây ảnh hưởng lớn hơn đến xác suất dự đoán.
+Khi che toàn bộ từng nguồn thông tin, xác suất lớp đích của XBone-Net giảm $0{,}3187$ đối với ảnh và $0{,}2725$ đối với văn bản. Mức giảm khi che ảnh của Chỉ pha 2 cao hơn nhẹ ở mức $0{,}3203$, còn XBone-Net có mức giảm khi che văn bản cao nhất trong bốn cấu hình. Các giá trị này cho thấy dự đoán của XBone-Net nhạy với cả ảnh và bệnh sử lâm sàng dưới hai mốc tham chiếu đã chọn, nhưng không cho thấy cấu hình đầy đủ phụ thuộc mạnh hơn mọi đối chứng ở cả hai nguồn.
 
-Sự khác nhau giữa phép khôi phục, phép loại bỏ và phép che toàn bộ có thể xuất phát từ việc bằng chứng được phân bố trên nhiều vùng ảnh, nhiều đơn vị văn bản và các tương tác giữa hai phương thức. Khi đó, thứ tự đóng góp cục bộ không nhất thiết phản ánh giống mức phụ thuộc khi loại bỏ toàn bộ nguồn thông tin, đồng thời kết quả còn phụ thuộc vào mốc tham chiếu đã chọn. Nhận định rút ra là XBone-Net sử dụng cả ảnh và văn bản mạnh hơn theo phép che nguồn, nhưng mức phụ thuộc lớn hơn không đồng nghĩa đóng góp trung thực hơn, không chứng minh đóng góp nhân quả và không xác nhận tính đúng lâm sàng của từng nguồn.
+Sự khác nhau giữa phép khôi phục, phép loại bỏ và phép che toàn bộ có thể xuất phát từ việc bằng chứng được phân bố trên nhiều vùng ảnh, nhiều đơn vị văn bản và các tương tác giữa hai phương thức. Khi đó, thứ tự đóng góp cục bộ không nhất thiết phản ánh giống mức phụ thuộc khi loại bỏ toàn bộ nguồn thông tin, đồng thời kết quả còn phụ thuộc vào mốc tham chiếu và tiền xử lý của từng cấu hình. Nhận định rút ra là XBone-Net sử dụng cả ảnh và văn bản theo phép che nguồn, nhưng mức phụ thuộc quan sát được không đồng nghĩa đóng góp trung thực hơn, không chứng minh đóng góp nhân quả và không xác nhận tính đúng lâm sàng của từng nguồn.
 
 \begin{figure}[H]
     \centering
@@ -626,4 +550,4 @@ Hình~\ref{fig:multimodal_ig_3563} minh họa cụ thể kết quả của XBone
 Đối với bệnh sử lâm sàng, các từ như \textit{wounded}, \textit{finger}, \textit{cutter} và \textit{accident} tạo tác động ủng hộ nổi bật, phù hợp với mô tả ngón tay bị thương do dao rọc giấy. Ngược lại, một số từ và mảnh số không đặc hiệu cũng nhận mức đóng góp đáng kể, cho thấy mô hình chưa chỉ dựa vào các khái niệm lâm sàng trực tiếp. Khi thay toàn bộ ảnh bằng nền đen, xác suất lớp đích giảm $0{,}4875$, còn khi thay bệnh sử bằng văn bản trống, xác suất giảm $0{,}3782$. Trường hợp này minh họa rằng cả ảnh và văn bản đều tham gia đáng kể vào dự đoán đúng, trong đó ảnh có ảnh hưởng lớn hơn theo phép che nguồn đã sử dụng.
 
 \subsection{Kết luận}
-Thực nghiệm thứ tư cho thấy XBone-Net tốt hơn hai biến thể về mức suy giảm xác suất khi che toàn bộ ảnh hoặc văn bản, nhưng không tốt hơn nhất quán trong các phép khôi phục và loại bỏ theo đóng góp. Cơ chế huấn luyện hai pha và chú ý chéo hai chiều có thể giải thích mức phụ thuộc đa phương thức mạnh hơn, song chưa đủ bằng chứng để khẳng định đây là nguyên nhân trực tiếp. Nhận định chính là XBone-Net thực sự sử dụng cả hai nguồn thông tin, nhưng độ trung thực của phương pháp giải thích vẫn phụ thuộc vào tiêu chí và mốc tham chiếu. Do phân tích chỉ sử dụng một hạt giống trên 44 mẫu, kết quả chưa chứng minh đóng góp nhân quả, tính đúng lâm sàng hoặc ưu thế giải thích ổn định của cấu hình đầy đủ.
+Thực nghiệm thứ tư cho thấy XBone-Net nhạy với cả ảnh và văn bản dưới phép che toàn bộ nguồn, nhưng không dẫn đầu nhất quán so với các cấu hình đối chứng trong các phép khôi phục, loại bỏ và che nguồn. Trên một hạt giống với toàn bộ 669 mẫu kiểm thử CTCH, kết quả cung cấp bằng chứng mô tả về mức phụ thuộc vào hai nguồn thông tin dưới các mốc tham chiếu đã chọn. Tuy nhiên, phân tích này chưa chứng minh đóng góp nhân quả, khả năng định vị tổn thương, tính đúng lâm sàng hoặc ưu thế giải thích ổn định của cấu hình đầy đủ.

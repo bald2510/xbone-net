@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{llcc}
+\toprule
+\multicolumn{1}{c}{\textbf{Biến thể}} & \multicolumn{1}{c}{\textbf{Độ đo}} & \multicolumn{1}{c}{\textbf{$\Delta$}} & \multicolumn{1}{c}{\textbf{$p_{\mathrm{Holm}}$}} \\
+\midrule
+\multirow{3}{*}{Chỉ pha 2} & Accuracy $\uparrow$ & $+0{,}0179$ & $0{,}262$ \\
+ & Balanced Accuracy $\uparrow$ & $+0{,}0383$ & $0{,}119$ \\
+ & Macro-F1 $\uparrow$ & $+0{,}0230$ & $0{,}292$ \\
+\midrule
+\multirow{3}{*}{Nối đặc trưng} & Accuracy $\uparrow$ & $+0{,}0359$ & $0{,}052$ \\
+ & Balanced Accuracy $\uparrow$ & $-0{,}0048$ & $0{,}783$ \\
+ & Macro-F1 $\uparrow$ & $+0{,}0250$ & $0{,}292$ \\
+\bottomrule
+\end{tabular}%
+\caption{Giá trị kiểm định ghép cặp giữa XBone-Net và các biến thể. Chênh lệch được tính bằng XBone-Net trừ biến thể.}
+\label{tab:appendix-ablation-paired-statistics}
+\end{table}

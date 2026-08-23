@@ -233,7 +233,7 @@ class CTCHDataset(Dataset):
         print(
             f"[Dataset] CTCH '{split.upper()}' initialized with {len(self.df)} samples. "
             f"Task: {task_type}, Dual reports: {has_dual}, "
-            f"Preprocess: {self.preprocess_cfg.get('strategy', 'letterbox')}, "
+            f"Preprocess: {self.preprocess_cfg.get('strategy', 'direct_resize')}, "
             f"Text-only: {self.text_only}, Reports shuffled: "
             f"{self.shuffle_reports}."
         )

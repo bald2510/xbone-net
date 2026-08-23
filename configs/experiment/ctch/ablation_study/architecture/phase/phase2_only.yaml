@@ -1,6 +1,6 @@
 # @package _global_
 # Current-architecture ablation: omit multimodal alignment in Phase 1 and
-# train the final letterbox + cross-attention + linear pipeline from Phase 2.
+# train the final native-BiomedCLIP + cross-attention + linear pipeline from Phase 2.
 
 defaults:
   - /experiment/ctch/proposed/ours_xbone_net

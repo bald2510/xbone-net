@@ -1,6 +1,6 @@
 # @package _global_
 # Current-architecture ablation: replace bidirectional cross-attention with
-# concatenation while reusing the matching Phase-1 letterbox checkpoint.
+# concatenation while reusing the matching native-BiomedCLIP Phase-1 checkpoint.
 
 defaults:
   - /experiment/ctch/proposed/ours_xbone_net
