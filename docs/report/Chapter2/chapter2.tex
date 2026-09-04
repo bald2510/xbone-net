@@ -39,28 +39,29 @@ Chiến lược học tương phản là hướng tiếp cận được ứng d�
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ResNet50} &
   \multicolumn{1}{l|}{BERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Căn chỉnh \\ tương phản\end{tabular}} &
   N/a \\ \hline
 \textbf{2} &
   \textbf{\begin{tabular}[c]{@{}l@{}}GLoRIA \cite{GLoRIA}\\ (2021)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ResNet50} &
   \multicolumn{1}{l|}{BioClinicalBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Global-Local \\ Contrastive \\ Alignment\end{tabular}} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Căn chỉnh tương phản \\ Toàn cục - \\ Cục bộ\end{tabular}} &
   N/a \\ \hline
 \textbf{3} &
   \textbf{\begin{tabular}[c]{@{}l@{}}MedCLIP \cite{MedCLIP}\\ (2022)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Swin Transformer, \\ ResNet50\end{tabular}} &
   \multicolumn{1}{l|}{BioClinicalBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Knowledge-enhanced \\ Alignment\end{tabular}} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Căn chỉnh tăng cường \\ Tri thức\end{tabular}} &
   N/a \\ \hline
 \textbf{4} &
   \textbf{\begin{tabular}[c]{@{}l@{}}BiomedCLIP \cite{BiomedCLIP}\\ (2023)\end{tabular}} &
   \begin{tabular}[c]{@{}l@{}}Học tương\\ phản\end{tabular} &
   \multicolumn{1}{l|}{ViT-Base} &
   \multicolumn{1}{l|}{PubMedBERT} &
-  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Contrastive \\ Alignment\end{tabular}} &
+  \multicolumn{1}{l|}{\begin{tabular}[c]{@{}l@{}}Căn chỉnh\\ tương phản
+  \end{tabular}} &
   N/a \\ \hline
 \end{tabular}
 }
@@ -83,7 +84,7 @@ Thứ hai, mô hình sử dụng kiến trúc hai bộ mã hóa độc lập g�
 
 BiomedCLIP có thể thực hiện phân lớp trong thiết lập \textit{không mẫu} mà không cần huấn luyện một đầu phân lớp riêng trên dữ liệu đích. Thay vào đó, mô hình biểu diễn ảnh đầu vào và các câu nhắc mô tả lớp trong cùng một không gian đặc trưng, sau đó xác định lớp dựa trên mức độ tương đồng giữa hai phương thức.
 
-Ảnh đầu vào $x$ trước hết được tiền xử lý theo cấu hình của BiomedCLIP, bao gồm thay đổi kích thước, cắt vùng trung tâm và chuẩn hóa, để thu được tensor ảnh có kích thước $224\times224$. Ảnh sau đó được chia thành các patch kích thước $16\times16$ và đưa qua bộ mã hóa thị giác ViT-B/16 để tạo biểu diễn ảnh.
+Ảnh đầu vào $x$ trước hết được tiền xử lý theo cấu hình của BiomedCLIP, bao gồm thay đổi kích thước, cắt vùng trung tâm và chuẩn hóa, để thu được tensor ảnh có kích thước $224\times224$. Ảnh sau đó được chia thành các mảnh ảnh có kích thước $16\times16$ và đưa qua bộ mã hóa thị giác ViT-B/16 để tạo biểu diễn ảnh.
 
 Với mỗi lớp $k$, tên lớp được đưa vào một mẫu câu nhắc thống nhất, chẳng hạn \texttt{A radiograph showing [tên lớp].} Câu nhắc được mã hóa bởi bộ mã hóa văn bản PubMedBERT để thu được biểu diễn văn bản $t_k$. Điểm số của lớp $k$ được tính bằng độ tương đồng cosine:
 
@@ -108,8 +109,6 @@ trong đó $\tau$ là hệ số nhiệt độ. Lớp có xác suất lớn nhấ
 \section{Các kỹ thuật tinh chỉnh hiệu quả tham số}
 
 Sự xuất hiện của các mô hình nền tảng nói chung và mô hình ngôn ngữ-thị giác y sinh nói riêng đã mang lại một nền tảng tri thức đa phương thức khổng lồ. Tuy nhiên, để triển khai hiệu quả các mô hình này vào các bài toán lâm sàng đặc thù, quá trình chuyển giao tri thức là bắt buộc.
-
-Hướng đến yêu cầu cụ thể hơn cho bài toán sử dụng hai nguồn ảnh và văn bản lâm sàng, khóa luận tập trung vào các kỹ thuật tinh chỉnh để khai thác tối đa từ hai nguồn dữ liệu này với đặc điểm dữ liệu thực tế còn hạn chế.
 
 Trước đây, hai chiến lược phổ biến nhất là tinh chỉnh toàn phần và dò tuyến tính. Tinh chỉnh toàn phần cập nhật lại toàn bộ tham số của mô hình gốc, mang lại khả năng thích ứng cao nhưng đòi hỏi chi phí tính toán, bộ nhớ khổng lồ, yêu cầu dữ liệu huấn luyện lớn đến rất lớn, dẫn đến hiện tượng quên biểu diễn trên các tập dữ liệu y tế nhỏ. Ngược lại, dò tuyến tính đóng băng toàn bộ mạng nơ-ron gốc và chỉ huấn luyện một lớp phân lớp duy nhất ở cuối, tiết kiệm tài nguyên nhưng hạn chế khả năng thích ứng khi sự chênh lệch phân phối giữa dữ liệu gốc và dữ liệu y tế là quá lớn.
 
@@ -268,7 +267,7 @@ Bên cạnh đó, trong hàm mất mát tương phản InfoNCE nguyên bản \ci
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân lớp không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
 
-BiomedCLIP không có cơ chế dung hợp dữ liệu, là một điểm yếu khi mô hình gặp giới hạn lớn trước các tác vụ đòi hỏi sự liên kết cục bộ chi tiết, Minh chứng là để giải quyết tác vụ Hỏi-Đáp thị giác y tế (VQA), nhóm tác giả đã bắt buộc phải tích hợp BiomedCLIP vào khung cấu trúc METER sử dụng module chú ý đồng thời, tạo ra các biểu diễn liên phương thức giàu thông tin hơn. Dựa vào đó, khóa luận đề xuất tích hợp một cơ chế dung hợp. Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều, có nguyên lý trao đổi thông tin giữa hai luồng ảnh-văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}, để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
+BiomedCLIP không có cơ chế dung hợp dữ liệu, là một điểm yếu khi mô hình gặp giới hạn lớn trước các tác vụ đòi hỏi sự liên kết cục bộ chi tiết, Minh chứng là để giải quyết tác vụ Hỏi-Đáp thị giác y tế (VQA), nhóm tác giả đã bắt buộc phải tích hợp BiomedCLIP vào khung cấu trúc METER sử dụng mô-đun chú ý đồng thời, tạo ra các biểu diễn liên phương thức giàu thông tin hơn. Dựa vào đó, khóa luận đề xuất tích hợp một cơ chế dung hợp. Thay vì chỉ ghép nối hai biểu diễn toàn cục, khóa luận lựa chọn cơ chế chú ý chéo hai chiều, có nguyên lý trao đổi thông tin giữa hai luồng ảnh-văn bản tương tự ViLBERT \cite{Lu2019ViLBERT}, để đặc trưng ảnh lựa chọn các thông tin lâm sàng liên quan, đồng thời đặc trưng văn bản định hướng mô hình đến các vùng ảnh phù hợp. Thiết kế này cho phép mô hình hóa quan hệ cụ thể giữa dấu hiệu X-quang và ngữ cảnh lâm sàng.
 
 \textbf{Về phân lớp đa lớp và mất cân bằng dữ liệu:}
 Phương pháp sử dụng Hàm mất mát entropy chéo có trọng số được sử dụng nhằm giảm ảnh hưởng của sự chênh lệch số lượng mẫu giữa các lớp.
