@@ -3,6 +3,7 @@
 
 \begingroup
 \footnotesize
+\setstretch{1.0}
 \setlength{\LTpre}{0pt}
 \setlength{\LTpost}{0pt}
 \setlength{\tabcolsep}{5pt}
@@ -49,7 +50,7 @@ S_k,\,f_\theta,\,c_k & Tập hỗ trợ, hàm đặc trưng và tâm đại di�
 
 %% --- Đầu vào và tiền xử lý ---
 \mathcal{D}_{\mathrm{train}},\,N & Tập dữ liệu và tổng số mẫu huấn luyện. & \pageref{eq:ch3_dataset} \\
-X_i,\,R_i,\,y_i & Ảnh X-quang, bệnh sử và nhãn của mẫu thứ $i$. & \pageref{eq:ch3_dataset} \\
+x_i^{\mathrm{img}},\,x_i^{\mathrm{txt}},\,y_i & Ảnh X-quang, bệnh sử và nhãn của mẫu thứ $i$. & \pageref{eq:ch3_dataset} \\
 q_{ic} & Xác suất đích đã làm trơn của lớp $c$ đối với mẫu $i$. & \pageref{eq:ch3_smoothed_target} \\
 \varepsilon_{\mathrm{ls}} & Hệ số làm trơn nhãn, bằng $0{,}1$ trong cấu hình XBone-Net. & \pageref{eq:ch3_smoothed_target} \\
 \mathcal{L}_{\mathrm{WLSCE}} & Hàm mất mát entropy chéo có trọng số lớp và làm trơn nhãn. & \pageref{eq:ch3_phase2_loss} \\

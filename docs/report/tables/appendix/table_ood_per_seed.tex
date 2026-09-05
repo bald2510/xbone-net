@@ -6,7 +6,10 @@
 \begin{tabular}{|L{2.05cm}|L{2.55cm}|C{1.0cm}|C{1.0cm}|C{1.0cm}|*{3}{C{1.55cm}|}}
 \hline
 \textbf{Kịch bản} & \textbf{Cấu hình} & \textbf{Hạt giống} & \textbf{$N_{ID}$} & \textbf{$N_{OOD}$} & \textbf{\makecell{AUROC-\\OOD}} & \textbf{\makecell{AUPR-\\Out}} & \textbf{\makecell{FPR@\\95\%TPR}} \\ \hline
-\multirow{12}{*}{OOD CTCH} & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}42 & \cellcolor{gray!30}669 & \cellcolor{gray!30}18 & \cellcolor{gray!30}0{,}7736 & \cellcolor{gray!30}0{,}1521 & \cellcolor{gray!30}0{,}6667 \\ \cline{2-8}
+\multirow{15}{*}{OOD CTCH} & XBone-Net chỉ ảnh & 42 & 669 & 18 & 0{,}4903 & 0{,}0355 & 0{,}9444 \\ \cline{2-8}
+ & XBone-Net chỉ ảnh & 123 & 669 & 18 & 0{,}6043 & 0{,}0354 & 1{,}0000 \\ \cline{2-8}
+ & XBone-Net chỉ ảnh & 456 & 669 & 18 & 0{,}5850 & 0{,}0340 & 1{,}0000 \\ \cline{2-8}
+ & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}42 & \cellcolor{gray!30}669 & \cellcolor{gray!30}18 & \cellcolor{gray!30}0{,}7736 & \cellcolor{gray!30}0{,}1521 & \cellcolor{gray!30}0{,}6667 \\ \cline{2-8}
  & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}123 & \cellcolor{gray!30}669 & \cellcolor{gray!30}18 & \cellcolor{gray!30}0{,}7713 & \cellcolor{gray!30}0{,}1365 & \cellcolor{gray!30}0{,}6667 \\ \cline{2-8}
  & \cellcolor{gray!30}XBone-Net & \cellcolor{gray!30}456 & \cellcolor{gray!30}669 & \cellcolor{gray!30}18 & \cellcolor{gray!30}0{,}7346 & \cellcolor{gray!30}0{,}1533 & \cellcolor{gray!30}0{,}5556 \\ \cline{2-8}
  & Chỉ pha 2 & 42 & 669 & 18 & 0{,}7922 & 0{,}2194 & 0{,}5556 \\ \cline{2-8}
@@ -15,11 +18,11 @@
  & Nối đặc trưng & 42 & 669 & 18 & 0{,}7139 & 0{,}1103 & 0{,}6111 \\ \cline{2-8}
  & Nối đặc trưng & 123 & 669 & 18 & 0{,}7015 & 0{,}1167 & 0{,}6667 \\ \cline{2-8}
  & Nối đặc trưng & 456 & 669 & 18 & 0{,}7404 & 0{,}0894 & 0{,}6667 \\ \cline{2-8}
- & BiomedCLIP tinh chỉnh toàn bộ & 42 & 669 & 18 & 0{,}7574 & 0{,}1679 & 0{,}5000 \\ \cline{2-8}
- & BiomedCLIP tinh chỉnh toàn bộ & 123 & 669 & 18 & 0{,}7503 & 0{,}1385 & 0{,}7222 \\ \cline{2-8}
- & BiomedCLIP tinh chỉnh toàn bộ & 456 & 669 & 18 & 0{,}6440 & 0{,}1051 & 0{,}7222 \\ \hline
+ & BiomedCLIP tinh chỉnh toàn bộ & 42 & 669 & 18 & 0{,}7848 & 0{,}1694 & 0{,}5000 \\ \cline{2-8}
+ & BiomedCLIP tinh chỉnh toàn bộ & 123 & 669 & 18 & 0{,}7872 & 0{,}1653 & 0{,}6667 \\ \cline{2-8}
+ & BiomedCLIP tinh chỉnh toàn bộ & 456 & 669 & 18 & 0{,}6996 & 0{,}1139 & 0{,}7222 \\ \hline
 \end{tabular}%
 }
-\caption{Kết quả cảnh báo OOD của từng hạt giống trên kịch bản OOD CTCH bằng điểm tổ hợp đa phương thức}
+\caption{Kết quả cảnh báo OOD của từng hạt giống trên CTCH. Cấu hình chỉ ảnh dùng điểm thị giác; các cấu hình còn lại tổ hợp điểm ảnh và văn bản.}
 \label{tab:appendix-ood-seeds}
 \end{table}

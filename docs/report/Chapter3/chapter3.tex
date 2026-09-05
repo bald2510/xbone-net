@@ -68,7 +68,7 @@ Mô hình kế thừa bộ mã hóa của BiomedCLIP \cite{BiomedCLIP}, được
 Bổ sung cho các bằng chứng hình thái được trích xuất từ ảnh X-quang, nhánh biểu diễn văn bản có nhiệm vụ mã hóa thông tin lâm sàng $t$ thành các đặc trưng ngữ cảnh theo từng đơn vị biểu diễn và một vectơ đại diện cho toàn bộ chuỗi. Trong khóa luận, nhánh này được kế thừa từ bộ mã hóa văn bản của BiomedCLIP \cite{BiomedCLIP}, với thành phần chính là PubMedBERT \cite{Gu2021PubMedBERT}. Khác với các mô hình ngôn ngữ được tiền huấn luyện trên văn bản tổng quát, PubMedBERT được tiền huấn luyện từ đầu trên kho ngữ liệu y sinh và sử dụng bộ từ vựng được xây dựng trực tiếp từ miền dữ liệu này. Nhờ đó, mô hình phù hợp hơn với các thuật ngữ chuyên ngành xuất hiện trong thông tin lâm sàng. Chuỗi văn bản mô tả y khoa đầu vào $t$ được chuyển đổi thành vector biểu diễn ngữ nghĩa thông qua các bước biến đổi tuần tự như sau:
 
 \begin{enumerate}
-    \item \textbf{Chia nhỏ văn bản thành các từ:} Văn bản thô $t$ được phân tách thành chuỗi các từ. Tổng độ dài chuỗi sau khi thêm token đặc biệt, cắt và đệm được cố định ở $T=256$ vị trí.
+    \item \textbf{Tách văn bản thành các đơn vị mã hóa (token):} Bộ tách từ của PubMedBERT chuyển văn bản thô $t$ thành chuỗi token. Một token có thể là một từ, một mảnh từ (subword), dấu câu hoặc ký hiệu đặc biệt; vì vậy số token không đồng nhất với số từ trong câu. Các thuật ngữ ``từ tố'' và ``đơn vị biểu diễn văn bản'' dưới đây chỉ các token này. Tổng độ dài chuỗi sau khi thêm token đặc biệt, cắt và đệm được cố định ở $T=256$ vị trí.
     
     \item \textbf{Khởi tạo chuỗi và chèn các token đặc biệt $[CLS]$ và $[SEP]$:} 
     Để cấu trúc hóa chuỗi đầu vào theo chuẩn BERT, một token phân loại đặc biệt ký hiệu là $t_{\text{CLS}}$ được chèn vào đầu chuỗi, và một token phân tách đặc biệt ký hiệu là $t_{\text{SEP}}$ được bổ sung ở cuối chuỗi để phân định ranh giới ngữ cảnh:
@@ -265,7 +265,7 @@ Quy trình ngoại tuyến lần lượt giải quyết hai yêu cầu của h�
 
 Giai đoạn thứ nhất được minh họa trong Hình \ref{fig:ch3_phase1}. Trong giai đoạn này, mô hình thực hiện quá trình thích nghi miền nhằm chuyển đổi không gian biểu diễn tổng quát của bộ mã hóa tiền huấn luyện sang miền dữ liệu y khoa chuyên biệt. Để tối ưu hóa hiệu quả và bảo toàn tri thức nền tảng, các tham số gốc của bộ mã hóa hình ảnh và bộ mã hóa văn bản đều được đóng băng, và quá trình huấn luyện thích nghi được thực hiện thông qua cơ chế thích nghi hạng thấp LoRA. 
 
-Trọng tâm của giai đoạn này là giải quyết hiện tượng tiêu cực giả, xảy ra khi các mẫu ảnh và văn bản của các bệnh nhân khác nhau nhưng mang cùng một bệnh lý bị ép phải đẩy ra xa nhau trong không gian nhúng của học tương phản truyền thống. Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa ký hiệu SML, kế thừa ý tưởng giám sát tương phản bằng nhãn từ MedCLIP \cite{MedCLIP}, kết hợp với ma trận đích mềm được thiết kế cho XBone-Net để dẫn đường cho mô hình.
+Trọng tâm của giai đoạn này là hạn chế cặp âm giả trong học tương phản, xảy ra khi ảnh và văn bản của các mẫu khác nhau nhưng cùng lớp bệnh bị xem là cặp âm hoàn toàn. Khái niệm này không đồng nhất với âm sai (FN) khi bộ phân lớp bỏ sót một lớp bệnh. Giai đoạn này sử dụng hàm mất mát khớp ngữ nghĩa ký hiệu SML, kế thừa ý tưởng giám sát tương phản bằng nhãn từ MedCLIP \cite{MedCLIP}, kết hợp với ma trận đích mềm được thiết kế cho XBone-Net để dẫn đường cho mô hình.
 
 Ma trận đích mềm là ma trận \(B\times B\), trong đó mỗi phần tử biểu diễn mức độ tương đồng ngữ nghĩa mục tiêu giữa ảnh của mẫu \(i\) và văn bản của mẫu \(j\). Khác với nhãn nhị phân chỉ phân biệt cặp đúng/sai, giá trị mềm cho phép biểu diễn các mức tương đồng trung gian giữa các mẫu có quan hệ bệnh lý hoặc lâm sàng gần nhau.
 
@@ -276,23 +276,25 @@ Quy trình toán học trong một lô huấn luyện kích thước $B$ đượ
     Với mỗi cặp thực thể $i$ (hình ảnh) và $j$ (văn bản) trong lô, ta xây dựng một ma trận đích tương đồng mềm $P \in \mathbb{R}^{B \times B}$. Giá trị phân phối mục tiêu $P_{ij}$ đại diện cho mối tương quan y khoa giữa hai mẫu và được định nghĩa theo quy tắc phân cấp ngữ nghĩa:
     \begin{equation}
     P_{ij} = \begin{cases} 
-    1.0, & \text{nếu } i = j \quad \text{(cặp khớp)} \\ 
-    0.5, & \text{nếu } \text{class}(i) = \text{class}(j) \text{ và } i \neq j \quad \text{(cùng lớp khác mẫu)} \\ 
-    0.0, & \text{nếu } \text{class}(i) \neq \text{class}(j) \quad \text{(khác lớp bệnh lý)} 
+    1, & \text{nếu } i = j \quad \text{(cặp khớp)} \\
+    0{,}5, & \text{nếu } \text{class}(i) = \text{class}(j) \text{ và } i \neq j \quad \text{(cùng lớp khác mẫu)} \\
+    0, & \text{nếu } \text{class}(i) \neq \text{class}(j) \quad \text{(khác lớp bệnh lý)}
     \end{cases}
     \end{equation}
     
-    Trọng số 0.5 được sử dụng để biểu diễn mức độ tương đồng ngữ nghĩa một phần giữa các mẫu có mối liên hệ về bệnh lý hoặc cơ chế tổn thương. Trong thực tế, một bệnh lý có thể xuất phát từ nhiều cơ chế tổn thương khác nhau, đồng thời một cơ chế tổn thương có thể xuất hiện ở nhiều bệnh lý. Do đó, các mẫu này không nên được xem là hoàn toàn tương đồng như cặp dương có cùng nhãn, nhưng cũng không nên bị xem là hoàn toàn không liên quan như cặp âm. Giá trị 0.5 đóng vai trò là mức trung gian giữa hai trường hợp này.
+    Trọng số $0{,}5$ áp dụng cho hai mẫu khác nhau có cùng nhãn lớp, còn cặp ảnh--văn bản của chính một mẫu có trọng số $1$. Cấu hình không kiểm tra trực tiếp cơ chế tổn thương hoặc độ tương đồng bệnh sử để gán trọng số. Như vậy, đích mềm ưu tiên cặp khớp, đồng thời vẫn phân bổ khối lượng xác suất cho các cặp cùng lớp khác mẫu.
 
 
     \item \textbf{Chuẩn hóa phân phối mục tiêu:}
-    Để biến đổi ma trận đích mềm $P$ thành phân phối xác suất hợp lệ, ta áp dụng phép chuẩn hóa dòng (từ ảnh sang văn bản) và chuẩn hóa cột (từ văn bản sang ảnh) thông qua hàm Softmax:
+    Để biến đổi ma trận trọng số $P$ thành phân phối xác suất hợp lệ, ta chia mỗi phần tử cho tổng trọng số của dòng hoặc cột tương ứng, không áp dụng Softmax lên đích mềm:
     \begin{equation}
-    y_{ij}^{v \to t} = \frac{\exp(P_{ij})}{\sum_{k=1}^{B} \exp(P_{ik})}
+    y_{ij}^{v \to t} = \frac{P_{ij}}{\sum_{k=1}^{B} P_{ik}}
     \end{equation}
     \begin{equation}
-    y_{ji}^{t \to v} = \frac{\exp(P_{ji})}{\sum_{k=1}^{B} \exp(P_{ki})}
+    y_{ji}^{t \to v} = \frac{P_{ij}}{\sum_{k=1}^{B} P_{kj}}
     \end{equation}
+
+    Mã thực thi chuẩn hóa các dòng của $P$ trước, sau đó chuyển vị và chuẩn hóa lại các dòng cho chiều ngược. Với ma trận đối xứng được xây dựng từ nhãn lớp ở trên, các dòng thuộc cùng một lớp có tổng trọng số bằng nhau, nên thao tác này tương đương công thức chuẩn hóa cột đã nêu. Các phần tử bằng 0 vẫn giữ xác suất đích bằng 0.
 
     \item \textbf{Tính toán tương đồng dự đoán:}
     Gọi $I_i$ và $T_j$ lần lượt là các vector nhúng chuẩn hóa $L_2$ của hình ảnh thứ $i$ và văn bản thứ $j$ trong không gian chung. Lượng logits tương đồng dự đoán $\hat{s}_{ij}$ được tính toán bằng:
@@ -302,7 +304,7 @@ Quy trình toán học trong một lô huấn luyện kích thước $B$ đượ
     Trong đó, $\tau$ là tham số nhiệt độ học được. Phân phối xác suất dự đoán tương ứng được xác định bởi:
     \begin{equation}
     \hat{y}_{ij}^{v \to t} = \frac{\exp(\hat{s}_{ij})}{\sum_{k=1}^{B} \exp(\hat{s}_{ik})}, \quad 
-    \hat{y}_{ji}^{t \to v} = \frac{\exp(\hat{s}_{ji})}{\sum_{k=1}^{B} \exp(\hat{s}_{ki})}
+    \hat{y}_{ji}^{t \to v} = \frac{\exp(\hat{s}_{ij})}{\sum_{k=1}^{B} \exp(\hat{s}_{kj})}
     \end{equation}
 
     \item \textbf{Hàm mất mát khớp ngữ nghĩa:}
@@ -570,8 +572,10 @@ Nếu có tham số nhiệt độ được ước lượng trên tập xác th�
 \,\mathrm{d}\beta.
 \label{eq:ch3_integrated_gradients}
 \end{equation}
-Trong đó, $\beta\in[0,1]$ xác định đường nội suy từ mốc tham chiếu đến đầu vào thật. Mốc ảnh là nền đen và mốc văn bản là văn bản trống. Trong phép tính cho văn bản, các vị trí nội dung dùng đặc trưng của đơn vị đệm, còn các đơn vị đặc biệt cần thiết cho bộ mã hóa được giữ nguyên.
+Trong đó, $\beta\in[0,1]$ xác định đường nội suy từ mốc tham chiếu đến đầu vào thật. Mốc ảnh là tensor bằng 0 trong không gian ảnh sau chuẩn hóa, không phải ảnh RGB màu đen; khi đảo phép chuẩn hóa, mốc này tương ứng với giá trị trung bình của từng kênh. Mốc văn bản thay embedding của các token nội dung bằng embedding của token đệm $[PAD]$, giữ nguyên token đặc biệt và mặt nạ chú ý. Đây là can thiệp trong không gian embedding, không phải đưa chuỗi rỗng qua bộ tách từ.
 
 Kết quả ảnh được biểu diễn bằng bản đồ nhiệt, trong đó màu nóng cho biết các vị trí có độ lớn đóng góp cao. Kết quả văn bản dùng màu cam cho tác động ủng hộ và màu xanh cho tác động phản đối lớp dự đoán. Khi được yêu cầu, hệ thống có thể tính thêm các đường loại bỏ và khôi phục cùng mức giảm xác suất khi thay toàn bộ ảnh hoặc văn bản bằng mốc tham chiếu. Các phép đo này đánh giá mức phụ thuộc của dự đoán vào từng nguồn thông tin và được trình bày chi tiết ở Chương \ref{Chapter4}.
 
 Tích phân gradient và các phép can thiệp chỉ mô tả phản ứng của mô hình đối với lớp đích, đầu vào và mốc tham chiếu đã chọn. Vì vậy, kết quả không chứng minh quan hệ nhân quả, không xác nhận vị trí tổn thương, không bảo đảm tính đúng lâm sàng và không thay thế đánh giá của chuyên gia.
+
+Chương này đã trình bày các thành phần của XBone-Net, quy trình huấn luyện hai pha và hai công cụ hỗ trợ phân tích dự đoán là cảnh báo OOD và tích phân gradient. Trên cơ sở đó, Chương~\ref{Chapter4} đánh giá hiệu năng và chi phí, đối chiếu cấu hình chỉ ảnh với cấu hình đầy đủ để khảo sát vai trò của bệnh sử, đồng thời kiểm tra ảnh hưởng của các thành phần và giới hạn của hai công cụ hỗ trợ.

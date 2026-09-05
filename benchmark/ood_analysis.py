@@ -89,6 +89,25 @@ SCENARIO_LABELS = {
     "report_mismatch_same_class": "Mâu thuẫn bệnh sử cùng lớp",
 }
 
+
+def _provenance_uses_text(provenance: dict[str, Any]) -> bool:
+    """Return whether Phase 2 uses text according to archive provenance."""
+    resolved = provenance.get("resolved_config", {}) or {}
+    params = resolved.get("params", {}) or {}
+    phase2 = params.get("phase2", {}) or {}
+    return bool(phase2.get("use_text", True))
+
+
+def _sanitize_archive_modalities(
+    data: dict[str, np.ndarray],
+    provenance: dict[str, Any],
+) -> dict[str, np.ndarray]:
+    """Prevent an image-only experiment from leaking text into OOD scoring."""
+    sanitized = dict(data)
+    if not _provenance_uses_text(provenance):
+        sanitized.pop("text_global_embeddings", None)
+    return sanitized
+
 OOD_METHOD = "multimodal_ensemble"
 
 
@@ -226,10 +245,16 @@ def extract_or_load_features(
                             == current_checkpoint_sha
                         )
                     )
-                    if provenance_matches and (
+                    modality_matches = not (
+                        not _provenance_uses_text(provenance)
+                        and "text_global_embeddings" in data
+                    )
+                    if provenance_matches and modality_matches and (
                         "fused_embeddings" in data or "logits" in data
                     ):
-                        feature_dict[archive] = data
+                        feature_dict[archive] = _sanitize_archive_modalities(
+                            data, provenance
+                        )
                     else:
                         missing_archives.add(archive)
                 except Exception:
@@ -253,8 +278,8 @@ def extract_or_load_features(
             dataset, scenario_metadata = build_scenario_dataset(
                 archive,
                 loaded,
-                # Thesis results must use the complete manifest. Abort instead
-                # of silently reporting metrics on fewer than the current 26 cases.
+                # Thesis results must use the complete current manifest. Abort
+                # instead of silently reporting metrics on a partial OOD set.
                 allow_incomplete_ood=False,
             )
             loader = torch.utils.data.DataLoader(
@@ -270,6 +295,8 @@ def extract_or_load_features(
                 arrays = _collect_zeroshot_feature_batches(loaded, loader)
             else:
                 arrays = _collect_fused_feature_batches(loaded, loader)
+
+            arrays = _sanitize_archive_modalities(arrays, loaded.provenance)
 
             provenance = dict(loaded.provenance)
             provenance.update(
@@ -467,6 +494,7 @@ def run_experiment_ood_pipeline(
         Từ điển chứa toàn bộ kết quả từng hạt giống và kết quả tổng hợp của mô hình.
     """
     seed_results: dict[int, dict[str, dict[str, Any]]] = {}
+    modalities: set[str] = {"visual"}
 
     for seed in seeds:
         feat_dict = extract_or_load_features(
@@ -478,6 +506,8 @@ def run_experiment_ood_pipeline(
             num_workers=num_workers,
             force_recompute=force_recompute,
         )
+        if "text_global_embeddings" in feat_dict["ctch_train"]:
+            modalities.add("clinical_text")
         res = evaluate_single_seed_ood(
             feat_dict,
             scenarios,
@@ -495,6 +525,7 @@ def run_experiment_ood_pipeline(
         "seeds": seeds,
         "scenarios": scenarios,
         "methods": [OOD_METHOD],
+        "modalities": sorted(modalities),
         "target_fpr": target_fpr,
         "per_seed": seed_results,
         "aggregated": aggregated,

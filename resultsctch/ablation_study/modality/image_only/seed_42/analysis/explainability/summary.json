@@ -1,0 +1,765 @@
+{
+  "type": "ctch_explainability_evaluation",
+  "source_experiment": "ctch/ablation_study/modality/image_only",
+  "seed": 42,
+  "checkpoint_sha256": "6bda12175a505be6ce32334001131eee75c9ead5f4af31ea2248955c9358717d",
+  "created_at": "2026-09-03T17:23:27.317125+00:00",
+  "protocol": {
+    "analysis_mode": "input_only",
+    "image_preprocessing": "biomedclip_native_resize_center_crop_normalize",
+    "classifier": "linear_head",
+    "target": "predicted_class",
+    "sampling": "stratified",
+    "selection_seed": 1907,
+    "ig_steps": 24,
+    "ig_baselines": {
+      "global_image": "zero_in_normalized_input_space"
+    },
+    "random_trials": 16,
+    "faithfulness_modalities": [
+      "global_image"
+    ],
+    "spatial_localization_metrics": "not_reported: CTCH has no lesion-region annotations"
+  },
+  "sample_count": 44,
+  "correct_count": 19,
+  "explanation_aggregate": {
+    "cached_forward_max_abs_error": {
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "ci_95": [
+        0.0,
+        0.0
+      ],
+      "n": 44
+    },
+    "confidence": {
+      "mean": 0.38072668320753356,
+      "std": 0.09296195996895018,
+      "median": 0.36701224744319916,
+      "ci_95": [
+        0.3548332193358378,
+        0.407121286786754
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.deletion_auc": {
+      "mean": 0.1508531578287313,
+      "std": 0.1006851117506751,
+      "median": 0.11903863688930871,
+      "ci_95": [
+        0.12098472145830533,
+        0.18239853440524623
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.insertion_auc": {
+      "mean": 0.2582365316952664,
+      "std": 0.08900159280703596,
+      "median": 0.26574643533676856,
+      "ci_95": [
+        0.23241248361597008,
+        0.2839778819877062
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.random_deletion_auc": {
+      "mean": 0.1982477393731559,
+      "std": 0.0931472186899648,
+      "median": 0.18844984131574166,
+      "ci_95": [
+        0.17110514057377177,
+        0.22467752559340706
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.random_minus_targeted_deletion_auc": {
+      "mean": 0.04739458154442466,
+      "std": 0.04914527847448202,
+      "median": 0.035409019092912775,
+      "ci_95": [
+        0.033421445826263,
+        0.06199394856128489
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.random_target_logit_deletion_auc": {
+      "mean": 1.2213588325933828,
+      "std": 0.6712963749254688,
+      "median": 1.161745287262602,
+      "ci_95": [
+        1.0304510925406434,
+        1.4205122167565851
+      ],
+      "n": 44
+    },
+    "global_image_faithfulness.target_logit_deletion_auc": {
+      "mean": 0.8288256916217507,
+      "std": 0.8387110051174128,
+      "median": 0.6674131551757455,
+      "ci_95": [
+        0.59355977878292,
+        1.0721705090964677
+      ],
+      "n": 44
+    },
+    "global_image_integrated_gradients.completeness_error": {
+      "mean": 0.8842253738336943,
+      "std": 0.8671586018482182,
+      "median": 0.6153969094157219,
+      "ci_95": [
+        0.6416810095839371,
+        1.145875838430683
+      ],
+      "n": 44
+    },
+    "global_image_integrated_gradients.entropy": {
+      "mean": 9.279989702066244,
+      "std": 0.12082847830000747,
+      "median": 9.285420467257147,
+      "ci_95": [
+        9.242996936931736,
+        9.312316314229992
+      ],
+      "n": 44
+    },
+    "global_image_integrated_gradients.logit_difference_vs_zero_input": {
+      "mean": 2.573620088652454,
+      "std": 0.6345494458683592,
+      "median": 2.473135195672512,
+      "ci_95": [
+        2.4035055498296227,
+        2.7609912843570448
+      ],
+      "n": 44
+    },
+    "global_image_integrated_gradients.relative_completeness_error": {
+      "mean": 0.3699710167186485,
+      "std": 0.37204008489812385,
+      "median": 0.2583155827641668,
+      "ci_95": [
+        0.2654429692217649,
+        0.481796080706986
+      ],
+      "n": 44
+    },
+    "global_image_integrated_gradients.signed_attribution_sum": {
+      "mean": 2.1908423020081087,
+      "std": 1.3057491369016294,
+      "median": 2.3364440202713013,
+      "ci_95": [
+        1.8115815997123719,
+        2.566339545019648
+      ],
+      "n": 44
+    },
+    "source_target_probability_drop.global_image": {
+      "mean": 0.3339750555936586,
+      "std": 0.10043510380144836,
+      "median": 0.3178471401333809,
+      "ci_95": [
+        0.3054345318296162,
+        0.36344927230172536
+      ],
+      "n": 44
+    }
+  },
+  "explanation_subgroups": {
+    "correct": {
+      "sample_count": 19,
+      "aggregate": {
+        "cached_forward_max_abs_error": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "n": 19
+        },
+        "confidence": {
+          "mean": 0.41576057594073446,
+          "std": 0.09858405745219033,
+          "median": 0.4307927191257477,
+          "ci_95": [
+            0.3709035055025628,
+            0.4585898206226135
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.deletion_auc": {
+          "mean": 0.1481468752712796,
+          "std": 0.1063498405877213,
+          "median": 0.11233147075399758,
+          "ci_95": [
+            0.10645702743375872,
+            0.19808015183962296
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.insertion_auc": {
+          "mean": 0.26835900108378974,
+          "std": 0.10006591534036381,
+          "median": 0.28823390956968065,
+          "ci_95": [
+            0.2235135073140018,
+            0.30963528307669447
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.random_deletion_auc": {
+          "mean": 0.1879197636557939,
+          "std": 0.09070821189565309,
+          "median": 0.18653820558683945,
+          "ci_95": [
+            0.15057040686040538,
+            0.23009004970362998
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": {
+          "mean": 0.03977288838451435,
+          "std": 0.04521220376810367,
+          "median": 0.046259275160264235,
+          "ci_95": [
+            0.02004115624627481,
+            0.05944275185605969
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.random_target_logit_deletion_auc": {
+          "mean": 1.129846429897742,
+          "std": 0.5599180861449709,
+          "median": 1.0326454076566733,
+          "ci_95": [
+            0.8877676145544532,
+            1.391308909981982
+          ],
+          "n": 19
+        },
+        "global_image_faithfulness.target_logit_deletion_auc": {
+          "mean": 0.8099306431157809,
+          "std": 0.8002499938849577,
+          "median": 0.4941547513008117,
+          "ci_95": [
+            0.4695789412622293,
+            1.1719129331409932
+          ],
+          "n": 19
+        },
+        "global_image_integrated_gradients.completeness_error": {
+          "mean": 0.6501605908729529,
+          "std": 0.7058511678922036,
+          "median": 0.23677659034729004,
+          "ci_95": [
+            0.36377006139312135,
+            0.983625536416902
+          ],
+          "n": 19
+        },
+        "global_image_integrated_gradients.entropy": {
+          "mean": 9.317661709051317,
+          "std": 0.09843855856544327,
+          "median": 9.288523309990817,
+          "ci_95": [
+            9.270982873450853,
+            9.36117777657723
+          ],
+          "n": 19
+        },
+        "global_image_integrated_gradients.logit_difference_vs_zero_input": {
+          "mean": 2.67699093626518,
+          "std": 0.6075708800339364,
+          "median": 2.635872706770897,
+          "ci_95": [
+            2.400422637159691,
+            2.9372976275847145
+          ],
+          "n": 19
+        },
+        "global_image_integrated_gradients.relative_completeness_error": {
+          "mean": 0.26045469515147374,
+          "std": 0.30212690810832515,
+          "median": 0.06972062572513597,
+          "ci_95": [
+            0.13701001395192836,
+            0.40409151157058415
+          ],
+          "n": 19
+        },
+        "global_image_integrated_gradients.signed_attribution_sum": {
+          "mean": 2.49075228289554,
+          "std": 1.1223521326179067,
+          "median": 2.4965627193450928,
+          "ci_95": [
+            1.9610068449848577,
+            2.9734498773750504
+          ],
+          "n": 19
+        },
+        "source_target_probability_drop.global_image": {
+          "mean": 0.3687079943912594,
+          "std": 0.1066672447128085,
+          "median": 0.3788400627672672,
+          "ci_95": [
+            0.3231804952956736,
+            0.4153187554452176
+          ],
+          "n": 19
+        }
+      }
+    },
+    "incorrect": {
+      "sample_count": 25,
+      "aggregate": {
+        "cached_forward_max_abs_error": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "n": 25
+        },
+        "confidence": {
+          "mean": 0.3541009247303009,
+          "std": 0.08052451713202706,
+          "median": 0.3534257709980011,
+          "ci_95": [
+            0.32487478302419187,
+            0.38594866874814027
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.deletion_auc": {
+          "mean": 0.15290993257239463,
+          "std": 0.09833658954516439,
+          "median": 0.12577395420521498,
+          "ci_95": [
+            0.1151324187999591,
+            0.18985641388827937
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.insertion_auc": {
+          "mean": 0.2505434549599886,
+          "std": 0.08086805326594679,
+          "median": 0.24824599847197534,
+          "ci_95": [
+            0.2191311449249275,
+            0.28135625373255463
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.random_deletion_auc": {
+          "mean": 0.2060970009183511,
+          "std": 0.0960500748534501,
+          "median": 0.207496534625534,
+          "ci_95": [
+            0.16934316216275333,
+            0.241707057396241
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": {
+          "mean": 0.053187068345956504,
+          "std": 0.052089263881279,
+          "median": 0.0326459513278678,
+          "ci_95": [
+            0.032914253397408166,
+            0.07401899371712352
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.random_target_logit_deletion_auc": {
+          "mean": 1.2909082586420701,
+          "std": 0.7487288312905975,
+          "median": 1.2539180445251987,
+          "ci_95": [
+            0.9974374638998881,
+            1.577859415402508
+          ],
+          "n": 25
+        },
+        "global_image_faithfulness.target_logit_deletion_auc": {
+          "mean": 0.8431859284862875,
+          "std": 0.8829074758365331,
+          "median": 0.7671605419367551,
+          "ci_95": [
+            0.5239545202976092,
+            1.1947803779007866
+          ],
+          "n": 25
+        },
+        "global_image_integrated_gradients.completeness_error": {
+          "mean": 1.0621146088838578,
+          "std": 0.9472401455960346,
+          "median": 0.902027040719986,
+          "ci_95": [
+            0.7137662330046296,
+            1.4412431536391377
+          ],
+          "n": 25
+        },
+        "global_image_integrated_gradients.entropy": {
+          "mean": 9.251358976757592,
+          "std": 0.13004796082036987,
+          "median": 9.282317624523476,
+          "ci_95": [
+            9.199944872883023,
+            9.299868362508297
+          ],
+          "n": 25
+        },
+        "global_image_integrated_gradients.logit_difference_vs_zero_input": {
+          "mean": 2.4950582444667817,
+          "std": 0.6554957423082464,
+          "median": 2.2923661172389984,
+          "ci_95": [
+            2.2632854051962497,
+            2.7563472318947313
+          ],
+          "n": 25
+        },
+        "global_image_integrated_gradients.relative_completeness_error": {
+          "mean": 0.4532034211097015,
+          "std": 0.40350903194543536,
+          "median": 0.3712542630706722,
+          "ci_95": [
+            0.29553374849292946,
+            0.6100699183419523
+          ],
+          "n": 25
+        },
+        "global_image_integrated_gradients.signed_attribution_sum": {
+          "mean": 1.9629107165336608,
+          "std": 1.4087855743241562,
+          "median": 2.055879831314087,
+          "ci_95": [
+            1.4217374740839004,
+            2.50145720821619
+          ],
+          "n": 25
+        },
+        "source_target_probability_drop.global_image": {
+          "mean": 0.307578022107482,
+          "std": 0.08864878392974301,
+          "median": 0.31040530651807785,
+          "ci_95": [
+            0.2754368678033352,
+            0.34399972020834685
+          ],
+          "n": 25
+        }
+      }
+    },
+    "low_confidence_q1": {
+      "sample_count": 11,
+      "aggregate": {
+        "cached_forward_max_abs_error": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "n": 11
+        },
+        "confidence": {
+          "mean": 0.2704273746772246,
+          "std": 0.034261571567542955,
+          "median": 0.27436137199401855,
+          "ci_95": [
+            0.25006372708488595,
+            0.28855831849981434
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.deletion_auc": {
+          "mean": 0.15492670055986804,
+          "std": 0.10649829452288609,
+          "median": 0.11775170769542458,
+          "ci_95": [
+            0.09735230887266386,
+            0.21798059729647565
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.insertion_auc": {
+          "mean": 0.20060997247187926,
+          "std": 0.1046517791634959,
+          "median": 0.14550157263875008,
+          "ci_95": [
+            0.14147370916177435,
+            0.2605485915870998
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_deletion_auc": {
+          "mean": 0.1772924544903534,
+          "std": 0.11683279910214828,
+          "median": 0.12738203804474324,
+          "ci_95": [
+            0.1135991597501032,
+            0.2443558887206018
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": {
+          "mean": 0.022365753930485382,
+          "std": 0.03628640939683358,
+          "median": 0.014295084180776033,
+          "ci_95": [
+            0.003617010679339409,
+            0.043922149201257116
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_target_logit_deletion_auc": {
+          "mean": 1.1859797293711878,
+          "std": 0.8287440625098803,
+          "median": 0.9424519189458807,
+          "ci_95": [
+            0.7469960836181946,
+            1.683949418905924
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.target_logit_deletion_auc": {
+          "mean": 1.0280858860774473,
+          "std": 0.8017392203824912,
+          "median": 1.053633822128177,
+          "ci_95": [
+            0.5874881805940957,
+            1.4995659508767791
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.completeness_error": {
+          "mean": 0.8944228565828367,
+          "std": 0.7443997199955272,
+          "median": 0.902027040719986,
+          "ci_95": [
+            0.4878244292752986,
+            1.304876289940015
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.entropy": {
+          "mean": 9.23323802673551,
+          "std": 0.1278191668275936,
+          "median": 9.259454269646433,
+          "ci_95": [
+            9.153567805424146,
+            9.297794808181223
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.logit_difference_vs_zero_input": {
+          "mean": 1.9358208399604668,
+          "std": 0.29807418911021993,
+          "median": 2.0081674680113792,
+          "ci_95": [
+            1.7764171739447523,
+            2.1064514101059597
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.relative_completeness_error": {
+          "mean": 0.49136768232515843,
+          "std": 0.4383807149777841,
+          "median": 0.4886477226134331,
+          "ci_95": [
+            0.26317883087952265,
+            0.7498733781821612
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.signed_attribution_sum": {
+          "mean": 1.5284649404612454,
+          "std": 1.1438486923418418,
+          "median": 1.938370704650879,
+          "ci_95": [
+            0.8737422482533889,
+            2.1242455249482926
+          ],
+          "n": 11
+        },
+        "source_target_probability_drop.global_image": {
+          "mean": 0.21565838208930058,
+          "std": 0.03146923572183337,
+          "median": 0.2058769129216671,
+          "ci_95": [
+            0.198282349338247,
+            0.23457783079621464
+          ],
+          "n": 11
+        }
+      }
+    },
+    "high_confidence_q4": {
+      "sample_count": 11,
+      "aggregate": {
+        "cached_forward_max_abs_error": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "n": 11
+        },
+        "confidence": {
+          "mean": 0.5100740492343903,
+          "std": 0.041529218900819766,
+          "median": 0.4814223349094391,
+          "ci_95": [
+            0.48820714584805747,
+            0.5347045935690402
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.deletion_auc": {
+          "mean": 0.18898178499869325,
+          "std": 0.10893577344935898,
+          "median": 0.12577395420521498,
+          "ci_95": [
+            0.13082102188332514,
+            0.2576660318933004
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.insertion_auc": {
+          "mean": 0.28772032949226817,
+          "std": 0.09899423120553576,
+          "median": 0.28823390956968065,
+          "ci_95": [
+            0.23451448082691057,
+            0.34063170997023745
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_deletion_auc": {
+          "mean": 0.2317026691638272,
+          "std": 0.07516647554808623,
+          "median": 0.2224946425005328,
+          "ci_95": [
+            0.18948800463647453,
+            0.2759111540157227
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": {
+          "mean": 0.042720884165133956,
+          "std": 0.05536741655896969,
+          "median": 0.038172086857957754,
+          "ci_95": [
+            0.01085341063743481,
+            0.07304708119726541
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.random_target_logit_deletion_auc": {
+          "mean": 1.2339381606572055,
+          "std": 0.48814482089969957,
+          "median": 1.1136916994582864,
+          "ci_95": [
+            0.9575746816272759,
+            1.515154665929797
+          ],
+          "n": 11
+        },
+        "global_image_faithfulness.target_logit_deletion_auc": {
+          "mean": 0.8991129636087202,
+          "std": 0.8888668139101966,
+          "median": 0.6701943526044489,
+          "ci_95": [
+            0.4130817806314339,
+            1.4020069507873532
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.completeness_error": {
+          "mean": 0.8530623994090341,
+          "std": 1.0147789888037935,
+          "median": 0.5184899717569351,
+          "ci_95": [
+            0.3607151272791353,
+            1.448974619247018
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.entropy": {
+          "mean": 9.330921668081615,
+          "std": 0.07711493180507428,
+          "median": 9.319000062350039,
+          "ci_95": [
+            9.289392221233484,
+            9.374298712905999
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.logit_difference_vs_zero_input": {
+          "mean": 3.2872472202236,
+          "std": 0.4498983624406368,
+          "median": 3.33811554312706,
+          "ci_95": [
+            3.0425941797820006,
+            3.57205129631541
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.relative_completeness_error": {
+          "mean": 0.25031786153471675,
+          "std": 0.25961271512692125,
+          "median": 0.18685757204658862,
+          "ci_95": [
+            0.11606235292269901,
+            0.4111295944623782
+          ],
+          "n": 11
+        },
+        "global_image_integrated_gradients.signed_attribution_sum": {
+          "mean": 3.0312256704677236,
+          "std": 1.146251948506297,
+          "median": 3.267392158508301,
+          "ci_95": [
+            2.399810094725002,
+            3.656679670648141
+          ],
+          "n": 11
+        },
+        "source_target_probability_drop.global_image": {
+          "mean": 0.47345685298469936,
+          "std": 0.045325216851659994,
+          "median": 0.4534704275429249,
+          "ci_95": [
+            0.44912460987794806,
+            0.5002954383465378
+          ],
+          "n": 11
+        }
+      }
+    }
+  },
+  "source_role_summary": {
+    "definition": "Dominant source is the intervention whose removal causes the largest decrease in predicted-class probability.",
+    "dominant_source_counts": {
+      "global_image": 44
+    },
+    "per_source": {
+      "global_image": {
+        "mean_probability_drop": 0.3339750555936586,
+        "median_probability_drop": 0.3178471401333809,
+        "positive_drop_fraction": 1.0,
+        "n": 44
+      }
+    }
+  },
+  "sample_records": "resultsctch\\ablation_study\\modality\\image_only\\seed_42\\analysis\\explainability\\samples.json"
+}

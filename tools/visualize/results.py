@@ -64,6 +64,7 @@ CONFIG_DISPLAY_NAMES = {
     "medclip_zeroshot": "MedCLIP",
     "pubmedclip_zeroshot": "PubMedCLIP",
     "biomedclip_zeroshot": "BiomedCLIP",
+    "image_only": "XBone-Net (chỉ ảnh)",
     "ours_xbone_net": "XBone-Net",
     "ours_xbone_net_v2": "XBone-Net v2",
     "ours_xbone_net_v3": "XBone-Net v3",
@@ -113,6 +114,8 @@ CANONICAL_MODEL_ORDER: dict[str, int] = {
     "LoRA-BiomedCLIP": 61,
 
     # 7. XBone-Net
+    "image_only": 69,
+    "XBone-Net (chỉ ảnh)": 69,
     "ours_xbone_net": 70,
     "ours_xbone_net_v2": 71,
     "ours_xbone_net_v3": 72,
@@ -773,7 +776,7 @@ def generate_latex_table(
             for c in selected
             if c not in values
         )
-        cell_bg = r"\cellcolor{gray!12}" if is_proposed else ""
+        cell_bg = r"\cellcolor{gray!30}" if is_proposed else ""
         for column in selected:
             if column in grouped_rows:
                 span = group_spans[column].get(row_position)
@@ -4572,10 +4575,12 @@ def generate_full_shot_classification_tables(
         "ours_xbone_net",
     ]
     if results_root is None:
-        frame = load_frame(input_file)
-        frame = frame[
-            frame["config"].isin(models)
-            & frame["category"].isin(["Baselines / Full fine-tuning", "Proposed"])
+        source_frame = load_frame(input_file)
+        frame = source_frame[
+            source_frame["config"].isin(models)
+            & source_frame["category"].isin(
+                ["Baselines / Full fine-tuning", "Proposed"]
+            )
         ].copy()
     else:
         root = resolve_path(results_root)
@@ -4666,7 +4671,10 @@ def generate_full_shot_classification_tables(
         precision=precision,
         position="H",
         resize_to_textwidth=True,
-        caption="Kết quả phân loại toàn bộ mẫu (Full-shot) trên BTXRD và CTCH",
+        caption=(
+            "Kết quả phân loại trên BTXRD và CTCH khi sử dụng toàn bộ tập "
+            "huấn luyện"
+        ),
         label="tab:classification_full_data",
     )
     classification_output.parent.mkdir(parents=True, exist_ok=True)
@@ -5445,6 +5453,10 @@ def generate_ablation_ood_table(
 
     root_path = resolve_path(results_root)
     experiments = [
+        {
+            "exp": "ctch/ablation_study/modality/image_only",
+            "label": "XBone-Net (chỉ ảnh)",
+        },
         {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
@@ -5572,7 +5584,7 @@ def generate_ablation_ood_table(
                 if exp_idx == 0
                 else ""
             )
-            cell_bg = r"\cellcolor{gray!12}" if "XBone-Net" in label else ""
+            cell_bg = r"\cellcolor{gray!12}" if label == "XBone-Net" else ""
             clean_label = label.replace(" (Đề xuất)", "")
             
             row_end = r" \\ \hline" if exp_idx == len(experiments) - 1 else r" \\ \cline{2-5}"
@@ -5585,7 +5597,7 @@ def generate_ablation_ood_table(
         [
             r"\end{tabular}%",
             r"}",
-            r"\caption{Đánh giá cảnh báo OOD hậu xử lý trên CTCH}",
+            r"\caption{Đánh giá cảnh báo OOD hậu xử lý trên CTCH với cấu hình có và không sử dụng bệnh sử lâm sàng}",
             r"\label{tab:ablation_ood}",
             r"\end{table}",
             "",
@@ -5612,6 +5624,10 @@ def generate_ablation_explainability_table(
     """Sinh bảng so sánh IG trên toàn bộ tập kiểm thử CTCH."""
     root_path = resolve_path(results_root)
     experiments = [
+        {
+            "exp": "ctch/ablation_study/modality/image_only",
+            "label": "XBone-Net (chỉ ảnh)",
+        },
         {"exp": "ctch/proposed/ours_xbone_net", "label": "XBone-Net"},
         {"exp": "ctch/ablation_study/architecture/phase/phase2_only", "label": "Chỉ pha 2"},
         {"exp": "ctch/ablation_study/architecture/fusion/concat", "label": "Nối đặc trưng"},
@@ -5697,10 +5713,11 @@ def generate_ablation_explainability_table(
         r"\begin{table}[htbp]",
         r"\centering",
         r"\resizebox{\textwidth}{!}{%",
-        r"\begin{tabular}{|l|l|c|c|c|c|}",
+        r"\begin{tabular}{|l|l|c|c|c|c|c|}",
         r"\hline",
         r"\multicolumn{1}{|c|}{\textbf{Nhóm đánh giá}} &",
         r"  \multicolumn{1}{c|}{\textbf{Chỉ số}} &",
+        r"  \textbf{\begin{tabular}[c]{@{}c@{}}XBone-Net \\ chỉ ảnh\end{tabular}} &",
         r"  \cellcolor{gray!12}\textbf{XBone-Net} &",
         r"  \textbf{Chỉ pha 2} &",
         r"  \textbf{Nối đặc trưng} &",
@@ -5710,11 +5727,16 @@ def generate_ablation_explainability_table(
     for row_index, (group_label, metric_label, metric_key, minimize) in enumerate(
         row_specs
     ):
-        values = [
-            float(summaries[label]["explanation_aggregate"][metric_key]["mean"])
-            for label in labels
-        ]
-        optimum = min(values) if minimize else max(values)
+        values = []
+        for label in labels:
+            metric = summaries[label]["explanation_aggregate"].get(metric_key)
+            values.append(float(metric["mean"]) if metric is not None else None)
+        numeric_values = [value for value in values if value is not None]
+        optimum = (
+            (min(numeric_values) if minimize else max(numeric_values))
+            if numeric_values
+            else None
+        )
         group_cell = (
             rf"\multirow{{2}}{{*}}{{\begin{{tabular}}[c]{{@{{}}l@{{}}}}{group_label}\end{{tabular}}}}"
             if row_index % 2 == 0
@@ -5722,19 +5744,24 @@ def generate_ablation_explainability_table(
         )
         cells = [group_cell, metric_label]
         for label, value in zip(labels, values):
+            if value is None:
+                cells.append(r"--")
+                continue
             body = f"{value:.4f}"
-            if np.isclose(value, optimum, rtol=1e-9, atol=1e-12):
+            if optimum is not None and np.isclose(
+                value, optimum, rtol=1e-9, atol=1e-12
+            ):
                 body = rf"\mathbf{{{body}}}"
-            prefix = r"\cellcolor{gray!12}" if label == "XBone-Net" else ""
+            prefix = r"\cellcolor{gray!30}" if label == "XBone-Net" else ""
             cells.append(rf"{prefix}${body}$")
-        row_end = r" \\ \cline{2-6}" if row_index % 2 == 0 else r" \\ \hline"
+        row_end = r" \\ \cline{2-7}" if row_index % 2 == 0 else r" \\ \hline"
         lines.append(" & ".join(cells) + row_end)
 
     lines.extend(
         [
             r"\end{tabular}%",
             r"}",
-            rf"\caption{{Đánh giá tích phân gradient và can thiệp nguồn trên toàn bộ {sample_count} mẫu kiểm thử CTCH ở hạt giống {seed}}}",
+            rf"\caption{{Đánh giá tích phân gradient và can thiệp nguồn của cấu hình có và không sử dụng bệnh sử trên toàn bộ {sample_count} mẫu kiểm thử CTCH ở hạt giống {seed}}}",
             r"\label{tab:ablation_explainability}",
             r"\end{table}",
             "",

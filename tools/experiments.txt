@@ -2,24 +2,7 @@
 # Format: [enabled] or [disabled] followed by experiment config paths
 
 [enabled]
-btxrd/proposed/ours_xbone_net
-ctch/proposed/ours_xbone_net_v2
-ctch/proposed/ours_xbone_net_v3
-ctch/ablation_study/architecture/phase/phase2_only
-ctch/ablation_study/architecture/fusion/concat
-ctch/proposed/ours_xbone_net
-
-ctch/baselines/full_finetuned/fft_biomedclip
-ctch/baselines/full_finetuned/fft_clip
-ctch/baselines/full_finetuned/fft_densenet
-ctch/baselines/full_finetuned/fft_medclip
-ctch/baselines/full_finetuned/fft_pubmedclip
-ctch/baselines/full_finetuned/fft_resnet50
-btxrd/baselines/full_finetuned/fft_biomedclip
-btxrd/baselines/full_finetuned/fft_clip
-btxrd/baselines/full_finetuned/fft_densenet
-btxrd/baselines/full_finetuned/fft_medclip
-btxrd/baselines/full_finetuned/fft_pubmedclip
-btxrd/baselines/full_finetuned/fft_resnet50
+ctch/ablation_study/modality/image_only
+btxrd/ablation_study/modality/image_only
 
 [disabled]

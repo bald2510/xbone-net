@@ -65,13 +65,20 @@ def _one_sample(sample: Any, loaded) -> dict[str, Any]:
     }
 
 
-def _cache_modalities(model, batch: dict[str, Any]) -> dict[str, Any]:
+def _cache_modalities(
+    model,
+    batch: dict[str, Any],
+    *,
+    use_text: bool = True,
+) -> dict[str, Any]:
     """Cache đặc trưng ảnh/văn bản và mask cần cho các phép can thiệp."""
+    input_ids = batch["clinical_input_ids"] if use_text else None
+    attention_mask = batch["clinical_attention_mask"] if use_text else None
     with torch.no_grad():
         encoded = model._encode_modalities(
             batch["pixel_values"],
-            batch["clinical_input_ids"],
-            attention_mask=batch["clinical_attention_mask"],
+            input_ids,
+            attention_mask=attention_mask,
         )
     (
         image_features,
@@ -80,29 +87,40 @@ def _cache_modalities(model, batch: dict[str, Any]) -> dict[str, Any]:
         image_padding,
         text_padding,
     ) = encoded
-    if image_features is None or text_features is None:
-        raise RuntimeError("Explainability requires both image and text inputs.")
+    if image_features is None:
+        raise RuntimeError("Explainability requires an image input.")
+    if use_text and text_features is None:
+        raise RuntimeError("Multimodal explainability requires a text input.")
 
-    tokenizer = getattr(
-        model.backbone.tokenizer_obj,
-        "tokenizer",
-        model.backbone.tokenizer_obj,
-    )
-    input_ids = batch["clinical_input_ids"]
-    special_mask = torch.zeros_like(input_ids, dtype=torch.bool)
-    for token_id in getattr(tokenizer, "all_special_ids", []) or []:
-        special_mask |= input_ids == int(token_id)
-    pad_token_id = getattr(tokenizer, "pad_token_id", 0)
+    special_mask = None
+    pad_token_id = 0
+    if use_text:
+        tokenizer = getattr(
+            model.backbone.tokenizer_obj,
+            "tokenizer",
+            model.backbone.tokenizer_obj,
+        )
+        special_mask = torch.zeros_like(input_ids, dtype=torch.bool)
+        for token_id in getattr(tokenizer, "all_special_ids", []) or []:
+            special_mask |= input_ids == int(token_id)
+        pad_token_id = getattr(tokenizer, "pad_token_id", 0)
     return {
         "image_features": image_features.detach(),
-        "text_features": text_features.detach(),
+        "text_features": (
+            text_features.detach() if text_features is not None else None
+        ),
         "full_image_padding": full_image_padding,
         "image_padding": image_padding,
         "text_padding": text_padding,
-        "text_input_ids": input_ids.detach(),
-        "text_attention_mask": batch["clinical_attention_mask"].detach(),
-        "text_special_token_mask": special_mask.detach(),
+        "text_input_ids": input_ids.detach() if input_ids is not None else None,
+        "text_attention_mask": (
+            attention_mask.detach() if attention_mask is not None else None
+        ),
+        "text_special_token_mask": (
+            special_mask.detach() if special_mask is not None else None
+        ),
         "text_pad_token_id": int(0 if pad_token_id is None else pad_token_id),
+        "use_text": bool(use_text),
     }
 
 
@@ -583,16 +601,19 @@ def _sample_explanation(
     ig_steps: int,
     random_trials: int,
     seed: int,
+    use_text: bool = True,
 ) -> dict[str, Any]:
     """Tính IG và faithfulness cho một mẫu CTCH-test."""
     batch = _one_sample(dataset[dataset_index], loaded)
-    cached = _cache_modalities(loaded.model, batch)
+    cached = _cache_modalities(loaded.model, batch, use_text=use_text)
     with torch.no_grad():
         cached_logits = _logits_from_features(loaded.model, cached)
         direct_logits = loaded.model(
             batch["pixel_values"],
-            batch["clinical_input_ids"],
-            attention_mask=batch["clinical_attention_mask"],
+            batch["clinical_input_ids"] if use_text else None,
+            attention_mask=(
+                batch["clinical_attention_mask"] if use_text else None
+            ),
         )
     forward_error = float((cached_logits - direct_logits).abs().max())
     if forward_error > 1e-4:
@@ -610,12 +631,6 @@ def _sample_explanation(
         prediction,
         ig_steps,
     )
-    text_scores, text_attribution = _integrated_gradients_text(
-        loaded.model,
-        cached,
-        prediction,
-        ig_steps,
-    )
     image_curves = _image_perturbation_curves(
         loaded.model,
         cached,
@@ -625,25 +640,13 @@ def _sample_explanation(
         random_trials,
         seed + 2000,
     )
-    text_curves = _text_perturbation_curves(
-        loaded.model,
-        cached,
-        text_scores,
-        prediction,
-        random_trials,
-        seed + 3000,
-    )
     full_logit = float(cached_logits[0, prediction])
     full_probability = float(probabilities[prediction])
     image_difference = full_logit - float(
         image_curves["delete_most_relevant_logit"][-1]
     )
-    text_difference = full_logit - float(
-        text_curves["delete_most_relevant_logit"][-1]
-    )
     image_sum = float(image_attribution.sum())
-    text_sum = float(text_attribution.sum())
-    return {
+    record = {
         "image_id": image_id,
         "ground_truth": ground_truth,
         "prediction": prediction,
@@ -654,8 +657,6 @@ def _sample_explanation(
         "source_target_probability_drop": {
             "global_image": full_probability
             - float(image_curves["delete_most_relevant"][-1]),
-            "clinical_text": full_probability
-            - float(text_curves["delete_most_relevant"][-1]),
         },
         "global_image_integrated_gradients": {
             "signed_attribution_sum": image_sum,
@@ -665,23 +666,46 @@ def _sample_explanation(
             / max(abs(image_difference), 1e-8),
             "entropy": _entropy(image_scores.cpu().numpy()),
         },
-        "clinical_text_integrated_gradients": {
+        "global_image_faithfulness": _faithfulness(image_curves),
+        "global_image_curves": {
+            key: value.tolist() for key, value in image_curves.items()
+        },
+    }
+    if use_text:
+        text_scores, text_attribution = _integrated_gradients_text(
+            loaded.model,
+            cached,
+            prediction,
+            ig_steps,
+        )
+        text_curves = _text_perturbation_curves(
+            loaded.model,
+            cached,
+            text_scores,
+            prediction,
+            random_trials,
+            seed + 3000,
+        )
+        text_difference = full_logit - float(
+            text_curves["delete_most_relevant_logit"][-1]
+        )
+        text_sum = float(text_attribution.sum())
+        record["source_target_probability_drop"]["clinical_text"] = (
+            full_probability - float(text_curves["delete_most_relevant"][-1])
+        )
+        record["clinical_text_integrated_gradients"] = {
             "signed_attribution_sum": text_sum,
             "logit_difference_vs_padding_baseline": text_difference,
             "completeness_error": abs(text_sum - text_difference),
             "relative_completeness_error": abs(text_sum - text_difference)
             / max(abs(text_difference), 1e-8),
             "entropy": _entropy(text_scores.cpu().numpy()),
-        },
-        "global_image_faithfulness": _faithfulness(image_curves),
-        "clinical_text_input_faithfulness": _faithfulness(text_curves),
-        "global_image_curves": {
-            key: value.tolist() for key, value in image_curves.items()
-        },
-        "clinical_text_input_curves": {
+        }
+        record["clinical_text_input_faithfulness"] = _faithfulness(text_curves)
+        record["clinical_text_input_curves"] = {
             key: value.tolist() for key, value in text_curves.items()
-        },
-    }
+        }
+    return record
 
 
 def _flatten_numeric(value: Any, prefix: str = "") -> dict[str, float]:
@@ -864,6 +888,12 @@ def main() -> None:
             device=device,
         )
     )
+    phase2_cfg = loaded.cfg.get("params", {}).get("phase2", {}) or {}
+    use_text = bool(phase2_cfg.get("use_text", True))
+    print(
+        "[Protocol] Modalities: "
+        + ("global_image + clinical_text" if use_text else "global_image only")
+    )
     _, train_provenance = load_feature_archive(
         args.train_features,
         expected_source_experiment=args.experiment,
@@ -937,6 +967,7 @@ def main() -> None:
                 ig_steps=args.ig_steps,
                 random_trials=args.random_trials,
                 seed=args.selection_seed + position,
+                use_text=use_text,
             )
         )
         if (position + 1) % 10 == 0:
@@ -972,11 +1003,23 @@ def main() -> None:
             "selection_seed": args.selection_seed,
             "ig_steps": args.ig_steps,
             "ig_baselines": {
-                "global_image": "zero_in_normalized_input_space",
-                "clinical_text": "padding_embedding_with_special_tokens_preserved",
+                **{"global_image": "zero_in_normalized_input_space"},
+                **(
+                    {
+                        "clinical_text": (
+                            "padding_embedding_with_special_tokens_preserved"
+                        )
+                    }
+                    if use_text
+                    else {}
+                ),
             },
             "random_trials": args.random_trials,
-            "faithfulness_modalities": ["global_image", "clinical_text"],
+            "faithfulness_modalities": (
+                ["global_image", "clinical_text"]
+                if use_text
+                else ["global_image"]
+            ),
             "spatial_localization_metrics": (
                 "not_reported: CTCH has no lesion-region annotations"
             ),

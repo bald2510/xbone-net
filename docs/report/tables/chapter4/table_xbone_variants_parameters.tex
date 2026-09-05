@@ -1,0 +1,27 @@
+\begin{table}[H]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|r|r|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Cấu hình}} &
+\multicolumn{1}{c|}{\textbf{Tổng tham số}} &
+\multicolumn{1}{c|}{\textbf{Tham số huấn luyện}} &
+\textbf{Tỷ lệ huấn luyện} \\ \hline
+\texttt{XBone-Net} ($r=16$) &
+204,348,695 &
+8,445,974 &
+4.13\% \\ \hline
+\texttt{XBone-Net} ($r=8$) &
+201,841,943 &
+5,939,222 &
+2.94\% \\ \hline
+\texttt{XBone-Net} ($r=4$) &
+\textbf{200,588,567} &
+\textbf{4,685,846} &
+\textbf{2.34\%} \\ \hline
+\end{tabular}%
+}
+\caption{Số lượng tham số của ba cấu hình XBone-Net trên CTCH. Các cấu hình giữ nguyên mạng nền, mô-đun dung hợp và đầu phân lớp, đồng thời lần lượt sử dụng hạng LoRA 16, 8 và 4. Giá trị nhỏ nhất quan sát được trên từng cột được in đậm.}
+\label{tab:xbone_variants_parameters}
+\end{table}

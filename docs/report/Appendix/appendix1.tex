@@ -390,7 +390,7 @@ Trong 3.267 bệnh sử tiếng Anh được liên kết, trường lý do vào 
 
 Phụ lục này công bố các kết quả riêng của ba hạt giống ngẫu nhiên 42, 123 và 456 nhằm bổ trợ cho các giá trị trung bình và độ lệch chuẩn được trình bày trong Chương~\ref{Chapter4}. Sự thay đổi giữa các hạt giống được sử dụng để đánh giá độ nhạy của quy trình huấn luyện theo khởi tạo trên cùng một phép chia dữ liệu. Các giá trị này không được diễn giải như độ bất định do thay đổi tập dữ liệu.
 
-Các nội dung được báo cáo chi tiết gồm: hiệu năng phân loại khi sử dụng toàn bộ dữ liệu huấn luyện, phân tích bổ sung về xếp hạng xác suất, khảo sát loại bỏ thành phần, kiểm định thống kê và khoảng tin cậy ghép cặp, cùng đánh giá khả năng cảnh báo dữ liệu ngoài phân phối (OOD). Đây là các nội dung trong Chương~\ref{Chapter4} có đủ kết quả cho cả ba hạt giống và có thể đối chiếu trực tiếp với các bảng tổng hợp. Chi phí huấn luyện được tổng hợp qua ba hạt giống trong chương chính, còn phép đo tham số, chi phí suy luận và đánh giá định lượng bằng tích phân gradient được thực hiện trên hạt giống 42.
+Các nội dung được báo cáo chi tiết gồm: hiệu năng phân loại khi sử dụng toàn bộ dữ liệu huấn luyện, đối chứng theo phương thức trên CTCH, khảo sát loại bỏ thành phần, kiểm định thống kê và khoảng tin cậy ghép cặp, cùng đánh giá khả năng cảnh báo dữ liệu ngoài phân phối (OOD). Đây là các nội dung trong Chương~\ref{Chapter4} có đủ kết quả cho cả ba hạt giống và có thể đối chiếu trực tiếp với các bảng tổng hợp. Chi phí huấn luyện được tổng hợp qua ba hạt giống trong chương chính, còn phép đo tham số, chi phí suy luận và đánh giá định lượng bằng tích phân gradient được thực hiện trên hạt giống 42.
 
 \section{Phân loại khi sử dụng toàn bộ dữ liệu huấn luyện}
 
@@ -398,20 +398,9 @@ Bảng~\ref{tab:appendix-full-shot-seeds-btxrd} và Bảng~\ref{tab:appendix-ful
 
 \input{tables/appendix/table_full_shot_per_seed}
 
-Các hàng XBone-Net trong hai bảng dùng đúng cấu hình hiện tại với chiến lược huấn luyện LoRA hai pha, chú ý chéo hai chiều và đầu phân lớp tuyến tính. Số liệu theo từng hạt giống xác nhận kết luận của chương chính rằng XBone-Net có hiệu năng phân loại cạnh tranh nhưng không dẫn đầu đồng thời trên mọi độ đo và mọi bộ dữ liệu.
+Các hàng XBone-Net đầy đủ trong hai bảng dùng chiến lược huấn luyện LoRA hai pha, chú ý chéo hai chiều và đầu phân lớp tuyến tính. Bảng CTCH còn bổ sung XBone-Net chỉ ảnh ngay trước cấu hình đầy đủ để đối chiếu với Bảng~\ref{tab:modality_classification}; đối chứng theo phương thức này không thuộc nghiên cứu loại bỏ thành phần. Số liệu theo từng hạt giống cho thấy XBone-Net có hiệu năng phân loại cạnh tranh nhưng không dẫn đầu đồng thời trên mọi độ đo và mọi bộ dữ liệu.
 
-\subsection{Phân tích bổ sung về xếp hạng xác suất}
-\label{sec:appendix_probability_ranking}
-
-Macro-AUROC và Macro-AUPRC phản ánh khả năng phân biệt theo điểm số khi lần lượt xem từng lớp là lớp dương. Hai độ đo này được báo cáo để minh bạch hóa đầy đủ kết quả, nhưng không phải tiêu chí kết luận chính của bài toán phân loại và không thuộc phạm vi trả lời câu hỏi nghiên cứu về ảnh hưởng của các thành phần. Bảng~\ref{tab:classification_full_data_ranking} trình bày kết quả trung bình qua ba hạt giống trong thiết lập huấn luyện bằng toàn bộ dữ liệu.
-
-\input{tables/appendix/table_full_shot_ranking}
-
-Trên BTXRD, AUROC vĩ mô của XBone-Net là $0{,}8045$ và AUPRC vĩ mô là $0{,}5865$; các giá trị tương ứng trên CTCH là $0{,}9020$ và $0{,}5904$. Mô hình không dẫn đầu đồng thời ở hai độ đo này; đặc biệt, AUROC vĩ mô thấp hơn nhiều mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Bảng~\ref{tab:paired_baseline_ranking} công bố kiểm định ghép cặp tương ứng để làm rõ cả các chênh lệch có lợi và bất lợi cho XBone-Net.
-
-\input{tables/appendix/table_paired_baseline_ranking}
-
-Kết quả kiểm định cho thấy XBone-Net có lợi thế về Macro-AUPRC trước các mô hình chỉ dùng ảnh trong một số so sánh, nhưng bất lợi về Macro-AUROC trước nhiều mô hình ngôn ngữ--thị giác tinh chỉnh toàn bộ. Do đó, các kết quả này được diễn giải như một sự đánh đổi bổ sung và không thay thế kết luận dựa trên Accuracy, Balanced Accuracy cùng Macro-F1 trong chương chính.
+Các bảng phân lớp được tính từ cùng tệp dự đoán đã căn chỉnh theo định danh mẫu và nhãn, cũng là đầu vào của kiểm định ghép cặp. Các tệp tổng hợp từ lần chạy cũ có thể khác phiên bản dự đoán này, nên không được trộn lẫn khi tái lập bảng. Tất cả kết luận phân lớp trong báo cáo sử dụng Accuracy, Balanced Accuracy và Macro-F1.
 
 \section{Nghiên cứu loại bỏ từng thành phần}
 
@@ -434,8 +423,8 @@ Tất cả các phép phân tích đều sử dụng quy trình lấy mẫu lạ
 
 \section{Kết quả đánh giá dữ liệu ngoài phân phối}
 
-Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống của XBone-Net, hai biến thể và BiomedCLIP tinh chỉnh toàn bộ trên kịch bản OOD CTCH. Cả bốn cấu hình sử dụng cùng điểm tổ hợp đa phương thức hậu xử lý. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu.
+Bảng~\ref{tab:appendix-ood-seeds} công bố kết quả theo từng hạt giống của năm cấu hình trên kịch bản OOD CTCH. XBone-Net chỉ ảnh dùng khoảng cách k-NN thị giác; XBone-Net đầy đủ, hai biến thể và BiomedCLIP tinh chỉnh toàn bộ dùng điểm tổ hợp ảnh--văn bản hậu xử lý. Số mẫu trong phân phối và ngoài phân phối được ghi trực tiếp trong bảng vì AUPR-Out và FPR@95\%TPR chịu ảnh hưởng bởi số lượng và tỷ lệ mẫu.
 
-Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối và đủ 18 mẫu bệnh lý ngoài không gian nhãn đã được xác nhận trong danh sách đánh giá. Kết quả theo từng hạt giống cho thấy FPR@95\%TPR còn cao ở cả bốn cấu hình, do đó bộ phát hiện chỉ được xem là tín hiệu cảnh báo bổ sung đối với các trường hợp gần miền.
+Mỗi lần đánh giá sử dụng 669 mẫu CTCH trong phân phối và đủ 18 mẫu bệnh lý ngoài không gian nhãn đã được xác nhận trong danh sách đánh giá. Kết quả được tính từ các ngân hàng đặc trưng hiện hành với cùng giao thức k-NN, chuẩn hóa trên tập xác thực ID và tổng hợp qua ba hạt giống như Bảng~\ref{tab:ablation_ood}. FPR@95\%TPR còn cao ở cả năm cấu hình, do đó bộ phát hiện chỉ được xem là tín hiệu cảnh báo bổ sung đối với các trường hợp gần miền.
 
 \input{tables/appendix/table_ood_per_seed}

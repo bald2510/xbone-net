@@ -270,13 +270,31 @@ def collect_fused_feature_batches(
     metadata_parts: dict[str, list[str]] = {key: [] for key in ANALYSIS_METADATA_KEYS}
     labels: list[np.ndarray] = []
     prefix = "xray" if report_type == "xray" else "clinical"
+    phase2_cfg = loaded.cfg.get("params", {}).get("phase2", {}) or {}
+    use_text = bool(phase2_cfg.get("use_text", True))
     model.eval()
 
     with torch.no_grad():
         for batch in loader:
             images = _to_device(batch["pixel_values"], device)
-            input_ids = _to_device(batch.get(f"{prefix}_input_ids", batch.get("input_ids")), device)
-            attention_mask = _to_device(batch.get(f"{prefix}_attention_mask", batch.get("attention_mask")), device)
+            input_ids = (
+                _to_device(
+                    batch.get(f"{prefix}_input_ids", batch.get("input_ids")),
+                    device,
+                )
+                if use_text
+                else None
+            )
+            attention_mask = (
+                _to_device(
+                    batch.get(
+                        f"{prefix}_attention_mask", batch.get("attention_mask")
+                    ),
+                    device,
+                )
+                if use_text
+                else None
+            )
 
             encoded = model._encode_modalities(
                 images,
@@ -302,7 +320,7 @@ def collect_fused_feature_batches(
             if image_features is not None:
                 image_global = image_features[:, 0] if image_features.ndim == 3 else image_features
                 outputs["visual_global_embeddings"] = F.normalize(image_global, dim=-1)
-            if text_features is not None:
+            if use_text and text_features is not None:
                 text_global = text_features[:, 0] if text_features.ndim == 3 else text_features
                 outputs["text_global_embeddings"] = F.normalize(text_global, dim=-1)
 
