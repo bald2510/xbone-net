@@ -172,6 +172,8 @@ Gãy xương vùng chậu & 16 & 2 & 6 & 24 & 0,74\% \\ \hline
 
 Mỗi hồ sơ được liên kết với một ảnh X-quang duy nhất. Trong quần thể phân lớp hiện tại, 3.249 ảnh tương ứng với 3.249 mã bệnh nhân và quần thể ngoài phân phối gồm 18 ảnh từ 18 mã khác, không giao với quần thể phân lớp. Bảng~\ref{tab:ctch_example} minh họa một số mẫu sau tiền xử lý. Quy trình sàng lọc, lựa chọn trường văn bản và kiểm tra toàn vẹn được mô tả tại Phụ lục~\ref{AppendixCTCH}.
 
+\pagebreak
+
 Các mẫu ngoài phân phối không được đưa vào huấn luyện, xác thực hoặc kiểm thử bộ phân lớp 22 lớp. Nhóm này gồm các bệnh lý ngoại vi nằm ngoài không gian nhãn đích và chỉ được sử dụng trong kịch bản đánh giá dữ liệu ngoài phân phối được trình bày ở phần thực nghiệm.
 
 
@@ -202,6 +204,7 @@ Reason for admission: Right hand wound. Disease history: The patient had his rig
 
 CTCH là nguồn bằng chứng chính của khóa luận vì mỗi ảnh được liên kết với bệnh sử lâm sàng có sẵn và phép chia được thực hiện theo người bệnh. Bộ dữ liệu này đồng thời cung cấp quần thể ngoài không gian nhãn để khảo sát cảnh báo dữ liệu ngoài phân phối. Phân tích nguồn thông tin sử dụng toàn bộ 669 mẫu kiểm thử tại hạt giống 42.
 
+\pagebreak
 
 \subsection{Cấu hình thí nghiệm}
 \label{sec:experimental_setup}
@@ -247,6 +250,8 @@ Xử lý mất cân bằng lớp & Hệ số số lượng hiệu dụng 0,999 v
 \subsection{Các độ đo}
 \label{sec:evaluation_metrics}
 Hai bộ dữ liệu BTXRD (10 lớp) và CTCH (22 lớp) được đánh giá theo bài toán phân lớp đa lớp qua bốn nhóm độ đo: phân lớp, phát hiện dữ liệu ngoài phân phối (OOD), giải thích tích phân gradient, và hiệu quả tham số cùng chi phí huấn luyện-suy luận.
+
+\pagebreak
 
 \subsubsection{Độ đo phân lớp}
 
@@ -323,6 +328,8 @@ Trong đó $\widehat{\Delta}_k > 0$ biểu thị XBone-Net có kết quả cao h
     Các giá trị $p$ được hiệu chỉnh đa so sánh theo phương pháp Holm \cite{Holm1979Sequential}. Khác biệt được kết luận có ý nghĩa thống kê khi $p_{\mathrm{Holm}} < 0{,}05$.
 \end{itemize}
 
+\pagebreak
+
 \subsubsection{Độ đo phát hiện dữ liệu ngoài phân phối}
 
 Gọi $\mathcal{D}_{\mathrm{ID}}$ và $\mathcal{D}_{\mathrm{OOD}}$ lần lượt là tập dữ liệu trong và ngoài phân phối ($N_{\mathrm{OOD}}=|\mathcal{D}_{\mathrm{OOD}}|$), còn $s_{\mathrm{OOD}}(x)$ là điểm bất thường đa phương thức (Công thức~\ref{eq:ch3_ood_max_fusion}).
@@ -362,6 +369,8 @@ P^{\mathrm{OOD}}_k.
 \label{eq:ch4_fpr95}
 \end{equation}
 
+\pagebreak
+
 \subsubsection{Độ đo đánh giá tích phân gradient}
 
 Gọi $F_t(\boldsymbol{u})$ là logit của lớp dự đoán $t$ từ biểu diễn đầu vào $\boldsymbol{u}$, $\boldsymbol{u}'$ là mốc tham chiếu và $p_t(\cdot)$ là xác suất Softmax tương ứng.
@@ -394,6 +403,8 @@ $\mathrm{AUC}_{\mathrm{del}}$ càng thấp và $\mathrm{AUC}_{\mathrm{ins}}$ cà
 \label{eq:ch4_source_probability_drop}
 \end{equation}
 
+\pagebreak
+
 \subsubsection{Độ đo hiệu quả tham số và suy luận}
 
 Gọi $\Theta_{\mathrm{pre}}$ là tập tham số trước khi hợp nhất LoRA và $\Theta_{\mathrm{train}}$ là tập tham số huấn luyện. Tổng tham số $P_{\mathrm{total}}$, số tham số huấn luyện $P_{\mathrm{train}}$ và tỷ lệ cập nhật $r_{\mathrm{train}}$ được tính bởi:
@@ -406,7 +417,9 @@ r_{\mathrm{train}}=100\frac{P_{\mathrm{train}}}{P_{\mathrm{total}}}.
 \label{eq:ch4_trainable_parameter_ratio}
 \end{equation}
 
-Chi phí suy luận được đánh giá qua số phép toán dấu phẩy động trên mỗi mẫu (FLOPs), thông lượng, độ trễ trung bình và bộ nhớ GPU cực đại \cite{Canziani2017PracticalDNN,Reddi2020MLPerfInference}. Các phép đo thực hiện với kích thước lô 1 trên 20 lô kiểm thử; mỗi lô có 10 lượt khởi động và 10 lượt đo, tạo tổng cộng 200 quan sát thời gian lan truyền tiến. Đồ thị suy luận đã hợp nhất LoRA vào mạng nền. Thời gian chỉ tính bước lan truyền tiến, không gồm đọc dữ liệu và chuyển dữ liệu lên GPU. GFLOPs tính các phép toán được bộ đếm hỗ trợ, với một phép nhân--cộng được tính là hai FLOPs.
+Chi phí suy luận được đánh giá qua số phép toán dấu phẩy động trên mỗi mẫu (FLOPs), thông lượng, độ trễ trung bình và bộ nhớ GPU cực đại \cite{Canziani2017PracticalDNN,Reddi2020MLPerfInference}. Các phép đo thực hiện với kích thước lô 1 trên 20 lô kiểm thử; mỗi lô có 10 lượt khởi động và 10 lượt đo, tạo tổng cộng 200 quan sát thời gian lan truyền tiến. Đồ thị suy luận đã hợp nhất LoRA vào mạng nền. Thời gian chỉ tính bước lan truyền tiến, không gồm đọc dữ liệu và chuyển dữ liệu lên GPU. GFLOPs tính các phép toán được bộ đếm hỗ trợ, với một phép nhân-cộng được tính là hai FLOPs.
+
+\pagebreak
 
 \section{Kiểm tra hiệu năng phân lớp và đánh đổi chi phí}
 \label{sec:data_cost_performance}
@@ -417,7 +430,7 @@ Thực nghiệm này đánh giá hiệu năng phân loại của XBone-Net so v�
 \subsection{Nội dung}
 Thực nghiệm sử dụng hai nhóm đối chứng được tinh chỉnh toàn bộ. Nhóm chỉ dùng ảnh X-quang gồm ResNet-50 \cite{ResNet} và DenseNet-121 \cite{DenseNet}, đều khởi tạo từ ImageNet. Nhóm nhận cặp ảnh-văn bản gồm CLIP \cite{CLIP}, MedCLIP \cite{MedCLIP}, PubMedCLIP \cite{PubMedCLIP} và BiomedCLIP \cite{BiomedCLIP}, khởi tạo từ các trọng số tiền huấn luyện tương ứng. Tất cả mô hình được đánh giá trên cùng phân hoạch dữ liệu của BTXRD và CTCH qua ba hạt giống 42, 123 và 456.
 
-Để khảo sát theo phương thức trên CTCH, cấu hình XBone-Net chỉ ảnh nhận ảnh X-quang và không thực hiện pha khớp ngữ nghĩa ảnh--văn bản, trong khi cấu hình đầy đủ nhận cả ảnh và bệnh sử lâm sàng theo quy trình hai pha. Hai cấu hình được so sánh trên cùng 669 mẫu kiểm thử bằng Accuracy, Balanced Accuracy và Macro-F1. Phân tích định tính sử dụng các dự đoán ghép cặp ở hạt giống 42 để tìm trường hợp cấu hình chỉ ảnh dự đoán sai nhưng cấu hình đầy đủ dự đoán đúng. Chi phí huấn luyện được đo lường so sánh với BiomedCLIP trên cùng phần cứng NVIDIA GeForce RTX 5060 Ti (độ chính xác số học bf16, kích thước lô 16) và lấy trung bình qua ba hạt giống. Số lượng tham số và chi phí suy luận được đo trên hạt giống 42 trong cùng điều kiện môi trường.
+Để khảo sát theo phương thức trên CTCH, cấu hình XBone-Net chỉ ảnh nhận ảnh X-quang và không thực hiện pha khớp ngữ nghĩa ảnh-văn bản, trong khi cấu hình đầy đủ nhận cả ảnh và bệnh sử lâm sàng theo quy trình hai pha. Hai cấu hình được so sánh trên cùng 669 mẫu kiểm thử bằng Accuracy, Balanced Accuracy và Macro-F1. Phân tích định tính sử dụng các dự đoán ghép cặp ở hạt giống 42 để tìm trường hợp cấu hình chỉ ảnh dự đoán sai nhưng cấu hình đầy đủ dự đoán đúng. Chi phí huấn luyện được đo lường so sánh với BiomedCLIP trên cùng phần cứng NVIDIA GeForce RTX 5060 Ti (độ chính xác số học bf16, kích thước lô 16) và lấy trung bình qua ba hạt giống. Số lượng tham số và chi phí suy luận được đo trên hạt giống 42 trong cùng điều kiện môi trường.
 
 \subsection{Kết quả}
 
@@ -431,6 +444,8 @@ Trên trung bình ba hạt giống, cấu hình chỉ ảnh đạt Accuracy $0{,
 
 Đối với thách thức dữ liệu mất cân bằng với các lớp có số lượng mẫu ít, cả hai cấu hình đều sử dụng entropy chéo có trọng số theo số lượng mẫu hiệu dụng, với trọng số lớp được giới hạn ở mức $5{,}0$, nhằm tăng chi phí của lỗi trên lớp ít mẫu và hướng đến hạn chế âm sai ở các lớp này. Label smoothing ở mức $0{,}1$ được dùng để hạn chế dự đoán quá tự tin, qua đó hướng đến hạn chế các dự đoán dương sai có độ tin cậy cao. Việc Balanced Accuracy và Macro-F1 cùng tăng khi bổ sung bệnh sử cho thấy kết quả được cải thiện khi các lớp được xem xét đồng đều hơn, nhưng chưa chứng minh FP hoặc FN giảm ở mọi lớp ít mẫu.
 
+\pagebreak
+
 Hình~\ref{fig:modality_corrected_case} minh họa một trường hợp kiểm thử ở hạt giống 42. Trong 669 mẫu, cấu hình đầy đủ sửa đúng 133 trường hợp mà cấu hình chỉ ảnh dự đoán sai, nhưng cũng làm sai 80 trường hợp mà cấu hình chỉ ảnh dự đoán đúng. Để lựa chọn ví dụ theo quy tắc tái lập và hạn chế trường hợp văn bản nêu trực tiếp bệnh lý đích, nghiên cứu loại các bệnh sử chứa từ khóa bệnh lý tương ứng rồi chọn trường hợp còn lại có xác suất lớp đúng cao nhất ở cấu hình đầy đủ.
 
 \begin{figure}[H]
@@ -442,7 +457,7 @@ Hình~\ref{fig:modality_corrected_case} minh họa một trường hợp kiểm 
 
 Ở trường hợp này, nhãn thật là gãy xương bánh chè. Cấu hình chỉ ảnh dự đoán Bình thường với xác suất $0{,}314$ và chỉ gán xác suất $0{,}094$ cho lớp đúng. Khi kết hợp bệnh sử mô tả đau gối phải sau té ngã, cấu hình đầy đủ dự đoán đúng gãy xương bánh chè với xác suất $0{,}951$. Ví dụ cho thấy thông tin về vị trí đau và cơ chế chấn thương có thể bổ sung ngữ cảnh khi dấu hiệu trên ảnh chưa đủ rõ đối với mô hình chỉ ảnh. Tuy nhiên, đây chỉ là minh họa định tính được chọn theo tiêu chí đã nêu, không chứng minh bệnh sử luôn sửa đúng dự đoán hoặc xác lập quan hệ nhân quả.
 
-Đối với thích ứng miền dữ liệu, LoRA và pha khớp ngữ nghĩa ảnh--văn bản được thiết kế để điều chỉnh biểu diễn BiomedCLIP cho dữ liệu đích với ít tham số cập nhật. Kết quả trên CTCH cho thấy cấu hình đa phương thức đạt hiệu năng phân lớp cao hơn cấu hình chỉ ảnh trên dữ liệu đích trong giao thức hiện tại. Tuy nhiên, cấu hình chỉ ảnh đồng thời không thực hiện pha khớp ngữ nghĩa vì pha này cần cặp đầu vào đa phương thức; chênh lệch vì vậy phản ánh cả bệnh sử và quy trình huấn luyện tương ứng, không phải ước lượng nhân quả riêng của văn bản. CTCH chưa có tập kiểm định độc lập từ bệnh viện, thiết bị chụp hoặc quần thể khác, nên khả năng thích ứng trước dịch chuyển miền vẫn chưa được kiểm chứng.
+Đối với thích ứng miền dữ liệu, LoRA và pha khớp ngữ nghĩa ảnh-văn bản được thiết kế để điều chỉnh biểu diễn BiomedCLIP cho dữ liệu đích với ít tham số cập nhật. Kết quả trên CTCH cho thấy cấu hình đa phương thức đạt hiệu năng phân lớp cao hơn cấu hình chỉ ảnh trên dữ liệu đích trong giao thức hiện tại. Tuy nhiên, cấu hình chỉ ảnh đồng thời không thực hiện pha khớp ngữ nghĩa vì pha này cần cặp đầu vào đa phương thức; chênh lệch vì vậy phản ánh cả bệnh sử và quy trình huấn luyện tương ứng, không phải ước lượng nhân quả riêng của văn bản. CTCH chưa có tập kiểm định độc lập từ bệnh viện, thiết bị chụp hoặc quần thể khác, nên khả năng thích ứng trước dịch chuyển miền vẫn chưa được kiểm chứng.
 
 \subsubsection{Kết quả phân lớp trên toàn bộ dữ liệu}
 \label{subsec:full_data_results}
@@ -468,6 +483,8 @@ Về kết quả quan sát, XBone-Net đạt độ chính xác $0{,}8302$ và đ
     \label{fig:paired_baseline_classification_ctch}
 \end{figure}
 
+\pagebreak
+
 Kết quả kiểm định ghép cặp trên hai biểu đồ cho thấy rõ hai xu hướng chính:
 
 Đối với nhóm mô hình chỉ dùng ảnh (ResNet-50 và DenseNet-121), XBone-Net vượt trội có ý nghĩa thống kê trên cả ba độ đo ở cả hai bộ dữ liệu ($p_{\mathrm{Holm}} < 0{,}001$, khoảng tin cậy 95\% hoàn toàn nằm bên phải mốc 0). Mức tăng điểm F1 vĩ mô đạt từ $+0{,}2522$ đến $+0{,}2955$ trên BTXRD và từ $+0{,}1367$ đến $+0{,}1573$ trên CTCH. Chênh lệch này cho thấy toàn bộ cấu hình XBone-Net đạt hiệu năng cao hơn hai đối chứng chỉ dùng ảnh trong giao thức hiện tại. Do các mô hình đồng thời khác nhau về nguồn đầu vào và kiến trúc, phép so sánh này không tách riêng đóng góp của văn bản, vùng ảnh cục bộ hoặc từng thành phần huấn luyện.
@@ -477,6 +494,8 @@ Kết quả kiểm định ghép cặp trên hai biểu đồ cho thấy rõ hai
 Nhìn chung, XBone-Net đạt hiệu năng phân loại cạnh tranh với các mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ trong khi chỉ cập nhật một phần nhỏ tham số. Tuy nhiên, phép so sánh đối chứng này không tự xác nhận vai trò riêng của quy trình hai pha hoặc chú ý chéo hai chiều; ảnh hưởng của các thành phần được đánh giá riêng trong nghiên cứu loại bỏ thành phần.
 
 Kết luận phân lớp trong báo cáo được giới hạn ở Accuracy, Balanced Accuracy và Macro-F1; không suy rộng thành ưu thế trên mọi độ đo hoặc mọi mô hình đối chứng.
+
+\pagebreak
 
 \subsubsection{Hiệu quả tham số, chi phí huấn luyện và suy luận}
 \label{subsec:rq1_efficiency_results}
@@ -492,6 +511,8 @@ Khi suy luận, XBone-Net cần khoảng $82{,}318$ tỷ phép tính dấu phẩ
 
 \subsection{Kết luận}
 Thực nghiệm cho thấy XBone-Net đạt hiệu năng cao hơn các đối chứng chỉ dùng ảnh và có kết quả cạnh tranh với nhóm mô hình ngôn ngữ-thị giác tinh chỉnh toàn bộ. So sánh trực tiếp trên CTCH ghi nhận lợi ích của bệnh sử cùng quy trình huấn luyện đa phương thức trên Accuracy, Balanced Accuracy và Macro-F1, qua đó cung cấp bằng chứng định lượng liên quan đến dữ liệu mất cân bằng. Entropy chéo có trọng số hướng đến hạn chế FN ở lớp ít mẫu, còn label smoothing hướng đến hạn chế dự đoán quá tự tin, nhưng thực nghiệm hiện tại chưa chứng minh FP hoặc FN giảm ở mọi lớp. Lợi ích tài nguyên tập trung ở số tham số cần cập nhật và bộ nhớ GPU trong huấn luyện; đổi lại, mô hình cần thời gian huấn luyện dài hơn và không làm giảm chi phí suy luận. Khả năng thích ứng trước dịch chuyển miền ngoài vẫn chưa được kiểm chứng trực tiếp.
+
+\pagebreak
 
 \section[Khảo sát ảnh hưởng của các thành phần]{Khảo sát ảnh hưởng của các\\thành phần}
 \label{sec:component_evaluation_results}
@@ -514,6 +535,8 @@ Bảng~\ref{tab:ablation_leave_one_out_classification} so sánh XBone-Net với 
     \caption{Biểu đồ chênh lệch ghép cặp giữa XBone-Net và hai biến thể trên CTCH}
     \label{fig:ablation_paired_statistics}
 \end{figure}
+
+\pagebreak
 
 Đối với biến thể Chỉ pha 2, kiểm định không xác nhận khác biệt có ý nghĩa thống kê ở cả ba độ đo vì các giá trị xác suất sau hiệu chỉnh Holm đều không nhỏ hơn $0{,}119$. Vì vậy, dù XBone-Net có giá trị quan sát cao hơn ở ba độ đo trong bảng được dùng cho kiểm định, kết quả hiện tại chưa đủ bằng chứng để khẳng định pha khớp ngữ nghĩa tạo ra cải thiện ổn định trên tập kiểm thử cố định này.
 
@@ -550,7 +573,7 @@ Thực nghiệm này cho thấy việc bổ sung bệnh sử lâm sàng cải th
 Thực nghiệm này đánh giá mức phụ thuộc của dự đoán vào ảnh và văn bản dựa vào tích phân gradient kết hợp với can thiệp đầu vào so với các biến thể kiến trúc.
 
 \subsection{Nội dung}
-Phân tích sử dụng hạt giống 42 của XBone-Net chỉ ảnh, XBone-Net, Chỉ pha 2, Nối đặc trưng và BiomedCLIP tinh chỉnh toàn bộ trên cùng toàn bộ 669 mẫu kiểm thử CTCH mà không lọc theo dự đoán đúng hay sai. Lớp được từng mô hình dự đoán trên đầu vào đầy đủ được cố định làm lớp đích của chính mô hình đó. Tích phân gradient được xấp xỉ bằng 24 điểm nội suy từ mốc tham chiếu đến đầu vào. Mốc ảnh là tensor bằng 0 sau chuẩn hóa; mốc văn bản dùng embedding của token đệm cho các vị trí nội dung, giữ token đặc biệt và mặt nạ chú ý. Hai mốc này không đồng nhất với ảnh RGB đen hoặc chuỗi văn bản rỗng. Với cấu hình chỉ ảnh, các chỉ số IG và can thiệp văn bản không áp dụng và được ký hiệu bằng ``--''. Cả năm cấu hình đều chuyển ảnh RGB gốc trực tiếp cho quy trình resize, cắt vùng trung tâm và chuẩn hóa nguyên bản của BiomedCLIP, không thêm bước đệm viền riêng. Vì vậy, phép so sánh sử dụng cùng một quy trình tiền xử lý ảnh.
+Phân tích sử dụng hạt giống 42 của XBone-Net chỉ ảnh, XBone-Net, Chỉ pha 2, Nối đặc trưng và BiomedCLIP tinh chỉnh toàn bộ trên cùng toàn bộ 669 mẫu kiểm thử CTCH mà không lọc theo dự đoán đúng hay sai. Lớp được từng mô hình dự đoán trên đầu vào đầy đủ được cố định làm lớp đích của chính mô hình đó. Tích phân gradient được xấp xỉ bằng 24 điểm nội suy từ mốc tham chiếu đến đầu vào. Mốc ảnh là tensor bằng 0 sau chuẩn hóa; mốc văn bản dùng embedding của token đệm cho các vị trí nội dung, giữ token đặc biệt và mặt nạ chú ý. Hai mốc này không đồng nhất với ảnh RGB đen hoặc chuỗi văn bản rỗng. Với cấu hình chỉ ảnh, các chỉ số IG và can thiệp văn bản không áp dụng và được ký hiệu bằng ``-''. Cả năm cấu hình đều sử dụng cùng một quy trình tiền xử lý ảnh, chuyển ảnh RGB gốc trực tiếp cho quy trình resize, cắt vùng trung tâm và chuẩn hóa nguyên bản của BiomedCLIP, không thêm bước đệm viền riêng.
 
 Độ trung thực được đánh giá bằng cách loại bỏ hoặc khôi phục dần các vùng ảnh kích thước $16\times16$ và các đơn vị nội dung theo mức đóng góp giảm dần. Tại mỗi tỷ lệ can thiệp, kết quả được đối chiếu với trung bình của 16 thứ tự loại bỏ ngẫu nhiên. Phép can thiệp nguồn thay toàn bộ ảnh hoặc toàn bộ đơn vị nội dung bằng mốc tham chiếu tương ứng, sau đó ghi nhận mức giảm xác suất của lớp đích so với đầu vào đầy đủ. Danh sách mẫu, mốc tham chiếu và mức can thiệp được áp dụng cho cả năm cấu hình; can thiệp văn bản chỉ áp dụng cho bốn cấu hình đa phương thức, trong khi lớp đích được xác định riêng từ dự đoán của từng cấu hình.
 
@@ -559,7 +582,7 @@ Bảng~\ref{tab:ablation_explainability} tổng hợp độ trung thực của t
 
 \input{tables/chapter4/table_ablation_explainability}
 
-Đối với văn bản lâm sàng, XBone-Net đạt AUC khôi phục cao nhất ở mức $0{,}4399$, tiếp theo là biến thể Chỉ pha 2 ở mức $0{,}4318$; BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất là $0{,}2199$. Đối với ảnh X-quang, XBone-Net đạt AUC khôi phục cao nhất với $0{,}4023$, còn cấu hình chỉ ảnh đạt $0{,}2517$. Ngược lại, cấu hình chỉ ảnh đạt AUC loại bỏ thấp nhất với $0{,}1541$, thấp hơn nhẹ BiomedCLIP tinh chỉnh toàn bộ ở mức $0{,}1586$. Kết quả cho thấy cấu hình đầy đủ khôi phục dự đoán tốt hơn khi lần lượt đưa các vùng ảnh quan trọng trở lại, trong khi cấu hình chỉ ảnh nhạy hơn theo thứ tự loại bỏ; không cấu hình nào tốt nhất đồng thời ở cả hai phép đo.
+Đối với văn bản lâm sàng, XBone-Net đạt AUC khôi phục cao nhất ở mức $0{,}4399$, tiếp theo là biến thể Chỉ pha 2 ở mức $0{,}4318$; BiomedCLIP tinh chỉnh toàn bộ đạt AUC loại bỏ thấp nhất là $0{,}2199$. Đối với ảnh X-quang, XBone-Net đạt AUC khôi phục cao nhất với $0{,}4023$, còn cấu hình chỉ ảnh đạt $0{,}2517$. Ngược lại, cấu hình chỉ ảnh đạt AUC loại bỏ thấp nhất với $0{,}1541$, thấp hơn nhẹ BiomedCLIP tinh chỉnh toàn bộ ở mức $0{,}1586$. Kết quả cho thấy cấu hình đầy đủ khôi phục dự đoán tốt hơn khi lần lượt đưa các vùng ảnh quan trọng trở lại, trong khi cấu hình chỉ ảnh nhạy hơn theo thứ tự loại bỏ; không cấu hình nào tốt nhất ở cả hai phép đo.
 
 Khi che toàn bộ ảnh, xác suất lớp đích của cấu hình chỉ ảnh giảm $0{,}3283$, cao hơn mức $0{,}3187$ của XBone-Net. Với cấu hình đầy đủ, khi thay embedding các token nội dung của bệnh sử bằng embedding đệm, xác suất lớp đích giảm $0{,}2725$ so với đầu vào đầy đủ, cao nhất trong bốn cấu hình có văn bản. Các giá trị này cho thấy mô hình chỉ ảnh tập trung toàn bộ sự phụ thuộc đầu vào vào kênh thị giác, còn XBone-Net phân bố sự phụ thuộc lên cả ảnh và bệnh sử lâm sàng. Đây là bằng chứng về mức sử dụng nguồn thông tin dưới phép can thiệp đã chọn, không phải bằng chứng rằng văn bản luôn cải thiện từng dự đoán.
 

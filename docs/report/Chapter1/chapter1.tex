@@ -19,22 +19,24 @@ Tuy nhiên, việc đọc ảnh X-quang có thể gặp khó khăn khi tổn th�
 
 \pagebreak
 
-Thực tiễn dữ liệu thu thập được từ thực tế phục vụ cho việc huấn luyện các mô hình trên còn đưa ra một số hạn chế cần được xử lý liên quan đến mất cân bằng dữ liệu giữa các lớp và việc mô hình cần được xem xét thêm về chi phí thích nghi, hay trường ca bệnh mới chưa từng xuất hiện và khả năng truy vết nguồn thông tin ảnh hưởng đến dự đoán phục vụ cho việc giải thích kết quả hệ thống.
+Thực tiễn dữ liệu thu thập được từ thực tế phục vụ cho việc huấn luyện các mô hình còn đưa ra một số hạn chế cần được xử lý liên quan đến mất cân bằng dữ liệu giữa các lớp và việc mô hình cần được xem xét thêm về chi phí thích nghi, hay trường hợp ca bệnh mới chưa từng xuất hiện và khả năng truy vết nguồn thông tin ảnh hưởng đến dự đoán phục vụ cho việc giải thích kết quả hệ thống.
 
-Từ các vấn đề trên, khóa luận đặt ra nhu cầu xây dựng một hệ thống phân lớp X-quang xương đa phương thức có khả năng tận dụng hai nguồn thông tin hình ảnh và văn bản tương tác trực tiếp trước khi phân lớp. Bên cạnh hiệu năng dự đoán, hệ thống cần được đánh giá về sự đánh đổi tài nguyên, khả năng cảnh báo dữ liệu ngoài phân phối và mức độ phụ thuộc của dự đoán vào từng nguồn thông tin. Đây là động lực chính dẫn đến việc đề xuất hệ thống đặt tên XBone-Net trong khóa luận.
+Từ các vấn đề trên, khóa luận đặt ra nhu cầu xây dựng một hệ thống phân lớp X-quang xương đa phương thức có khả năng tận dụng hai nguồn thông tin hình ảnh và văn bản tương tác trực tiếp trước khi phân lớp. Bên cạnh hiệu năng dự đoán, hệ thống cần được đánh giá về sự đánh đổi tài nguyên, khả năng cảnh báo dữ liệu ngoài phân phối và mức độ phụ thuộc của dự đoán vào từng nguồn thông tin. Đây là động lực chính dẫn đến việc đề xuất hệ thống được đặt tên XBone-Net trong khóa luận.
 
 \subsection{Vị trí hệ thống trong quy trình khám chữa bệnh lý xương}
 
-Hệ thống được đề xuất trong khóa luận được thiết kế để hỗ trợ bước phân tích ảnh bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản đi kèm để dự đoán lớp bệnh lý, như thể hiện ở Hình~\ref{fig:procedureXbone}. Trên bộ dữ liệu CTCH, văn bản đầu vào là bệnh sử có sẵn trong bệnh án; trong khi đó, BTXRD không cung cấp bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Hai kịch bản được phân tích riêng vì không có mức độ xác thực lâm sàng và mối quan hệ với nhãn tương đương nhau; do đó, kết quả với văn bản tổng hợp không được diễn giải như bằng chứng tương đương với bệnh sử tự nhiên.
+Hệ thống được đề xuất trong khóa luận được thiết kế để hỗ trợ bước phân tích ảnh trong quá trình khám bệnh bằng cách khai thác đồng thời ảnh X-quang và dữ liệu văn bản đi kèm để dự đoán lớp bệnh lý, như thể hiện ở Hình~\ref{fig:procedureXbone}. Trên bộ dữ liệu CTCH, văn bản đầu vào là bệnh sử có sẵn trong bệnh án; trong khi đó, BTXRD không cung cấp bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Hai kịch bản được phân tích riêng vì không có mức độ xác thực lâm sàng và mối quan hệ với nhãn tương đương nhau; do đó, kết quả với văn bản tổng hợp không được diễn giải như bằng chứng tương đương với bệnh sử tự nhiên.
 
 \begin{figure}[H]
 \centering
     \includegraphics[width=1\linewidth]{images/chapter1/procedureXbone.png}
-    \caption{Sơ đồ tích hợp hệ thống hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả thu được ở từng bước (các khối cam)}
+    \caption{Sơ đồ tích hợp hệ thống XBone-Net hỗ trợ phân tích (các khối tím) vào quy trình khám chữa bệnh lý xương thực tế (các khối xanh) và các kết quả dữ liệu thu được ở từng bước (các khối cam)}
     \label{fig:procedureXbone}
 \end{figure}
 
-Khóa luận xem hệ thống trí tuệ nhân tạo là công cụ hỗ trợ phân tích, không thay thế bác sĩ hay tự động hóa quyết định chẩn đoán. Vì vậy, ngoài kết quả phân lớp, nghiên cứu còn khảo sát tín hiệu cảnh báo dữ liệu ngoài phân phối và các bản đồ quy đóng nhằm hỗ trợ phân tích hành vi của mô hình. Các đầu ra này được xem là công cụ đánh giá và truy vết mô hình, chưa phải cơ chế bảo đảm an toàn hay bằng chứng xác nhận vị trí tổn thương trong thực hành lâm sàng.
+Trong phạm vi khóa luận, hệ thống trí tuệ nhân tạo được định hướng như một công cụ hỗ trợ phân tích, thay vì thay thế bác sĩ hoặc trực tiếp đưa ra quyết định chẩn đoán. Bên cạnh kết quả phân lớp, nghiên cứu còn xem xét các tín hiệu nhận diện dữ liệu ngoài phân phối và bản đồ đóng góp nhằm cung cấp thêm thông tin về mức độ tin cậy cũng như cơ sở hình thành dự đoán của mô hình. Các đầu ra này chủ yếu phục vụ mục đích phân tích, kiểm tra và truy vết hành vi của hệ thống, do đó không được xem là cơ chế bảo đảm an toàn tuyệt đối hay bằng chứng xác nhận vị trí tổn thương có giá trị lâm sàng.
+
+\pagebreak
 
 \section{Giới thiệu bài toán}
 \label{sec:ch1_problem_def}
@@ -56,6 +58,8 @@ Hệ thống nhận vào các nguồn dữ liệu sau:
     \item \textbf{Tập nhãn được định nghĩa trước:}
     \[ \mathcal{Y} = \{y_1, y_2, \ldots, y_K\} \] với $K$ là số lớp bệnh cần phân lớp.
 \end{itemize}
+
+\pagebreak
 \subsection{Đầu ra}
 
 Hệ thống sinh ra ba đầu ra chính:
@@ -89,26 +93,29 @@ Với $s_{\mathrm{OOD}}\left(x^{\mathrm{img}},x^{\mathrm{txt}}\right)$ là đi�
 Với $p\left(y_k \mid x^{\mathrm{img}},x^{\mathrm{txt}}\right)$ là xác suất dự đoán của lớp $y_k$.
 
 \item \textbf{Thông tin hỗ trợ giải thích:}
-Hệ thống sinh ra các bản đồ nhiệt đóng góp cho ảnh toàn cục, các vùng ảnh cục bộ và văn bản đi kèm nhằm khảo sát mức độ liên hệ của từng nguồn thông tin với dự đoán của mô hình.
+Hệ thống sinh ra các bản đồ nhiệt đóng góp cho ảnh và văn bản đi kèm nhằm khảo sát mức độ liên hệ của từng nguồn thông tin với dự đoán của mô hình.
 \end{itemize}
 
+\pagebreak
 
 \subsection{Các thách thức trong bài toán}
 \label{sec:challenges}
 Mặc dù các mô hình học sâu đa phương thức đã đạt được nhiều kết quả tích cực, bài toán vẫn tồn tại nhiều thách thức cần được giải quyết:
 
 \begin{itemize}
-    \item \textbf{Sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu đầu vào thực tế:} Tồn tại sự chênh lệch giữa các bộ dữ liệu đa phương thức hiện có, thường là cặp ảnh X-quang và báo cáo đọc ảnh, so với dữ liệu đầu vào được khảo sát trong khóa luận gồm ảnh X-quang kết hợp với bệnh sử hoặc thông tin lâm sàng ban đầu. Sự khác biệt này có thể hạn chế khả năng chuyển giao trực tiếp của mô hình.    
-    \item \textbf{Mất cân bằng dữ liệu và các lớp ít mẫu:} Dữ liệu y tế thường có phân bố không đồng đều giữa các loại bệnh, trong đó một số lớp chỉ có số lượng mẫu hạn chế. Điều này đặt ra yêu cầu về thiết kế mô hình và tiêu chí đánh giá có xét đồng đều đến các lớp, nhằm hạn chế việc kết quả tổng thể bị chi phối bởi các lớp nhiều mẫu.
+    \item \textbf{Sự khác biệt giữa dữ liệu tiền huấn luyện và dữ liệu đầu vào thực tế:} Tồn tại sự chênh lệch giữa các bộ dữ liệu đa phương thức hiện có, thường là cặp ảnh X-quang và báo cáo đọc ảnh, so với dữ liệu đầu vào được khảo sát trong khóa luận gồm ảnh X-quang kết hợp với bệnh sử hoặc thông tin lâm sàng ban đầu. Sự khác biệt này có thể hạn chế khả năng chuyển giao trực tiếp của mô hình.
     \item \textbf{Sự khác biệt về không gian và ngữ nghĩa giữa dữ liệu hình ảnh và dữ liệu văn bản:} Sự khác biệt này gây khó khăn cho quá trình học biểu diễn chung, yêu cầu một cơ chế dung hợp hiệu quả.
+    \item \textbf{Độ phân giải ảnh cao:} Ảnh X-quang xương thường có độ phân giải cao, trong khi nhiều mô hình hiện tại được huấn luyện trên dữ liệu với độ phân giải thấp hơn. Điều này có thể làm mất thông tin chi tiết quan trọng, ảnh hưởng đến hiệu năng phân lớp.
+    \item \textbf{Mất cân bằng dữ liệu và các lớp ít mẫu:} Dữ liệu y tế thường có phân bố không đồng đều giữa các loại bệnh, trong đó một số lớp chỉ có số lượng mẫu hạn chế. Điều này đặt ra yêu cầu về thiết kế mô hình và tiêu chí đánh giá có xét đồng đều đến các lớp, nhằm hạn chế việc kết quả tổng thể bị chi phối bởi các lớp nhiều mẫu.
+    \item \textbf{Khả năng giải thích của mô hình:} Khả năng giải thích của các mô hình vẫn còn hạn chế khiến độ tin cậy của người dùng vào các dự đoán của hệ thống là không cao, gây khó khăn cho việc triển khai trong thực tế lâm sàng.    
     \item \textbf{Dữ liệu ngoài phân phối:} Các bộ phân lớp chưa được thiết kế để xử lý các trường hợp dữ liệu ngoài phân phối, dẫn đến nguy cơ đưa ra dự đoán không chính xác với độ tin cậy cao đối với những ca bệnh mới chưa từng xuất hiện trong dữ liệu huấn luyện, đặt ra yêu cầu về khả năng tổng quát hóa và thích ứng của mô hình.
-    \item \textbf{Khả năng giải thích của mô hình:} Khả năng giải thích của các mô hình vẫn còn hạn chế khiến độ tin cậy của người dùng vào các dự đoán của hệ thống là không cao, gây khó khăn cho việc triển khai trong thực tế lâm sàng.
+
 
 \end{itemize}
 
 \section{Mục tiêu nghiên cứu}
 
-Đề tài hướng đến xây dựng và đánh giá một hệ thống học sâu đa phương thức phục vụ phân lớp bệnh lý trên ảnh X-quang xương bằng cách kết hợp thông tin hình ảnh và bệnh sử lâm sàng. Hệ thống được nghiên cứu trong điều kiện dữ liệu mất cân bằng với một số lớp có ít mẫu, đồng thời được đánh giá về hiệu năng phân lớp, chi phí tính toán, khả năng cảnh báo dữ liệu ngoài phân phối và mức độ giải thích của dự đoán. Để làm rõ vai trò quan sát được của dữ liệu lâm sàng, cấu hình XBone-Net đầy đủ phương thức được đối chiếu trực tiếp với cấu hình XBone-Net chỉ sử dụng ảnh trên bộ dữ liệu CTCH.
+Đề tài hướng đến xây dựng và đánh giá một hệ thống học sâu đa phương thức phục vụ phân lớp bệnh lý trên ảnh X-quang xương bằng cách kết hợp thông tin hình ảnh và bệnh sử lâm sàng. Hệ thống được nghiên cứu trong điều kiện dữ liệu mất cân bằng, đồng thời được đánh giá về hiệu năng phân lớp, chi phí tính toán, khả năng cảnh báo dữ liệu ngoài phân phối và mức độ giải thích của dự đoán. Để làm rõ vai trò quan sát được của dữ liệu lâm sàng, cấu hình XBone-Net đầy đủ phương thức được đối chiếu trực tiếp với cấu hình XBone-Net chỉ sử dụng ảnh trên bộ dữ liệu CTCH.
 
 Các mục tiêu cụ thể của đề tài bao gồm:
 \begin{enumerate}
@@ -146,11 +153,11 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Đề tài tập trung vào bài toán phân lớp đa lớp bệnh lý xương trên ảnh X-quang, kết hợp với bệnh sử lâm sàng. Phạm vi cụ thể bao gồm:
 
 \begin{itemize}
-  \item \textbf{Dữ liệu:} Nghiên cứu sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương và bộ dữ liệu CTCH được thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
+  \item \textbf{Dữ liệu:} Sử dụng bộ dữ liệu BTXRD \cite{Yao2025} gồm 10 lớp bệnh lý xương và bộ dữ liệu CTCH gồm 22 lớp chấn thương xương thu thập từ Bệnh viện Chấn thương Chỉnh hình Thành phố Hồ Chí Minh.
   \item \textbf{Dữ liệu văn bản:} Bộ dữ liệu CTCH sử dụng bệnh sử có sẵn trong bệnh án, gồm lý do vào viện, diễn tiến bệnh và tiền sử. Bộ dữ liệu BTXRD không có bệnh sử tự do nên sử dụng văn bản lâm sàng được sinh ngoại tuyến từ siêu dữ liệu. Vì mẫu câu tổng hợp có phụ thuộc vào các cờ nhóm bệnh, kết quả BTXRD chỉ phản ánh thiết lập văn bản tổng hợp và không được xem là bằng chứng tương đương với bệnh sử lâm sàng tự nhiên.
-  \item \textbf{Đối chứng theo phương thức:} Việc so sánh XBone-Net chỉ ảnh với XBone-Net đầy đủ phương thức được thực hiện trên CTCH, nơi bệnh sử tự nhiên đi kèm từng ca được sử dụng làm nguồn văn bản. Cấu hình chỉ ảnh không nhận văn bản và không thực hiện pha khớp ngữ nghĩa ảnh--văn bản; vì vậy, chênh lệch giữa hai cấu hình phản ánh đồng thời nguồn đầu vào và quy trình huấn luyện tương ứng, không phải ước lượng nhân quả riêng của bệnh sử.
-  \item \textbf{Dữ liệu mất cân bằng:} Cụm từ ``lớp ít mẫu'' trong khóa luận chỉ các lớp có số lượng quan sát thấp trong phân bố mất cân bằng của bộ dữ liệu hiện có. Đề tài không xây dựng một thiết lập riêng bằng cách giảm tỷ lệ toàn bộ dữ liệu huấn luyện để đánh giá bài toán học ít dữ liệu.
-  \item \textbf{Vai trò hệ thống:} Hệ thống được thiết kế làm công cụ hỗ trợ phân tích ảnh, không thay thế vai trò của bác sĩ trong quá trình ra quyết định.
+  \item \textbf{Đối chứng theo phương thức:} Việc so sánh XBone-Net chỉ ảnh với XBone-Net đầy đủ phương thức được thực hiện trên CTCH, nơi bệnh sử tự nhiên đi kèm từng ca được sử dụng làm nguồn văn bản. Cấu hình chỉ ảnh không nhận văn bản và không thực hiện pha khớp ngữ nghĩa ảnh-văn bản; vì vậy, chênh lệch giữa hai cấu hình phản ánh đồng thời nguồn đầu vào và quy trình huấn luyện tương ứng, không phải ước lượng nhân quả riêng của bệnh sử.
+  \item \textbf{Dữ liệu mất cân bằng:} Cụm từ ''lớp ít mẫu'' trong khóa luận chỉ các lớp có số lượng quan sát thấp trong phân bố mất cân bằng của bộ dữ liệu hiện có. Đề tài không xây dựng một thiết lập riêng bằng cách giảm tỷ lệ toàn bộ dữ liệu huấn luyện để đánh giá bài toán học ít dữ liệu.
+  \item \textbf{Vai trò hệ thống:} Hệ thống được thiết kế làm công cụ hỗ trợ phân tích, không thay thế vai trò của bác sĩ trong quá trình ra quyết định.
   \item \textbf{Giới hạn:} Đề tài không tập trung vào các bài toán phát hiện đối tượng, phân đoạn ảnh hay sinh báo cáo y khoa tự động.
 \end{itemize}
 
@@ -159,13 +166,21 @@ Các mục tiêu cụ thể của đề tài bao gồm:
 Để đạt được các mục tiêu đã đề ra, nghiên cứu tập trung trả lời các câu hỏi sau:
 
 \begin{itemize}
-\item \textbf{Câu hỏi nghiên cứu 1:} Trong tác vụ phân loại, XBone-Net đạt mức hiệu năng nào so với các mô hình đối chứng; trên CTCH, kết quả thay đổi như thế nào khi bổ sung bệnh sử lâm sàng và quy trình huấn luyện đa phương thức tương ứng so với cấu hình chỉ ảnh trong điều kiện dữ liệu mất cân bằng với các lớp ít mẫu; đồng thời mô hình đánh đổi như thế nào giữa số tham số cần cập nhật, chi phí huấn luyện và chi phí suy luận?
+\item \textbf{Câu hỏi nghiên cứu 1:} 
 
-\item \textbf{Câu hỏi nghiên cứu 2:} Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện hai pha và cơ chế dung hợp, ảnh hưởng như thế nào đến hiệu năng phân loại của mô hình?
+Trong tác vụ phân loại, XBone-Net đạt mức hiệu năng nào so với các mô hình đối chứng; trên CTCH, kết quả thay đổi như thế nào khi bổ sung bệnh sử lâm sàng và quy trình huấn luyện đa phương thức tương ứng so với cấu hình chỉ ảnh trong điều kiện dữ liệu mất cân bằng với các lớp ít mẫu; đồng thời mô hình đánh đổi như thế nào giữa số tham số cần cập nhật, chi phí huấn luyện và chi phí suy luận?
 
-\item \textbf{Câu hỏi nghiên cứu 3:} Điểm cảnh báo hậu xử lý được xây dựng từ không gian biểu diễn của từng mô hình có thể phân biệt dữ liệu CTCH trong phân phối với các bệnh lý gần miền nằm ngoài không gian nhãn ở mức nào, và việc bổ sung bệnh sử tạo ra khác biệt quan sát được ra sao giữa XBone-Net chỉ ảnh, XBone-Net đầy đủ phương thức, hai biến thể cùng BiomedCLIP tinh chỉnh toàn bộ?
+\item \textbf{Câu hỏi nghiên cứu 2:} 
 
-\item \textbf{Câu hỏi nghiên cứu 4:} Tích phân gradient kết hợp với can thiệp đầu vào phản ánh mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản như thế nào, và kết quả khác nhau ra sao giữa XBone-Net chỉ ảnh, XBone-Net đầy đủ phương thức và các cấu hình đối chứng?
+Các thành phần do khóa luận lựa chọn cho XBone-Net, gồm quy trình huấn luyện hai pha và cơ chế dung hợp, ảnh hưởng như thế nào đến hiệu năng phân loại của mô hình?
+
+\item \textbf{Câu hỏi nghiên cứu 3:} 
+
+Điểm cảnh báo hậu xử lý được xây dựng từ không gian biểu diễn của từng mô hình có thể phân biệt dữ liệu CTCH trong phân phối với các bệnh lý gần miền nằm ngoài không gian nhãn ở mức nào, và việc bổ sung bệnh sử tạo ra khác biệt quan sát được ra sao giữa XBone-Net chỉ ảnh, XBone-Net đầy đủ phương thức, hai biến thể cùng BiomedCLIP tinh chỉnh toàn bộ?
+
+\item \textbf{Câu hỏi nghiên cứu 4:} 
+
+Tích phân gradient kết hợp với can thiệp đầu vào phản ánh mức phụ thuộc của dự đoán vào thông tin hình ảnh và văn bản như thế nào, và kết quả khác nhau ra sao giữa XBone-Net chỉ ảnh, XBone-Net đầy đủ phương thức và các cấu hình đối chứng?
 
 \end{itemize}
 

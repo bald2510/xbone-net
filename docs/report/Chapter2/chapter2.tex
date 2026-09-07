@@ -178,7 +178,7 @@ Bảng~\ref{tab:VLMTransferlearningMethodPropose} tổng hợp các phương ph�
 
 \section{Các phương pháp phát hiện dữ liệu ngoài phân phối}
 
-Phát hiện dữ liệu ngoài phân phối nhằm nhận diện các mẫu không phù hợp với phân phối quan sát trong tập huấn luyện. Trong phân tích ảnh y khoa, điểm ngoài phân phối có thể cung cấp tín hiệu cảnh báo bổ trợ khi mô hình gặp dữ liệu lạ, nhưng không tự thân bảo đảm tính an toàn hoặc thay thế quy trình đánh giá lâm sàng. Dựa trên cách tiếp cận, các phương pháp phát hiện dữ liệu ngoài phân phối hiện nay được chia thành các nhóm chính sau.
+Phát hiện dữ liệu ngoài phân phối - OOD nhằm nhận diện các mẫu có đặc trưng khác biệt đáng kể so với phân phối dữ liệu mà mô hình đã quan sát trong quá trình huấn luyện. Trong phân tích ảnh y khoa, OOD có thể đóng vai trò như một tín hiệu cảnh báo bổ trợ khi mô hình tiếp nhận các trường hợp chưa quen thuộc hoặc khác biệt so với dữ liệu huấn luyện. Tuy nhiên, tín hiệu này không đồng nghĩa với việc bảo đảm an toàn cho hệ thống và cũng không thể thay thế quy trình đánh giá lâm sàng của bác sĩ. Xét theo nguyên lý và cách thức xác định mức độ bất thường của mẫu đầu vào, các phương pháp phát hiện OOD hiện nay có thể được phân thành một số nhóm chính như sau.
 
 \subsection{Các phương pháp hậu xử lý dựa trên đầu ra của mô hình}
 Nhóm phương pháp này không can thiệp vào quá trình huấn luyện mà tận dụng trực tiếp đầu ra (thường là các logit hoặc xác suất) của một bộ phân lớp đã được huấn luyện.
@@ -186,6 +186,7 @@ Nhóm phương pháp này không can thiệp vào quá trình huấn luyện mà
 \begin{itemize}
     \item \textbf{Xác suất softmax cực đại \cite{Hendrycks2017MSP}:} Sử dụng giá trị cực đại của hàm softmax làm độ tin cậy. Dữ liệu có xác suất cực đại thấp sẽ bị đánh dấu là ngoài phân phối. Tuy nhiên, điểm yếu chí mạng của xác suất softmax cực đại là các mạng nơ-ron sâu thường mắc lỗi "tự tin thái quá", dẫn đến việc gán xác suất rất cao cho cả những mẫu ngoài phân phối hoàn toàn không liên quan.
     \item \textbf{ODIN \cite{Liang2018ODIN}:} Cải thiện xác suất softmax cực đại bằng cách sử dụng hiệu chỉnh nhiệt độ và thêm nhiễu đầu vào để gia tăng sự chênh lệch logit giữa dữ liệu trong phân phối và dữ liệu ngoài phân phối.
+    \pagebreak
     \item \textbf{Điểm năng lượng \cite{Liu2020EnergyOOD}:} Chuyển đổi vectơ logit thành hàm năng lượng thay vì xác suất softmax:
     \begin{equation}
     E(x) = -T \log \sum_i \exp\left(\frac{f_i(x)}{T}\right)
@@ -218,7 +219,7 @@ Nhận thấy những hạn chế của không gian logit, các nghiên cứu g�
 
 \subsection{Học biểu diễn phục vụ phát hiện dữ liệu ngoài phân phối}
 Sự thành công của các phương pháp dựa trên khoảng cách phụ thuộc rất lớn vào chất lượng của không gian đặc trưng. Nếu mô hình được huấn luyện bằng hàm entropy chéo thông thường, dữ liệu của các lớp không được tối ưu để co cụm lại, làm giảm hiệu quả của các phép đo khoảng cách. Để giải quyết vấn đề này, các kỹ thuật học biểu diễn được áp dụng.
-
+\pagebreak
 \begin{itemize}
     \item \textbf{Học tương phản:} Học biểu diễn bằng cách kéo gần các mẫu tương đồng và đẩy xa các mẫu khác lớp trong không gian đặc trưng \cite{Chen2020SimCLR,He2020MoCo}.
     \item \textbf{Mất mát tâm lớp \cite{CenterLoss}:} Giảm phương sai nội lớp bằng cách học một tâm biểu diễn cho mỗi lớp và ép các đặc trưng tiến gần tâm tương ứng.
@@ -231,7 +232,7 @@ Sự thành công của các phương pháp dựa trên khoảng cách phụ thu
 \end{itemize}
 
 Đối với các phương pháp dựa trên khoảng cách, chất lượng của không gian biểu diễn đặc biệt quan trọng vì điểm ngoài phân phối được suy ra trực tiếp từ cấu trúc lân cận của các đặc trưng. Một không gian đặc trưng duy trì tốt quan hệ tương đồng giữa các mẫu trong phân phối sẽ tạo cơ sở phù hợp hơn cho việc đánh giá mức độ xa lạ của mẫu mới bằng khoảng cách láng giềng.
-
+\pagebreak
 \section{Các phương pháp giải thích và đánh giá độ trung thực}
 
 Các phương pháp quy đóng gán mức ảnh hưởng cho từng thành phần đầu vào đối với một đầu ra cụ thể. Tích phân gradient \cite{Sundararajan2017IntegratedGradients} tích lũy gradient dọc theo đường nội suy từ một mốc tham chiếu đến đầu vào, nhờ đó có thể áp dụng cho vùng ảnh, đơn vị biểu diễn cục bộ và từ ngữ. Kết quả phản ánh mức phụ thuộc của đầu ra đối với mốc tham chiếu và lớp đích đã chọn, không mặc nhiên biểu thị quan hệ nhân quả hoặc vị trí tổn thương.
@@ -239,6 +240,8 @@ Các phương pháp quy đóng gán mức ảnh hưởng cho từng thành phầ
 Độ trung thực của lời giải thích thường được kiểm tra bằng can thiệp đầu vào với phép loại bỏ hoặc phép khôi phục \cite{Petsiuk2018RISE}. Trong phép loại bỏ, các thành phần được xếp hạng cao được thay dần bằng mốc tham chiếu. Khi đó, xác suất lớp đích giảm nhanh hơn so với thứ tự ngẫu nhiên cung cấp bằng chứng thuận lợi hơn cho thứ tự quy đóng. Phép khôi phục thực hiện theo chiều ngược lại. Kết quả phụ thuộc vào mốc thay thế, tỷ lệ can thiệp và không gian biểu diễn, do đó cần báo cáo giao thức cùng đối chứng ngẫu nhiên thay vì chỉ dựa vào bản đồ nhiệt.
 
 Trọng số chú ý mô tả cách mô-đun phân bổ tương tác trong một lần truyền thuận nhưng không mặc nhiên là lời giải thích trung thực cho quyết định. Mối quan hệ giữa chú ý và giải thích vẫn phụ thuộc vào định nghĩa, mô hình và giao thức đánh giá cụ thể \cite{Jain2019AttentionNotExplanation,Wiegreffe2019AttentionNotNotExplanation}. Ngoài độ trung thực, đánh giá trong y khoa còn cần phân biệt độ ổn định của bản đồ, mức phù hợp với chú thích tổn thương và nhận định của chuyên gia. Khóa luận vì vậy sử dụng tích phân gradient và can thiệp đầu vào để khảo sát nguồn thông tin liên hệ với dự đoán, đồng thời không diễn giải bản đồ quy đóng như bằng chứng định vị hoặc xác nhận lâm sàng.
+
+\pagebreak
 
 \section{Bàn luận}
 
@@ -264,6 +267,7 @@ LoRA \cite{Hu2022LoRA} được sử dụng để thích nghi hai bộ mã hóa 
 
 Bên cạnh đó, trong hàm mất mát tương phản InfoNCE nguyên bản \cite{Oord2018CPC} được BiomedCLIP sử dụng, các mẫu khác nhau trong cùng lô được xem là các cặp âm, kể cả khi chúng thuộc cùng một lớp hoặc có nội dung lâm sàng tương đồng, gây ra hiện tượng âm tính giả. Do đó, khóa luận sử dụng hàm mất mát khớp ngữ nghĩa kế thừa từ MedCLIP \cite{MedCLIP} và xây dựng phân phối đích mềm theo nhãn lớp. Mục tiêu này vẫn ưu tiên sự tương hợp của cặp ảnh-văn bản tương ứng, đồng thời giảm ảnh hưởng của các cặp âm tính giả giữa những mẫu có quan hệ ngữ nghĩa gần nhau.
 
+\pagebreak
 \textbf{Về khai thác và dung hợp thông tin lâm sàng:}
 Thiết lập phân lớp không mẫu của BiomedCLIP chỉ đối sánh ảnh với các câu nhắc đại diện cho lớp và không sử dụng thông tin riêng của từng người bệnh. Phương pháp đề xuất bổ sung nhánh văn bản để mã hóa những thông tin lâm sàng có sẵn trước kết luận chẩn đoán, chẳng hạn lý do vào viện, triệu chứng và bệnh sử. Báo cáo đọc ảnh, chẩn đoán xác định và nhãn phân lớp không được đưa trực tiếp vào đầu vào nhằm hạn chế rò rỉ nhãn.
 
@@ -275,6 +279,7 @@ Phương pháp sử dụng hàm mất mát entropy chéo có trọng số nhằm
 \textbf{Về phát hiện dữ liệu ngoài phân phối:}
 Ngoài nhiệm vụ chính, khóa luận bổ sung cơ chế phát hiện dữ liệu ngoài phân phối ở giai đoạn hậu xử lý mà không cần mẫu OOD khi huấn luyện. Phương pháp sử dụng kNN trực tiếp trên đặc trưng ảnh và văn bản từ hai bộ mã hóa BiomedCLIP, với hai ngân hàng tham chiếu $\mathcal{B}{I}$ và $\mathcal{B}{T}$ được xây dựng từ tập huấn luyện. Với mẫu mới, hai đặc trưng được đối sánh riêng với ngân hàng tương ứng để tạo tín hiệu khoảng cách lân cận và cảnh báo OOD theo ngưỡng hiệu chỉnh trên tập xác thực; chi tiết cách tính và kết hợp hai tín hiệu được trình bày trong Chương~\ref{Chapter3}.
 
+\pagebreak
 \textbf{Về quy trình huấn luyện:}
 Từ các lựa chọn trên, hệ thống được tổ chức thành hai giai đoạn ngoại tuyến:
 
