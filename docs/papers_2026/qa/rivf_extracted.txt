@@ -1,0 +1,494 @@
+PAGE 1
+Parameter-Efficient Radiograph–History
+Classification with Class-Aware Alignment and
+Bidirectional Fusion
+Nguyen Van Le Ba Thanh, Nguyen Gia Kiet, Ly Quoc Ngoc, Do Thi Thanh Ha
+Faculty of Information Technology, University of Science
+Vietnam National University Ho Chi Minh City, Ho Chi Minh City, Vietnam
+Abstract—Adapting medical vision–language models to small
+musculoskeletal datasets requires balancing contextual informa-
+tion, class imbalance, and optimization cost. Earlier image–text
+pretraining methods improve transferable representations, but do
+not establish whether a more complex downstream fusion recipe
+is justified. We study XBone-Net, which adapts BiomedCLIP
+through two offline phases: class-aware soft image–text matching
+with low-rank adapters, followed by bidirectional global-to-local
+cross-attention and linear classification. Online inference uses
+fixed weights on a radiograph and its clinical history. Across
+three seeds, XBone-Net reaches Macro-F1 of0.5727±0.0193
+on the 22-class CTCH dataset and0.6240±0.0118on the 10-
+class BTXRD dataset, while updating approximately 4.13% of
+parameters. The CTCH test set contains 669 patients; BTXRD
+uses 750 test images and metadata-derived text. Recomputed,
+aligned predictions show higher observed Macro-F1 than the
+tested baselines, but paired tests do not establish superiority over
+fully tuned BiomedCLIP, Phase-2-only training, or concatenation.
+The results support parameter-efficient adaptation and identify
+unresolved component effects and generalization limits.
+Index Terms—medical vision–language learning, radiograph
+classification, low-rank adaptation, cross-attention, class imbal-
+ance
+I. INTRODUCTION
+Musculoskeletal classification can benefit from clinical con-
+text that is absent from pixels, such as the presenting complaint
+and prior history. Yet a small, imbalanced training cohort pro-
+vides limited evidence for adapting a large biomedical model.
+Accuracy alone may favor common diagnoses, and a higher
+mean score need not justify a more complex architecture. The
+problem is therefore both methodological and empirical: how
+should a pretrained model combine a radiograph with history,
+and what benefit is supported by the available comparisons?
+Research has progressed from supervised visual networks
+[1], [2] to transferable image–text representations. CLIP estab-
+lished large-scale natural-language supervision [3]; ConVIRT
+brought paired contrastive learning to medicine [4]. GLoRIA
+introduced local image–word interactions, while MedCLIP
+addressed semantic false negatives [5], [6]. BiomedCLIP
+and BIOMEDICA then extended the scale and breadth of
+biomedical pretraining [7], [8]. These advances supply strong
+initial representations, but their benchmark results do not
+directly determine adaptation performance on a long-tailed
+radiograph–history classification task.
+We study XBone-Net as a constrained downstream recipe.
+First, low-rank adaptation (LoRA) [9] learns soft image–text
+correspondence using class-aware batches. Second, a global
+token in each modality queries local tokens of the other before
+linear classification. Effective-number weighting [10] and label
+smoothing define the supervised risk. The method uses native
+BiomedCLIP image tokens and a linear head; it requires no
+lesion annotation.
+The contributions areC1, an explicit offline/online frame-
+work for parameter-efficient radiograph–history adaptation;
+C2, a training recipe that combines class-aware correspon-
+dence with conditional fusion; andC3, a matched empirical
+assessment against six external baselines and internal alter-
+natives. The contribution is the task-specific integration and
+evaluation of established mechanisms. We do not claim a
+new foundation model, a new general attention mechanism,
+or universal superiority.
+II. RELATEDWORKS
+The shift from image-only supervision to paired pretraining
+made reports useful even when downstream labels were scarce.
+ConVIRT achieved 89.0% AUC on MURA with full-data fine-
+tuning [4]. GLoRIA moved beyond global alignment toward
+local image–word relations [5]. However, correspondence by
+patient identity can still treat clinically similar examples as
+negatives. MedCLIP’s semantic matching addresses that is-
+sue and supports unpaired training [6]. XBone-Net adopts a
+simpler downstream construction based on the available class
+labels; this is a coarse semantic prior, not a replacement for
+medical knowledge extraction.
+Broader pretraining further changes the available initializa-
+tion. BiomedCLIP uses a large scientific image–caption cor-
+pus, and BIOMEDICA expands access and coverage [7], [8].
+Captions still differ from the histories available at prediction
+time. Table I summarizes this progression, with numerical
+results tied to their original evaluation settings. We evaluate the
+downstream adaptation recipe locally rather than comparing
+incompatible published numbers.
+LoRA addresses the number of optimized weights; class-
+balanced loss addresses unequal class frequencies [9], [10].
+Neither implies that additional fusion improves classification.
+This motivates reporting parameter counts alongside internal
+comparisons and paired uncertainty estimates.
+
+PAGE 2
+TABLE I
+RELATED WORK BY PRINCIPLE,METHOD,PERFORMANCE,AND PRACTICAL TRADE-OFF. PUBLISHED PROTOCOLS DIFFER FROM OURS. GLORIA’S
+NUMERIC RESULT IS THE RE-EVALUATION INMEDCLIP, TABLE2;ALL OTHER ENTRIES REFER TO THE NAMED WORK.
+Work Principle Method Performance: data /
+measure / result
+Pros Cons
+ConVIRT [4] Paired transfer Global bidirectional
+contrastive loss
+MURA; full-data
+fine-tuning; AUC 89.0%
+Label-efficient visual
+learning
+Semantic negatives
+remain
+GLoRIA [5],
+[6]
+Local correspondence Image-region / word
+alignment
+RSNA; linear
+classification; accuracy
+79.81%
+Retains local
+interactions
+Paired-data requirement;
+no CTCH result
+MedCLIP [6] Semantic matching Unpaired learning with
+medical knowledge
+RSNA; linear
+classification; accuracy
+80.75%
+Reduces false-negative
+supervision
+Chest-domain evidence;
+semantic labels needed
+BiomedCLIP
+[7]
+Broad biomedical
+transfer
+ViT/text encoders;
+PMC-15M pretraining
+RSNA; 10%-label linear
+probe exceeds fully
+supervised BioViL
+(reported)
+Reusable biomedical
+initialization
+Scientific captions differ
+from histories
+BIOMEDICA
+[8]
+Scale and open access Literature curation;
+continued CLIP training
+40-task evaluation;
+average zero-shot gain
+6.56% (reported)
+Broad, accessible
+resources
+Not evaluated on CTCH
+in this study
+Training pairs
+image, history, label
+Phase 1
+class-aware alignment Phase 2
+fusion + classification
+New case
+image + history Adapted encoders
+global + local tokens Cross-attention
+linear head + softmax
+initialize deploy best model
+OFFLINE: fit on training data; select on validation data
+ONLINE: fixed parameters; no label input or gradient update
+Fig. 1. Offline alignment and supervised adaptation precede online prediction.
+The deployed encoders include their final Phase-2 updates.
+III. METHODS
+A. Offline and Online Framework
+LetD={(x i, ti, yi)}N
+i=1, wherex i is a radiograph,t i is
+clinical history, andy i ∈ {1, . . . , K}. Offline training fits
+the encoders, fusion, and classifier, using validation data for
+checkpoint selection. Online inference applies fixed weights
+to a new pair (Fig. 1). CTCH text uses prepared English
+translations of the reason for admission, disease history, and
+prior history; imaging findings, professional diagnosis, and
+labels are excluded. BTXRD text is generated from metadata
+and evaluated as a separate synthetic-text setting.
+Native BiomedCLIP preprocessing produces a224×224
+RGB input. Its16×16patches yield 196 local tokens and one
+global token. Text is tokenized to at most 256 positions. Both
+branches project to dimensiond= 512; padding is masked.
+Phase 1 uses the original pooled encoder outputs. Phase 2
+retains token sequences, withv 0, t0 denoting their first tokens
+andV ℓ, Tℓ their remaining positions.
+LoRA adapts pretrained matrices through
+W=W 0 + α
+r BA, A∈R r×di , B∈R do×r.(1)
+The base weightsW 0 are frozen. We use rank 16, scaling
+32, and dropout 0.1 in attention and feed-forward projections
+of both encoders. An update usesr(d i +d o)parameters,
+but the overall trainable count must also include fusion and
+classification.
+B. Phase 1: Class-Aware Alignment
+For batch sizeB, a paired example receives weight one, a
+same-class non-pair receivesρ= 0.5, and other pairs receive
+zero:
+Sij =1[i=j] +ρ1[i̸=j, y i =y j].(2)
+Row normalization producesQ I→T ; the reverse target is
+its row-normalized transpose. For normalized pooled features
+¯vi, ¯tj, setC ij =e s¯v⊤
+i ¯tj, wheresis the fixed pretrained logit
+scale. Directional predictions are row-softmaxes ofCandC ⊤.
+The loss is
+L1 =− 1
+2B
+X
+i,j
+X
+a∈{I→T,T→I}
+Qa
+ij logP a
+ij.(3)
+Class-aware sampling supplies repeated classes within a batch.
+Unlike one-hot matching, a same-class non-pair has a nonzero
+target and is not automatically repelled. The true pair remains
+more strongly weighted. Class equality is still an imperfect
+proxy for clinical similarity.
+C. Phase 2: Bidirectional Fusion and Classification
+Separate input normalization and projections align both
+modalities. A single attention head is
+Att(Q, K, V;M) =A(Q, K;M)V W V ,
+A(Q, K;M) = softmax
+ QWQ(KW K)⊤
+√dh
++M
+
+.
+(4)
+Eight heads form multihead attention (MHA).Mis zero on
+valid keys and negative infinity on padding. After global query
+normalization, the residual updates are
+hI = LN
+ 
+v0 + Drop(MHA(v0, Tℓ, Tℓ;M T ))
+
+,
+hT = LN
+ 
+t0 + Drop(MHA(t0, Vℓ, Vℓ; 0))
+
+.(5)
+
+PAGE 3
+TABLE II
+ALGORITHM1: TRAINING AND INFERENCE
+1 Split data; construct allowed text and native image inputs. Insert
+adapters; freeze base weights.
+2 Sample class-aware batches; optimize Eq. (3). Retain minimum
+validation loss.
+3 Initialize Phase 2 from retained adapters. Expose tokens; compute
+training-only weightsw c.
+4 Optimize Eqs. (4)–(7); retain maximum validation Macro-F1. Save
+weights, transforms, and class order.
+5Online:transform a new(x, t), computepwith fixed weights, and
+returnarg max c pc and class scores. No label input or update is used.
+TABLE III
+EXPERIMENTAL PURPOSES AND CONTRIBUTION LINKS
+Link Comparison Evidence sought
+C1, C3 Six trained baselines; both
+datasets
+Classification quality and
+uncertainty
+C1, C2 Phase 2 only; concatenation Incremental alignment/fusion
+effects
+C1 Image-only control Modality/configuration
+dependence
+C3 Full tuning vs. XBone-Net Trainable-state and inference
+trade-offs
+The image summary selects textual context, and the text
+summary selects visual context. Fusion and prediction are
+z= LN(MLP([h I;h T ])), p= softmax(W cz+b c),(6)
+where the MLP is1024→512→512with GELU and
+dropout. The classifier is linear, withK(512 + 1)parameters.
+Given training class countsn c, definea c = (1−β)/(1−
+βnc)withβ= 0.999, andw c = min(Ka c/P
+j aj,5). For
+smoothed labelsu ic = (1−ϵ)1[y i =c] +ϵ/K,ϵ= 0.1,
+weighted cross-entropy is
+L2 =−
+P
+i
+P
+c wcuic logp icP
+i wyi
+.(7)
+The weights apply to all smoothed target terms. Phase 2
+updates adapters, fusion, and the head while keeping foun-
+dation weights fixed. The scientific motivation is conditional
+information selection under a class-aware representation prior;
+the practical benefit sought is a smaller trainable state. Both
+require empirical assessment.
+IV. EXPERIMENTALRESULTS
+A. Experimental Purposes and Setup
+Table III connects comparisons to contributions. CTCH
+contains 3,249 pairs in 22 classes, split by patient into 2,265
+training, 315 validation, and 669 test examples. No patient
+key crosses partitions; 669 distinct patients appear in testing.
+BTXRD [11] contains 3,746 images in our 10-class formula-
+tion, split into 2,621/375/750 examples. Its split is at image
+level because stable patient identifiers are unavailable. The text
+generator uses disease-group-dependent metadata, so label-
+correlated synthetic information limits interpretation.
+We train independently on each dataset with seeds 42, 123,
+and 456 and fixed partitions. Training uses an RTX 5060
+Ti, BF16, AdamW, cosine scheduling, batch size 16, and no
+gradient accumulation. Phase 1 uses up to 30 epochs, learning
+rate5×10 −5, and patience 3. Phase 2 uses up to 50 epochs,
+10−4, and patience 5. Weight decay is10 −4. Checkpoints
+minimize validation loss in Phase 1 and maximize validation
+Macro-F1 in Phase 2 (Algorithm II).
+CNN baselines are image-only; the four vision–language
+baselines use full encoder fine-tuning and global concatena-
+tion. Fully tuned BiomedCLIP uses a learning rate of2×10 −5.
+These comparisons assess complete training recipes, not only
+backbones. Removing text also disables Phase 1 and fusion
+in the image-only control. Class weighting and smoothing are
+not separately ablated.
+We report accuracy, balanced accuracy (mean class recall),
+and Macro-F1 (mean class F1), with mean±sample SD across
+seeds. Predictions are aligned by image ID and checked for
+identical labels, then metrics are recomputed from saved pre-
+dictions rather than mixed with conflicting older summaries.
+SD does not represent a 95% interval or variability across
+splits.
+The stored CTCH paired protocol uses 10,000 class-
+stratified patient-cluster bootstrap replicates crossed with seed
+resampling, and a two-sided permutation test with 10,000
+draws. Patient swaps are shared across seeds. Holm correction
+is within each metric and comparison family: six baselines or
+two architecture alternatives. We verify that recomputed means
+match these statistical artifacts; we do not rerun the resampling
+draws during drafting.
+B. Comparison with Other Methods
+XBone-Net has the highest observed CTCH accuracy and
+Macro-F1, at 0.6183 and 0.5727 (Table IV). CLIP has higher
+balanced accuracy, 0.6217 versus 0.5935. Against Biomed-
+CLIP, Macro-F1 increases by 0.0187, but the paired 95%
+interval is[−0.0192,0.0570]with adjustedp= 0.7105. Thus,
+superiority over that baseline is unresolved. The difference
+from CLIP is also inconclusive (p H = 0.7105). Macro-
+F1 differences from ResNet-50, DenseNet-121, MedCLIP,
+and PubMedCLIP pass the stored baseline-family adjustment
+(pH = 0.0006,0.0006,0.0272,0.0423); CNN comparisons
+also change modality access.
+On BTXRD, XBone-Net obtains Macro-F1 0.6240, com-
+pared with 0.5994 for BiomedCLIP. BiomedCLIP has slightly
+higher accuracy, and MedCLIP has slightly higher balanced
+accuracy. This again indicates a trade-off rather than dom-
+inance. The accuracy–Macro-F1 gap and the synthetic-text
+construction preclude strong claims about rare-class robustness
+or clinical-history generalization.
+C. Comparison with Internal Alternatives
+Removing alignment decreases mean Macro-F1 by 0.0230;
+replacing cross-attention with concatenation decreases it by
+0.0250 (Table V). Both paired intervals cross zero and adjusted
+p= 0.2918. The results are compatible with the proposed
+mechanisms but do not establish their necessity. Concatena-
+tion also has slightly better balanced accuracy. Its accuracy
+
+PAGE 4
+TABLE IV
+CLASSIFICATION FROM ALIGNED TEST PREDICTIONS,MEAN±SAMPLESDOVER THREE TRAINING SEEDS. THESE ARE LOCAL TRAINED BASELINES,
+DISTINCT FROM PUBLISHED RESULTS INTABLEI.
+Model Accuracy Balanced accuracy Macro-F1
+CTCH:N= 669
+ResNet-500.4983±0.0077 0.4180±0.0046 0.4154±0.0020
+DenseNet-1210.4818±0.0038 0.4920±0.0465 0.4360±0.0242
+CLIP0.5874±0.0209 0.6217±0.0359 0.5633±0.0090
+MedCLIP0.5600±0.0396 0.5723±0.0177 0.5161±0.0224
+PubMedCLIP0.5521±0.0234 0.5589±0.0614 0.5203±0.0264
+BiomedCLIP0.5969±0.0253 0.6023±0.0234 0.5540±0.0080
+XBone-Net0.6183±0.0203 0.5935±0.0134 0.5727±0.0193
+BTXRD:N= 750
+ResNet-500.6067±0.0133 0.3180±0.0131 0.3285±0.0096
+DenseNet-1210.6320±0.0013 0.3694±0.0150 0.3718±0.0173
+CLIP0.8036±0.0273 0.5957±0.0160 0.5787±0.0252
+MedCLIP0.8209±0.0147 0.6127±0.0238 0.6057±0.0153
+PubMedCLIP0.7884±0.0285 0.6089±0.0342 0.5723±0.0577
+BiomedCLIP0.8311±0.0028 0.6062±0.0254 0.5994±0.0124
+XBone-Net0.8302±0.0098 0.6115±0.0140 0.6240±0.0118
+TABLE V
+CTCHINTERNAL COMPARISONS ON THE SAME669CASES,MEAN±SAMPLESD. THE LAST COLUMNS COMPAREMACRO-F1WITH THE FULL MODEL:
+∆ =XBONE-NET MINUS ALTERNATIVE. INTERVALS ARE UNADJUSTED;p H IS ADJUSTED WITHIN THE TWO ARCHITECTURE COMPARISONS.
+Configuration Accuracy Balanced accuracy Macro-F1 95% interval for∆p H
+XBone-Net.6183±.0203.5935±.0134.5727±.0193Reference –
+Phase 2 only.6004±.0085.5552±.0341.5497±.0184[−.0196, .0665] .2918
+Concatenation.5825±.0038.5983±.0268.5477±.0162[−.0109, .0609] .2918
+Image only.4439±.0689.4843±.0136.3813±.0551Not tested –
+difference has an unadjusted interval favoring XBone-Net, but
+adjusted permutationp= 0.0518remains above 0.05.
+The image-only control loses 0.1914 Macro-F1 relative to
+the complete system. This supports an association between
+the multimodal recipe and better classification in the current
+cohort. Because the control also removes alignment and fusion,
+the difference cannot be assigned solely to history. Text-
+only and controlled history-replacement experiments remain
+necessary to distinguish complementary evidence from text
+reliance. No old, incompatible control results are substituted
+for those missing comparisons.
+D. Parameter and Runtime Trade-offs
+On CTCH, XBone-Net has 204,348,695 total parameters
+and 8,445,974 trainable parameters (4.13%). Full tuning of
+BiomedCLIP updates all 196,439,831 parameters. The reduc-
+tion in optimized weights is approximately 95.7%, although
+the total model is larger. The XBone-Net trainable set com-
+prises 5,013,504 adapter, 3,421,184 fusion, and 11,286 head
+parameters. BTXRD requires 8,439,818 trainable parameters
+due to its smaller head.
+The archived CTCH seed-42 profile averages 82.318
+GFLOPs, 16.17 ms latency, and 64.1 samples/s for XBone-
+Net, versus 81.032 GFLOPs, 13.77 ms, and 75.6 samples/s
+for fully tuned BiomedCLIP. Profiling uses BF16 on the RTX
+5060 Ti, 20 batch-one inputs, and 10 timed repeats after
+10 warm-up forwards per input; LoRA is merged. Timing
+excludes data loading and device transfer. Supported-operation
+FLOPs count a multiply-add as two operations. These mea-
+surements support parameter efficiency, not inference acceler-
+ation.
+V. LIMITATIONS ANDCONCLUSION
+The study uses one fixed partition per dataset and three
+training seeds. It lacks external patient-level validation, a
+prospective study, and isolated loss/sampler ablations. CTCH
+is a private single-center dataset documented as de-identified
+and used under a research confidentiality agreement. Institu-
+tional approval or exemption and publication authorization de-
+tails require author completion before submission. BTXRD’s
+image-level split and label-correlated synthetic text limit clin-
+ical interpretation. No diagnostic deployment claim follows
+from the experiments.
+XBone-Net combines class-aware alignment and bidirec-
+tional token fusion while optimizing about 4.13% of parame-
+ters. It achieves competitive CTCH and BTXRD classification,
+with higher observed Macro-F1 but unresolved differences
+from strong alternatives. The resulting framework and paired
+evaluation provide a basis for subsequent independent valida-
+tion and targeted component studies.
+
+PAGE 5
+ACKNOWLEDGMENT
+OpenAI Codex assisted drafting the Abstract and Sec-
+tions I–V , source checking, table-generation code, and the
+schematic. Predictions came from existing research artifacts.
+Responsibility for final verification and submitted content rests
+with the authors.
+REFERENCES
+[1] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image
+recognition,” inProceedings of the IEEE Conference on Computer Vision
+and Pattern Recognition, 2016, pp. 770–778.
+[2] G. Huang, Z. Liu, L. van der Maaten, and K. Q. Weinberger, “Densely
+connected convolutional networks,” inProceedings of the IEEE Confer-
+ence on Computer Vision and Pattern Recognition, 2017, pp. 4700–4708.
+[3] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal,
+G. Sastry, A. Askell, P. Mishkin, J. Clark, G. Krueger, and I. Sutskever,
+“Learning transferable visual models from natural language supervi-
+sion,” inProceedings of the 38th International Conference on Machine
+Learning, ser. Proceedings of Machine Learning Research, vol. 139,
+2021, pp. 8748–8763.
+[4] Y . Zhang, H. Jiang, Y . Miura, C. D. Manning, and C. P. Langlotz,
+“Contrastive learning of medical visual representations from paired
+images and text,” inProceedings of the 7th Machine Learning for
+Healthcare Conference, ser. Proceedings of Machine Learning Research,
+vol. 182, 2022, pp. 2–25.
+[5] S.-C. Huang, L. Shen, M. P. Lungren, and S. Yeung, “GLoRIA: A
+multimodal global-local representation learning framework for label-
+efficient medical image recognition,” inProceedings of the IEEE/CVF
+International Conference on Computer Vision, 2021, pp. 3942–3951.
+[6] Z. Wang, Z. Wu, D. Agarwal, and J. Sun, “MedCLIP: Contrastive
+learning from unpaired medical images and text,” inProceedings of
+the 2022 Conference on Empirical Methods in Natural Language
+Processing, 2022, pp. 3876–3887.
+[7] S. Zhang, Y . Xu, N. Usuyama, H. Xu, J. Bagga, R. Tinn, S. Preston,
+R. Rao, M. Wei, N. Valluri, C. Wong, A. Tupini, Y . Wang, M. Mazzola,
+S. Shukla, L. Liden, J. Gao, A. Crabtree, B. Piening, C. Bifulco, M. P.
+Lungren, T. Naumann, S. Wang, and H. Poon, “A multimodal biomedical
+foundation model trained from fifteen million image-text pairs,”NEJM
+AI, vol. 2, no. 1, 2024.
+[8] A. Lozano, M. W. Sun, J. Burgesset al., “BIOMEDICA: An open
+biomedical image-caption archive, dataset, and vision-language models
+derived from scientific literature,”arXiv preprint arXiv:2501.07171,
+2025.
+[9] E. J. Hu, Y . Shen, P. Wallis, Z. Allen-Zhu, Y . Li, S. Wang, L. Wang,
+and W. Chen, “LoRA: Low-rank adaptation of large language models,”
+inInternational Conference on Learning Representations, 2022.
+[10] Y . Cui, M. Jia, T.-Y . Lin, Y . Song, and S. Belongie, “Class-balanced loss
+based on effective number of samples,” inProceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, 2019, pp.
+9268–9277.
+[11] S. Yao, Y . Huang, X. Wang, Y . Zhang, I. C. Paixao, Z. Wang, C. L. Chai,
+H. Wang, D. Lu, G. I. Webb, S. Li, Y . Guo, Q. Chen, and J. Song, “A
+radiograph dataset for the classification, localization, and segmentation
+of primary bone tumors,”Scientific Data, vol. 12, no. 1, p. 88, 2025.

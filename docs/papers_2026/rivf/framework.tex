@@ -1,0 +1,17 @@
+
+\begin{tikzpicture}[font=\small,
+ box/.style={draw,rounded corners=1pt,align=center,minimum height=10mm,text width=35mm,inner sep=3pt},
+ arr/.style={-{Latex[length=1.8mm]},thick}]
+\node[box] (data) at (0,0) {Training pairs\\image, history, label};
+\node[box] (p1) at (4.1,0) {Phase 1\\class-aware alignment};
+\node[box] (p2) at (8.2,0) {Phase 2\\fusion + classification};
+\draw[arr] (data)--(p1); \draw[arr] (p1)--(p2);
+\node[box] (new) at (0,-2.0) {New case\\image + history};
+\node[box] (enc) at (4.1,-2.0) {Adapted encoders\\global + local tokens};
+\node[box] (pred) at (8.2,-2.0) {Cross-attention\\linear head + softmax};
+\draw[arr] (new)--(enc); \draw[arr] (enc)--(pred);
+\draw[arr,dashed] (p1)--node[right,font=\scriptsize]{initialize}(enc);
+\draw[arr,dashed] (p2)--node[right,font=\scriptsize]{deploy best model}(pred);
+\node[font=\small\bfseries,anchor=west] at (-1.8,0.9) {OFFLINE: fit on training data; select on validation data};
+\node[font=\small\bfseries,anchor=west] at (-1.8,-3.0) {ONLINE: fixed parameters; no label input or gradient update};
+\end{tikzpicture}

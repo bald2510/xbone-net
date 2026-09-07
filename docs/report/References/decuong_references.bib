@@ -1,443 +1,396 @@
+% Tài liệu được trích dẫn trong refsection của đề cương chi tiết.
+% Kiểm tra thư mục: 2026-09-06. Xem reference_audit.md.
+
 @book{Dorland2011,
-  title={Dorland's Illustrated Medical Dictionary},
-  author={{W.B. Saunders}},
-  year={2011},
-  edition={32nd},
-  publisher={Elsevier Health Sciences}
+  author       = {{Dorland}},
+  title        = {{Dorland's Illustrated Medical Dictionary}},
+  edition      = {32},
+  year         = {2011},
+  publisher    = {Elsevier Health Sciences},
+  isbn         = {978-1-4160-6257-8}
 }
 
 @book{Bickley2020_Bates,
-  title={Bates' Guide to Physical Examination and History Taking},
-  author={Bickley, Lynn S. and Szilagyi, Peter G. and Hoffman, Richard M.},
-  year={2020},
-  edition={13th},
-  publisher={Lippincott Williams \& Wilkins}
+  author       = {Bickley, Lynn S. and Szilagyi, Peter G. and Hoffman, Richard M.},
+  title        = {{Bates' Guide to Physical Examination and History Taking}},
+  edition      = {13},
+  year         = {2020},
+  publisher    = {Lippincott Williams \& Wilkins}
 }
 
-#MRM
-@inproceedings{
-MRM,
-title={Advancing Radiograph Representation Learning with Masked Record Modeling},
-author={Hong-Yu Zhou and Chenyu Lian and Liansheng Wang and Yizhou Yu},
-booktitle={The Eleventh International Conference on Learning Representations },
-year={2023},
-url={https://openreview.net/forum?id=w-x7U26GM7j}
+@inproceedings{MRM,
+  author       = {Hong-Yu Zhou and Chenyu Lian and Liansheng Wang and Yizhou Yu},
+  title        = {{Advancing Radiograph Representation Learning with Masked Record Modeling}},
+  booktitle    = {The Eleventh International Conference on Learning Representations},
+  year         = {2023},
+  url          = {https://openreview.net/forum?id=w-x7U26GM7j}
 }
 
-#ConVIRT
 @inproceedings{ConVIRT,
-  title={Contrastive Learning of Medical Visual Representations from Paired Images and Text},
-  author={Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D and Langlotz, Curtis P},
-  booktitle={Proceedings of the 38th International Conference on Machine Learning},
-  pages={12133--12145},
-  year={2021},
-  editor={Meila, Marina and Zhang, Tong},
-  volume={139},
-  series={Proceedings of Machine Learning Research},
-  publisher={PMLR},
-  url={https://proceedings.mlr.press/v182/zhang22a.html}
+  author       = {Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D and Langlotz, Curtis P},
+  title        = {{Contrastive Learning of Medical Visual Representations from Paired Images and Text}},
+  booktitle    = {Proceedings of the 7th Machine Learning for Healthcare Conference},
+  series       = {Proceedings of Machine Learning Research},
+  volume       = {182},
+  pages        = {2--25},
+  year         = {2022},
+  publisher    = {PMLR},
+  url          = {https://proceedings.mlr.press/v182/zhang22a.html}
 }
 
-#GLoRIA
-@INPROCEEDINGS{GLoRIA,
-  author={Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena},
-  booktitle={2021 IEEE/CVF International Conference on Computer Vision (ICCV)}, 
-  title={GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition}, 
-  year={2021},
-  volume={},
-  number={},
-  pages={3922-3931},
-  keywords={Representation learning;Deep learning;Training;Image segmentation;Image recognition;Image analysis;Neural networks;Medical;biological;and cell microscopy;Representation learning;Transfer/Low-shot/Semi/Unsupervised Learning;Vision + language},
-  doi={10.1109/ICCV48922.2021.00391}}
+@inproceedings{GLoRIA,
+  author       = {Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena},
+  title        = {{GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition}},
+  booktitle    = {2021 IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages        = {3922--3931},
+  year         = {2021},
+  doi          = {10.1109/ICCV48922.2021.00391}
+}
 
-#MedCLIP
 @inproceedings{MedCLIP,
-    title = "{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text",
-    author = "Wang, Zifeng  and
-      Wu, Zhenbang  and
-      Agarwal, Dinesh  and
-      Sun, Jimeng",
-    editor = "Goldberg, Yoav  and
-      Kozareva, Zornitsa  and
-      Zhang, Yue",
-    booktitle = "Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing",
-    month = dec,
-    year = "2022",
-    address = "Abu Dhabi, United Arab Emirates",
-    publisher = "Association for Computational Linguistics",
-    url = "https://aclanthology.org/2022.emnlp-main.256/",
-    doi = "10.18653/v1/2022.emnlp-main.256",
-    pages = "3876--3887",
-    abstract = "Existing vision-text contrastive learning like CLIP aims to match the paired image and caption embeddings while pushing others apart, which improves representation transferability and supports zero-shot prediction. However, medical image-text datasets are orders of magnitude below the general images and captions from the internet. Moreover, previous methods encounter many false negatives, i.e., images and reports from separate patients probably carry the same semantics but are wrongly treated as negatives. In this paper, we decouple images and texts for multimodal contrastive learning, thus scaling the usable training data in a combinatorial magnitude with low cost. We also propose to replace the InfoNCE loss with semantic matching loss based on medical knowledge to eliminate false negatives in contrastive learning. We prove that MedCLIP is a simple yet effective framework: it outperforms state-of-the-art methods on zero-shot prediction, supervised classification, and image-text retrieval. Surprisingly, we observe that with only 20K pre-training data, MedCLIP wins over the state-of-the-art method (using 200K data). The code is available at https://github.com/RyanWangZf/MedCLIP."
+  author       = {Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng},
+  title        = {{{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text}},
+  booktitle    = {Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing},
+  pages        = {3876--3887},
+  year         = {2022},
+  publisher    = {Association for Computational Linguistics},
+  address      = {Abu Dhabi, United Arab Emirates},
+  doi          = {10.18653/v1/2022.emnlp-main.256},
+  url          = {https://aclanthology.org/2022.emnlp-main.256/},
+  editor       = {Goldberg, Yoav and Kozareva, Zornitsa and Zhang, Yue}
 }
 
-#BiomedCLIP
 @article{BiomedCLIP,
-  title={A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image–Text Pairs},
-  author={Sheng Zhang and Yanbo Xu and Naoto Usuyama and Hanwen Xu and Jaspreet Bagga and Robert Tinn and Sam Preston and Rajesh Rao and Mu Wei and Naveen Valluri and Cliff Wong and Andrea Tupini and Yu Wang and Matt Mazzola and Swadheen Shukla and Lars Liden and Jianfeng Gao and Angela Crabtree and Brian Piening and Carlo Bifulco and Matthew P. Lungren and Tristan Naumann and Sheng Wang and Hoifung Poon},
-  journal={NEJM AI},
-  year={2024},
-  volume={2},
-  number={1},
-  doi={10.1056/AIoa2400640},
-  url={https://ai.nejm.org/doi/full/10.1056/AIoa2400640}
+  author       = {Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung},
+  title        = {{A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs}},
+  journal      = {NEJM AI},
+  volume       = {2},
+  number       = {1},
+  eid          = {AIoa2400640},
+  year         = {2025},
+  doi          = {10.1056/AIoa2400640}
 }
 
-#MedKLIP
 @inproceedings{MedKLIP,
-  title={MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis},
-  author={Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Feng and Xie, Weidi},
-  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
-  pages={21372--21383},
-  year={2023}
+  author       = {Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi},
+  title        = {{MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis}},
+  booktitle    = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages        = {21315--21326},
+  year         = {2023},
+  doi          = {10.1109/iccv51070.2023.01954}
 }
 
-#MedViLL
-@ARTICLE{MedViLL,
-  author={Moon, Jong Hak and Lee, Hyungyung and Shin, Woncheol and Kim, Young-Hak and Choi, Edward},
-  journal={IEEE Journal of Biomedical and Health Informatics}, 
-  title={Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training}, 
-  year={2022},
-  volume={26},
-  number={12},
-  pages={6070-6080},
-  keywords={Medical diagnostic imaging;Radiology;Feature extraction;X-rays;Representation learning;Self-supervised learning;Healthcare;medical;multimodal learning;representation learning;self-supervised learning;vision-and-language},
-  doi={10.1109/JBHI.2022.3207502}}
-
-#BioViL
-@InProceedings{BioViL,
-author="Boecking, Benedikt
-and Usuyama, Naoto
-and Bannur, Shruthi
-and Castro, Daniel C.
-and Schwaighofer, Anton
-and Hyland, Stephanie
-and Wetscherek, Maria
-and Naumann, Tristan
-and Nori, Aditya
-and Alvarez-Valle, Javier
-and Poon, Hoifung
-and Oktay, Ozan",
-title="Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing",
-booktitle="Computer Vision -- ECCV 2022",
-year="2022",
-publisher="Springer Nature Switzerland",
-address="Cham",
-pages="1--21",
-abstract="Multi-modal data abounds in biomedicine, such as radiology images and reports. Interpreting this data at scale is essential for improving clinical care and accelerating clinical research. Biomedical text with its complex semantics poses additional challenges in vision--language modelling compared to the general domain, and previous work has used insufficiently adapted models that lack domain-specific language understanding. In this paper, we show that principled textual semantic modelling can substantially improve contrastive learning in self-supervised vision--language processing. We release a language model that achieves state-of-the-art results in radiology natural language inference through its improved vocabulary and novel language pretraining objective leveraging semantics and discourse characteristics in radiology reports. Further, we propose a self-supervised joint vision--language approach with a focus on better text modelling. It establishes new state of the art results on a wide range of publicly available benchmarks, in part by leveraging our new domain-specific language model. We release a new dataset with locally-aligned phrase grounding annotations by radiologists to facilitate the study of complex semantic modelling in biomedical vision--language processing. A broad evaluation, including on this new dataset, shows that our contrastive learning approach, aided by textual-semantic modelling, outperforms prior methods in segmentation tasks, despite only using a global-alignment objective.",
-isbn="978-3-031-20059-5"
+@article{MedViLL,
+  author       = {Moon, Jong Hak and Lee, Hyungyung and Shin, Woncheol and Kim, Young-Hak and Choi, Edward},
+  title        = {{Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training}},
+  journal      = {IEEE Journal of Biomedical and Health Informatics},
+  volume       = {26},
+  number       = {12},
+  pages        = {6070--6080},
+  year         = {2022},
+  doi          = {10.1109/JBHI.2022.3207502}
 }
 
-#BioViL-T
+@inproceedings{BioViL,
+  author       = {Boecking, Benedikt and Usuyama, Naoto and Bannur, Shruthi and Castro, Daniel C. and Schwaighofer, Anton and Hyland, Stephanie and Wetscherek, Maria and Naumann, Tristan and Nori, Aditya and Alvarez-Valle, Javier and Poon, Hoifung and Oktay, Ozan},
+  title        = {{Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing}},
+  booktitle    = {Computer Vision -- ECCV 2022},
+  pages        = {1--21},
+  year         = {2022},
+  publisher    = {Springer Nature Switzerland},
+  address      = {Cham},
+  isbn         = {978-3-031-20059-5},
+  doi          = {10.1007/978-3-031-20059-5_1}
+}
+
 @inproceedings{BioViL-T,
-  title={Learning to exploit temporal structure for biomedical vision-language processing},
-  author={Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and Perez-Garcia, Fernando and Ilse, Maximilian and Castro, Daniel C and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and others},
-  booktitle={Proceedings of the IEEE/CVF conference on computer vision and pattern recognition},
-  pages={15016--15027},
-  year={2023}
+  author       = {Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and P{\'e}rez-Garc{\'i}a, Fernando and Ilse, Maximilian and Castro, Daniel C. and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and Schwaighofer, Anton and Wetscherek, Maria and Lungren, Matthew P. and Nori, Aditya and Alvarez-Valle, Javier and Oktay, Ozan},
+  title        = {{Learning to exploit temporal structure for biomedical vision-language processing}},
+  booktitle    = {Proceedings of the IEEE/CVF conference on computer vision and pattern recognition},
+  pages        = {15016--15027},
+  year         = {2023},
+  doi          = {10.1109/cvpr52729.2023.01442}
 }
 
-#KAD
 @article{KAD,
-  author = {Zhang, Xiaoman and Wu, Chaoyi and Zhang, Ya and Xie, Weidi and Wang, Yanfeng},
-  month = {07},
-  title = {Knowledge-enhanced visual-language pre-training on chest radiology images},
-  doi = {10.1038/s41467-023-40260-7},
-  url = {https://arxiv.org/pdf/2302.14042.pdf},
-  volume = {14},
-  year = {2023},
-  journal = {Nature Communications}
+  author       = {Zhang, Xiaoman and Wu, Chaoyi and Zhang, Ya and Xie, Weidi and Wang, Yanfeng},
+  title        = {{Knowledge-enhanced visual-language pre-training on chest radiology images}},
+  journal      = {Nature Communications},
+  volume       = {14},
+  number       = {1},
+  eid          = {4542},
+  year         = {2023},
+  doi          = {10.1038/s41467-023-40260-7},
+  month        = {07}
 }
 
-#CITE
-@InProceedings{CITE,
-author="Zhang, Yunkun
-and Gao, Jin
-and Zhou, Mu
-and Wang, Xiaosong
-and Qiao, Yu
-and Zhang, Shaoting
-and Wang, Dequan",
-editor="Greenspan, Hayit
-and Madabhushi, Anant
-and Mousavi, Parvin
-and Salcudean, Septimiu
-and Duncan, James
-and Syeda-Mahmood, Tanveer
-and Taylor, Russell",
-title="Text-Guided Foundation Model Adaptation for Pathological Image Classification",
-booktitle="Medical Image Computing and Computer Assisted Intervention -- MICCAI 2023",
-year="2023",
-publisher="Springer Nature Switzerland",
-address="Cham",
-pages="272--282",
-abstract="The recent surge of foundation models in computer vision and natural language processing opens up perspectives in utilizing multi-modal clinical data to train large models with strong generalizability. Yet pathological image datasets often lack biomedical text annotation and enrichment. Guiding data-efficient image diagnosis from the use of biomedical text knowledge becomes a substantial interest. In this paper, we propose to Connect Image and Text Embeddings (CITE) to enhance pathological image classification. CITE injects text insights gained from language models pre-trained with a broad range of biomedical texts, leading to adapt foundation models towards pathological image understanding. Through extensive experiments on the PatchGastric stomach tumor pathological image dataset, we demonstrate that CITE achieves leading performance compared with various baselines especially when training data is scarce. CITE offers insights into leveraging in-domain text knowledge to reinforce data-efficient pathological image classification. Code is available at https://github.com/Yunkun-Zhang/CITE.",
-isbn="978-3-031-43904-9"
+@inproceedings{CITE,
+  author       = {Zhang, Yunkun and Gao, Jin and Zhou, Mu and Wang, Xiaosong and Qiao, Yu and Zhang, Shaoting and Wang, Dequan},
+  title        = {{Text-Guided Foundation Model Adaptation for Pathological Image Classification}},
+  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2023},
+  pages        = {272--282},
+  year         = {2023},
+  publisher    = {Springer Nature Switzerland},
+  address      = {Cham},
+  isbn         = {978-3-031-43904-9},
+  doi          = {10.1007/978-3-031-43904-9_27},
+  editor       = {Greenspan, Hayit and Madabhushi, Anant and Mousavi, Parvin and Salcudean, Septimiu and Duncan, James and Syeda-Mahmood, Tanveer and Taylor, Russell}
 }
 
-#UniDCP
-@ARTICLE{UniDCP,
-  author={Zhan, Chenlu and Zhang, Yufei and Lin, Yu and Wang, Gaoang and Wang, Hongwei},
-  journal={IEEE Transactions on Multimedia}, 
-  title={UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts}, 
-  year={2024},
-  volume={26},
-  number={},
-  pages={9736-9748},
-  keywords={Task analysis;Adaptation models;Visualization;Medical diagnostic imaging;Tuning;Multitasking;Plastics;Medical vision-language pre-training;dynamic cross-modal prompts;cross-modal shareable space},
-  doi={10.1109/TMM.2024.3397191}}
+@article{UniDCP,
+  author       = {Zhan, Chenlu and Zhang, Yufei and Lin, Yu and Wang, Gaoang and Wang, Hongwei},
+  title        = {{UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts}},
+  journal      = {IEEE Transactions on Multimedia},
+  volume       = {26},
+  pages        = {9736--9748},
+  year         = {2024},
+  doi          = {10.1109/TMM.2024.3397191}
+}
 
-#ViP
 @inproceedings{ViP,
-  title={Aligning Medical Images with General Knowledge from Large Language Models},
-  author={Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao},
-  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
-  year={2024},
-  url={https://papers.miccai.org/miccai-2024/062-Paper1358.html}
+  author       = {Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao},
+  title        = {{Aligning Medical Images with General Knowledge from Large Language Models}},
+  booktitle    = {International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+  series       = {Lecture Notes in Computer Science},
+  volume       = {15010},
+  pages        = {57--67},
+  year         = {2024},
+  publisher    = {Springer Nature Switzerland},
+  doi          = {10.1007/978-3-031-72117-5_6},
+  url          = {https://papers.miccai.org/miccai-2024/062-Paper1358.html}
 }
 
-
-#PLIP
-@article{PLIP,
-  author={Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},
-  journal={IEEE Transactions on Medical Imaging}, 
-  title={Disease-Informed Adaptation of Vision-Language Models}, 
-  year={2025},
-  volume={44},
-  number={10},
-  pages={3984-3996},
-  doi={10.1109/TMI.2024.3475877}
+@inproceedings{PLIP,
+  author       = {Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},
+  title        = {{Disease-Informed Adaptation of Vision-Language Models}},
+  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
+  series       = {Lecture Notes in Computer Science},
+  volume       = {15011},
+  pages        = {232--242},
+  year         = {2024},
+  publisher    = {Springer Nature Switzerland},
+  doi          = {10.1007/978-3-031-72120-5_22}
 }
 
-#FPT
 @inproceedings{FPT,
-  title={Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification},
-  author={Huang, Yijin and Liu, Yang and Zhou, Liansheng and Yuan, Chun and Bai, Xiang},
-  booktitle={Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-  pages={124--134},
-  year={2024},
-  publisher={Springer Nature Switzerland},
-  address={Cham},
-  isbn={978-3-031-72390-2}
+  author       = {Huang, Yijin and Cheng, Pujin and Tam, Roger and Tang, Xiaoying},
+  title        = {{Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification}},
+  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
+  pages        = {120--130},
+  year         = {2024},
+  publisher    = {Springer Nature Switzerland},
+  address      = {Cham},
+  isbn         = {978-3-031-72390-2},
+  doi          = {10.1007/978-3-031-72390-2_12}
 }
 
-#MedPrompt
 @article{MedPrompt,
-title = {Exploring low-resource medical image classification with weakly supervised prompt learning},
-journal = {Pattern Recognition},
-volume = {149},
-pages = {110250},
-year = {2024},
-issn = {0031-3203},
-doi = {https://doi.org/10.1016/j.patcog.2024.110250},
-url = {https://www.sciencedirect.com/science/article/pii/S0031320324000013},
-author = {Fudan Zheng and Jindong Cao and Weijiang Yu and Zhiguang Chen and Nong Xiao and Yutong Lu},
-keywords = {Medical image classification, Weakly supervised learning, Prompt learning, Few-shot learning, Zero-shot learning},
-abstract = {Most advances in medical image recognition supporting clinical auxiliary diagnosis meet challenges due to the low-resource situation in the medical field, where annotations are highly expensive and professional. This low-resource problem can be alleviated by leveraging the transferable representations of large-scale pre-trained vision-language models like CLIP. After being pre-trained using large-scale unlabeled medical images and texts (such as medical reports), the vision-language models can learn transferable representations and support flexible downstream clinical tasks such as medical image classification via relevant medical text prompts. However, existing pre-trained vision-language models require domain experts (clinicians) to carefully design the medical text prompts based on different datasets when applied to specific medical image tasks, which is extremely time-consuming and greatly increases the burden on clinicians. To address this problem, we propose a weakly supervised prompt learning method MedPrompt for automatically generating medical prompts, which includes an unsupervised pre-trained vision-language model and a weakly supervised prompt learning model. The unsupervised pre-trained vision-language model adopts large-scale medical images and texts for pre-training, utilizing the natural correlation between medical images and corresponding medical texts without manual annotations. The weakly supervised prompt learning model only utilizes the classes of images in the dataset to guide the learning of the specific class vector in the prompt, while the learning of other context vectors in the prompt does not require any manual annotations for guidance. To the best of our knowledge, this is the first model to automatically generate medical prompts. With the assistance of these prompts, the pre-trained vision-language model can be freed from the strong expert dependency of manual annotation and manual prompt design, thus achieving end-to-end, low-cost medical image classification. Experimental results show that the model using our automatically generated prompts outperforms all its hand-crafted prompts counterparts in full-shot learning on all four datasets, and achieves superior accuracy on zero-shot image classification and few-shot learning in three of the four medical benchmark datasets and comparable accuracy in the remaining one. In addition, the proposed prompt generator is lightweight and therefore has the potential to be embedded into any network architecture.}
+  author       = {Fudan Zheng and Jindong Cao and Weijiang Yu and Zhiguang Chen and Nong Xiao and Yutong Lu},
+  title        = {{Exploring low-resource medical image classification with weakly supervised prompt learning}},
+  journal      = {Pattern Recognition},
+  volume       = {149},
+  pages        = {110250},
+  year         = {2024},
+  doi          = {10.1016/j.patcog.2024.110250},
+  url          = {https://www.sciencedirect.com/science/article/pii/S0031320324000013},
+  issn         = {0031-3203}
 }
 
-#CLIMP
-@ARTICLE{CLIMP,
-  author={Du, Ye and Yu, Nanxi and Wang, Shujun},
-  journal={IEEE Transactions on Medical Imaging}, 
-  title={Medical Knowledge Intervention Prompt Tuning for Medical Image Classification}, 
-  year={2025},
-  volume={44},
-  number={12},
-  pages={4945-4959},
-  keywords={Tuning;Diseases;Medical diagnostic imaging;Large language models;Training;Image classification;Adaptation models;Foundation models;Optimization;Visualization;Prompt tuning;vision language foundation model;representation fine-tuning;conditional intervention;medical image classification},
-  doi={10.1109/TMI.2025.3584841}}
+@article{CLIMP,
+  author       = {Du, Ye and Yu, Nanxi and Wang, Shujun},
+  title        = {{Medical Knowledge Intervention Prompt Tuning for Medical Image Classification}},
+  journal      = {IEEE Transactions on Medical Imaging},
+  volume       = {44},
+  number       = {12},
+  pages        = {4945--4959},
+  year         = {2025},
+  doi          = {10.1109/TMI.2025.3584841}
+}
 
-#BiomedCoOp
 @inproceedings{BiomedCoOp,
-  title={BiomedCoOp: Learning to Prompt for Biomedical Vision-Language Models},
-  author={Koleilat, Tarek and Asgariandehkordi, Hesam and Rivaz, Hassan and Xiao, Yiming},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year={2025}
+  author       = {Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming},
+  title        = {{{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models}},
+  booktitle    = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages        = {14766--14776},
+  year         = {2025},
+  doi          = {10.1109/CVPR52734.2025.01376}
 }
 
-#CLIPath
-@InProceedings{CLIPath,
-    author    = {Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee},
-    title     = {CLIPath: Fine-Tune CLIP with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts},
-    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops},
-    year      = {2023},
-    pages     = {2374-2380}
+@inproceedings{CLIPath,
+  author       = {Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee},
+  title        = {{{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts}},
+  booktitle    = {Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
+  pages        = {2366--2372},
+  year         = {2023},
+  publisher    = {IEEE},
+  doi          = {10.1109/iccvw60793.2023.00251}
 }
 
-#FTB
-@INPROCEEDINGS{FTB,
-  author={Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella},
-  booktitle={ICASSP 2024 - 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
-  title={Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training}, 
-  year={2024},
-  volume={},
-  number={},
-  pages={1686-1690},
-  keywords={Training;Representation learning;Image segmentation;Visualization;Self-supervised learning;Signal processing;Transformers;Vision-Language Pre-training;SelfSupervised Learning;Medical Visual Representation Learning},
-  doi={10.1109/ICASSP48485.2024.10447326}}
+@inproceedings{FTB,
+  author       = {Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella},
+  title        = {{Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training}},
+  booktitle    = {ICASSP 2024 - 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages        = {1686--1690},
+  year         = {2024},
+  doi          = {10.1109/ICASSP48485.2024.10447326}
+}
 
-#MedUnA
 @inproceedings{MedUnA,
-  title={Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?},
-  author={Rahman, Umaima and Imam, Raza and Yaqub, Mohammad and Amor, Boulbaba Ben and Mahapatra, Dwarikanath},
-  booktitle={2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)},
-  pages={1--5},
-  year={2025},
-  organization={IEEE}
+  author       = {Rahman, Umaima and Imam, Raza and Yaqub, Mohammad and Amor, Boulbaba Ben and Mahapatra, Dwarikanath},
+  title        = {{Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?}},
+  booktitle    = {2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)},
+  pages        = {1--5},
+  year         = {2025},
+  doi          = {10.1109/isbi60581.2025.10981057},
+  organization = {IEEE}
 }
 
-#TransMed
 @article{TransMed,
-  title={TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification},
-  author={Zheng, Kaipeng and Huang, Weiran and Sun, Lichao},
-  journal={arXiv preprint arXiv:2312.07125},
-  year={2023}
+  author       = {Zheng, Kaipeng and Huang, Weiran and Sun, Lichao},
+  title        = {{TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification}},
+  journal      = {arXiv preprint arXiv:2312.07125},
+  year         = {2023}
 }
 
-#SH-PEFT
 @inproceedings{SH-PEFT,
-  author       = {Mingyuan Liu and
-                  Lu Xu and
-                  Shengnan Liu and
-                  Jicong Zhang},
-  title        = {Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis},
-  booktitle    = {{MICCAI} (5)},
+  author       = {Mingyuan Liu and Lu Xu and Shengnan Liu and Jicong Zhang},
+  title        = {{Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis}},
+  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
   series       = {Lecture Notes in Computer Science},
   volume       = {15005},
   pages        = {627--637},
-  publisher    = {Springer},
   year         = {2024},
-  url          = {https://doi.org\_59},
-  doi          = {10.1007/978-3-031-72086-4\_59}
+  publisher    = {Springer},
+  doi          = {10.1007/978-3-031-72086-4_59}
 }
 
-#LCBB
 @misc{LCBB,
-      title={Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models}, 
-      author={Chenyu Lian and Hong-Yu Zhou and Yizhou Yu and Liansheng Wang},
-      year={2024},
-      eprint={2401.12215},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2401.12215}, 
+  author       = {Chenyu Lian and Hong-Yu Zhou and Yizhou Yu and Liansheng Wang},
+  title        = {{Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models}},
+  year         = {2024},
+  eprint       = {2401.12215},
+  archiveprefix = {arXiv},
+  primaryclass = {cs.CV},
+  url          = {https://arxiv.org/abs/2401.12215}
 }
 
-@article{yan_2022_clinicalbert,
-  author = {Yan, Bin and Pei, Mingtao},
-  month = {06},
-  pages = {2982-2990},
-  title = {Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation},
-  doi = {10.1609/aaai.v36i3.20204},
-  urldate = {2022-07-08},
-  volume = {36},
-  year = {2022},
-  journal = {Proceedings of the AAAI Conference on Artificial Intelligence}
+@inproceedings{yan_2022_clinicalbert,
+  author       = {Yan, Bin and Pei, Mingtao},
+  title        = {{Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation}},
+  booktitle    = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume       = {36},
+  number       = {3},
+  pages        = {2982--2990},
+  year         = {2022},
+  doi          = {10.1609/aaai.v36i3.20204},
+  urldate      = {2022-07-08},
+  month        = {06}
 }
 
 @article{XMei,
-  author = {Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang},
-  month = {08},
-  pages = {1224–1228},
-  title = {Artificial intelligence–enabled rapid diagnosis of patients with COVID-19},
-  doi = {10.1038/s41591-020-0931-3},
-  url = {https://www.nature.com/articles/s41591-020-0931-3},
-  volume = {26},
-  year = {2020},
-  journal = {Nature Medicine}
+  author       = {Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang},
+  title        = {{Artificial intelligence--enabled rapid diagnosis of patients with COVID-19}},
+  journal      = {Nature Medicine},
+  volume       = {26},
+  pages        = {1224--1228},
+  year         = {2020},
+  doi          = {10.1038/s41591-020-0931-3},
+  url          = {https://www.nature.com/articles/s41591-020-0931-3},
+  month        = {08}
 }
 
 @article{li_2024_lvit,
-  author = {Li, Zihan and Li, Yunxiang and Li, Qingde and Wang, Puyang and Guo, Dazhou and Lu, Le and Jin, Dakai and Zhang, You and Hong, Qingqi},
-  month = {01},
-  pages = {96-107},
-  publisher = {Institute of Electrical and Electronics Engineers},
-  title = {LViT: Language Meets Vision Transformer in Medical Image Segmentation},
-  doi = {10.1109/tmi.2023.3291719},
-  urldate = {2024-02-19},
-  volume = {43},
-  year = {2024},
-  journal = {IEEE Transactions on Medical Imaging}
+  author       = {Li, Zihan and Li, Yunxiang and Li, Qingde and Wang, Puyang and Guo, Dazhou and Lu, Le and Jin, Dakai and Zhang, You and Hong, Qingqi},
+  title        = {{LViT: Language Meets Vision Transformer in Medical Image Segmentation}},
+  journal      = {IEEE Transactions on Medical Imaging},
+  volume       = {43},
+  number       = {1},
+  pages        = {96--107},
+  year         = {2024},
+  publisher    = {Institute of Electrical and Electronics Engineers},
+  doi          = {10.1109/TMI.2023.3291719},
+  urldate      = {2024-02-19},
+  month        = {01}
 }
 
-@article{nikhilkumartomar_2022_tganet,
-  author = {Nikhil Kumar Tomar and Jha, Debesh and Ulas Bagci and Ali, Sharib},
-  month = {01},
-  pages = {151-160},
-  publisher = {Springer Science+Business Media},
-  title = {TGANet: Text-Guided Attention for Improved Polyp Segmentation},
-  doi = {10.1007/978-3-031-16437-8_15},
-  urldate = {2024-09-04},
-  year = {2022},
-  journal = {Lecture notes in computer science}
+@inproceedings{nikhilkumartomar_2022_tganet,
+  author       = {Tomar, Nikhil Kumar and Jha, Debesh and Bagci, Ulas and Ali, Sharib},
+  title        = {{TGANet: Text-Guided Attention for Improved Polyp Segmentation}},
+  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2022},
+  pages        = {151--160},
+  year         = {2022},
+  publisher    = {Springer Nature Switzerland},
+  doi          = {10.1007/978-3-031-16437-8_15},
+  urldate      = {2024-09-04},
+  month        = {01}
 }
 
 @article{IRENE,
-  author = {Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Jia, Ping and Shao, Jun and Lu, Guangming and Zhang, Kang and Wei Min Li},
-  month = {06},
-  pages = {743-755},
-  publisher = {Nature Portfolio},
-  title = {A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics},
-  doi = {10.1038/s41551-023-01045-x},
-  urldate = {2023-11-05},
-  volume = {7},
-  year = {2023},
-  journal = {Nature Biomedical Engineering}
+  author       = {Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin},
+  title        = {{A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics}},
+  journal      = {Nature Biomedical Engineering},
+  volume       = {7},
+  pages        = {743--755},
+  year         = {2023},
+  publisher    = {Nature Portfolio},
+  doi          = {10.1038/s41551-023-01045-x},
+  urldate      = {2023-11-05},
+  month        = {06}
 }
 
-@misc{moor_2023_medflamingo,
-  author = {Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Zakka, Cyril and Dalmia, Yash and Reis, Eduardo Pontes and Rajpurkar, Pranav and Leskovec, Jure},
-  month = {07},
-  title = {Med-Flamingo: a Multimodal Medical Few-shot Learner},
-  doi = {10.48550/arXiv.2307.15189},
-  url = {https://arxiv.org/abs/2307.15189},
-  year = {2023},
-  organization = {arXiv.org}
+@inproceedings{moor_2023_medflamingo,
+  author       = {Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav},
+  title        = {{Med-Flamingo: a Multimodal Medical Few-shot Learner}},
+  booktitle    = {Proceedings of the 3rd Machine Learning for Health Symposium},
+  series       = {Proceedings of Machine Learning Research},
+  volume       = {225},
+  pages        = {353--367},
+  year         = {2023},
+  publisher    = {PMLR},
+  url          = {https://proceedings.mlr.press/v225/moor23a.html}
 }
 
 @misc{li_2023_llavamed,
-  author = {Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng},
-  month = {06},
-  title = {LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day},
-  doi = {10.48550/arXiv.2306.00890},
-  url = {https://arxiv.org/abs/2306.00890},
-  year = {2023},
+  author       = {Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng},
+  title        = {{LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day}},
+  year         = {2023},
+  doi          = {10.48550/arXiv.2306.00890},
+  url          = {https://arxiv.org/abs/2306.00890},
+  month        = {06},
   organization = {arXiv.org}
 }
 
-@misc{MED-PALM-M,
-  author = {Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Chuck and Tanno, Ryutaro and Ktena, Ira and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek},
-  month = {07},
-  title = {Towards Generalist Biomedical AI},
-  doi = {10.48550/arXiv.2307.14334},
-  url = {https://arxiv.org/abs/2307.14334},
-  year = {2023},
-  organization = {arXiv.org}
+@article{MED-PALM-M,
+  author       = {Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek},
+  title        = {{Towards Generalist Biomedical {AI}}},
+  journal      = {NEJM AI},
+  volume       = {1},
+  number       = {3},
+  eid          = {AIoa2300138},
+  year         = {2024},
+  doi          = {10.1056/AIoa2300138}
 }
 
 @article{SkinGPT-4,
-  author = {Zhou, Juexiao and He, Xiaonan and Sun, Liyuan and Xu, Jiannan and Chen, Xiuying and Chu, Yuetan and Zhou, Longxi and Liao, Xingyu and Zhang, Bin and Afvari, Shawn and Gao, Xin},
-  month = {07},
-  publisher = {Nature Portfolio},
-  title = {Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4},
-  doi = {10.1038/s41467-024-50043-3},
-  url = {https://doi.org/10.1038/s41467-024-50043-3},
-  volume = {15},
-  year = {2024},
-  journal = {Nature Communications}
+  author       = {Zhou, Juexiao and He, Xiaonan and Sun, Liyuan and Xu, Jiannan and Chen, Xiuying and Chu, Yuetan and Zhou, Longxi and Liao, Xingyu and Zhang, Bin and Afvari, Shawn and Gao, Xin},
+  title        = {{Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4}},
+  journal      = {Nature Communications},
+  volume       = {15},
+  number       = {1},
+  eid          = {5649},
+  year         = {2024},
+  publisher    = {Nature Portfolio},
+  doi          = {10.1038/s41467-024-50043-3},
+  month        = {07}
 }
 
 @article{TransMed21,
-  author       = {Yin Dai and
-                  Yifan Gao},
-  title        = {TransMed: Transformers Advance Multi-modal Medical Image Classification},
-  journal      = {CoRR},
-  volume       = {abs/2103.05940},
+  author       = {Dai, Yin and Gao, Yifan and Liu, Fayu},
+  title        = {{TransMed: Transformers Advance Multi-modal Medical Image Classification}},
+  journal      = {Diagnostics},
+  volume       = {11},
+  number       = {8},
+  eid          = {1384},
   year         = {2021},
-  url          = {https://arxiv.org/abs/2103.05940},
-  eprinttype   = {arXiv},
-  eprint       = {2103.05940},
-  timestamp    = {Tue, 16 Mar 2021 11:26:59 +0100},
-  biburl       = {https://dblp.org/rec/journals/corr/abs-2103-05940.bib},
-  bibsource    = {dblp computer science bibliography, https://dblp.org}
+  doi          = {10.3390/diagnostics11081384}
 }
