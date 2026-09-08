@@ -1,129 +1,307 @@
-HƯỚNG DẪN SỬ DỤNG XBONE-NET
-===========================
+HƯỚNG DẪN SỬ DỤNG VÀ TÁI LẬP XBONE-NET
+=======================================
 
-1. ĐIỀU KIỆN CHUNG
-------------------
-- Đã cài môi trường theo HuongDanCaiDat.txt.
-- Đã chạy "conda activate Thesis".
-- Terminal đang đứng tại thư mục chứa train.py.
-- Để chạy demo, phải có gói demo/model hợp lệ.
-- Để huấn luyện/đánh giá, phải có dữ liệu CTCH hoặc BTXRD tương ứng.
+Tài liệu dành cho người huấn luyện và đánh giá mô hình. Nếu chỉ muốn thử giao
+diện bằng model có sẵn, đọc HuongDanSuDungDemo.txt.
 
+Thứ tự thực hiện:
+  Chuẩn bị → dữ liệu → huấn luyện → đánh giá → ba seed → phân tích bổ sung.
 
-2. KIỂM TRA MÃ NGUỒN VÀ DEMO
-----------------------------
-  python -m compileall -q train.py evaluate.py inference.py src tools benchmark demo
-  python tools/generate_requirement.py --check
-  python tools/training.py --list-configs
-  python tools/verify_demo_artifacts.py
+Giải thích ngắn:
+- Checkpoint: tệp trọng số mô hình đã huấn luyện, có đuôi .pth.
+- Seed: số khởi tạo ngẫu nhiên; thí nghiệm dùng 42, 123 và 456.
+- Train / validation / test: tập học / tập chọn mô hình và hiệu chỉnh / tập
+  đánh giá cuối. Trong tệp CSV, tên tập validation là "validate".
+- Feature archive: tệp .npz chứa đặc trưng đã trích xuất, dùng cho OOD và IG.
 
 
-3. CHẠY DEMO
-------------
-  python -m streamlit run demo/streamlit_app.py
-
-Chi tiết đầu vào, đầu ra, OOD, IG và xử lý lỗi xem HuongDanSuDungDemo.txt.
-
-
-4. HUẤN LUYỆN MÔ HÌNH ĐỀ XUẤT
+BƯỚC 1. CHUẨN BỊ MỘT LẦN CHẠY
 ------------------------------
-CTCH, seed 42:
+1. Cài môi trường theo HuongDanCaiDat.txt.
+2. Mở terminal tại thư mục chứa train.py và chạy:
+
+  conda activate Thesis
+  python tools/training.py --list-configs
+
+Kết quả cần thấy: danh sách cấu hình, có ctch/proposed/ours_xbone_net và
+btxrd/proposed/ours_xbone_net.
+
+3. Ghi lại phiên bản mã, môi trường và phần cứng. Nếu dùng Git:
+
+  git rev-parse HEAD
+  git status --short
+  python -m pip freeze
+
+Lưu các thông tin trên cùng lệnh đã chạy, tên GPU/CPU, phiên bản driver và
+phiên bản dữ liệu trong nhật ký thí nghiệm. Nếu nhận mã dạng ZIP, ghi phiên bản
+bản bàn giao. Giữ cả những thay đổi cấu hình chưa được commit.
+
+4. Kiểm tra đầu ra cũ. Cùng tên thí nghiệm và seed sẽ dùng cùng thư mục
+checkpoints/ và results/. Lưu bản cũ ra vị trí riêng trước khi huấn luyện lại.
+
+
+BƯỚC 2. CHUẨN BỊ DỮ LIỆU
+-------------------------
+Nhận bộ dữ liệu đã xử lý và được phép sử dụng từ người bàn giao dự án. Chỉ có
+mã nguồn hoặc gói demo/model thì chưa đủ để huấn luyện lại. Muốn đối chiếu với
+kết quả đã báo cáo, cần đúng ảnh, văn bản, nhãn và tệp chia tập của lần chạy đó.
+
+Cấu trúc sử dụng với cấu hình mặc định:
+
+  data/
+  |-- CTCH/
+  |   |-- images/
+  |   |-- reports/
+  |   |   |-- clinical/        (bệnh sử tiếng Anh dùng cho model)
+  |   |   |-- clinical_vi/     (bản tiếng Việt để đối chiếu dữ liệu)
+  |   |   `-- xray/           (báo cáo ảnh; không dùng làm đầu vào luồng chính)
+  |   |-- ctch-split.csv
+  |   |-- ctch-labels.csv
+  |   |-- ctch-ood.csv         (danh sách mẫu cho semantic OOD)
+  |   `-- labels.txt
+  `-- BTXRD/
+      |-- images/
+      |-- reports/
+      |   |-- clinical/       (văn bản đã sinh từ metadata)
+      |   `-- xray/           (giữ để bộ đọc nhận cấu trúc hai loại văn bản)
+      |-- btxrd-split.csv
+      `-- btxrd-labels.csv
+
+Kiểm tra trước khi chạy:
+- Mỗi image_id trong CSV phải có ảnh tương ứng trong images/.
+- Văn bản UTF-8 có cùng tên gốc với ảnh: abc.jpg đi với clinical/abc.txt.
+- Tệp chia tập và nhãn khớp image_id; không có mẫu lặp hoặc bị thiếu.
+- Thứ tự lớp khớp configs/dataset/ctch.yaml (22 lớp) hoặc btxrd.yaml (10 lớp).
+- Giữ nguyên các tệp nhãn/chia tập đã bàn giao; không tự chia lại dữ liệu, sinh
+  lại văn bản hoặc loại mẫu khi đang tái lập cùng một thí nghiệm.
+
+CTCH dùng bệnh sử; BTXRD dùng văn bản sinh từ metadata, không phải bệnh sử thu
+thập như CTCH. Giữ nguyên ngôn ngữ và nội dung đã dùng trong thí nghiệm gốc.
+Không thay bệnh sử bằng kết luận chẩn đoán từ báo cáo X-quang.
+
+Riêng BTXRD: giữ cả reports/clinical/ và reports/xray/. Nếu thiếu một trong hai
+thư mục, bộ đọc hiện tại có thể chuyển sang đọc văn bản trực tiếp từ reports/,
+làm thay đổi đầu vào dù chương trình vẫn chạy.
+
+Các công cụ data/CTCH/validate_ctch.py và data/BTXRD/validate_btxrd.py hỗ trợ
+kiểm tra bản dữ liệu đầy đủ. Xem --help trước khi sử dụng; công cụ BTXRD còn
+cần dataset.csv và generate_clinical_reports.py của gói chuẩn bị dữ liệu.
+
+Các lệnh bên dưới giả định dữ liệu nằm đúng cấu trúc trên. Cấu hình đường dẫn
+cho huấn luyện nằm tại configs/dataset/; một số công cụ phân tích dùng đường
+dẫn data/ cố định, vì vậy nên giữ cấu trúc mặc định khi tái lập toàn bộ luồng.
+
+
+BƯỚC 3. HUẤN LUYỆN MỘT SEED
+----------------------------
+Bắt đầu với CTCH, seed 42:
 
   python train.py +experiment=ctch/proposed/ours_xbone_net seed=42
 
-BTXRD, seed 42:
+Lệnh đọc cấu hình YAML tương ứng trong configs/experiment/, chạy Phase 1 để
+căn chỉnh ảnh–văn bản rồi Phase 2 để học phân loại.
+
+Khi hoàn thành, kiểm tra có các tệp:
+
+  checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase1.pth
+  checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth
+  checkpoints/ctch/proposed/ours_xbone_net/seed_42/training_summary.json
+
+Để huấn luyện BTXRD thay cho CTCH:
 
   python train.py +experiment=btxrd/proposed/ours_xbone_net seed=42
 
-Giảm batch size khi thiếu VRAM:
+Nếu thiếu VRAM, có thể thử giảm batch size:
 
   python train.py +experiment=ctch/proposed/ours_xbone_net seed=42 dataset.batch_size=4
 
-Checkpoint được lưu tại:
-
-  checkpoints/<experiment_name>/seed_<seed>/best_phase1.pth
-  checkpoints/<experiment_name>/seed_<seed>/best_phase2.pth
+Đây là cấu hình đã thay đổi. Ghi lại thay đổi, dùng cùng tùy chọn khi đánh giá
+và không xem kết quả đó là tái lập nguyên trạng cấu hình mặc định.
 
 
-5. ĐÁNH GIÁ PHÂN LOẠI
----------------------
-  python evaluate.py +experiment=ctch/proposed/ours_xbone_net seed=42
-
-Bootstrap 95% và lưu embedding:
+BƯỚC 4. ĐÁNH GIÁ CHECKPOINT
+----------------------------
+Sau khi bước 3 hoàn tất, chạy với cùng tên thí nghiệm và seed:
 
   python evaluate.py +experiment=ctch/proposed/ours_xbone_net seed=42 --bootstrap --n-bootstrap 10000 --save-embeddings
 
-Kết quả mặc định nằm tại:
+- --bootstrap: tính khoảng tin cậy 95% bằng lấy mẫu lại trên tập test.
+- --n-bootstrap 10000: dùng 10.000 lần lấy mẫu lại.
+- --save-embeddings: lưu thêm biểu diễn của mẫu; có thể bỏ nếu chỉ cần chỉ số
+  phân loại. Feature archive cho OOD được tạo riêng ở bước 7.
+
+Kết quả cần kiểm tra:
 
   results/ctch/proposed/ours_xbone_net/seed_42/metrics.json
 
+Đối chiếu tên thí nghiệm, seed, cấu hình, số mẫu test và các chỉ số trong tệp.
+Không dùng metrics.json cũ để đại diện cho checkpoint vừa huấn luyện lại.
+Với BTXRD, đổi đường dẫn thí nghiệm trong lệnh thành btxrd/proposed/ours_xbone_net.
 
-6. CHẠY BA SEED
----------------
-tools/experiments.txt có thể disable một config đã hoàn tất. Để lệnh trực tiếp
-không bị danh sách disable chặn, luôn dùng --ignore-experiment-file:
 
-  python tools/training.py --group ctch/proposed/ours_xbone_net --ignore-experiment-file --seeds 42 123 456
-
-Xem trước hàng đợi mà không huấn luyện:
+BƯỚC 5. CHẠY BA SEED VÀ TỔNG HỢP
+---------------------------------
+Sau khi một seed chạy thành công, xem trước danh sách thí nghiệm:
 
   python tools/training.py --group ctch/proposed/ours_xbone_net --ignore-experiment-file --seeds 42 123 456 --dry-run
+
+Kết quả cần thấy: đúng cấu hình ctch/proposed/ours_xbone_net được chọn. Lệnh
+--dry-run chỉ in danh sách được chọn, chưa kiểm tra dữ liệu hoặc chạy model.
+
+Tiếp theo, chạy huấn luyện và đánh giá ba seed:
+
+  python tools/training.py --group ctch/proposed/ours_xbone_net --ignore-experiment-file --seeds 42 123 456 --bootstrap --n-bootstrap 10000
+
+Lệnh trên chạy lại cả seed 42. Nếu muốn dùng checkpoint đã có từ bước 3 và chỉ
+huấn luyện các seed còn thiếu, thêm --skip-completed. Chỉ dùng tùy chọn này khi
+checkpoint cũ thuộc đúng cấu hình và dữ liệu đang tái lập; nó không tiếp tục
+một lần huấn luyện bị ngắt từ epoch gần nhất.
+
+--ignore-experiment-file chọn trực tiếp cấu hình trên dòng lệnh. Nếu bỏ tùy
+chọn này, tools/experiments.txt còn ảnh hưởng đến lựa chọn: [enabled] bật,
+[disabled] tắt; danh sách tắt được ưu tiên. Luôn xem --dry-run trước khi chạy.
 
 Tổng hợp kết quả đã có, không huấn luyện lại:
 
   python tools/training.py --table --group ctch/proposed/ours_xbone_net
 
+Bảng được in trên terminal và xuất tại results/summary/run_all_table.csv.
+Kiểm tra có đủ seed 42, 123, 456. Mean ± std giữa các seed không phải khoảng
+tin cậy 95% và không đo khả năng tổng quát sang cách chia tập mới.
 
-7. BASELINE VÀ ABLATION HIỆN CÓ
-------------------------------
-Liệt kê config thực tế trước khi chạy:
 
-  python tools/training.py --list-configs
+BƯỚC 6. CHẠY BASELINE HOẶC ABLATION (KHI CẦN)
+----------------------------------------------
+Baseline là mô hình đối chiếu; ablation thay đổi một thành phần để đo ảnh
+hưởng. Chọn từ danh sách "python tools/training.py --list-configs".
 
-Ví dụ:
+Ví dụ baseline zero-shot, không cần huấn luyện trên CTCH:
 
-  python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot
+  python evaluate.py +experiment=ctch/baselines/zeroshot/biomedclip_zeroshot seed=42 --bootstrap --n-bootstrap 10000
+
+Ví dụ baseline fine-tuning:
+
   python train.py +experiment=ctch/baselines/full_finetuned/fft_biomedclip seed=42
+  python evaluate.py +experiment=ctch/baselines/full_finetuned/fft_biomedclip seed=42
+
+Ví dụ ablation thay phép hợp nhất bằng concatenation:
+
   python train.py +experiment=ctch/ablation_study/architecture/fusion/concat seed=42
-  python train.py +experiment=ctch/ablation_study/architecture/phase/phase2_only seed=42
+  python evaluate.py +experiment=ctch/ablation_study/architecture/fusion/concat seed=42
 
-Không sử dụng các lệnh few-shot hoặc config đã bị xóa khỏi --list-configs.
+Để chạy ba seed cho cấu hình khác, thay giá trị --group trong bước 5. Công cụ
+chỉ đánh giá một seed đối với zero-shot xác định. Giữ cùng tập test khi so
+sánh; báo cáo cả kết quả tốt hơn và kém hơn của ablation.
 
 
-8. OOD VÀ EXPLAINABILITY
-------------------------
-Trích xuất feature và đánh giá OOD cho seed 42:
+BƯỚC 7. ĐÁNH GIÁ OOD TRÊN MÔ HÌNH CTCH (KHI CẦN)
+-------------------------------------------------
+Điều kiện: đã huấn luyện và đánh giá CTCH; có ctch-ood.csv cùng ảnh/bệnh sử của
+các mẫu OOD. OOD là mẫu ngoài phân phối so với dữ liệu CTCH-ID đã dùng để học.
+
+7.1. Chọn đúng checkpoint trước khi phân tích.
+
+Các công cụ OOD/IG của mô hình đề xuất ưu tiên gói demo seed 42 nếu có. Để
+phân tích checkpoint VỪA HUẤN LUYỆN ở bước 3, làm một lần như sau:
+- Đóng demo nếu đang mở. Nếu có demo/model, lưu và đổi tên thư mục này thành
+  một tên chưa dùng, ví dụ demo/model_ban_giao. Giữ bản cũ, không xóa.
+- Bỏ biến môi trường trỏ đến gói demo cũ trong terminal đang dùng:
+
+Windows PowerShell:
+  Remove-Item Env:XBONE_DEMO_ARTIFACT_ROOT -ErrorAction SilentlyContinue
+
+Windows CMD:
+  set XBONE_DEMO_ARTIFACT_ROOT=
+
+Linux:
+  unset XBONE_DEMO_ARTIFACT_ROOT
+
+Chỉ chạy lệnh tương ứng với terminal của bạn.
+Khi không có gói demo, công cụ đọc checkpoint trong checkpoints/ và cấu hình
+đánh giá trong results/ của đúng seed. Giữ trạng thái này qua bước 8; bước 9
+sẽ tạo lại demo/model nếu muốn phát hành model mới.
+
+7.2. Trích xuất đặc trưng và đánh giá.
+
+Chạy semantic OOD cho seed 42:
 
   python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device auto
 
-Đánh giá IG trên feature train/test:
+Công cụ trích xuất đặc trưng, khớp detector bằng tập train, hiệu chỉnh ngưỡng
+trên validation-ID, rồi đánh giá test-ID và OOD. Kết quả nằm tại:
 
-  python benchmark/explainability_analysis.py --experiment ctch/proposed/ours_xbone_net --seed 42 --train-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz --test-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_test.npz --output-dir results/ctch/proposed/ours_xbone_net/seed_42/analysis/explainability --device auto
+  results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/
+  results/summary/ood/ood_benchmark_summary.json
+  results/summary/ood/ood_benchmark_summary.csv
 
-Xuất một hình IG:
+Thư mục features/ cần có ctch_train.npz, ctch_val.npz, ctch_test.npz và
+ctch_ood.npz. Khi checkpoint hoặc dữ liệu thay đổi, thêm --force-recompute
+để trích xuất lại, tránh dùng cache cũ.
 
-  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device auto --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
+Để chạy cả hai kịch bản cho ba seed, cần thêm dữ liệu BTXRD và đủ checkpoint
+CTCH của cả ba seed:
+
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 123 456 --scenarios semantic_ood domain_ood_btxrd --device auto
+
+Giữ nguyên cohort và ngưỡng theo giao thức; không điều chỉnh ngưỡng bằng test.
 
 
-9. ĐO CHI PHÍ SUY LUẬN
-----------------------
+BƯỚC 8. PHÂN TÍCH IG VÀ CHI PHÍ SUY LUẬN (KHI CẦN)
+---------------------------------------------------
+8.1. Sau bước 7, đánh giá IG trên toàn bộ tập test CTCH:
+
+  python benchmark/explainability_analysis.py --experiment ctch/proposed/ours_xbone_net --seed 42 --train-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_train.npz --test-features results/ctch/proposed/ours_xbone_net/seed_42/analysis/features/ctch_test.npz --all-test-samples --ig-steps 24 --output-dir results/ctch/proposed/ours_xbone_net/seed_42/analysis/explainability --device auto
+
+Kết quả: samples.json và summary.json trong thư mục explainability/. Lệnh này
+cần ảnh/văn bản gốc, không chỉ các tệp .npz. --all-test-samples giữ toàn bộ test;
+bỏ tùy chọn này sẽ dùng lấy mẫu theo lớp. Phân tích toàn bộ test có thể chạy lâu.
+Nếu summary.json đã có, công cụ bỏ qua; muốn tính lại, lưu bản cũ rồi dùng
+--overwrite. Với seed khác, đổi seed và mọi đường dẫn seed_42 trong lệnh.
+
+8.2. Xuất một hình minh họa IG. Thay TEN_ANH.jpg bằng image_id có thật trong
+dữ liệu CTCH, bao gồm phần mở rộng:
+
+  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id "TEN_ANH.jpg" --seed 42 --device auto --ig-steps 24 --output results/visualization/multimodal_ig.png
+
+8.3. Đo chi phí suy luận:
+
   python benchmark/efficiency.py +experiment=ctch/proposed/ours_xbone_net ++seed=42 --device auto --precision fp32 --batch-size 1 --num-batches 20 --warmup 10 --repeats 10
 
+Đọc đường dẫn kết quả trên terminal. Ghi lại thiết bị, precision, batch size
+và số lần lặp; chỉ so sánh thời gian khi điều kiện đo tương đương.
 
-10. CẬP NHẬT GÓI MODEL CHO DEMO
---------------------------------
-Sau khi huấn luyện và chạy OOD để tạo ctch_train.npz/ctch_val.npz:
+
+BƯỚC 9. ĐÓNG GÓI MODEL MỚI CHO DEMO (KHI CẦN)
+----------------------------------------------
+Chỉ thực hiện khi muốn thay model demo, sau khi huấn luyện và đánh giá mô hình
+ctch/proposed/ours_xbone_net seed 42. Kiểm tra metrics.json thuộc lần chạy mới.
+Trước khi chạy lệnh bên dưới, thực hiện cách chọn checkpoint mới ở mục 7.1;
+--force-recompute chỉ làm mới đặc trưng, không thay đổi ưu tiên chọn model.
+
+1. Trích xuất lại đặc trưng từ checkpoint mới:
+
+  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device auto --force-recompute
+
+2. Lưu bản demo/model cũ ở vị trí khác nếu cần giữ, rồi đóng gói:
 
   python tools/package_demo_artifacts.py
   python tools/verify_demo_artifacts.py
 
-Công cụ chỉ chấp nhận checkpoint canonical seed 42 với direct_resize,
-cross-attention và linear head. Gói đầu ra nằm tại demo/model.
+Công cụ thay checkpoint, metrics.json, ctch_train.npz, ctch_val.npz và tạo lại
+manifest.json tại demo/model. Kết quả cần thấy: "Demo artifacts: OK".
+Chỉ nhận cấu hình CTCH seed 42 với direct_resize, cross-attention và linear
+head. Không ghép thủ công các tệp từ những checkpoint khác nhau.
+
+3. Mở demo theo HuongDanSuDungDemo.txt và kiểm tra bằng một ảnh/bệnh sử đã biết.
 
 
-11. THƯ MỤC ĐẦU RA
-------------------
-- checkpoints/: checkpoint huấn luyện.
-- results/: metrics, feature archive, OOD, IG và efficiency.
-- outputs/: log/config do Hydra sinh ra.
-- demo/model/: gói checkpoint và feature tối thiểu để phát hành demo.
+BƯỚC 10. LƯU KẾT QUẢ ĐỂ NGƯỜI SAU ĐỐI CHIẾU
+--------------------------------------------
+Bàn giao cùng nhau: phiên bản mã và môi trường ở bước 1, cấu hình/lệnh chạy,
+phiên bản dữ liệu và các CSV nhãn/chia tập, checkpoint, training_summary.json,
+metrics.json, feature archive và kết quả phân tích đã sử dụng.
+
+Đối chiếu số mẫu, thứ tự lớp, seed và nguồn checkpoint trước khi so chỉ số.
+Giữ nguyên train/validation/test: dùng train để học, validation để chọn/hiệu
+chỉnh, test để đánh giá cuối. Khác phần cứng hoặc thư viện có thể gây sai khác
+số; tái lập không bảo đảm từng giá trị giống tuyệt đối trên mọi máy.

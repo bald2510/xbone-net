@@ -1,205 +1,97 @@
-# XBone-Net: Multimodal Bone Tumor Classification and Out-of-Distribution Detection
+# XBone-Net
 
-XBone-Net is a multimodal vision-language framework for bone-tumor classification and out-of-distribution (OOD) detection on musculoskeletal radiographs. The canonical pipeline uses radiographs and pre-imaging clinical history in both training phases; radiology findings are excluded because they can contain the target diagnosis and cause label leakage.
+XBone-Net kết hợp ảnh X-quang và văn bản để phân loại tổn thương xương, phát hiện mẫu ngoài phân phối (OOD) và trực quan hóa Integrated Gradients (IG). Dự án phục vụ nghiên cứu.
 
----
+- **BTXRD:** phân loại 10 lớp; văn bản đầu vào được sinh từ metadata của bộ dữ liệu.
+- **CTCH:** phân loại 22 lớp; văn bản đầu vào là bệnh sử lâm sàng. Demo sử dụng mô hình CTCH, seed 42.
 
-## 1. Key Features
+## 1. Bắt đầu từ đâu?
 
-- **Canonical image path:** Pass each radiograph directly to the original BiomedCLIP resize/crop/normalization transform (`direct_resize` in the locked experiment config); no high-resolution tile branch or visual resampler is used.
-- **Two-stage training:**
-  - **Phase 1 (semantic alignment):** Align image and clinical-history embeddings with LoRA and soft-target Semantic Matching Loss.
-  - **Phase 2 (multimodal classification):** Continue optimizing the LoRA adapters together with bidirectional cross-attention and a 512-to-class linear head using class-weighted cross-entropy.
-- **Label-leakage prevention:** Use **clinical history only** as the text modality in both phases and at inference; X-ray reports are reserved for ablation analysis.
-- **Post-hoc OOD detection:** Uses only `MultimodalEnsembleOODDetector`, which combines validation-standardized image and clinical-text kNN distances with max fusion. The detector is fitted on CTCH train features and its operating threshold is calibrated on CTCH validation-ID data.
-- **Explainability:** Provides end-to-end Integrated Gradients for the image tensor produced by the locked preprocessing config and for clinical-text embeddings, together with perturbation-based faithfulness analysis.
+| Bạn muốn làm gì? | Đọc theo thứ tự |
+| --- | --- |
+| Chạy thử giao diện với mô hình có sẵn | [Cài đặt](HuongDanCaiDat.txt) → [Sử dụng demo](HuongDanSuDungDemo.txt) |
+| Huấn luyện và tái lập thí nghiệm | [Cài đặt](HuongDanCaiDat.txt) → [Sử dụng và tái lập](HuongDanSuDung.txt) |
 
----
+Mọi lệnh đều chạy tại thư mục gốc `xbone-net`, nơi chứa `train.py` và `requirements.txt`. Chạy từng lệnh, kiểm tra kết quả rồi mới sang bước tiếp theo.
 
-## 2. Directory Structure
+## 2. Chạy demo bằng mô hình có sẵn
+
+**Bước 1 — Cài môi trường.** Làm theo [hướng dẫn cài đặt](HuongDanCaiDat.txt), gồm lựa chọn CPU/GPU và kiểm tra thư viện.
+
+**Bước 2 — Chuẩn bị gói model.** Kiểm tra bản mã nguồn được bàn giao có đủ các tệp sau. Nếu thiếu, nhận nguyên gói từ người bàn giao dự án; cài thư viện không tạo ra các tệp này.
 
 ```text
-xbone-net/
-├── benchmark/              # Efficiency, OOD and explainability benchmarks
-├── configs/                # Hydra dataset, model and experiment configurations
-├── data/                   # Local datasets and dataset-specific preprocessing
-├── demo/                   # Streamlit research demo and its dependencies
-├── docs/
-│   ├── assets/             # Documentation assets
-│   ├── paper/              # Conference-paper sources
-│   └── report/             # Thesis sources and generated report artifacts
-├── scripts/                # Windows launchers for training, evaluation and reports
-├── src/                    # Reusable datasets, models and utility modules
-├── tools/                  # Experiment orchestration, exports and visualizations
-├── train.py                # Two-stage training entry point
-├── evaluate.py             # Classification evaluation entry point
-├── inference.py            # Single-sample inference entry point
-├── HuongDanCaiDat.txt      # Vietnamese installation guide
-└── HuongDanSuDung.txt      # Vietnamese execution guide
+demo/model/
+├── best_phase2.pth
+├── metrics.json
+├── manifest.json
+└── features/
+    ├── ctch_train.npz
+    └── ctch_val.npz
 ```
 
-Vietnamese setup and execution instructions are available in
-[`HuongDanCaiDat.txt`](HuongDanCaiDat.txt) and
-[`HuongDanSuDung.txt`](HuongDanSuDung.txt).
-
----
-
-## 3. Installation
-
-We recommend using Anaconda or Miniconda to manage environments. The versions
-below match the validated project environment; use the CPU PyTorch index when
-CUDA is unavailable.
+**Bước 3 — Kiểm tra và khởi động.**
 
 ```bash
-# 1. Create and activate the conda environment
-conda create -n Thesis python=3.11.15 -y
 conda activate Thesis
-
-# 2. Install the validated CUDA build of PyTorch
-python -m pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
-
-# 3. Install other required packages
-python -m pip install -r requirements.txt
-
-# Required only for experiments using the MedCLIP backbone. Its upstream
-# metadata pins an obsolete Transformers version; XBone-Net provides the
-# compatibility layer, so install the package without its dependency pins.
-python -m pip install --no-deps MedCLIP==0.0.3
-```
-
-`requirements.txt` is generated from direct imports in the repository. After
-adding or removing a dependency, regenerate it from the active environment:
-
-```bash
-python tools/generate_requirement.py
-
-# CI/read-only validation: exits with code 1 when the file is stale
-python tools/generate_requirement.py --check
-```
-
----
-
-## 4. Dataset Setup
-
-Place dataset payloads under `data/` or change the paths in
-`configs/dataset/btxrd.yaml` and `configs/dataset/ctch.yaml`. Dataset images,
-reports and patient data are intentionally excluded from Git.
-
-```text
-data/
-├── BTXRD/
-│   ├── images/
-│   ├── reports/
-│   ├── btxrd-split.csv
-│   └── btxrd-labels.csv
-└── CTCH/
-    ├── images/
-    ├── reports/clinical/
-    ├── reports/clinical_vi/
-    ├── ctch-split.csv
-    ├── ctch-labels.csv
-    ├── ctch-ood.csv
-    └── labels.txt
-
-```
-
----
-
-## 5. Usage
-
-### 5.1. Training a Model
-To train XBone-Net or a baseline model on a specific experiment config (for example, the proposed `ours_xbone_net` on the BTXRD dataset):
-
-```bash
-python train.py +experiment=btxrd/proposed/ours_xbone_net
-```
-
-For the proposed model on CTCH:
-```bash
-python train.py +experiment=ctch/proposed/ours_xbone_net
-```
-
-### 5.2. Running Evaluation
-To evaluate a trained model checkpoint and calculate metrics (Accuracy, F1-macro, Specificity, AUROC, Confusion Matrix) along with **95% Bootstrap Confidence Intervals**:
-
-```bash
-python evaluate.py +experiment=btxrd/proposed/ours_xbone_net --bootstrap --save-embeddings
-```
-`--save-embeddings` is optional for ordinary classification evaluation.
-
-### 5.3. Out-of-Distribution (OOD) Detection
-OOD and explainability are locked to the proposed model trained on CTCH. The
-orchestrator exports the required feature archives, fits the ensemble detector on CTCH
-train/validation data, and evaluates all configured scenarios for three seeds:
-
-```bash
-python benchmark/ood_analysis.py
-```
-
-See Section 9 of [`HuongDanSuDung.txt`](HuongDanSuDung.txt) for the OOD and
-explainability commands. Feature extraction, calibration and scoring are
-coordinated by `benchmark/ood_analysis.py`.
-
-### 5.4. Running the Entire Experiment Suite
-`tools/training.py` discovers every YAML under `configs/experiment/`; the Python
-registry no longer needs to be edited. Enable a config/group with `+` and
-disable it with `-` in `tools/experiments.txt` (a disabled selector always
-wins). Inspect the available selectors and preview the final queue before
-launching training:
-
-```bash
-python tools/training.py --list-configs
-python tools/training.py --dry-run
-python tools/training.py --seeds 42 123 456 --bootstrap
-python tools/training.py --group zero_shot_baselines
-python tools/training.py --group finetuned_baselines
-python tools/training.py --group proposed
-python tools/training.py --group ablation
-```
-
-`--group` explicitly selects a subset while retaining the manifest's disabled
-list. `--ignore-experiment-file` performs direct CLI-only selection.
-
-Trainable experiments use every requested seed. Deterministic zero-shot configs
-are evaluated once because repeating them under different seed labels would be
-pseudo-replication; their uncertainty is estimated by test-sample bootstrap.
-
-Review mode is independent from the training switches. Without `--group`, it
-scans every existing result and prints separate BTXRD/CTCH sections grouped by
-configuration family. It reports F1, balanced accuracy, accuracy, sensitivity,
-specificity, precision, AUROC, AUPRC, ECE, adaptive ECE, NLL, Brier score, and
-parameter counts; the same data are exported to
-`results/summary/run_all_table.csv`.
-
-```bash
-python tools/training.py --table
-python tools/training.py --table --group ctch
-python tools/training.py --table --group ctch_proposed
-python tools/training.py --table --table-selected-only
-```
-
-### 5.5. Canonical Pipeline and Ablations
-
-BTXRD and CTCH both provide baseline and proposed-model evaluations. Component ablations are performed on CTCH under `configs/experiment/ctch/ablation_study/`. Every current-architecture ablation inherits from `configs/experiment/ctch/proposed/ours_xbone_net.yaml` and overrides one decision, such as phase-2-only training, concatenation or one-way attention instead of bidirectional cross-attention, or a classifier/loss option. The `shuffled_report` experiment trains normally and applies a one-to-one cross-class report derangement only on the test split.
-
-The proposed pipeline is fixed before interpreting ablations. If an ablation performs better on a metric, report the result directly as a limitation or trade-off of the proposed component rather than relabeling that ablation as the proposed model after seeing test results.
-
-### 5.6. Streamlit Research Demo
-
-The release demo automatically loads the locked seed-42 package under
-`demo/model/`. Verify the checkpoint, resolved config, and OOD feature archives,
-then launch the local interface:
-
-```bash
 python tools/verify_demo_artifacts.py
-streamlit run demo/streamlit_app.py
 ```
 
-The app displays preprocessing, class probabilities, maximum-softmax
-confidence, the OOD score and threshold, nearest CTCH reference images, and
-image/text Integrated Gradients. It is a research demonstration and not
-a medical device.
+Khi thấy `Demo artifacts: OK`, chạy:
 
-See [`HuongDanSuDungDemo.txt`](HuongDanSuDungDemo.txt) for the required artifact
-layout, checksum verification, optional `XBONE_DEMO_ARTIFACT_ROOT` override, and
-the command used to repackage a newly trained canonical checkpoint.
+```bash
+python -m streamlit run demo/streamlit_app.py
+```
+
+**Bước 4 — Thử một mẫu.** Mở địa chỉ in trên terminal, thường là `http://localhost:8501`. Chọn ảnh X-quang, nhập bệnh sử tương ứng rồi nhấn **Phân tích**. Xem [hướng dẫn demo](HuongDanSuDungDemo.txt) để đọc kết quả ID/OOD, confidence và IG.
+
+Gói model và pretrained BiomedCLIP tải ở lần đầu cho phép chạy suy luận. Ảnh CTCH tại `data/CTCH/images/` chỉ cần thêm nếu muốn hiển thị ảnh tham chiếu tương tự. Demo không thay thế chẩn đoán y khoa.
+
+## 3. Tái lập thí nghiệm
+
+**Bước 1 — Nhận dữ liệu đã chuẩn bị.** Cần ảnh, văn bản, nhãn và tệp chia tập của đúng phiên bản thí nghiệm. Dữ liệu bệnh nhân không được phân phối cùng mã nguồn công khai. Xem cấu trúc và điều kiện bàn giao trong [hướng dẫn tái lập](HuongDanSuDung.txt).
+
+**Bước 2 — Huấn luyện một seed trên CTCH.**
+
+```bash
+python train.py +experiment=ctch/proposed/ours_xbone_net seed=42
+```
+
+Kết quả cần có: `checkpoints/ctch/proposed/ours_xbone_net/seed_42/best_phase2.pth`.
+
+**Bước 3 — Đánh giá checkpoint vừa huấn luyện.**
+
+```bash
+python evaluate.py +experiment=ctch/proposed/ours_xbone_net seed=42 --bootstrap --n-bootstrap 10000 --save-embeddings
+```
+
+Kết quả nằm trong `results/ctch/proposed/ours_xbone_net/seed_42/`, gồm `metrics.json`. Để chạy BTXRD, thay `ctch/proposed/ours_xbone_net` bằng `btxrd/proposed/ours_xbone_net` trong cả hai lệnh.
+
+**Bước 4 — Mở rộng sau khi một seed chạy thành công.** [Hướng dẫn tái lập](HuongDanSuDung.txt) trình bày lần lượt cách chạy ba seed, tổng hợp kết quả, chạy baseline/ablation, đánh giá OOD/IG, đo thời gian và đóng gói model mới.
+
+Giữ nguyên phiên bản mã, dữ liệu chia tập và cấu hình khi đối chiếu kết quả. Chạy lại cùng tên thí nghiệm và seed có thể ghi đè đầu ra; hãy lưu bản cũ trước. Sai khác phần cứng và thư viện có thể làm kết quả số thay đổi.
+
+## 4. Mô hình hoạt động thế nào?
+
+1. Ảnh đi qua phép resize/crop/normalize gốc của BiomedCLIP (`direct_resize`).
+2. Phase 1 căn chỉnh biểu diễn ảnh–văn bản bằng LoRA và Semantic Matching Loss.
+3. Phase 2 học phân loại bằng cross-attention hai chiều và linear head.
+4. Detector OOD kết hợp khoảng cách kNN của ảnh và văn bản. Nó dùng đặc trưng CTCH-train và hiệu chỉnh ngưỡng trên CTCH-validation.
+5. IG biểu diễn độ nhạy của dự đoán theo ảnh và token văn bản; đây không phải bản phân vùng tổn thương.
+
+Luồng chính dùng bệnh sử CTCH hoặc văn bản BTXRD sinh từ metadata. Không đưa kết luận chẩn đoán từ báo cáo X-quang vào đầu vào của luồng này.
+
+## 5. Các thư mục cần biết
+
+| Đường dẫn | Nội dung |
+| --- | --- |
+| `configs/experiment/` | Cấu hình mô hình đề xuất, baseline và ablation |
+| `configs/dataset/` | Đường dẫn dữ liệu và thứ tự lớp |
+| `data/` | Dữ liệu cục bộ và công cụ kiểm tra dữ liệu |
+| `src/` | Mã mô hình, bộ đọc dữ liệu và hàm dùng chung |
+| `checkpoints/` | Trọng số sau huấn luyện |
+| `results/` | Chỉ số đánh giá, đặc trưng và kết quả phân tích |
+| `outputs/` | Log/cấu hình do Hydra sinh ra |
+| `demo/` | Giao diện Streamlit và gói model |
+| `tools/`, `benchmark/` | Điều phối thí nghiệm và phân tích kết quả |
+| `docs/` | Báo cáo, bài báo và tài liệu trình bày |

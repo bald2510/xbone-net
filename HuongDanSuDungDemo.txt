@@ -1,129 +1,131 @@
-HƯỚNG DẪN SỬ DỤNG DEMO XBONE-NET (STREAMLIT)
-================================================
+HƯỚNG DẪN SỬ DỤNG DEMO XBONE-NET
+=================================
 
-1. PHẠM VI
-----------
-Demo nhận một ảnh X-quang và một đoạn bệnh sử, sau đó cung cấp:
-
-- cảnh báo ID/OOD bằng detector post-hoc;
-- nhãn dự đoán và confidence đã hiệu chỉnh đối với mẫu ID;
-- các mẫu CTCH-train gần nhất nếu có ảnh tham chiếu cục bộ;
-- Integrated Gradients (IG) cho ảnh và token bệnh sử đối với mẫu ID.
-
-Checkpoint hiện tại dùng BiomedCLIP, LoRA r=16/alpha=32, direct_resize theo
-transform gốc BiomedCLIP, cross-attention hai chiều và linear head 22 lớp.
-Không còn sparse-focal high-resolution, local tile, visual resampler hoặc
-empirical-centroid classifier.
-
-Demo chỉ phục vụ nghiên cứu, không phải thiết bị y tế.
+Mục tiêu: phân tích một ảnh X-quang cùng bệnh sử bằng model CTCH đã huấn luyện.
+Demo dùng checkpoint seed 42, phân loại 22 lớp và phát hiện OOD. Đây là công
+cụ nghiên cứu, không thay thế chẩn đoán y khoa.
 
 
-2. KIỂM TRA TRƯỚC KHI KHỞI CHẠY
--------------------------------
-Mở terminal tại thư mục chứa train.py:
+BƯỚC 1. KIỂM TRA TRƯỚC KHI MỞ
+------------------------------
+Cài môi trường và chuẩn bị gói model theo HuongDanCaiDat.txt. Mở terminal tại
+thư mục chứa train.py, chạy:
 
   conda activate Thesis
   python tools/verify_demo_artifacts.py
 
-Chỉ tiếp tục khi nhận được "Demo artifacts: OK". Tài nguyên mặc định là:
+Kết quả cần thấy: "Demo artifacts: OK". Nếu báo thiếu tệp hoặc sai checksum,
+xử lý theo hướng dẫn cài đặt trước khi tiếp tục.
 
-  demo/model/best_phase2.pth
-  demo/model/metrics.json
-  demo/model/manifest.json
-  demo/model/features/ctch_train.npz
-  demo/model/features/ctch_val.npz
-
-Ứng dụng tự nhận demo/model. Chỉ đặt XBONE_DEMO_ARTIFACT_ROOT khi chủ động di
-chuyển toàn bộ gói model sang thư mục khác.
+Nếu dùng model ngoài demo/model, đặt XBONE_DEMO_ARTIFACT_ROOT và kiểm tra bằng
+--artifact-root như phần tùy chọn của HuongDanCaiDat.txt. Khởi động ứng dụng
+trong cùng terminal để giữ biến môi trường.
 
 
-3. KHỞI CHẠY
-------------
+BƯỚC 2. KHỞI ĐỘNG GIAO DIỆN
+----------------------------
   python -m streamlit run demo/streamlit_app.py
 
-Mở địa chỉ Streamlit in trên terminal, mặc định:
+Mở địa chỉ in trên terminal, thường là http://localhost:8501.
+Kết quả cần thấy: giao diện có phần chọn ảnh, ô nhập bệnh sử và nút "Phân tích".
+Lần phân tích đầu có thể chậm do tải pretrained BiomedCLIP và nạp model.
+Giữ terminal mở trong khi dùng ứng dụng.
 
-  http://localhost:8501
-
-Nếu cổng 8501 bận:
+Nếu cổng 8501 đang bận:
 
   python -m streamlit run demo/streamlit_app.py --server.port 8502
 
-Lần đầu có thể chậm vì OpenCLIP tải pretrained BiomedCLIP. Không đóng terminal
-trong quá trình tải.
+Mở địa chỉ mới tương ứng, thường là http://localhost:8502.
 
 
-4. THAO TÁC
------------
-4.1. Sidebar
+BƯỚC 3. CHỌN THIẾT LẬP
+-----------------------
+Ở thanh bên trái:
+- Checkpoint seed: giữ 42; bản demo đã khóa model này.
+- Thiết bị: giữ "auto" để tự chọn GPU nếu có; chọn "cpu" nếu thiếu bộ nhớ GPU.
+- Số bước Integrated Gradients: giữ mặc định 16 khi thử lần đầu. Tăng số bước
+  làm phép xấp xỉ chi tiết hơn nhưng mất thêm thời gian.
+- Số ảnh CTCH tương tự: chọn số ảnh tham chiếu muốn hiển thị, mặc định 4.
 
-- Checkpoint seed được khóa ở seed 42.
-- Thiết bị "auto" ưu tiên CUDA; chọn "cpu" nếu GPU không đủ bộ nhớ.
-- Demo chỉ sử dụng Multi-modal Ensemble OOD; người dùng không cần chọn phương
-  pháp. Điểm ảnh và văn bản được chuẩn hóa trên validation-ID rồi hợp nhất bằng
-  toán tử max.
-- Tăng số bước IG cho xấp xỉ mượt hơn nhưng thời gian chạy lâu hơn.
-
-4.2. Đầu vào
-
-- Chọn ảnh PNG, JPG, JPEG, BMP, TIF hoặc TIFF.
-- Nhập bệnh sử lâm sàng không chứa chẩn đoán đích nếu muốn mô phỏng đúng giao
-  thức nghiên cứu.
-- Không để trống bệnh sử vì checkpoint là mô hình đa phương thức.
-- Nhấn "Phân tích".
-
-4.3. Preprocessing
-
-Checkpoint đóng gói hiện dùng direct_resize: ảnh nguồn được chuyển trực tiếp
-cho transform resize/crop/normalize của BiomedCLIP, không letterbox. Mục "Xem
-các bước preprocessing" trên giao diện đọc chiến lược từ config của chính
-checkpoint, không dùng mô tả cố định.
-
-4.4. ID/OOD và kết quả
-
-- Nếu là ID: hiển thị nhãn, confidence sau temperature scaling, bảng xác suất,
-  ảnh tương tự và IG.
-- Nếu là OOD: không công bố nhãn/confidence/IG theo lớp; chỉ cảnh báo và hiển
-  thị mẫu gần nhất nếu có.
-- Ngưỡng OOD được hiệu chỉnh trên CTCH validation-ID của đúng checkpoint.
-
-OOD là cơ chế post-hoc và không bảo đảm phát hiện mọi mẫu ngoài phân phối.
-
-4.5. Integrated Gradients
-
-- IG ảnh được tính end-to-end trên tensor ảnh đã qua preprocessing.
-- IG văn bản biểu diễn đóng góp của token đối với logit lớp dự đoán.
-- Heatmap không phải segmentation, không chứng minh quan hệ nhân quả hoặc tính
-  đúng đắn lâm sàng.
+Ngưỡng OOD đã được hiệu chỉnh cho checkpoint; không cần chỉnh thủ công.
 
 
-5. ĐÓNG GÓI LẠI SAU KHI HUẤN LUYỆN
------------------------------------
-Sau khi có checkpoint, metrics.json và feature archive mới của seed 42, chạy:
+BƯỚC 4. NHẬP ẢNH VÀ BỆNH SỬ
+----------------------------
+1. Chọn một ảnh PNG, JPG, JPEG, BMP, TIF hoặc TIFF. Demo không nhận trực tiếp
+   tệp DICOM hoặc PDF.
+2. Nhập bệnh sử của đúng ảnh đó, không để trống. Chỉ dùng thông tin có trước
+   khi đọc kết quả X-quang; không đưa tên chẩn đoán đích hoặc kết luận ảnh vào.
+3. Nhấn "Phân tích" và chờ kết quả.
 
-  python benchmark/ood_analysis.py --experiments ctch/proposed/ours_xbone_net --seeds 42 --scenarios semantic_ood --device auto --force-recompute
-  python tools/package_demo_artifacts.py
-  python tools/verify_demo_artifacts.py
+Ví dụ bệnh sử tiếng Anh để hiểu cách nhập:
+  The patient reports wrist pain and swelling after a fall, with limited
+  movement and no prior surgery at the affected site.
 
-package_demo_artifacts.py thay checkpoint, metrics và hai feature archive trong
-demo/model, sau đó sinh lại manifest SHA-256. Không sao chép thủ công một phần
-gói vì sẽ làm checkpoint và feature archive không tương thích.
-
-
-6. XUẤT HÌNH IG KHÔNG QUA STREAMLIT
------------------------------------
-  python tools/visualize/render_multimodal_ig.py --experiment ctch/proposed/ours_xbone_net --image-id 3021_img-84263-00001.jpg --seed 42 --device auto --ig-steps 24 --output results/visualization/multimodal_ig_3021.png
-
-Lệnh này cần ảnh và metadata CTCH cục bộ, ngoài gói model của demo.
+Đây là ví dụ nội dung, không phải một ca kiểm thử có nhãn chuẩn. Không ghép
+bệnh sử ví dụ với ảnh bất kỳ để đánh giá độ chính xác. Khi tái lập một mẫu,
+dùng đúng ảnh và nội dung reports/clinical/<tên-gốc-ảnh>.txt đã bàn giao.
+Văn bản CTCH dùng cho model là tiếng Anh; demo hiện không tự dịch bệnh sử.
 
 
-7. XỬ LÝ SỰ CỐ
---------------
-- "Missing evaluated configuration": thiếu demo/model/metrics.json.
-- "Missing trained checkpoint": thiếu demo/model/best_phase2.pth hoặc ứng
-  dụng không đứng trong đúng repository.
-- "Feature archive ... not found": thiếu thư mục demo/model/features.
-- "checkpoint differs": chạy lại package_demo_artifacts.py; không trộn file.
-- Không thấy ảnh tương tự: đặt ảnh CTCH được phép sử dụng tại data/CTCH/images.
-- CUDA out of memory: chọn CPU hoặc giảm số bước IG.
-- Không có IG: kiểm tra mẫu có bị detector đánh dấu OOD hay không.
+BƯỚC 5. ĐỌC KẾT QUẢ
+---------------------
+5.1. Ảnh sau tiền xử lý
+Ứng dụng cho xem ảnh và các bước xử lý. Model dùng direct_resize, tức đưa ảnh
+qua phép resize/crop/normalize gốc của BiomedCLIP. Phần bị crop có thể không
+còn trong tensor đầu vào; xem ảnh đã xử lý khi diễn giải IG.
+
+5.2. ID hay OOD?
+- ID: mẫu được detector chấp nhận theo ngưỡng CTCH. Ứng dụng hiển thị nhãn dự
+  đoán, confidence, bảng xếp hạng lớp, ảnh tương tự và IG.
+- OOD: mẫu bị detector cảnh báo ngoài phân phối. Ứng dụng không hiển thị nhãn,
+  confidence, bảng xác suất hay IG theo lớp; vẫn có thể hiển thị ảnh tương tự.
+
+Điểm OOD càng lớn thể hiện bằng chứng ngoài phân phối càng mạnh. Điểm vượt
+ngưỡng thì mẫu bị đánh dấu OOD. ID không có nghĩa là "không bệnh", và OOD không
+có nghĩa là "bệnh nặng". Detector không bảo đảm phát hiện mọi mẫu lạ.
+
+5.3. Confidence và bảng xếp hạng
+Confidence là điểm dự đoán sau temperature scaling trên CTCH-validation.
+Bảng xếp hạng 22 lớp dùng softmax gốc, nên điểm của lớp đầu bảng có thể khác
+confidence. Đây là hai cách tính khác nhau trên cùng đầu ra model.
+Confidence không phải accuracy của toàn bộ mô hình hay xác suất mắc bệnh của
+người bệnh; điểm cao vẫn có thể đi kèm dự đoán sai.
+
+5.4. Ảnh CTCH tương tự
+Đây là các ảnh train gần đầu vào trong không gian đặc trưng của model. Muốn
+hiển thị, cần ảnh được phép sử dụng tại data/CTCH/images/ với đúng image_id.
+Nếu thiếu ảnh tham chiếu, demo vẫn phân tích đầu vào nhưng có thể báo không
+tìm thấy tệp ở vùng ảnh tương tự. Gần nhau không bảo đảm cùng chẩn đoán.
+
+5.5. Integrated Gradients (IG)
+IG tô màu vùng ảnh và token văn bản theo độ nhạy của điểm lớp dự đoán với đầu
+vào. Heatmap không phải segmentation và không chứng minh quan hệ nhân quả
+hoặc tính đúng đắn lâm sàng. Mẫu bị đánh dấu OOD sẽ không có IG theo lớp.
+
+
+BƯỚC 6. CHẠY MẪU KHÁC HOẶC DỪNG
+---------------------------------
+Để thử mẫu khác, thay cả ảnh và bệnh sử tương ứng rồi nhấn "Phân tích".
+Muốn đối chiếu hai lần chạy, giữ cùng gói model, ảnh, bệnh sử, thiết bị và số
+bước IG. Ghi lại các thiết lập này cùng kết quả.
+
+Để dừng ứng dụng, quay lại terminal và nhấn Ctrl+C.
+Để mở lại, thực hiện bước 1 và bước 2.
+
+
+XỬ LÝ SỰ CỐ
+------------
+- Không mở được trang: kiểm tra terminal còn chạy và mở đúng địa chỉ/cổng.
+- Thiếu checkpoint, metrics.json hoặc feature: nhận lại nguyên gói model;
+  kiểm tra đường dẫn theo HuongDanCaiDat.txt.
+- Sai checksum hoặc "checkpoint differs": không trộn tệp giữa các model.
+  Nếu đang dùng bản bàn giao, nhận lại gói đúng; chỉ đóng gói lại khi đã có đủ
+  đầu ra huấn luyện của chính mình.
+- CUDA out of memory: chọn "cpu" và thử lại; có thể chạy chậm hơn.
+- Bệnh sử trống: nhập bệnh sử tương ứng với ảnh rồi phân tích lại.
+- Không có IG: kiểm tra mẫu có bị đánh dấu OOD hay không.
+- Không thấy ảnh tương tự: kiểm tra ảnh CTCH cục bộ như mục 5.4.
+
+Muốn thay model demo sau khi huấn luyện, xem bước 9 của HuongDanSuDung.txt.
+Muốn xuất hình IG bằng dòng lệnh, xem bước 8 của tài liệu đó.
