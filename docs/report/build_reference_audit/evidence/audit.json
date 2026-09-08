@@ -1,0 +1,1667 @@
+{
+  "active_files": [
+    "main.tex",
+    "Title\\title.tex",
+    "Appendix\\reassurances.tex",
+    "Appendix\\thanks.tex",
+    "Appendix\\decuong.tex",
+    "Appendix\\list_abbreviations.tex",
+    "Appendix\\glossary.tex",
+    "Appendix\\list_symbols.tex",
+    "Appendix\\tomtat.tex",
+    "Chapter1\\chapter1.tex",
+    "Chapter2\\chapter2.tex",
+    "Chapter3\\chapter3.tex",
+    "Chapter4\\chapter4.tex",
+    "tables\\chapter4\\table_modality_classification.tex",
+    "tables\\chapter4\\table_full_shot_classification.tex",
+    "tables\\chapter4\\table_efficiency_full_shot.tex",
+    "tables\\chapter4\\table_ablation_leave_one_out_classification.tex",
+    "tables\\chapter4\\table_ablation_ood.tex",
+    "tables\\chapter4\\table_ablation_explainability.tex",
+    "Chapter5\\chapter5.tex",
+    "Appendix\\appendix1.tex",
+    "Appendix\\model_details.tex",
+    "tables\\appendix\\table_full_shot_per_seed.tex",
+    "tables\\appendix\\table_ablation_per_seed.tex",
+    "tables\\appendix\\table_paired_baseline_classification_confidence_intervals.tex",
+    "tables\\appendix\\table_ablation_paired_statistics.tex",
+    "tables\\appendix\\table_ablation_paired_confidence_intervals.tex",
+    "tables\\appendix\\table_ood_per_seed.tex"
+  ],
+  "bibliographies": {
+    "references.bib": {
+      "total": 53,
+      "cited": 53,
+      "missing": [],
+      "unused": [],
+      "duplicates": [],
+      "cites": {
+        "Yao2025": [
+          "Chapter1\\chapter1.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "XMei": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "TieNet": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "IRENE": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "ResNet": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Dosovitskiy2021ViT": [
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex"
+        ],
+        "ConVIRT": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex"
+        ],
+        "GLoRIA": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex"
+        ],
+        "MedCLIP": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "BiomedCLIP": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter4\\chapter4.tex",
+          "Appendix\\model_details.tex"
+        ],
+        "CLIP": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "moor_2023_medflamingo": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "li_2023_llavamed": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "MED-PALM-M": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Lester2021PromptTuning": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "PLIP": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex"
+        ],
+        "BiomedCoOp": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Houlsby2019Adapters": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "CLIPath": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex"
+        ],
+        "FTB": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex"
+        ],
+        "Hu2022LoRA": [
+          "Chapter2\\chapter2.tex",
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter3\\chapter3.tex",
+          "Appendix\\model_details.tex"
+        ],
+        "LCBB": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Hendrycks2017MSP": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Liang2018ODIN": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Liu2020EnergyOOD": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Lee2018MahalanobisOOD": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Sun2022KNN": [
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex"
+        ],
+        "Chen2020SimCLR": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "He2020MoCo": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "CenterLoss": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Snell2017ProtoNet": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Sundararajan2017IntegratedGradients": [
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Petsiuk2018RISE": [
+          "Chapter2\\chapter2.tex",
+          "Chapter4\\chapter4.tex"
+        ],
+        "Jain2019AttentionNotExplanation": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Wiegreffe2019AttentionNotNotExplanation": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Oord2018CPC": [
+          "Chapter2\\chapter2.tex"
+        ],
+        "Lu2019ViLBERT": [
+          "Chapter2\\chapter2.tex",
+          "Chapter3\\chapter3.tex"
+        ],
+        "Gu2021PubMedBERT": [
+          "Chapter3\\chapter3.tex"
+        ],
+        "Vaswani2017Attention": [
+          "Chapter3\\chapter3.tex"
+        ],
+        "Cui2019ClassBalanced": [
+          "Chapter3\\chapter3.tex"
+        ],
+        "russell2008labelme": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "Brodersen2010BalancedAcc": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "EfronTibshirani1993Bootstrap": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "Good2005PermutationBootstrap": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "Holm1979Sequential": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "DeYoung2020ERASER": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "Canziani2017PracticalDNN": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "Reddi2020MLPerfInference": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "DenseNet": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "PubMedCLIP": [
+          "Chapter4\\chapter4.tex"
+        ],
+        "OpenAI2024GPT4oSystemCard": [
+          "Appendix\\appendix1.tex"
+        ],
+        "DeepTranslator": [
+          "Appendix\\appendix1.tex"
+        ],
+        "ParaphraseMultilingualMiniLM": [
+          "Appendix\\appendix1.tex"
+        ]
+      },
+      "entries": [
+        {
+          "key": "BiomedCLIP",
+          "type": "article",
+          "fields": {
+            "author": "Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung",
+            "title": "A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs",
+            "journal": "NEJM AI",
+            "volume": "2",
+            "number": "1",
+            "eid": "AIoa2400640",
+            "year": "2025",
+            "doi": "10.1056/AIoa2400640"
+          },
+          "raw": "@article{BiomedCLIP,\n  author       = {Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung},\n  title        = {A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs},\n  journal      = {NEJM AI},\n  volume       = {2},\n  number       = {1},\n  eid          = {AIoa2400640},\n  year         = {2025},\n  doi          = {10.1056/AIoa2400640}\n}"
+        },
+        {
+          "key": "BiomedCoOp",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming",
+            "title": "{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models",
+            "booktitle": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "14766--14776",
+            "year": "2025",
+            "doi": "10.1109/CVPR52734.2025.01376"
+          },
+          "raw": "@inproceedings{BiomedCoOp,\n  author       = {Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming},\n  title        = {{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models},\n  booktitle    = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages        = {14766--14776},\n  year         = {2025},\n  doi          = {10.1109/CVPR52734.2025.01376}\n}"
+        },
+        {
+          "key": "Brodersen2010BalancedAcc",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Brodersen, Kay Henning and Ong, Cheng Soon and Stephan, Klaas Enno and Buhmann, Joachim M.",
+            "title": "The Balanced Accuracy and Its Posterior Distribution",
+            "booktitle": "Proceedings of the 20th International Conference on Pattern Recognition (ICPR)",
+            "pages": "3121--3124",
+            "year": "2010",
+            "publisher": "IEEE",
+            "doi": "10.1109/ICPR.2010.764"
+          },
+          "raw": "@inproceedings{Brodersen2010BalancedAcc,\n  author    = {Brodersen, Kay Henning and Ong, Cheng Soon and Stephan, Klaas Enno and Buhmann, Joachim M.},\n  title     = {The Balanced Accuracy and Its Posterior Distribution},\n  booktitle = {Proceedings of the 20th International Conference on Pattern Recognition (ICPR)},\n  pages     = {3121--3124},\n  year      = {2010},\n  publisher = {IEEE},\n  doi       = {10.1109/ICPR.2010.764}\n}"
+        },
+        {
+          "key": "CLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Radford, Alec and Kim, Jong Wook and Hallacy, Chris and Ramesh, Aditya and Goh, Gabriel and Agarwal, Sandhini and Sastry, Girish and Askell, Amanda and Mishkin, Pamela and Clark, Jack and Krueger, Gretchen and Sutskever, Ilya",
+            "title": "Learning Transferable Visual Models From Natural Language Supervision",
+            "booktitle": "Proceedings of the 38th International Conference on Machine Learning (ICML)",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "139",
+            "pages": "8748--8763",
+            "year": "2021",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v139/radford21a.html"
+          },
+          "raw": "@inproceedings{CLIP,\n  author    = {Radford, Alec and Kim, Jong Wook and Hallacy, Chris and Ramesh, Aditya and Goh, Gabriel and Agarwal, Sandhini and Sastry, Girish and Askell, Amanda and Mishkin, Pamela and Clark, Jack and Krueger, Gretchen and Sutskever, Ilya},\n  title     = {Learning Transferable Visual Models From Natural Language Supervision},\n  booktitle = {Proceedings of the 38th International Conference on Machine Learning (ICML)},\n  series    = {Proceedings of Machine Learning Research},\n  volume    = {139},\n  pages     = {8748--8763},\n  year      = {2021},\n  publisher = {PMLR},\n  url       = {https://proceedings.mlr.press/v139/radford21a.html}\n}"
+        },
+        {
+          "key": "CLIPath",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee",
+            "title": "{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts",
+            "booktitle": "Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)",
+            "pages": "2366--2372",
+            "year": "2023",
+            "publisher": "IEEE",
+            "doi": "10.1109/iccvw60793.2023.00251"
+          },
+          "raw": "@inproceedings{CLIPath,\n  author       = {Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee},\n  title        = {{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts},\n  booktitle    = {Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},\n  pages        = {2366--2372},\n  year         = {2023},\n  publisher    = {IEEE},\n  doi          = {10.1109/iccvw60793.2023.00251}\n}"
+        },
+        {
+          "key": "Canziani2017PracticalDNN",
+          "type": "article",
+          "fields": {
+            "author": "Canziani, Alfredo and Paszke, Adam and Culurciello, Eugenio",
+            "title": "An Analysis of Deep Neural Network Models for Practical Applications",
+            "journal": "arXiv preprint arXiv:1605.07678",
+            "year": "2017",
+            "url": "https://arxiv.org/abs/1605.07678"
+          },
+          "raw": "@article{Canziani2017PracticalDNN,\n  author    = {Canziani, Alfredo and Paszke, Adam and Culurciello, Eugenio},\n  title     = {An Analysis of Deep Neural Network Models for Practical Applications},\n  journal   = {arXiv preprint arXiv:1605.07678},\n  year      = {2017},\n  url       = {https://arxiv.org/abs/1605.07678}\n}"
+        },
+        {
+          "key": "LCBB",
+          "type": "article",
+          "fields": {
+            "author": "Lian, Chenyu and Zhou, Hong-Yu and Yu, Yizhou and Wang, Liansheng",
+            "title": "Less Could Be Better: Parameter-Efficient Fine-Tuning Advances Medical Vision Foundation Models",
+            "journal": "arXiv preprint arXiv:2401.12215",
+            "year": "2024",
+            "doi": "10.48550/arXiv.2401.12215",
+            "url": "https://arxiv.org/abs/2401.12215"
+          },
+          "raw": "@article{LCBB,\n  author  = {Lian, Chenyu and Zhou, Hong-Yu and Yu, Yizhou and Wang, Liansheng},\n  title   = {Less Could Be Better: Parameter-Efficient Fine-Tuning Advances Medical Vision Foundation Models},\n  journal = {arXiv preprint arXiv:2401.12215},\n  year    = {2024},\n  doi     = {10.48550/arXiv.2401.12215},\n  url     = {https://arxiv.org/abs/2401.12215}\n}"
+        },
+        {
+          "key": "Gu2021PubMedBERT",
+          "type": "article",
+          "fields": {
+            "author": "Gu, Yu and Tinn, Robert and Cheng, Hao and Lucas, Michael and Usuyama, Naoto and Liu, Xiaodong and Naumann, Tristan and Gao, Jianfeng and Poon, Hoifung",
+            "title": "Domain-Specific Language Model Pretraining for Biomedical Natural Language Processing",
+            "journal": "ACM Transactions on Computing for Healthcare",
+            "volume": "3",
+            "number": "1",
+            "pages": "1--23",
+            "year": "2021",
+            "publisher": "ACM",
+            "doi": "10.1145/3458754"
+          },
+          "raw": "@article{Gu2021PubMedBERT,\n  author       = {Gu, Yu and Tinn, Robert and Cheng, Hao and Lucas, Michael and Usuyama, Naoto and Liu, Xiaodong and Naumann, Tristan and Gao, Jianfeng and Poon, Hoifung},\n  title        = {Domain-Specific Language Model Pretraining for Biomedical Natural Language Processing},\n  journal      = {ACM Transactions on Computing for Healthcare},\n  volume       = {3},\n  number       = {1},\n  pages        = {1--23},\n  year         = {2021},\n  publisher    = {ACM},\n  doi          = {10.1145/3458754}\n}"
+        },
+        {
+          "key": "Vaswani2017Attention",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, {\\L}ukasz and Polosukhin, Illia",
+            "title": "Attention Is All You Need",
+            "booktitle": "Advances in Neural Information Processing Systems",
+            "volume": "30",
+            "pages": "5998--6008",
+            "year": "2017",
+            "url": "https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html"
+          },
+          "raw": "@inproceedings{Vaswani2017Attention,\n  author       = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, {\\L}ukasz and Polosukhin, Illia},\n  title        = {Attention Is All You Need},\n  booktitle    = {Advances in Neural Information Processing Systems},\n  volume       = {30},\n  pages        = {5998--6008},\n  year         = {2017},\n  url          = {https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html}\n}"
+        },
+        {
+          "key": "CenterLoss",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wen, Yandong and Zhang, Kaipeng and Li, Zhifeng and Qiao, Yu",
+            "title": "A Discriminative Feature Learning Approach for Deep Face Recognition",
+            "booktitle": "Proceedings of the European Conference on Computer Vision (ECCV)",
+            "pages": "499--515",
+            "year": "2016",
+            "publisher": "Springer",
+            "doi": "10.1007/978-3-319-46478-7_31"
+          },
+          "raw": "@inproceedings{CenterLoss,\n  author    = {Wen, Yandong and Zhang, Kaipeng and Li, Zhifeng and Qiao, Yu},\n  title     = {A Discriminative Feature Learning Approach for Deep Face Recognition},\n  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},\n  pages     = {499--515},\n  year      = {2016},\n  publisher = {Springer},\n  doi       = {10.1007/978-3-319-46478-7_31}\n}"
+        },
+        {
+          "key": "Chen2020SimCLR",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Chen, Ting and Kornblith, Simon and Norouzi, Mohammad and Hinton, Geoffrey",
+            "title": "A Simple Framework for Contrastive Learning of Visual Representations",
+            "booktitle": "Proceedings of the 37th International Conference on Machine Learning (ICML)",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "119",
+            "pages": "1597--1607",
+            "year": "2020",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v119/chen20j.html"
+          },
+          "raw": "@inproceedings{Chen2020SimCLR,\n  author    = {Chen, Ting and Kornblith, Simon and Norouzi, Mohammad and Hinton, Geoffrey},\n  title     = {A Simple Framework for Contrastive Learning of Visual Representations},\n  booktitle = {Proceedings of the 37th International Conference on Machine Learning (ICML)},\n  series    = {Proceedings of Machine Learning Research},\n  volume    = {119},\n  pages     = {1597--1607},\n  year      = {2020},\n  publisher = {PMLR},\n  url       = {https://proceedings.mlr.press/v119/chen20j.html}\n}"
+        },
+        {
+          "key": "ConVIRT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D. and Langlotz, Curtis P.",
+            "title": "Contrastive Learning of Medical Visual Representations from Paired Images and Text",
+            "booktitle": "Proceedings of the 7th Machine Learning for Healthcare Conference",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "182",
+            "pages": "2--25",
+            "year": "2022",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v182/zhang22a.html"
+          },
+          "raw": "@inproceedings{ConVIRT,\n  author       = {Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D. and Langlotz, Curtis P.},\n  title        = {Contrastive Learning of Medical Visual Representations from Paired Images and Text},\n  booktitle    = {Proceedings of the 7th Machine Learning for Healthcare Conference},\n  series       = {Proceedings of Machine Learning Research},\n  volume       = {182},\n  pages        = {2--25},\n  year         = {2022},\n  publisher    = {PMLR},\n  url          = {https://proceedings.mlr.press/v182/zhang22a.html}\n}"
+        },
+        {
+          "key": "Cui2019ClassBalanced",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Cui, Yin and Jia, Menglin and Lin, Tsung-Yi and Song, Yang and Belongie, Serge",
+            "title": "Class-Balanced Loss Based on Effective Number of Samples",
+            "booktitle": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "9260--9269",
+            "year": "2019",
+            "doi": "10.1109/CVPR.2019.00949"
+          },
+          "raw": "@inproceedings{Cui2019ClassBalanced,\n  author       = {Cui, Yin and Jia, Menglin and Lin, Tsung-Yi and Song, Yang and Belongie, Serge},\n  title        = {Class-Balanced Loss Based on Effective Number of Samples},\n  booktitle    = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages        = {9260--9269},\n  year         = {2019},\n  doi          = {10.1109/CVPR.2019.00949}\n}"
+        },
+        {
+          "key": "DeYoung2020ERASER",
+          "type": "inproceedings",
+          "fields": {
+            "author": "DeYoung, Jay and Jain, Sarthak and Rajani, Nazneen Fatema and Lehman, Eric and Xiong, Caiming and Socher, Richard and Wallace, Byron C.",
+            "title": "{ERASER}: A Benchmark to Evaluate Rationalized {NLP} Models",
+            "booktitle": "Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics",
+            "pages": "4443--4458",
+            "year": "2020",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/2020.acl-main.408",
+            "url": "https://aclanthology.org/2020.acl-main.408/"
+          },
+          "raw": "@inproceedings{DeYoung2020ERASER,\n  author    = {DeYoung, Jay and Jain, Sarthak and Rajani, Nazneen Fatema and Lehman, Eric and Xiong, Caiming and Socher, Richard and Wallace, Byron C.},\n  title     = {{ERASER}: A Benchmark to Evaluate Rationalized {NLP} Models},\n  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},\n  pages     = {4443--4458},\n  year      = {2020},\n  publisher = {Association for Computational Linguistics},\n  doi       = {10.18653/v1/2020.acl-main.408},\n  url       = {https://aclanthology.org/2020.acl-main.408/}\n}"
+        },
+        {
+          "key": "DeepTranslator",
+          "type": "online",
+          "fields": {
+            "author": "{deep-translator contributors}",
+            "title": "deep-translator: A flexible tool to translate between different languages in Python",
+            "year": "2020",
+            "url": "https://github.com/nidhaloff/deep-translator",
+            "urldate": "2026-08-14"
+          },
+          "raw": "@online{DeepTranslator,\n  author  = {{deep-translator contributors}},\n  title   = {deep-translator: A flexible tool to translate between different languages in Python},\n  year    = {2020},\n  url     = {https://github.com/nidhaloff/deep-translator},\n  urldate = {2026-08-14}\n}"
+        },
+        {
+          "key": "DenseNet",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Huang, Gao and Liu, Zhuang and Van Der Maaten, Laurens and Weinberger, Kilian Q.",
+            "title": "Densely Connected Convolutional Networks",
+            "booktitle": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "2261--2269",
+            "year": "2017",
+            "doi": "10.1109/CVPR.2017.243"
+          },
+          "raw": "@inproceedings{DenseNet,\n  author       = {Huang, Gao and Liu, Zhuang and Van Der Maaten, Laurens and Weinberger, Kilian Q.},\n  title        = {Densely Connected Convolutional Networks},\n  booktitle    = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages        = {2261--2269},\n  year         = {2017},\n  doi          = {10.1109/CVPR.2017.243}\n}"
+        },
+        {
+          "key": "Dosovitskiy2021ViT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and Weissenborn, Dirk and Zhai, Xiaohua and Unterthiner, Thomas and Dehghani, Mostafa and Minderer, Matthias and Heigold, Georg and Gelly, Sylvain and Uszkoreit, Jakob and Houlsby, Neil",
+            "title": "An Image Is Worth 16x16 Words: Transformers for Image Recognition at Scale",
+            "booktitle": "Proceedings of the International Conference on Learning Representations (ICLR)",
+            "year": "2021",
+            "url": "https://openreview.net/forum?id=YicbFdNTTy"
+          },
+          "raw": "@inproceedings{Dosovitskiy2021ViT,\n  author    = {Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and Weissenborn, Dirk and Zhai, Xiaohua and Unterthiner, Thomas and Dehghani, Mostafa and Minderer, Matthias and Heigold, Georg and Gelly, Sylvain and Uszkoreit, Jakob and Houlsby, Neil},\n  title     = {An Image Is Worth 16x16 Words: Transformers for Image Recognition at Scale},\n  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},\n  year      = {2021},\n  url       = {https://openreview.net/forum?id=YicbFdNTTy}\n}"
+        },
+        {
+          "key": "FTB",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella",
+            "title": "Freeze the Backbones: A Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training",
+            "booktitle": "Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)",
+            "pages": "1686--1690",
+            "year": "2024",
+            "publisher": "IEEE",
+            "doi": "10.1109/ICASSP48485.2024.10447326"
+          },
+          "raw": "@inproceedings{FTB,\n  author    = {Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella},\n  title     = {Freeze the Backbones: A Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training},\n  booktitle = {Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},\n  pages     = {1686--1690},\n  year      = {2024},\n  publisher = {IEEE},\n  doi       = {10.1109/ICASSP48485.2024.10447326}\n}"
+        },
+        {
+          "key": "GLoRIA",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena",
+            "title": "{GLoRIA}: A Multimodal Global-Local Representation Learning Framework for Label-Efficient Medical Image Recognition",
+            "booktitle": "Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)",
+            "pages": "3922--3931",
+            "year": "2021",
+            "doi": "10.1109/ICCV48922.2021.00391"
+          },
+          "raw": "@inproceedings{GLoRIA,\n  author    = {Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena},\n  title     = {{GLoRIA}: A Multimodal Global-Local Representation Learning Framework for Label-Efficient Medical Image Recognition},\n  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},\n  pages     = {3922--3931},\n  year      = {2021},\n  doi       = {10.1109/ICCV48922.2021.00391}\n}"
+        },
+        {
+          "key": "Hendrycks2017MSP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Hendrycks, Dan and Gimpel, Kevin",
+            "title": "A Baseline for Detecting Misclassified and Out-of-Distribution Examples in Neural Networks",
+            "booktitle": "Proceedings of the International Conference on Learning Representations (ICLR)",
+            "year": "2017",
+            "url": "https://arxiv.org/abs/1610.02136"
+          },
+          "raw": "@inproceedings{Hendrycks2017MSP,\n  author    = {Hendrycks, Dan and Gimpel, Kevin},\n  title     = {A Baseline for Detecting Misclassified and Out-of-Distribution Examples in Neural Networks},\n  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},\n  year      = {2017},\n  url       = {https://arxiv.org/abs/1610.02136}\n}"
+        },
+        {
+          "key": "He2020MoCo",
+          "type": "inproceedings",
+          "fields": {
+            "author": "He, Kaiming and Fan, Haoqi and Wu, Yuxin and Xie, Saining and Girshick, Ross",
+            "title": "Momentum Contrast for Unsupervised Visual Representation Learning",
+            "booktitle": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "9729--9738",
+            "year": "2020",
+            "publisher": "IEEE",
+            "url": "https://openaccess.thecvf.com/content_CVPR_2020/html/He_Momentum_Contrast_for_Unsupervised_Visual_Representation_Learning_CVPR_2020_paper.html"
+          },
+          "raw": "@inproceedings{He2020MoCo,\n  author    = {He, Kaiming and Fan, Haoqi and Wu, Yuxin and Xie, Saining and Girshick, Ross},\n  title     = {Momentum Contrast for Unsupervised Visual Representation Learning},\n  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages     = {9729--9738},\n  year      = {2020},\n  publisher = {IEEE},\n  url       = {https://openaccess.thecvf.com/content_CVPR_2020/html/He_Momentum_Contrast_for_Unsupervised_Visual_Representation_Learning_CVPR_2020_paper.html}\n}"
+        },
+        {
+          "key": "Houlsby2019Adapters",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Houlsby, Neil and Giurgiu, Andrei and Jastrzebski, Stanislaw and Morrone, Bruna and De Laroussilhe, Quentin and Gesmundo, Andrea and Attariyan, Mona and Gelly, Sylvain",
+            "title": "Parameter-Efficient Transfer Learning for {NLP}",
+            "booktitle": "Proceedings of the 36th International Conference on Machine Learning (ICML)",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "97",
+            "pages": "2790--2799",
+            "year": "2019",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v97/houlsby19a.html"
+          },
+          "raw": "@inproceedings{Houlsby2019Adapters,\n  author    = {Houlsby, Neil and Giurgiu, Andrei and Jastrzebski, Stanislaw and Morrone, Bruna and De Laroussilhe, Quentin and Gesmundo, Andrea and Attariyan, Mona and Gelly, Sylvain},\n  title     = {Parameter-Efficient Transfer Learning for {NLP}},\n  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},\n  series    = {Proceedings of Machine Learning Research},\n  volume    = {97},\n  pages     = {2790--2799},\n  year      = {2019},\n  publisher = {PMLR},\n  url       = {https://proceedings.mlr.press/v97/houlsby19a.html}\n}"
+        },
+        {
+          "key": "Hu2022LoRA",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu",
+            "title": "{LoRA}: Low-Rank Adaptation of Large Language Models",
+            "booktitle": "Proceedings of the International Conference on Learning Representations (ICLR)",
+            "year": "2022",
+            "url": "https://openreview.net/forum?id=nZeVKeeFYf9"
+          },
+          "raw": "@inproceedings{Hu2022LoRA,\n  author    = {Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu},\n  title     = {{LoRA}: Low-Rank Adaptation of Large Language Models},\n  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},\n  year      = {2022},\n  url       = {https://openreview.net/forum?id=nZeVKeeFYf9}\n}"
+        },
+        {
+          "key": "IRENE",
+          "type": "article",
+          "fields": {
+            "author": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin",
+            "title": "A Transformer-Based Representation-Learning Model with Unified Processing of Multimodal Input for Clinical Diagnostics",
+            "journal": "Nature Biomedical Engineering",
+            "volume": "7",
+            "number": "6",
+            "pages": "743--755",
+            "year": "2023",
+            "publisher": "Nature Publishing Group",
+            "doi": "10.1038/s41551-023-01045-x"
+          },
+          "raw": "@article{IRENE,\n  author       = {Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin},\n  title        = {A Transformer-Based Representation-Learning Model with Unified Processing of Multimodal Input for Clinical Diagnostics},\n  journal      = {Nature Biomedical Engineering},\n  volume       = {7},\n  number       = {6},\n  pages        = {743--755},\n  year         = {2023},\n  publisher    = {Nature Publishing Group},\n  doi          = {10.1038/s41551-023-01045-x}\n}"
+        },
+        {
+          "key": "Jain2019AttentionNotExplanation",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Jain, Sarthak and Wallace, Byron C.",
+            "title": "Attention Is Not Explanation",
+            "booktitle": "Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT)",
+            "pages": "3543--3556",
+            "year": "2019",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/N19-1357",
+            "url": "https://aclanthology.org/N19-1357/"
+          },
+          "raw": "@inproceedings{Jain2019AttentionNotExplanation,\n  author    = {Jain, Sarthak and Wallace, Byron C.},\n  title     = {Attention Is Not Explanation},\n  booktitle = {Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT)},\n  pages     = {3543--3556},\n  year      = {2019},\n  publisher = {Association for Computational Linguistics},\n  doi       = {10.18653/v1/N19-1357},\n  url       = {https://aclanthology.org/N19-1357/}\n}"
+        },
+        {
+          "key": "Lee2018MahalanobisOOD",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Lee, Kimin and Lee, Kibok and Lee, Honglak and Shin, Jinwoo",
+            "title": "A Simple Unified Framework for Detecting Out-of-Distribution Samples and Adversarial Attacks",
+            "booktitle": "Advances in Neural Information Processing Systems (NeurIPS)",
+            "volume": "31",
+            "pages": "7167--7177",
+            "year": "2018",
+            "url": "https://papers.nips.cc/paper/2018/hash/abdeb6f575ac5c6676b747bca8d09cc2-Abstract.html"
+          },
+          "raw": "@inproceedings{Lee2018MahalanobisOOD,\n  author    = {Lee, Kimin and Lee, Kibok and Lee, Honglak and Shin, Jinwoo},\n  title     = {A Simple Unified Framework for Detecting Out-of-Distribution Samples and Adversarial Attacks},\n  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},\n  volume    = {31},\n  pages     = {7167--7177},\n  year      = {2018},\n  url       = {https://papers.nips.cc/paper/2018/hash/abdeb6f575ac5c6676b747bca8d09cc2-Abstract.html}\n}"
+        },
+        {
+          "key": "Lester2021PromptTuning",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Lester, Brian and Al-Rfou, Rami and Constant, Noah",
+            "title": "The Power of Scale for Parameter-Efficient Prompt Tuning",
+            "booktitle": "Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)",
+            "pages": "3045--3059",
+            "year": "2021",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/2021.emnlp-main.243",
+            "url": "https://aclanthology.org/2021.emnlp-main.243/"
+          },
+          "raw": "@inproceedings{Lester2021PromptTuning,\n  author    = {Lester, Brian and Al-Rfou, Rami and Constant, Noah},\n  title     = {The Power of Scale for Parameter-Efficient Prompt Tuning},\n  booktitle = {Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)},\n  pages     = {3045--3059},\n  year      = {2021},\n  publisher = {Association for Computational Linguistics},\n  doi       = {10.18653/v1/2021.emnlp-main.243},\n  url       = {https://aclanthology.org/2021.emnlp-main.243/}\n}"
+        },
+        {
+          "key": "Liang2018ODIN",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Liang, Shiyu and Li, Yixuan and Srikant, R.",
+            "title": "Enhancing The Reliability of Out-of-Distribution Image Detection in Neural Networks",
+            "booktitle": "Proceedings of the International Conference on Learning Representations (ICLR)",
+            "year": "2018",
+            "url": "https://openreview.net/forum?id=H1VGkIxRZ"
+          },
+          "raw": "@inproceedings{Liang2018ODIN,\n  author    = {Liang, Shiyu and Li, Yixuan and Srikant, R.},\n  title     = {Enhancing The Reliability of Out-of-Distribution Image Detection in Neural Networks},\n  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},\n  year      = {2018},\n  url       = {https://openreview.net/forum?id=H1VGkIxRZ}\n}"
+        },
+        {
+          "key": "Liu2020EnergyOOD",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Liu, Weitang and Wang, Xiaoyun and Owens, John and Li, Yixuan",
+            "title": "Energy-Based Out-of-Distribution Detection",
+            "booktitle": "Advances in Neural Information Processing Systems (NeurIPS)",
+            "volume": "33",
+            "pages": "21464--21475",
+            "year": "2020",
+            "url": "https://proceedings.neurips.cc/paper/2020/hash/f5496252609c43eb8a3d147ab9b9c006-Abstract.html"
+          },
+          "raw": "@inproceedings{Liu2020EnergyOOD,\n  author       = {Liu, Weitang and Wang, Xiaoyun and Owens, John and Li, Yixuan},\n  title        = {Energy-Based Out-of-Distribution Detection},\n  booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},\n  volume       = {33},\n  pages        = {21464--21475},\n  year         = {2020},\n  url          = {https://proceedings.neurips.cc/paper/2020/hash/f5496252609c43eb8a3d147ab9b9c006-Abstract.html}\n}"
+        },
+        {
+          "key": "Lu2019ViLBERT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Lu, Jiasen and Batra, Dhruv and Parikh, Devi and Lee, Stefan",
+            "title": "{ViLBERT}: Pretraining Task-Agnostic Visiolinguistic Representations for Vision-and-Language Tasks",
+            "booktitle": "Advances in Neural Information Processing Systems (NeurIPS)",
+            "volume": "32",
+            "year": "2019",
+            "url": "https://proceedings.neurips.cc/paper_files/paper/2019/hash/c74d97b01eae257e44aa9d5bade97baf-Abstract.html"
+          },
+          "raw": "@inproceedings{Lu2019ViLBERT,\n  author    = {Lu, Jiasen and Batra, Dhruv and Parikh, Devi and Lee, Stefan},\n  title     = {{ViLBERT}: Pretraining Task-Agnostic Visiolinguistic Representations for Vision-and-Language Tasks},\n  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},\n  volume    = {32},\n  year      = {2019},\n  url       = {https://proceedings.neurips.cc/paper_files/paper/2019/hash/c74d97b01eae257e44aa9d5bade97baf-Abstract.html}\n}"
+        },
+        {
+          "key": "MED-PALM-M",
+          "type": "article",
+          "fields": {
+            "author": "Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek",
+            "title": "Towards Generalist Biomedical {AI}",
+            "journal": "NEJM AI",
+            "volume": "1",
+            "number": "3",
+            "eid": "AIoa2300138",
+            "year": "2024",
+            "doi": "10.1056/AIoa2300138"
+          },
+          "raw": "@article{MED-PALM-M,\n  author       = {Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek},\n  title        = {Towards Generalist Biomedical {AI}},\n  journal      = {NEJM AI},\n  volume       = {1},\n  number       = {3},\n  eid          = {AIoa2300138},\n  year         = {2024},\n  doi          = {10.1056/AIoa2300138}\n}"
+        },
+        {
+          "key": "MedCLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng",
+            "title": "{MedCLIP}: Contrastive Learning from Unpaired Medical Images and Text",
+            "booktitle": "Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing (EMNLP)",
+            "pages": "3876--3887",
+            "year": "2022",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/2022.emnlp-main.256"
+          },
+          "raw": "@inproceedings{MedCLIP,\n  author    = {Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng},\n  title     = {{MedCLIP}: Contrastive Learning from Unpaired Medical Images and Text},\n  booktitle = {Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing (EMNLP)},\n  pages     = {3876--3887},\n  year      = {2022},\n  publisher = {Association for Computational Linguistics},\n  doi       = {10.18653/v1/2022.emnlp-main.256}\n}"
+        },
+        {
+          "key": "OpenAI2024GPT4oSystemCard",
+          "type": "online",
+          "fields": {
+            "author": "{OpenAI}",
+            "title": "{GPT-4o} System Card",
+            "year": "2024",
+            "url": "https://openai.com/index/gpt-4o-system-card/",
+            "urldate": "2026-08-01"
+          },
+          "raw": "@online{OpenAI2024GPT4oSystemCard,\n  author  = {{OpenAI}},\n  title   = {{GPT-4o} System Card},\n  year    = {2024},\n  url     = {https://openai.com/index/gpt-4o-system-card/},\n  urldate = {2026-08-01}\n}"
+        },
+        {
+          "key": "Oord2018CPC",
+          "type": "article",
+          "fields": {
+            "author": "van den Oord, Aaron and Li, Yazhe and Vinyals, Oriol",
+            "title": "Representation Learning with Contrastive Predictive Coding",
+            "journal": "arXiv preprint arXiv:1807.03748",
+            "year": "2018",
+            "doi": "10.48550/arXiv.1807.03748",
+            "url": "https://arxiv.org/abs/1807.03748"
+          },
+          "raw": "@article{Oord2018CPC,\n  author  = {van den Oord, Aaron and Li, Yazhe and Vinyals, Oriol},\n  title   = {Representation Learning with Contrastive Predictive Coding},\n  journal = {arXiv preprint arXiv:1807.03748},\n  year    = {2018},\n  doi     = {10.48550/arXiv.1807.03748},\n  url     = {https://arxiv.org/abs/1807.03748}\n}"
+        },
+        {
+          "key": "PLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun",
+            "title": "Disease-Informed Adaptation of Vision-Language Models",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024",
+            "series": "Lecture Notes in Computer Science",
+            "volume": "15011",
+            "pages": "232--242",
+            "year": "2024",
+            "publisher": "Springer Nature Switzerland",
+            "doi": "10.1007/978-3-031-72120-5_22"
+          },
+          "raw": "@inproceedings{PLIP,\n  author       = {Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},\n  title        = {Disease-Informed Adaptation of Vision-Language Models},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},\n  series       = {Lecture Notes in Computer Science},\n  volume       = {15011},\n  pages        = {232--242},\n  year         = {2024},\n  publisher    = {Springer Nature Switzerland},\n  doi          = {10.1007/978-3-031-72120-5_22}\n}"
+        },
+        {
+          "key": "ParaphraseMultilingualMiniLM",
+          "type": "online",
+          "fields": {
+            "author": "{Sentence Transformers}",
+            "title": "Paraphrase Multilingual {MiniLM-L12-v2} Model Card",
+            "year": "2021",
+            "url": "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            "urldate": "2026-08-14"
+          },
+          "raw": "@online{ParaphraseMultilingualMiniLM,\n  author  = {{Sentence Transformers}},\n  title   = {Paraphrase Multilingual {MiniLM-L12-v2} Model Card},\n  year    = {2021},\n  url     = {https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2},\n  urldate = {2026-08-14}\n}"
+        },
+        {
+          "key": "Petsiuk2018RISE",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Petsiuk, Vitali and Das, Abir and Saenko, Kate",
+            "title": "{RISE}: Randomized Input Sampling for Explanation of Black-Box Models",
+            "booktitle": "Proceedings of the British Machine Vision Conference (BMVC)",
+            "pages": "151",
+            "year": "2018",
+            "publisher": "BMVA Press",
+            "url": "https://bmva-archive.org.uk/bmvc/2018/contents/papers/1064.pdf"
+          },
+          "raw": "@inproceedings{Petsiuk2018RISE,\n  author    = {Petsiuk, Vitali and Das, Abir and Saenko, Kate},\n  title     = {{RISE}: Randomized Input Sampling for Explanation of Black-Box Models},\n  booktitle = {Proceedings of the British Machine Vision Conference (BMVC)},\n  pages     = {151},\n  year      = {2018},\n  publisher = {BMVA Press},\n  url       = {https://bmva-archive.org.uk/bmvc/2018/contents/papers/1064.pdf}\n}"
+        },
+        {
+          "key": "PubMedCLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Eslami, Sedigheh and Meinel, Christoph and de Melo, Gerard",
+            "title": "{PubMedCLIP}: How Much Does {CLIP} Benefit Visual Question Answering in the Medical Domain?",
+            "booktitle": "Findings of the Association for Computational Linguistics: EACL 2023",
+            "pages": "1181--1193",
+            "year": "2023",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/2023.findings-eacl.88",
+            "url": "https://aclanthology.org/2023.findings-eacl.88/"
+          },
+          "raw": "@inproceedings{PubMedCLIP,\n  author       = {Eslami, Sedigheh and Meinel, Christoph and de Melo, Gerard},\n  title        = {{PubMedCLIP}: How Much Does {CLIP} Benefit Visual Question Answering in the Medical Domain?},\n  booktitle    = {Findings of the Association for Computational Linguistics: EACL 2023},\n  pages        = {1181--1193},\n  year         = {2023},\n  publisher    = {Association for Computational Linguistics},\n  doi          = {10.18653/v1/2023.findings-eacl.88},\n  url          = {https://aclanthology.org/2023.findings-eacl.88/}\n}"
+        },
+        {
+          "key": "Reddi2020MLPerfInference",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Reddi, Vijay Janapa and Cheng, Christine and Kanter, David and Mattson, Peter and Schmuelling, Guenther and Wu, Carole-Jean and Anderson, Brian and Breughe, Maximilien and Charlebois, Mark and Chou, William and Chukka, Ramesh and Coleman, Cody and Davis, Sam and Deng, Pan and Diamos, Greg and Duke, Jared and Fick, Dave and Gardner, J. Scott and Hubara, Itay and Idgunji, Sachin and Jablin, Thomas B. and Jiao, Jeff and St. John, Tom and Kanwar, Pankaj and Lee, David and Liao, Jeffery and Lokhmotov, Anton and Massa, Francisco and Meng, Peng and Micikevicius, Paulius and Osborne, Colin and Pekhimenko, Gennady and Rajan, Arun Tejusve Raghunath and Sequeira, Dilip and Sirasao, Ashish and Sun, Fei and Tang, Hanlin and Thomson, Michael and Wei, Frank and Wu, Ephrem and Xu, Lingjie and Yamada, Koichi and Yu, Bing and Yuan, George and Zhong, Aaron and Zhang, Peizhao and Zhou, Yuchen",
+            "title": "{MLPerf} Inference Benchmark",
+            "booktitle": "Proceedings of the 2020 ACM/IEEE 47th Annual International Symposium on Computer Architecture (ISCA)",
+            "pages": "446--459",
+            "year": "2020",
+            "publisher": "IEEE",
+            "doi": "10.1109/ISCA45697.2020.00045"
+          },
+          "raw": "@inproceedings{Reddi2020MLPerfInference,\n  author    = {Reddi, Vijay Janapa and Cheng, Christine and Kanter, David and Mattson, Peter and Schmuelling, Guenther and Wu, Carole-Jean and Anderson, Brian and Breughe, Maximilien and Charlebois, Mark and Chou, William and Chukka, Ramesh and Coleman, Cody and Davis, Sam and Deng, Pan and Diamos, Greg and Duke, Jared and Fick, Dave and Gardner, J. Scott and Hubara, Itay and Idgunji, Sachin and Jablin, Thomas B. and Jiao, Jeff and St. John, Tom and Kanwar, Pankaj and Lee, David and Liao, Jeffery and Lokhmotov, Anton and Massa, Francisco and Meng, Peng and Micikevicius, Paulius and Osborne, Colin and Pekhimenko, Gennady and Rajan, Arun Tejusve Raghunath and Sequeira, Dilip and Sirasao, Ashish and Sun, Fei and Tang, Hanlin and Thomson, Michael and Wei, Frank and Wu, Ephrem and Xu, Lingjie and Yamada, Koichi and Yu, Bing and Yuan, George and Zhong, Aaron and Zhang, Peizhao and Zhou, Yuchen},\n  title     = {{MLPerf} Inference Benchmark},\n  booktitle = {Proceedings of the 2020 ACM/IEEE 47th Annual International Symposium on Computer Architecture (ISCA)},\n  pages     = {446--459},\n  year      = {2020},\n  publisher = {IEEE},\n  doi       = {10.1109/ISCA45697.2020.00045}\n}"
+        },
+        {
+          "key": "ResNet",
+          "type": "inproceedings",
+          "fields": {
+            "author": "He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian",
+            "title": "Deep Residual Learning for Image Recognition",
+            "booktitle": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "770--778",
+            "year": "2016",
+            "doi": "10.1109/CVPR.2016.90"
+          },
+          "raw": "@inproceedings{ResNet,\n  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},\n  title     = {Deep Residual Learning for Image Recognition},\n  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages     = {770--778},\n  year      = {2016},\n  doi       = {10.1109/CVPR.2016.90}\n}"
+        },
+        {
+          "key": "Snell2017ProtoNet",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Snell, Jake and Swersky, Kevin and Zemel, Richard S.",
+            "title": "Prototypical Networks for Few-Shot Learning",
+            "booktitle": "Advances in Neural Information Processing Systems (NeurIPS)",
+            "volume": "30",
+            "pages": "4077--4087",
+            "year": "2017",
+            "url": "https://papers.nips.cc/paper_files/paper/2017/hash/cb8da6767461f2812ae4290eac7cbc42-Abstract.html"
+          },
+          "raw": "@inproceedings{Snell2017ProtoNet,\n  author    = {Snell, Jake and Swersky, Kevin and Zemel, Richard S.},\n  title     = {Prototypical Networks for Few-Shot Learning},\n  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},\n  volume    = {30},\n  pages     = {4077--4087},\n  year      = {2017},\n  url       = {https://papers.nips.cc/paper_files/paper/2017/hash/cb8da6767461f2812ae4290eac7cbc42-Abstract.html}\n}"
+        },
+        {
+          "key": "Sun2022KNN",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Sun, Yiyou and Ming, Yifei and Zhu, Xiaojin and Li, Yixuan",
+            "title": "Out-of-Distribution Detection with Deep Nearest Neighbors",
+            "booktitle": "Proceedings of the 39th International Conference on Machine Learning (ICML)",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "162",
+            "pages": "20827--20840",
+            "year": "2022",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v162/sun22d.html"
+          },
+          "raw": "@inproceedings{Sun2022KNN,\n  author    = {Sun, Yiyou and Ming, Yifei and Zhu, Xiaojin and Li, Yixuan},\n  title     = {Out-of-Distribution Detection with Deep Nearest Neighbors},\n  booktitle = {Proceedings of the 39th International Conference on Machine Learning (ICML)},\n  series    = {Proceedings of Machine Learning Research},\n  volume    = {162},\n  pages     = {20827--20840},\n  year      = {2022},\n  publisher = {PMLR},\n  url       = {https://proceedings.mlr.press/v162/sun22d.html}\n}"
+        },
+        {
+          "key": "Sundararajan2017IntegratedGradients",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Sundararajan, Mukund and Taly, Ankur and Yan, Qiqi",
+            "title": "Axiomatic Attribution for Deep Networks",
+            "booktitle": "Proceedings of the 34th International Conference on Machine Learning (ICML)",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "70",
+            "pages": "3319--3328",
+            "year": "2017",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v70/sundararajan17a.html"
+          },
+          "raw": "@inproceedings{Sundararajan2017IntegratedGradients,\n  author    = {Sundararajan, Mukund and Taly, Ankur and Yan, Qiqi},\n  title     = {Axiomatic Attribution for Deep Networks},\n  booktitle = {Proceedings of the 34th International Conference on Machine Learning (ICML)},\n  series    = {Proceedings of Machine Learning Research},\n  volume    = {70},\n  pages     = {3319--3328},\n  year      = {2017},\n  publisher = {PMLR},\n  url       = {https://proceedings.mlr.press/v70/sundararajan17a.html}\n}"
+        },
+        {
+          "key": "TieNet",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wang, Xiaosong and Peng, Yifan and Lu, Le and Lu, Zhiyong and Summers, Ronald M.",
+            "title": "{TieNet}: Text-Image Embedding Network for Common Thorax Disease Classification and Reporting in Chest {X}-Rays",
+            "booktitle": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "9049--9058",
+            "year": "2018",
+            "doi": "10.1109/cvpr.2018.00943"
+          },
+          "raw": "@inproceedings{TieNet,\n  author       = {Wang, Xiaosong and Peng, Yifan and Lu, Le and Lu, Zhiyong and Summers, Ronald M.},\n  title        = {{TieNet}: Text-Image Embedding Network for Common Thorax Disease Classification and Reporting in Chest {X}-Rays},\n  booktitle    = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages        = {9049--9058},\n  year         = {2018},\n  doi          = {10.1109/cvpr.2018.00943}\n}"
+        },
+        {
+          "key": "Wiegreffe2019AttentionNotNotExplanation",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wiegreffe, Sarah and Pinter, Yuval",
+            "title": "Attention Is Not Not Explanation",
+            "booktitle": "Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)",
+            "pages": "11--20",
+            "year": "2019",
+            "publisher": "Association for Computational Linguistics",
+            "doi": "10.18653/v1/D19-1002",
+            "url": "https://aclanthology.org/D19-1002/"
+          },
+          "raw": "@inproceedings{Wiegreffe2019AttentionNotNotExplanation,\n  author    = {Wiegreffe, Sarah and Pinter, Yuval},\n  title     = {Attention Is Not Not Explanation},\n  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)},\n  pages     = {11--20},\n  year      = {2019},\n  publisher = {Association for Computational Linguistics},\n  doi       = {10.18653/v1/D19-1002},\n  url       = {https://aclanthology.org/D19-1002/}\n}"
+        },
+        {
+          "key": "XMei",
+          "type": "article",
+          "fields": {
+            "author": "Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang",
+            "title": "Artificial Intelligence--Enabled Rapid Diagnosis of Patients with {COVID-19}",
+            "journal": "Nature Medicine",
+            "volume": "26",
+            "number": "8",
+            "pages": "1224--1228",
+            "year": "2020",
+            "publisher": "Nature Publishing Group",
+            "doi": "10.1038/s41591-020-0931-3"
+          },
+          "raw": "@article{XMei,\n  author    = {Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang},\n  title     = {Artificial Intelligence--Enabled Rapid Diagnosis of Patients with {COVID-19}},\n  journal   = {Nature Medicine},\n  volume    = {26},\n  number    = {8},\n  pages     = {1224--1228},\n  year      = {2020},\n  publisher = {Nature Publishing Group},\n  doi       = {10.1038/s41591-020-0931-3}\n}"
+        },
+        {
+          "key": "Yao2025",
+          "type": "article",
+          "fields": {
+            "author": "Yao, Shunhan and Huang, Yuanxiang and Wang, Xiaoyu and Zhang, Yiwen and Paixao, Ian Costa and Wang, Zhikang and Chai, Charla Lu and Wang, Hongtao and Lu, Dinggui and Webb, Geoffrey I. and Li, Shanshan and Guo, Yuming and Chen, Qingfeng and Song, Jiangning",
+            "title": "A Radiograph Dataset for the Classification, Localization, and Segmentation of Primary Bone Tumors",
+            "journal": "Scientific Data",
+            "volume": "12",
+            "number": "1",
+            "pages": "88",
+            "year": "2025",
+            "publisher": "Nature Publishing Group",
+            "doi": "10.1038/s41597-024-04311-y"
+          },
+          "raw": "@article{Yao2025,\n  author    = {Yao, Shunhan and Huang, Yuanxiang and Wang, Xiaoyu and Zhang, Yiwen and Paixao, Ian Costa and Wang, Zhikang and Chai, Charla Lu and Wang, Hongtao and Lu, Dinggui and Webb, Geoffrey I. and Li, Shanshan and Guo, Yuming and Chen, Qingfeng and Song, Jiangning},\n  title     = {A Radiograph Dataset for the Classification, Localization, and Segmentation of Primary Bone Tumors},\n  journal   = {Scientific Data},\n  volume    = {12},\n  number    = {1},\n  pages     = {88},\n  year      = {2025},\n  publisher = {Nature Publishing Group},\n  doi       = {10.1038/s41597-024-04311-y}\n}"
+        },
+        {
+          "key": "li_2023_llavamed",
+          "type": "misc",
+          "fields": {
+            "author": "Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng",
+            "title": "{LLaVA-Med}: Training a Large Language-and-Vision Assistant for Biomedicine in One Day",
+            "year": "2023",
+            "eprint": "2306.00890",
+            "eprinttype": "arxiv",
+            "url": "https://arxiv.org/abs/2306.00890"
+          },
+          "raw": "@misc{li_2023_llavamed,\n  author       = {Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng},\n  title        = {{LLaVA-Med}: Training a Large Language-and-Vision Assistant for Biomedicine in One Day},\n  year         = {2023},\n  eprint       = {2306.00890},\n  eprinttype   = {arxiv},\n  url          = {https://arxiv.org/abs/2306.00890}\n}"
+        },
+        {
+          "key": "moor_2023_medflamingo",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav",
+            "title": "{Med-Flamingo}: A Multimodal Medical Few-Shot Learner",
+            "booktitle": "Proceedings of the 3rd Machine Learning for Health Symposium",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "225",
+            "pages": "353--367",
+            "year": "2023",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v225/moor23a.html"
+          },
+          "raw": "@inproceedings{moor_2023_medflamingo,\n  author       = {Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav},\n  title        = {{Med-Flamingo}: A Multimodal Medical Few-Shot Learner},\n  booktitle    = {Proceedings of the 3rd Machine Learning for Health Symposium},\n  series       = {Proceedings of Machine Learning Research},\n  volume       = {225},\n  pages        = {353--367},\n  year         = {2023},\n  publisher    = {PMLR},\n  url          = {https://proceedings.mlr.press/v225/moor23a.html}\n}"
+        },
+        {
+          "key": "russell2008labelme",
+          "type": "article",
+          "fields": {
+            "author": "Russell, Bryan C. and Torralba, Antonio and Murphy, Kevin P. and Freeman, William T.",
+            "title": "{LabelMe}: A Database and Web-Based Tool for Image Annotation",
+            "journal": "International Journal of Computer Vision",
+            "volume": "77",
+            "number": "1--3",
+            "pages": "157--173",
+            "year": "2008",
+            "publisher": "Springer",
+            "doi": "10.1007/s11263-007-0090-8"
+          },
+          "raw": "@article{russell2008labelme,\n  author    = {Russell, Bryan C. and Torralba, Antonio and Murphy, Kevin P. and Freeman, William T.},\n  title     = {{LabelMe}: A Database and Web-Based Tool for Image Annotation},\n  journal   = {International Journal of Computer Vision},\n  volume    = {77},\n  number    = {1--3},\n  pages     = {157--173},\n  year      = {2008},\n  publisher = {Springer},\n  doi       = {10.1007/s11263-007-0090-8}\n}"
+        },
+        {
+          "key": "EfronTibshirani1993Bootstrap",
+          "type": "book",
+          "fields": {
+            "author": "Efron, Bradley and Tibshirani, Robert J.",
+            "title": "An Introduction to the Bootstrap",
+            "year": "1993",
+            "publisher": "Chapman \\& Hall",
+            "address": "New York",
+            "isbn": "0-412-04231-2"
+          },
+          "raw": "@book{EfronTibshirani1993Bootstrap,\n  author    = {Efron, Bradley and Tibshirani, Robert J.},\n  title     = {An Introduction to the Bootstrap},\n  year      = {1993},\n  publisher = {Chapman \\& Hall},\n  address   = {New York},\n  isbn      = {0-412-04231-2}\n}"
+        },
+        {
+          "key": "Good2005PermutationBootstrap",
+          "type": "book",
+          "fields": {
+            "author": "Good, Phillip I.",
+            "title": "Permutation, Parametric, and Bootstrap Tests of Hypotheses",
+            "edition": "3",
+            "series": "Springer Series in Statistics",
+            "year": "2005",
+            "publisher": "Springer",
+            "address": "New York",
+            "doi": "10.1007/b138696"
+          },
+          "raw": "@book{Good2005PermutationBootstrap,\n  author    = {Good, Phillip I.},\n  title     = {Permutation, Parametric, and Bootstrap Tests of Hypotheses},\n  edition   = {3},\n  series    = {Springer Series in Statistics},\n  year      = {2005},\n  publisher = {Springer},\n  address   = {New York},\n  doi       = {10.1007/b138696}\n}"
+        },
+        {
+          "key": "Holm1979Sequential",
+          "type": "article",
+          "fields": {
+            "author": "Holm, Sture",
+            "title": "A Simple Sequentially Rejective Multiple Test Procedure",
+            "journal": "Scandinavian Journal of Statistics",
+            "volume": "6",
+            "number": "2",
+            "pages": "65--70",
+            "year": "1979",
+            "url": "https://www.jstor.org/stable/4615733"
+          },
+          "raw": "@article{Holm1979Sequential,\n  author       = {Holm, Sture},\n  title        = {A Simple Sequentially Rejective Multiple Test Procedure},\n  journal      = {Scandinavian Journal of Statistics},\n  volume       = {6},\n  number       = {2},\n  pages        = {65--70},\n  year         = {1979},\n  url          = {https://www.jstor.org/stable/4615733}\n}"
+        }
+      ]
+    },
+    "decuong_references.bib": {
+      "total": 36,
+      "cited": 36,
+      "missing": [],
+      "unused": [],
+      "duplicates": [],
+      "cites": {
+        "Dorland2011": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "Bickley2020_Bates": [
+          "Appendix\\decuong.tex"
+        ],
+        "XMei": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "yan_2022_clinicalbert": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "nikhilkumartomar_2022_tganet": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "li_2024_lvit": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "IRENE": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "TransMed21": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "ConVIRT": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "GLoRIA": [
+          "Appendix\\decuong.tex"
+        ],
+        "MedCLIP": [
+          "Appendix\\decuong.tex"
+        ],
+        "BiomedCLIP": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "MRM": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "MedViLL": [
+          "Appendix\\decuong.tex"
+        ],
+        "MedKLIP": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "BioViL": [
+          "Appendix\\decuong.tex"
+        ],
+        "BioViL-T": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "KAD": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "CITE": [
+          "Appendix\\decuong.tex"
+        ],
+        "FPT": [
+          "Appendix\\decuong.tex"
+        ],
+        "PLIP": [
+          "Appendix\\decuong.tex"
+        ],
+        "MedPrompt": [
+          "Appendix\\decuong.tex"
+        ],
+        "UniDCP": [
+          "Appendix\\decuong.tex"
+        ],
+        "ViP": [
+          "Appendix\\decuong.tex"
+        ],
+        "CLIMP": [
+          "Appendix\\decuong.tex"
+        ],
+        "BiomedCoOp": [
+          "Appendix\\decuong.tex"
+        ],
+        "CLIPath": [
+          "Appendix\\decuong.tex"
+        ],
+        "FTB": [
+          "Appendix\\decuong.tex"
+        ],
+        "MedUnA": [
+          "Appendix\\decuong.tex"
+        ],
+        "TransMed": [
+          "Appendix\\decuong.tex"
+        ],
+        "SH-PEFT": [
+          "Appendix\\decuong.tex"
+        ],
+        "LCBB": [
+          "Appendix\\decuong.tex"
+        ],
+        "moor_2023_medflamingo": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "li_2023_llavamed": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "MED-PALM-M": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ],
+        "SkinGPT-4": [
+          "Appendix\\decuong.tex",
+          "Appendix\\decuong.tex"
+        ]
+      },
+      "entries": [
+        {
+          "key": "Dorland2011",
+          "type": "book",
+          "fields": {
+            "author": "{Dorland}",
+            "title": "{Dorland's Illustrated Medical Dictionary}",
+            "edition": "32",
+            "year": "2011",
+            "publisher": "Elsevier Health Sciences",
+            "isbn": "978-1-4160-6257-8"
+          },
+          "raw": "@book{Dorland2011,\n  author       = {{Dorland}},\n  title        = {{Dorland's Illustrated Medical Dictionary}},\n  edition      = {32},\n  year         = {2011},\n  publisher    = {Elsevier Health Sciences},\n  isbn         = {978-1-4160-6257-8}\n}"
+        },
+        {
+          "key": "Bickley2020_Bates",
+          "type": "book",
+          "fields": {
+            "author": "Bickley, Lynn S. and Szilagyi, Peter G. and Hoffman, Richard M.",
+            "title": "{Bates' Guide to Physical Examination and History Taking}",
+            "edition": "13",
+            "year": "2020",
+            "publisher": "Lippincott Williams \\& Wilkins"
+          },
+          "raw": "@book{Bickley2020_Bates,\n  author       = {Bickley, Lynn S. and Szilagyi, Peter G. and Hoffman, Richard M.},\n  title        = {{Bates' Guide to Physical Examination and History Taking}},\n  edition      = {13},\n  year         = {2020},\n  publisher    = {Lippincott Williams \\& Wilkins}\n}"
+        },
+        {
+          "key": "MRM",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Hong-Yu Zhou and Chenyu Lian and Liansheng Wang and Yizhou Yu",
+            "title": "{Advancing Radiograph Representation Learning with Masked Record Modeling}",
+            "booktitle": "The Eleventh International Conference on Learning Representations",
+            "year": "2023",
+            "url": "https://openreview.net/forum?id=w-x7U26GM7j"
+          },
+          "raw": "@inproceedings{MRM,\n  author       = {Hong-Yu Zhou and Chenyu Lian and Liansheng Wang and Yizhou Yu},\n  title        = {{Advancing Radiograph Representation Learning with Masked Record Modeling}},\n  booktitle    = {The Eleventh International Conference on Learning Representations},\n  year         = {2023},\n  url          = {https://openreview.net/forum?id=w-x7U26GM7j}\n}"
+        },
+        {
+          "key": "ConVIRT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D and Langlotz, Curtis P",
+            "title": "{Contrastive Learning of Medical Visual Representations from Paired Images and Text}",
+            "booktitle": "Proceedings of the 7th Machine Learning for Healthcare Conference",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "182",
+            "pages": "2--25",
+            "year": "2022",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v182/zhang22a.html"
+          },
+          "raw": "@inproceedings{ConVIRT,\n  author       = {Zhang, Yuhao and Jiang, Hang and Miura, Yasuhide and Manning, Christopher D and Langlotz, Curtis P},\n  title        = {{Contrastive Learning of Medical Visual Representations from Paired Images and Text}},\n  booktitle    = {Proceedings of the 7th Machine Learning for Healthcare Conference},\n  series       = {Proceedings of Machine Learning Research},\n  volume       = {182},\n  pages        = {2--25},\n  year         = {2022},\n  publisher    = {PMLR},\n  url          = {https://proceedings.mlr.press/v182/zhang22a.html}\n}"
+        },
+        {
+          "key": "GLoRIA",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena",
+            "title": "{GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition}",
+            "booktitle": "2021 IEEE/CVF International Conference on Computer Vision (ICCV)",
+            "pages": "3922--3931",
+            "year": "2021",
+            "doi": "10.1109/ICCV48922.2021.00391"
+          },
+          "raw": "@inproceedings{GLoRIA,\n  author       = {Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P. and Yeung, Serena},\n  title        = {{GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition}},\n  booktitle    = {2021 IEEE/CVF International Conference on Computer Vision (ICCV)},\n  pages        = {3922--3931},\n  year         = {2021},\n  doi          = {10.1109/ICCV48922.2021.00391}\n}"
+        },
+        {
+          "key": "MedCLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng",
+            "title": "{{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text}",
+            "booktitle": "Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing",
+            "pages": "3876--3887",
+            "year": "2022",
+            "publisher": "Association for Computational Linguistics",
+            "address": "Abu Dhabi, United Arab Emirates",
+            "doi": "10.18653/v1/2022.emnlp-main.256",
+            "url": "https://aclanthology.org/2022.emnlp-main.256/",
+            "editor": "Goldberg, Yoav and Kozareva, Zornitsa and Zhang, Yue"
+          },
+          "raw": "@inproceedings{MedCLIP,\n  author       = {Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng},\n  title        = {{{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text}},\n  booktitle    = {Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing},\n  pages        = {3876--3887},\n  year         = {2022},\n  publisher    = {Association for Computational Linguistics},\n  address      = {Abu Dhabi, United Arab Emirates},\n  doi          = {10.18653/v1/2022.emnlp-main.256},\n  url          = {https://aclanthology.org/2022.emnlp-main.256/},\n  editor       = {Goldberg, Yoav and Kozareva, Zornitsa and Zhang, Yue}\n}"
+        },
+        {
+          "key": "BiomedCLIP",
+          "type": "article",
+          "fields": {
+            "author": "Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung",
+            "title": "{A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs}",
+            "journal": "NEJM AI",
+            "volume": "2",
+            "number": "1",
+            "eid": "AIoa2400640",
+            "year": "2025",
+            "doi": "10.1056/AIoa2400640"
+          },
+          "raw": "@article{BiomedCLIP,\n  author       = {Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung},\n  title        = {{A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs}},\n  journal      = {NEJM AI},\n  volume       = {2},\n  number       = {1},\n  eid          = {AIoa2400640},\n  year         = {2025},\n  doi          = {10.1056/AIoa2400640}\n}"
+        },
+        {
+          "key": "MedKLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi",
+            "title": "{MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis}",
+            "booktitle": "Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)",
+            "pages": "21315--21326",
+            "year": "2023",
+            "doi": "10.1109/iccv51070.2023.01954"
+          },
+          "raw": "@inproceedings{MedKLIP,\n  author       = {Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi},\n  title        = {{MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis}},\n  booktitle    = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},\n  pages        = {21315--21326},\n  year         = {2023},\n  doi          = {10.1109/iccv51070.2023.01954}\n}"
+        },
+        {
+          "key": "MedViLL",
+          "type": "article",
+          "fields": {
+            "author": "Moon, Jong Hak and Lee, Hyungyung and Shin, Woncheol and Kim, Young-Hak and Choi, Edward",
+            "title": "{Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training}",
+            "journal": "IEEE Journal of Biomedical and Health Informatics",
+            "volume": "26",
+            "number": "12",
+            "pages": "6070--6080",
+            "year": "2022",
+            "doi": "10.1109/JBHI.2022.3207502"
+          },
+          "raw": "@article{MedViLL,\n  author       = {Moon, Jong Hak and Lee, Hyungyung and Shin, Woncheol and Kim, Young-Hak and Choi, Edward},\n  title        = {{Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training}},\n  journal      = {IEEE Journal of Biomedical and Health Informatics},\n  volume       = {26},\n  number       = {12},\n  pages        = {6070--6080},\n  year         = {2022},\n  doi          = {10.1109/JBHI.2022.3207502}\n}"
+        },
+        {
+          "key": "BioViL",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Boecking, Benedikt and Usuyama, Naoto and Bannur, Shruthi and Castro, Daniel C. and Schwaighofer, Anton and Hyland, Stephanie and Wetscherek, Maria and Naumann, Tristan and Nori, Aditya and Alvarez-Valle, Javier and Poon, Hoifung and Oktay, Ozan",
+            "title": "{Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing}",
+            "booktitle": "Computer Vision -- ECCV 2022",
+            "pages": "1--21",
+            "year": "2022",
+            "publisher": "Springer Nature Switzerland",
+            "address": "Cham",
+            "isbn": "978-3-031-20059-5",
+            "doi": "10.1007/978-3-031-20059-5_1"
+          },
+          "raw": "@inproceedings{BioViL,\n  author       = {Boecking, Benedikt and Usuyama, Naoto and Bannur, Shruthi and Castro, Daniel C. and Schwaighofer, Anton and Hyland, Stephanie and Wetscherek, Maria and Naumann, Tristan and Nori, Aditya and Alvarez-Valle, Javier and Poon, Hoifung and Oktay, Ozan},\n  title        = {{Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing}},\n  booktitle    = {Computer Vision -- ECCV 2022},\n  pages        = {1--21},\n  year         = {2022},\n  publisher    = {Springer Nature Switzerland},\n  address      = {Cham},\n  isbn         = {978-3-031-20059-5},\n  doi          = {10.1007/978-3-031-20059-5_1}\n}"
+        },
+        {
+          "key": "BioViL-T",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and P{\\'e}rez-Garc{\\'i}a, Fernando and Ilse, Maximilian and Castro, Daniel C. and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and Schwaighofer, Anton and Wetscherek, Maria and Lungren, Matthew P. and Nori, Aditya and Alvarez-Valle, Javier and Oktay, Ozan",
+            "title": "{Learning to exploit temporal structure for biomedical vision-language processing}",
+            "booktitle": "Proceedings of the IEEE/CVF conference on computer vision and pattern recognition",
+            "pages": "15016--15027",
+            "year": "2023",
+            "doi": "10.1109/cvpr52729.2023.01442"
+          },
+          "raw": "@inproceedings{BioViL-T,\n  author       = {Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and P{\\'e}rez-Garc{\\'i}a, Fernando and Ilse, Maximilian and Castro, Daniel C. and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and Schwaighofer, Anton and Wetscherek, Maria and Lungren, Matthew P. and Nori, Aditya and Alvarez-Valle, Javier and Oktay, Ozan},\n  title        = {{Learning to exploit temporal structure for biomedical vision-language processing}},\n  booktitle    = {Proceedings of the IEEE/CVF conference on computer vision and pattern recognition},\n  pages        = {15016--15027},\n  year         = {2023},\n  doi          = {10.1109/cvpr52729.2023.01442}\n}"
+        },
+        {
+          "key": "KAD",
+          "type": "article",
+          "fields": {
+            "author": "Zhang, Xiaoman and Wu, Chaoyi and Zhang, Ya and Xie, Weidi and Wang, Yanfeng",
+            "title": "{Knowledge-enhanced visual-language pre-training on chest radiology images}",
+            "journal": "Nature Communications",
+            "volume": "14",
+            "number": "1",
+            "eid": "4542",
+            "year": "2023",
+            "doi": "10.1038/s41467-023-40260-7",
+            "month": "07"
+          },
+          "raw": "@article{KAD,\n  author       = {Zhang, Xiaoman and Wu, Chaoyi and Zhang, Ya and Xie, Weidi and Wang, Yanfeng},\n  title        = {{Knowledge-enhanced visual-language pre-training on chest radiology images}},\n  journal      = {Nature Communications},\n  volume       = {14},\n  number       = {1},\n  eid          = {4542},\n  year         = {2023},\n  doi          = {10.1038/s41467-023-40260-7},\n  month        = {07}\n}"
+        },
+        {
+          "key": "CITE",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Zhang, Yunkun and Gao, Jin and Zhou, Mu and Wang, Xiaosong and Qiao, Yu and Zhang, Shaoting and Wang, Dequan",
+            "title": "{Text-Guided Foundation Model Adaptation for Pathological Image Classification}",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2023",
+            "pages": "272--282",
+            "year": "2023",
+            "publisher": "Springer Nature Switzerland",
+            "address": "Cham",
+            "isbn": "978-3-031-43904-9",
+            "doi": "10.1007/978-3-031-43904-9_27",
+            "editor": "Greenspan, Hayit and Madabhushi, Anant and Mousavi, Parvin and Salcudean, Septimiu and Duncan, James and Syeda-Mahmood, Tanveer and Taylor, Russell"
+          },
+          "raw": "@inproceedings{CITE,\n  author       = {Zhang, Yunkun and Gao, Jin and Zhou, Mu and Wang, Xiaosong and Qiao, Yu and Zhang, Shaoting and Wang, Dequan},\n  title        = {{Text-Guided Foundation Model Adaptation for Pathological Image Classification}},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2023},\n  pages        = {272--282},\n  year         = {2023},\n  publisher    = {Springer Nature Switzerland},\n  address      = {Cham},\n  isbn         = {978-3-031-43904-9},\n  doi          = {10.1007/978-3-031-43904-9_27},\n  editor       = {Greenspan, Hayit and Madabhushi, Anant and Mousavi, Parvin and Salcudean, Septimiu and Duncan, James and Syeda-Mahmood, Tanveer and Taylor, Russell}\n}"
+        },
+        {
+          "key": "UniDCP",
+          "type": "article",
+          "fields": {
+            "author": "Zhan, Chenlu and Zhang, Yufei and Lin, Yu and Wang, Gaoang and Wang, Hongwei",
+            "title": "{UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts}",
+            "journal": "IEEE Transactions on Multimedia",
+            "volume": "26",
+            "pages": "9736--9748",
+            "year": "2024",
+            "doi": "10.1109/TMM.2024.3397191"
+          },
+          "raw": "@article{UniDCP,\n  author       = {Zhan, Chenlu and Zhang, Yufei and Lin, Yu and Wang, Gaoang and Wang, Hongwei},\n  title        = {{UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts}},\n  journal      = {IEEE Transactions on Multimedia},\n  volume       = {26},\n  pages        = {9736--9748},\n  year         = {2024},\n  doi          = {10.1109/TMM.2024.3397191}\n}"
+        },
+        {
+          "key": "ViP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao",
+            "title": "{Aligning Medical Images with General Knowledge from Large Language Models}",
+            "booktitle": "International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)",
+            "series": "Lecture Notes in Computer Science",
+            "volume": "15010",
+            "pages": "57--67",
+            "year": "2024",
+            "publisher": "Springer Nature Switzerland",
+            "doi": "10.1007/978-3-031-72117-5_6",
+            "url": "https://papers.miccai.org/miccai-2024/062-Paper1358.html"
+          },
+          "raw": "@inproceedings{ViP,\n  author       = {Fang, Xiao and Lin, Yi and Zhang, Dong and Cheng, Kwang-Ting and Chen, Hao},\n  title        = {{Aligning Medical Images with General Knowledge from Large Language Models}},\n  booktitle    = {International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)},\n  series       = {Lecture Notes in Computer Science},\n  volume       = {15010},\n  pages        = {57--67},\n  year         = {2024},\n  publisher    = {Springer Nature Switzerland},\n  doi          = {10.1007/978-3-031-72117-5_6},\n  url          = {https://papers.miccai.org/miccai-2024/062-Paper1358.html}\n}"
+        },
+        {
+          "key": "PLIP",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun",
+            "title": "{Disease-Informed Adaptation of Vision-Language Models}",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024",
+            "series": "Lecture Notes in Computer Science",
+            "volume": "15011",
+            "pages": "232--242",
+            "year": "2024",
+            "publisher": "Springer Nature Switzerland",
+            "doi": "10.1007/978-3-031-72120-5_22"
+          },
+          "raw": "@inproceedings{PLIP,\n  author       = {Zhang, Jiajin and Wang, Ge and Kalra, Mannudeep K. and Yan, Pingkun},\n  title        = {{Disease-Informed Adaptation of Vision-Language Models}},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},\n  series       = {Lecture Notes in Computer Science},\n  volume       = {15011},\n  pages        = {232--242},\n  year         = {2024},\n  publisher    = {Springer Nature Switzerland},\n  doi          = {10.1007/978-3-031-72120-5_22}\n}"
+        },
+        {
+          "key": "FPT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Huang, Yijin and Cheng, Pujin and Tam, Roger and Tang, Xiaoying",
+            "title": "{Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification}",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024",
+            "pages": "120--130",
+            "year": "2024",
+            "publisher": "Springer Nature Switzerland",
+            "address": "Cham",
+            "isbn": "978-3-031-72390-2",
+            "doi": "10.1007/978-3-031-72390-2_12"
+          },
+          "raw": "@inproceedings{FPT,\n  author       = {Huang, Yijin and Cheng, Pujin and Tam, Roger and Tang, Xiaoying},\n  title        = {{Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification}},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},\n  pages        = {120--130},\n  year         = {2024},\n  publisher    = {Springer Nature Switzerland},\n  address      = {Cham},\n  isbn         = {978-3-031-72390-2},\n  doi          = {10.1007/978-3-031-72390-2_12}\n}"
+        },
+        {
+          "key": "MedPrompt",
+          "type": "article",
+          "fields": {
+            "author": "Fudan Zheng and Jindong Cao and Weijiang Yu and Zhiguang Chen and Nong Xiao and Yutong Lu",
+            "title": "{Exploring low-resource medical image classification with weakly supervised prompt learning}",
+            "journal": "Pattern Recognition",
+            "volume": "149",
+            "pages": "110250",
+            "year": "2024",
+            "doi": "10.1016/j.patcog.2024.110250",
+            "url": "https://www.sciencedirect.com/science/article/pii/S0031320324000013",
+            "issn": "0031-3203"
+          },
+          "raw": "@article{MedPrompt,\n  author       = {Fudan Zheng and Jindong Cao and Weijiang Yu and Zhiguang Chen and Nong Xiao and Yutong Lu},\n  title        = {{Exploring low-resource medical image classification with weakly supervised prompt learning}},\n  journal      = {Pattern Recognition},\n  volume       = {149},\n  pages        = {110250},\n  year         = {2024},\n  doi          = {10.1016/j.patcog.2024.110250},\n  url          = {https://www.sciencedirect.com/science/article/pii/S0031320324000013},\n  issn         = {0031-3203}\n}"
+        },
+        {
+          "key": "CLIMP",
+          "type": "article",
+          "fields": {
+            "author": "Du, Ye and Yu, Nanxi and Wang, Shujun",
+            "title": "{Medical Knowledge Intervention Prompt Tuning for Medical Image Classification}",
+            "journal": "IEEE Transactions on Medical Imaging",
+            "volume": "44",
+            "number": "12",
+            "pages": "4945--4959",
+            "year": "2025",
+            "doi": "10.1109/TMI.2025.3584841"
+          },
+          "raw": "@article{CLIMP,\n  author       = {Du, Ye and Yu, Nanxi and Wang, Shujun},\n  title        = {{Medical Knowledge Intervention Prompt Tuning for Medical Image Classification}},\n  journal      = {IEEE Transactions on Medical Imaging},\n  volume       = {44},\n  number       = {12},\n  pages        = {4945--4959},\n  year         = {2025},\n  doi          = {10.1109/TMI.2025.3584841}\n}"
+        },
+        {
+          "key": "BiomedCoOp",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming",
+            "title": "{{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models}",
+            "booktitle": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+            "pages": "14766--14776",
+            "year": "2025",
+            "doi": "10.1109/CVPR52734.2025.01376"
+          },
+          "raw": "@inproceedings{BiomedCoOp,\n  author       = {Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming},\n  title        = {{{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models}},\n  booktitle    = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},\n  pages        = {14766--14776},\n  year         = {2025},\n  doi          = {10.1109/CVPR52734.2025.01376}\n}"
+        },
+        {
+          "key": "CLIPath",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee",
+            "title": "{{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts}",
+            "booktitle": "Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)",
+            "pages": "2366--2372",
+            "year": "2023",
+            "publisher": "IEEE",
+            "doi": "10.1109/iccvw60793.2023.00251"
+          },
+          "raw": "@inproceedings{CLIPath,\n  author       = {Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee},\n  title        = {{{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts}},\n  booktitle    = {Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},\n  pages        = {2366--2372},\n  year         = {2023},\n  publisher    = {IEEE},\n  doi          = {10.1109/iccvw60793.2023.00251}\n}"
+        },
+        {
+          "key": "FTB",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella",
+            "title": "{Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training}",
+            "booktitle": "ICASSP 2024 - 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)",
+            "pages": "1686--1690",
+            "year": "2024",
+            "doi": "10.1109/ICASSP48485.2024.10447326"
+          },
+          "raw": "@inproceedings{FTB,\n  author       = {Qin, Jiuming and Liu, Che and Cheng, Sibo and Guo, Yike and Arcucci, Rossella},\n  title        = {{Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training}},\n  booktitle    = {ICASSP 2024 - 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},\n  pages        = {1686--1690},\n  year         = {2024},\n  doi          = {10.1109/ICASSP48485.2024.10447326}\n}"
+        },
+        {
+          "key": "MedUnA",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Rahman, Umaima and Imam, Raza and Yaqub, Mohammad and Amor, Boulbaba Ben and Mahapatra, Dwarikanath",
+            "title": "{Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?}",
+            "booktitle": "2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)",
+            "pages": "1--5",
+            "year": "2025",
+            "doi": "10.1109/isbi60581.2025.10981057",
+            "organization": "IEEE"
+          },
+          "raw": "@inproceedings{MedUnA,\n  author       = {Rahman, Umaima and Imam, Raza and Yaqub, Mohammad and Amor, Boulbaba Ben and Mahapatra, Dwarikanath},\n  title        = {{Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?}},\n  booktitle    = {2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)},\n  pages        = {1--5},\n  year         = {2025},\n  doi          = {10.1109/isbi60581.2025.10981057},\n  organization = {IEEE}\n}"
+        },
+        {
+          "key": "TransMed",
+          "type": "article",
+          "fields": {
+            "author": "Zheng, Kaipeng and Huang, Weiran and Sun, Lichao",
+            "title": "{TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification}",
+            "journal": "arXiv preprint arXiv:2312.07125",
+            "year": "2023"
+          },
+          "raw": "@article{TransMed,\n  author       = {Zheng, Kaipeng and Huang, Weiran and Sun, Lichao},\n  title        = {{TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification}},\n  journal      = {arXiv preprint arXiv:2312.07125},\n  year         = {2023}\n}"
+        },
+        {
+          "key": "SH-PEFT",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Mingyuan Liu and Lu Xu and Shengnan Liu and Jicong Zhang",
+            "title": "{Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis}",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024",
+            "series": "Lecture Notes in Computer Science",
+            "volume": "15005",
+            "pages": "627--637",
+            "year": "2024",
+            "publisher": "Springer",
+            "doi": "10.1007/978-3-031-72086-4_59"
+          },
+          "raw": "@inproceedings{SH-PEFT,\n  author       = {Mingyuan Liu and Lu Xu and Shengnan Liu and Jicong Zhang},\n  title        = {{Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis}},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},\n  series       = {Lecture Notes in Computer Science},\n  volume       = {15005},\n  pages        = {627--637},\n  year         = {2024},\n  publisher    = {Springer},\n  doi          = {10.1007/978-3-031-72086-4_59}\n}"
+        },
+        {
+          "key": "LCBB",
+          "type": "misc",
+          "fields": {
+            "author": "Chenyu Lian and Hong-Yu Zhou and Yizhou Yu and Liansheng Wang",
+            "title": "{Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models}",
+            "year": "2024",
+            "eprint": "2401.12215",
+            "archiveprefix": "arXiv",
+            "primaryclass": "cs.CV",
+            "url": "https://arxiv.org/abs/2401.12215"
+          },
+          "raw": "@misc{LCBB,\n  author       = {Chenyu Lian and Hong-Yu Zhou and Yizhou Yu and Liansheng Wang},\n  title        = {{Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models}},\n  year         = {2024},\n  eprint       = {2401.12215},\n  archiveprefix = {arXiv},\n  primaryclass = {cs.CV},\n  url          = {https://arxiv.org/abs/2401.12215}\n}"
+        },
+        {
+          "key": "yan_2022_clinicalbert",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Yan, Bin and Pei, Mingtao",
+            "title": "{Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation}",
+            "booktitle": "Proceedings of the AAAI Conference on Artificial Intelligence",
+            "volume": "36",
+            "number": "3",
+            "pages": "2982--2990",
+            "year": "2022",
+            "doi": "10.1609/aaai.v36i3.20204",
+            "urldate": "2022-07-08",
+            "month": "06"
+          },
+          "raw": "@inproceedings{yan_2022_clinicalbert,\n  author       = {Yan, Bin and Pei, Mingtao},\n  title        = {{Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation}},\n  booktitle    = {Proceedings of the AAAI Conference on Artificial Intelligence},\n  volume       = {36},\n  number       = {3},\n  pages        = {2982--2990},\n  year         = {2022},\n  doi          = {10.1609/aaai.v36i3.20204},\n  urldate      = {2022-07-08},\n  month        = {06}\n}"
+        },
+        {
+          "key": "XMei",
+          "type": "article",
+          "fields": {
+            "author": "Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang",
+            "title": "{Artificial intelligence--enabled rapid diagnosis of patients with COVID-19}",
+            "journal": "Nature Medicine",
+            "volume": "26",
+            "pages": "1224--1228",
+            "year": "2020",
+            "doi": "10.1038/s41591-020-0931-3",
+            "url": "https://www.nature.com/articles/s41591-020-0931-3",
+            "month": "08"
+          },
+          "raw": "@article{XMei,\n  author       = {Mei, Xueyan and Lee, Hao-Chih and Diao, Kai-yue and Huang, Mingqian and Lin, Bin and Liu, Chenyu and Xie, Zongyu and Ma, Yixuan and Robson, Philip M. and Chung, Michael and Bernheim, Adam and Mani, Venkatesh and Calcagno, Claudia and Li, Kunwei and Li, Shaolin and Shan, Hong and Lv, Jian and Zhao, Tongtong and Xia, Junli and Long, Qihua and Steinberger, Sharon and Jacobi, Adam and Deyer, Timothy and Luksza, Marta and Liu, Fang and Little, Brent P. and Fayad, Zahi A. and Yang, Yang},\n  title        = {{Artificial intelligence--enabled rapid diagnosis of patients with COVID-19}},\n  journal      = {Nature Medicine},\n  volume       = {26},\n  pages        = {1224--1228},\n  year         = {2020},\n  doi          = {10.1038/s41591-020-0931-3},\n  url          = {https://www.nature.com/articles/s41591-020-0931-3},\n  month        = {08}\n}"
+        },
+        {
+          "key": "li_2024_lvit",
+          "type": "article",
+          "fields": {
+            "author": "Li, Zihan and Li, Yunxiang and Li, Qingde and Wang, Puyang and Guo, Dazhou and Lu, Le and Jin, Dakai and Zhang, You and Hong, Qingqi",
+            "title": "{LViT: Language Meets Vision Transformer in Medical Image Segmentation}",
+            "journal": "IEEE Transactions on Medical Imaging",
+            "volume": "43",
+            "number": "1",
+            "pages": "96--107",
+            "year": "2024",
+            "publisher": "Institute of Electrical and Electronics Engineers",
+            "doi": "10.1109/TMI.2023.3291719",
+            "urldate": "2024-02-19",
+            "month": "01"
+          },
+          "raw": "@article{li_2024_lvit,\n  author       = {Li, Zihan and Li, Yunxiang and Li, Qingde and Wang, Puyang and Guo, Dazhou and Lu, Le and Jin, Dakai and Zhang, You and Hong, Qingqi},\n  title        = {{LViT: Language Meets Vision Transformer in Medical Image Segmentation}},\n  journal      = {IEEE Transactions on Medical Imaging},\n  volume       = {43},\n  number       = {1},\n  pages        = {96--107},\n  year         = {2024},\n  publisher    = {Institute of Electrical and Electronics Engineers},\n  doi          = {10.1109/TMI.2023.3291719},\n  urldate      = {2024-02-19},\n  month        = {01}\n}"
+        },
+        {
+          "key": "nikhilkumartomar_2022_tganet",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Tomar, Nikhil Kumar and Jha, Debesh and Bagci, Ulas and Ali, Sharib",
+            "title": "{TGANet: Text-Guided Attention for Improved Polyp Segmentation}",
+            "booktitle": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2022",
+            "pages": "151--160",
+            "year": "2022",
+            "publisher": "Springer Nature Switzerland",
+            "doi": "10.1007/978-3-031-16437-8_15",
+            "urldate": "2024-09-04",
+            "month": "01"
+          },
+          "raw": "@inproceedings{nikhilkumartomar_2022_tganet,\n  author       = {Tomar, Nikhil Kumar and Jha, Debesh and Bagci, Ulas and Ali, Sharib},\n  title        = {{TGANet: Text-Guided Attention for Improved Polyp Segmentation}},\n  booktitle    = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2022},\n  pages        = {151--160},\n  year         = {2022},\n  publisher    = {Springer Nature Switzerland},\n  doi          = {10.1007/978-3-031-16437-8_15},\n  urldate      = {2024-09-04},\n  month        = {01}\n}"
+        },
+        {
+          "key": "IRENE",
+          "type": "article",
+          "fields": {
+            "author": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin",
+            "title": "{A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics}",
+            "journal": "Nature Biomedical Engineering",
+            "volume": "7",
+            "pages": "743--755",
+            "year": "2023",
+            "publisher": "Nature Portfolio",
+            "doi": "10.1038/s41551-023-01045-x",
+            "urldate": "2023-11-05",
+            "month": "06"
+          },
+          "raw": "@article{IRENE,\n  author       = {Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin},\n  title        = {{A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics}},\n  journal      = {Nature Biomedical Engineering},\n  volume       = {7},\n  pages        = {743--755},\n  year         = {2023},\n  publisher    = {Nature Portfolio},\n  doi          = {10.1038/s41551-023-01045-x},\n  urldate      = {2023-11-05},\n  month        = {06}\n}"
+        },
+        {
+          "key": "moor_2023_medflamingo",
+          "type": "inproceedings",
+          "fields": {
+            "author": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav",
+            "title": "{Med-Flamingo: a Multimodal Medical Few-shot Learner}",
+            "booktitle": "Proceedings of the 3rd Machine Learning for Health Symposium",
+            "series": "Proceedings of Machine Learning Research",
+            "volume": "225",
+            "pages": "353--367",
+            "year": "2023",
+            "publisher": "PMLR",
+            "url": "https://proceedings.mlr.press/v225/moor23a.html"
+          },
+          "raw": "@inproceedings{moor_2023_medflamingo,\n  author       = {Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav},\n  title        = {{Med-Flamingo: a Multimodal Medical Few-shot Learner}},\n  booktitle    = {Proceedings of the 3rd Machine Learning for Health Symposium},\n  series       = {Proceedings of Machine Learning Research},\n  volume       = {225},\n  pages        = {353--367},\n  year         = {2023},\n  publisher    = {PMLR},\n  url          = {https://proceedings.mlr.press/v225/moor23a.html}\n}"
+        },
+        {
+          "key": "li_2023_llavamed",
+          "type": "misc",
+          "fields": {
+            "author": "Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng",
+            "title": "{LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day}",
+            "year": "2023",
+            "doi": "10.48550/arXiv.2306.00890",
+            "url": "https://arxiv.org/abs/2306.00890",
+            "month": "06",
+            "organization": "arXiv.org"
+          },
+          "raw": "@misc{li_2023_llavamed,\n  author       = {Li, Chunyuan and Wong, Cliff and Zhang, Sheng and Usuyama, Naoto and Liu, Haotian and Yang, Jianwei and Naumann, Tristan and Poon, Hoifung and Gao, Jianfeng},\n  title        = {{LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day}},\n  year         = {2023},\n  doi          = {10.48550/arXiv.2306.00890},\n  url          = {https://arxiv.org/abs/2306.00890},\n  month        = {06},\n  organization = {arXiv.org}\n}"
+        },
+        {
+          "key": "MED-PALM-M",
+          "type": "article",
+          "fields": {
+            "author": "Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek",
+            "title": "{Towards Generalist Biomedical {AI}}",
+            "journal": "NEJM AI",
+            "volume": "1",
+            "number": "3",
+            "eid": "AIoa2300138",
+            "year": "2024",
+            "doi": "10.1056/AIoa2300138"
+          },
+          "raw": "@article{MED-PALM-M,\n  author       = {Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek},\n  title        = {{Towards Generalist Biomedical {AI}}},\n  journal      = {NEJM AI},\n  volume       = {1},\n  number       = {3},\n  eid          = {AIoa2300138},\n  year         = {2024},\n  doi          = {10.1056/AIoa2300138}\n}"
+        },
+        {
+          "key": "SkinGPT-4",
+          "type": "article",
+          "fields": {
+            "author": "Zhou, Juexiao and He, Xiaonan and Sun, Liyuan and Xu, Jiannan and Chen, Xiuying and Chu, Yuetan and Zhou, Longxi and Liao, Xingyu and Zhang, Bin and Afvari, Shawn and Gao, Xin",
+            "title": "{Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4}",
+            "journal": "Nature Communications",
+            "volume": "15",
+            "number": "1",
+            "eid": "5649",
+            "year": "2024",
+            "publisher": "Nature Portfolio",
+            "doi": "10.1038/s41467-024-50043-3",
+            "month": "07"
+          },
+          "raw": "@article{SkinGPT-4,\n  author       = {Zhou, Juexiao and He, Xiaonan and Sun, Liyuan and Xu, Jiannan and Chen, Xiuying and Chu, Yuetan and Zhou, Longxi and Liao, Xingyu and Zhang, Bin and Afvari, Shawn and Gao, Xin},\n  title        = {{Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4}},\n  journal      = {Nature Communications},\n  volume       = {15},\n  number       = {1},\n  eid          = {5649},\n  year         = {2024},\n  publisher    = {Nature Portfolio},\n  doi          = {10.1038/s41467-024-50043-3},\n  month        = {07}\n}"
+        },
+        {
+          "key": "TransMed21",
+          "type": "article",
+          "fields": {
+            "author": "Dai, Yin and Gao, Yifan and Liu, Fayu",
+            "title": "{TransMed: Transformers Advance Multi-modal Medical Image Classification}",
+            "journal": "Diagnostics",
+            "volume": "11",
+            "number": "8",
+            "eid": "1384",
+            "year": "2021",
+            "doi": "10.3390/diagnostics11081384"
+          },
+          "raw": "@article{TransMed21,\n  author       = {Dai, Yin and Gao, Yifan and Liu, Fayu},\n  title        = {{TransMed: Transformers Advance Multi-modal Medical Image Classification}},\n  journal      = {Diagnostics},\n  volume       = {11},\n  number       = {8},\n  eid          = {1384},\n  year         = {2021},\n  doi          = {10.3390/diagnostics11081384}\n}"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# Figure 1 alternative text (both manuscripts)
+
+A two-row workflow separates offline learning from online prediction. The upper row passes labeled radiograph and clinical-history pairs through class-aware image-text alignment, then through supervised fusion and classification. The lower row passes a new radiograph and its history through the adapted image and text encoders, then through bidirectional cross-attention, a linear classifier, and softmax. Dashed arrows indicate learned-state transfer. The final encoders include Phase-2 adaptation. Online prediction uses fixed weights and has no label input or gradient update.

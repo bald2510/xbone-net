@@ -8,7 +8,7 @@
 \hline
 \textbf{Cấu hình} & \multicolumn{2}{c|}{\textbf{Ảnh X-quang}} & \multicolumn{2}{c|}{\textbf{Văn bản lâm sàng}} \\ \cline{2-5}
  & \makecell{AUC khôi\\phục $\uparrow$} & \makecell{AUC loại\\bỏ $\downarrow$} & \makecell{AUC khôi\\phục $\uparrow$} & \makecell{AUC loại\\bỏ $\downarrow$} \\ \hline
-XBone-Net chỉ ảnh & 0,2517 & \textbf{0,1541} & -- & -- \\ \hline
+XBone-Net (chỉ ảnh) & 0,2517 & \textbf{0,1541} & -- & -- \\ \hline
 \rowcolor{gray!30}XBone-Net & \textbf{0,4023} & 0,2997 & \textbf{0,4399} & 0,2811 \\ \hline
 Chỉ pha 2 & 0,3880 & 0,2730 & 0,4318 & 0,2909 \\ \hline
 Nối đặc trưng & 0,3561 & 0,2394 & 0,3519 & 0,2339 \\ \hline
@@ -20,12 +20,12 @@ BiomedCLIP tinh chỉnh toàn bộ & 0,3471 & 0,1586 & 0,2953 & \textbf{0,2199} 
 \begin{tabularx}{\textwidth}{|X|c|c|}
 \hline
 \textbf{Cấu hình} & \makecell{Mức giảm xác suất\\khi che ảnh $\Delta p_{\mathrm{img}}$} & \makecell{Mức giảm xác suất\\khi che văn bản $\Delta p_{\mathrm{txt}}$} \\ \hline
-XBone-Net chỉ ảnh & 0,3283 & -- \\ \hline
+XBone-Net (chỉ ảnh) & 0,3283 & -- \\ \hline
 \rowcolor{gray!30}XBone-Net & 0,3187 & 0,2725 \\ \hline
 Chỉ pha 2 & 0,3203 & 0,2176 \\ \hline
 Nối đặc trưng & 0,3164 & 0,2678 \\ \hline
 BiomedCLIP tinh chỉnh toàn bộ & 0,3132 & 0,2065 \\ \hline
 \end{tabularx}
-\caption{Đánh giá tích phân gradient và can thiệp nguồn trên toàn bộ 669 mẫu kiểm thử CTCH ở hạt giống 42. Giá trị in đậm ở phần (a) là cực trị quan sát, không biểu thị khác biệt có ý nghĩa thống kê. Phần (b) chỉ mô tả mức phụ thuộc, không quy ước giá trị lớn hơn là tốt hơn.}
+\caption{Đánh giá tích phân gradient và can thiệp nguồn trên toàn bộ 669 mẫu kiểm thử CTCH ở hạt giống 42}
 \label{tab:ablation_explainability}
 \end{table}

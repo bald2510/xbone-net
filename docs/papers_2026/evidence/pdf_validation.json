@@ -1,0 +1,32 @@
+{
+  "soict": {
+    "pages": 13,
+    "references_begin_page": 13,
+    "page_size_points": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "fonts": [
+      "/Type1"
+    ],
+    "log_issues": [],
+    "abstract_words": 215
+  },
+  "rivf": {
+    "pages": 5,
+    "references_begin_page": 5,
+    "page_size_points": [
+      0.0,
+      0.0,
+      595.276,
+      841.89
+    ],
+    "fonts": [
+      "/Type1"
+    ],
+    "log_issues": [],
+    "abstract_words": 161
+  }
+}

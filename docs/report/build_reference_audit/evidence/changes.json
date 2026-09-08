@@ -1,0 +1,1220 @@
+{
+  "references.bib": {
+    "removed": [
+      "BioViL",
+      "Davies1979ClusterSeparation",
+      "Davis2006PR",
+      "Fawcett2006ROC",
+      "Guo2017Calibration",
+      "Loshchilov2019AdamW",
+      "Rousseeuw1987Silhouettes"
+    ],
+    "changed": [
+      {
+        "key": "BiomedCLIP",
+        "fields": {
+          "author": {
+            "old": "Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Kim, Matthew and Brand, Christian and Zhou, Li and Wang, Edward and Lu, Dongdong and Naumann, Tristan and Gao, Jianfeng and Poon, Hoifung",
+            "new": "Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung"
+          },
+          "journal": {
+            "old": "npj Digital Medicine",
+            "new": "NEJM AI"
+          },
+          "eid": {
+            "old": null,
+            "new": "AIoa2400640"
+          },
+          "pages": {
+            "old": "233",
+            "new": null
+          },
+          "url": {
+            "old": "https://doi.org/10.1038/s41746-023-00958-6",
+            "new": null
+          },
+          "publisher": {
+            "old": "Nature Publishing Group",
+            "new": null
+          },
+          "doi": {
+            "old": "10.1038/s41746-023-00958-6",
+            "new": "10.1056/AIoa2400640"
+          },
+          "year": {
+            "old": "2023",
+            "new": "2025"
+          },
+          "title": {
+            "old": "Large-Scale Domain-Specific Pretraining for Biomedical Vision-Language Processing",
+            "new": "A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs"
+          },
+          "volume": {
+            "old": "6",
+            "new": "2"
+          }
+        }
+      },
+      {
+        "key": "BiomedCoOp",
+        "fields": {
+          "author": {
+            "old": "Shi, Yiqing and Liu, Che and Guo, Yike and Arcucci, Rossella",
+            "new": "Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming"
+          },
+          "pages": {
+            "old": "7920--7929",
+            "new": "14766--14776"
+          },
+          "url": {
+            "old": null,
+            "new": "https://openaccess.thecvf.com/content/CVPR2025/html/Koleilat_BiomedCoOp_Learning_to_Prompt_for_Biomedical_Vision-Language_Models_CVPR_2025_paper.html"
+          },
+          "doi": {
+            "old": "10.1109/WACV57701.2024.00776",
+            "new": null
+          },
+          "year": {
+            "old": "2024",
+            "new": "2025"
+          },
+          "title": {
+            "old": "{BiomedCoOp}: Explainable Medical Vision-Language Prompting",
+            "new": "{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models"
+          },
+          "booktitle": {
+            "old": "Proceedings of the 2024 IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)",
+            "new": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)"
+          }
+        }
+      },
+      {
+        "key": "CLIPath",
+        "fields": {
+          "author": {
+            "old": "Zheng, Rongfu and Huang, Haolin and Xie, Xiangbing and Xu, Haodong and Du, Jinghan and Chen, Qiansheng and Lv, Siliang and Liu, Jiahui",
+            "new": "Lai, Zhengfeng and Li, Zhuoheng and Oliveira, Luca Cerny and Chauhan, Joohi and Dugger, Brittany N. and Chuah, Chen-Nee"
+          },
+          "booktitle": {
+            "old": "Proceedings of the International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)",
+            "new": "Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)"
+          },
+          "pages": {
+            "old": "334--344",
+            "new": "2366--2372"
+          },
+          "doi": {
+            "old": "10.1007/978-3-031-43907-0_33",
+            "new": "10.1109/iccvw60793.2023.00251"
+          },
+          "title": {
+            "old": "{CLIPath}: A Parameter-Efficient Adaptation Framework for Pathology Image Analysis",
+            "new": "{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts"
+          },
+          "publisher": {
+            "old": "Springer",
+            "new": "IEEE"
+          }
+        }
+      },
+      {
+        "key": "Gu2021PubMedBERT",
+        "fields": {
+          "url": {
+            "old": "https://doi.org/10.1145/3458754",
+            "new": null
+          }
+        }
+      },
+      {
+        "key": "Vaswani2017Attention",
+        "fields": {
+          "author": {
+            "old": "Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia",
+            "new": "Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, {\\L}ukasz and Polosukhin, Illia"
+          }
+        }
+      },
+      {
+        "key": "ConVIRT",
+        "fields": {
+          "volume": {
+            "old": "139",
+            "new": "182"
+          },
+          "pages": {
+            "old": "12133--12145",
+            "new": "2--25"
+          },
+          "year": {
+            "old": "2021",
+            "new": "2022"
+          },
+          "booktitle": {
+            "old": "Proceedings of the 38th International Conference on Machine Learning (ICML)",
+            "new": "Proceedings of the 7th Machine Learning for Healthcare Conference"
+          }
+        }
+      },
+      {
+        "key": "Cui2019ClassBalanced",
+        "fields": {
+          "pages": {
+            "old": "9268--9277",
+            "new": "9260--9269"
+          }
+        }
+      },
+      {
+        "key": "DenseNet",
+        "fields": {
+          "pages": {
+            "old": "4700--4708",
+            "new": "2261--2269"
+          }
+        }
+      },
+      {
+        "key": "IRENE",
+        "fields": {
+          "author": {
+            "old": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Jia, Ping and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin",
+            "new": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin"
+          }
+        }
+      },
+      {
+        "key": "Liu2020EnergyOOD",
+        "fields": {
+          "url": {
+            "old": "https://papers.nips.cc/paper/2020/hash/f5449014e28707da7d360e46a5e95299-Abstract.html",
+            "new": "https://proceedings.neurips.cc/paper/2020/hash/f5496252609c43eb8a3d147ab9b9c006-Abstract.html"
+          }
+        }
+      },
+      {
+        "key": "MED-PALM-M",
+        "fields": {
+          "author": {
+            "old": "Tu, Tao and Azizi, Shekoofeh and Bresnick, Danny and Carlsson, Angela and Clough, Jon and Corrado, Greg and Cotter, Ryan and Cullen, Daniel and Deaton, Mark and Donahue, Jeff and others",
+            "new": "Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek"
+          },
+          "eid": {
+            "old": null,
+            "new": "AIoa2300138"
+          },
+          "pages": {
+            "old": "AIoa2300138",
+            "new": null
+          }
+        }
+      },
+      {
+        "key": "PLIP",
+        "fields": {
+          "number": {
+            "old": "10",
+            "new": null
+          },
+          "journal": {
+            "old": "IEEE Transactions on Medical Imaging",
+            "new": null
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024"
+          },
+          "pages": {
+            "old": "3984--3996",
+            "new": "232--242"
+          },
+          "publisher": {
+            "old": "IEEE",
+            "new": "Springer Nature Switzerland"
+          },
+          "doi": {
+            "old": "10.1109/TMI.2024.3475877",
+            "new": "10.1007/978-3-031-72120-5_22"
+          },
+          "year": {
+            "old": "2025",
+            "new": "2024"
+          },
+          "series": {
+            "old": null,
+            "new": "Lecture Notes in Computer Science"
+          },
+          "volume": {
+            "old": "44",
+            "new": "15011"
+          },
+          "type": {
+            "old": "article",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "PubMedCLIP",
+        "fields": {
+          "author": {
+            "old": "Eslami, Sedigheh and de Melo, Gerard and Meinel, Christoph",
+            "new": "Eslami, Sedigheh and Meinel, Christoph and de Melo, Gerard"
+          },
+          "booktitle": {
+            "old": "Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)",
+            "new": "Findings of the Association for Computational Linguistics: EACL 2023"
+          },
+          "pages": {
+            "old": "15600--15611",
+            "new": "1181--1193"
+          },
+          "url": {
+            "old": null,
+            "new": "https://aclanthology.org/2023.findings-eacl.88/"
+          },
+          "doi": {
+            "old": "10.18653/v1/2023.emnlp-main.965",
+            "new": "10.18653/v1/2023.findings-eacl.88"
+          },
+          "title": {
+            "old": "Does {CLIP} Hurt Medical Image Classification? Evaluating and Improving {CLIP} for Medical Image Classification",
+            "new": "{PubMedCLIP}: How Much Does {CLIP} Benefit Visual Question Answering in the Medical Domain?"
+          }
+        }
+      },
+      {
+        "key": "TieNet",
+        "fields": {
+          "pages": {
+            "old": "9043--9052",
+            "new": "9049--9058"
+          },
+          "doi": {
+            "old": "10.1109/CVPR.2018.00942",
+            "new": "10.1109/cvpr.2018.00943"
+          }
+        }
+      },
+      {
+        "key": "moor_2023_medflamingo",
+        "fields": {
+          "author": {
+            "old": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Zakka, Cyril and Dalmia, Yash and Reis, Eduardo Pontes and Rajpurkar, Pranav and Leskovec, Jure",
+            "new": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav"
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Proceedings of the 3rd Machine Learning for Health Symposium"
+          },
+          "pages": {
+            "old": null,
+            "new": "353--367"
+          },
+          "howpublished": {
+            "old": "arXiv preprint arXiv:2307.15189",
+            "new": null
+          },
+          "url": {
+            "old": "https://arxiv.org/abs/2307.15189",
+            "new": "https://proceedings.mlr.press/v225/moor23a.html"
+          },
+          "publisher": {
+            "old": null,
+            "new": "PMLR"
+          },
+          "series": {
+            "old": null,
+            "new": "Proceedings of Machine Learning Research"
+          },
+          "volume": {
+            "old": null,
+            "new": "225"
+          },
+          "type": {
+            "old": "misc",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "Holm1979Sequential",
+        "fields": {
+          "url": {
+            "old": null,
+            "new": "https://www.jstor.org/stable/4615733"
+          },
+          "doi": {
+            "old": "10.2307/4615733",
+            "new": null
+          }
+        }
+      }
+    ]
+  },
+  "decuong_references.bib": {
+    "removed": [],
+    "changed": [
+      {
+        "key": "Dorland2011",
+        "fields": {
+          "author": {
+            "old": "{W.B. Saunders}",
+            "new": "{Dorland}"
+          },
+          "isbn": {
+            "old": null,
+            "new": "978-1-4160-6257-8"
+          },
+          "edition": {
+            "old": "32nd",
+            "new": "32"
+          },
+          "title": {
+            "old": "Dorland's Illustrated Medical Dictionary",
+            "new": "{Dorland's Illustrated Medical Dictionary}"
+          }
+        }
+      },
+      {
+        "key": "Bickley2020_Bates",
+        "fields": {
+          "edition": {
+            "old": "13th",
+            "new": "13"
+          },
+          "title": {
+            "old": "Bates' Guide to Physical Examination and History Taking",
+            "new": "{Bates' Guide to Physical Examination and History Taking}"
+          }
+        }
+      },
+      {
+        "key": "MRM",
+        "fields": {
+          "title": {
+            "old": "Advancing Radiograph Representation Learning with Masked Record Modeling",
+            "new": "{Advancing Radiograph Representation Learning with Masked Record Modeling}"
+          },
+          "booktitle": {
+            "old": "The Eleventh International Conference on Learning Representations ",
+            "new": "The Eleventh International Conference on Learning Representations"
+          }
+        }
+      },
+      {
+        "key": "ConVIRT",
+        "fields": {
+          "pages": {
+            "old": "12133--12145",
+            "new": "2--25"
+          },
+          "title": {
+            "old": "Contrastive Learning of Medical Visual Representations from Paired Images and Text",
+            "new": "{Contrastive Learning of Medical Visual Representations from Paired Images and Text}"
+          },
+          "booktitle": {
+            "old": "Proceedings of the 38th International Conference on Machine Learning",
+            "new": "Proceedings of the 7th Machine Learning for Healthcare Conference"
+          },
+          "editor": {
+            "old": "Meila, Marina and Zhang, Tong",
+            "new": null
+          },
+          "year": {
+            "old": "2021",
+            "new": "2022"
+          },
+          "volume": {
+            "old": "139",
+            "new": "182"
+          }
+        }
+      },
+      {
+        "key": "GLoRIA",
+        "fields": {
+          "number": {
+            "old": "",
+            "new": null
+          },
+          "volume": {
+            "old": "",
+            "new": null
+          },
+          "pages": {
+            "old": "3922-3931",
+            "new": "3922--3931"
+          },
+          "keywords": {
+            "old": "Representation learning;Deep learning;Training;Image segmentation;Image recognition;Image analysis;Neural networks;Medical;biological;and cell microscopy;Representation learning;Transfer/Low-shot/Semi/Unsupervised Learning;Vision + language",
+            "new": null
+          },
+          "title": {
+            "old": "GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition",
+            "new": "{GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition}"
+          }
+        }
+      },
+      {
+        "key": "MedCLIP",
+        "fields": {
+          "author": {
+            "old": "Wang, Zifeng  and\n      Wu, Zhenbang  and\n      Agarwal, Dinesh  and\n      Sun, Jimeng",
+            "new": "Wang, Zifeng and Wu, Zhenbang and Agarwal, Dinesh and Sun, Jimeng"
+          },
+          "title": {
+            "old": "{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text",
+            "new": "{{M}ed{CLIP}: Contrastive Learning from Unpaired Medical Images and Text}"
+          },
+          "editor": {
+            "old": "Goldberg, Yoav  and\n      Kozareva, Zornitsa  and\n      Zhang, Yue",
+            "new": "Goldberg, Yoav and Kozareva, Zornitsa and Zhang, Yue"
+          },
+          "abstract": {
+            "old": "Existing vision-text contrastive learning like CLIP aims to match the paired image and caption embeddings while pushing others apart, which improves representation transferability and supports zero-shot prediction. However, medical image-text datasets are orders of magnitude below the general images and captions from the internet. Moreover, previous methods encounter many false negatives, i.e., images and reports from separate patients probably carry the same semantics but are wrongly treated as negatives. In this paper, we decouple images and texts for multimodal contrastive learning, thus scaling the usable training data in a combinatorial magnitude with low cost. We also propose to replace the InfoNCE loss with semantic matching loss based on medical knowledge to eliminate false negatives in contrastive learning. We prove that MedCLIP is a simple yet effective framework: it outperforms state-of-the-art methods on zero-shot prediction, supervised classification, and image-text retrieval. Surprisingly, we observe that with only 20K pre-training data, MedCLIP wins over the state-of-the-art method (using 200K data). The code is available at https://github.com/RyanWangZf/MedCLIP.",
+            "new": null
+          }
+        }
+      },
+      {
+        "key": "BiomedCLIP",
+        "fields": {
+          "author": {
+            "old": "Sheng Zhang and Yanbo Xu and Naoto Usuyama and Hanwen Xu and Jaspreet Bagga and Robert Tinn and Sam Preston and Rajesh Rao and Mu Wei and Naveen Valluri and Cliff Wong and Andrea Tupini and Yu Wang and Matt Mazzola and Swadheen Shukla and Lars Liden and Jianfeng Gao and Angela Crabtree and Brian Piening and Carlo Bifulco and Matthew P. Lungren and Tristan Naumann and Sheng Wang and Hoifung Poon",
+            "new": "Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and Xu, Hanwen and Bagga, Jaspreet and Tinn, Robert and Preston, Sam and Rao, Rajesh and Wei, Mu and Valluri, Naveen and Wong, Cliff and Tupini, Andrea and Wang, Yu and Mazzola, Matt and Shukla, Swadheen and Liden, Lars and Gao, Jianfeng and Crabtree, Angela and Piening, Brian and Bifulco, Carlo and Lungren, Matthew P. and Naumann, Tristan and Wang, Sheng and Poon, Hoifung"
+          },
+          "eid": {
+            "old": null,
+            "new": "AIoa2400640"
+          },
+          "url": {
+            "old": "https://ai.nejm.org/doi/full/10.1056/AIoa2400640",
+            "new": null
+          },
+          "year": {
+            "old": "2024",
+            "new": "2025"
+          },
+          "title": {
+            "old": "A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image–Text Pairs",
+            "new": "{A Multimodal Biomedical Foundation Model Trained from Fifteen Million Image--Text Pairs}"
+          }
+        }
+      },
+      {
+        "key": "MedKLIP",
+        "fields": {
+          "author": {
+            "old": "Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Feng and Xie, Weidi",
+            "new": "Wu, Chaoyi and Zhang, Xiaoman and Zhang, Ya and Wang, Yanfeng and Xie, Weidi"
+          },
+          "pages": {
+            "old": "21372--21383",
+            "new": "21315--21326"
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1109/iccv51070.2023.01954"
+          },
+          "title": {
+            "old": "MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis",
+            "new": "{MedKLIP: Medical Knowledge Enhanced Language-Image Pre-Training for X-ray Diagnosis}"
+          }
+        }
+      },
+      {
+        "key": "MedViLL",
+        "fields": {
+          "pages": {
+            "old": "6070-6080",
+            "new": "6070--6080"
+          },
+          "keywords": {
+            "old": "Medical diagnostic imaging;Radiology;Feature extraction;X-rays;Representation learning;Self-supervised learning;Healthcare;medical;multimodal learning;representation learning;self-supervised learning;vision-and-language",
+            "new": null
+          },
+          "title": {
+            "old": "Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training",
+            "new": "{Multi-Modal Understanding and Generation for Medical Images and Text via Vision-Language Pre-Training}"
+          }
+        }
+      },
+      {
+        "key": "BioViL",
+        "fields": {
+          "author": {
+            "old": "Boecking, Benedikt\nand Usuyama, Naoto\nand Bannur, Shruthi\nand Castro, Daniel C.\nand Schwaighofer, Anton\nand Hyland, Stephanie\nand Wetscherek, Maria\nand Naumann, Tristan\nand Nori, Aditya\nand Alvarez-Valle, Javier\nand Poon, Hoifung\nand Oktay, Ozan",
+            "new": "Boecking, Benedikt and Usuyama, Naoto and Bannur, Shruthi and Castro, Daniel C. and Schwaighofer, Anton and Hyland, Stephanie and Wetscherek, Maria and Naumann, Tristan and Nori, Aditya and Alvarez-Valle, Javier and Poon, Hoifung and Oktay, Ozan"
+          },
+          "abstract": {
+            "old": "Multi-modal data abounds in biomedicine, such as radiology images and reports. Interpreting this data at scale is essential for improving clinical care and accelerating clinical research. Biomedical text with its complex semantics poses additional challenges in vision--language modelling compared to the general domain, and previous work has used insufficiently adapted models that lack domain-specific language understanding. In this paper, we show that principled textual semantic modelling can substantially improve contrastive learning in self-supervised vision--language processing. We release a language model that achieves state-of-the-art results in radiology natural language inference through its improved vocabulary and novel language pretraining objective leveraging semantics and discourse characteristics in radiology reports. Further, we propose a self-supervised joint vision--language approach with a focus on better text modelling. It establishes new state of the art results on a wide range of publicly available benchmarks, in part by leveraging our new domain-specific language model. We release a new dataset with locally-aligned phrase grounding annotations by radiologists to facilitate the study of complex semantic modelling in biomedical vision--language processing. A broad evaluation, including on this new dataset, shows that our contrastive learning approach, aided by textual-semantic modelling, outperforms prior methods in segmentation tasks, despite only using a global-alignment objective.",
+            "new": null
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1007/978-3-031-20059-5_1"
+          },
+          "title": {
+            "old": "Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing",
+            "new": "{Making the Most of Text Semantics to Improve Biomedical Vision--Language Processing}"
+          }
+        }
+      },
+      {
+        "key": "BioViL-T",
+        "fields": {
+          "author": {
+            "old": "Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and Perez-Garcia, Fernando and Ilse, Maximilian and Castro, Daniel C and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and others",
+            "new": "Bannur, Shruthi and Hyland, Stephanie and Liu, Qianchu and P{\\'e}rez-Garc{\\'i}a, Fernando and Ilse, Maximilian and Castro, Daniel C. and Boecking, Benedikt and Sharma, Harshita and Bouzid, Kenza and Thieme, Anja and Schwaighofer, Anton and Wetscherek, Maria and Lungren, Matthew P. and Nori, Aditya and Alvarez-Valle, Javier and Oktay, Ozan"
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1109/cvpr52729.2023.01442"
+          },
+          "title": {
+            "old": "Learning to exploit temporal structure for biomedical vision-language processing",
+            "new": "{Learning to exploit temporal structure for biomedical vision-language processing}"
+          }
+        }
+      },
+      {
+        "key": "KAD",
+        "fields": {
+          "number": {
+            "old": null,
+            "new": "1"
+          },
+          "eid": {
+            "old": null,
+            "new": "4542"
+          },
+          "url": {
+            "old": "https://arxiv.org/pdf/2302.14042.pdf",
+            "new": null
+          },
+          "title": {
+            "old": "Knowledge-enhanced visual-language pre-training on chest radiology images",
+            "new": "{Knowledge-enhanced visual-language pre-training on chest radiology images}"
+          }
+        }
+      },
+      {
+        "key": "CITE",
+        "fields": {
+          "author": {
+            "old": "Zhang, Yunkun\nand Gao, Jin\nand Zhou, Mu\nand Wang, Xiaosong\nand Qiao, Yu\nand Zhang, Shaoting\nand Wang, Dequan",
+            "new": "Zhang, Yunkun and Gao, Jin and Zhou, Mu and Wang, Xiaosong and Qiao, Yu and Zhang, Shaoting and Wang, Dequan"
+          },
+          "title": {
+            "old": "Text-Guided Foundation Model Adaptation for Pathological Image Classification",
+            "new": "{Text-Guided Foundation Model Adaptation for Pathological Image Classification}"
+          },
+          "editor": {
+            "old": "Greenspan, Hayit\nand Madabhushi, Anant\nand Mousavi, Parvin\nand Salcudean, Septimiu\nand Duncan, James\nand Syeda-Mahmood, Tanveer\nand Taylor, Russell",
+            "new": "Greenspan, Hayit and Madabhushi, Anant and Mousavi, Parvin and Salcudean, Septimiu and Duncan, James and Syeda-Mahmood, Tanveer and Taylor, Russell"
+          },
+          "abstract": {
+            "old": "The recent surge of foundation models in computer vision and natural language processing opens up perspectives in utilizing multi-modal clinical data to train large models with strong generalizability. Yet pathological image datasets often lack biomedical text annotation and enrichment. Guiding data-efficient image diagnosis from the use of biomedical text knowledge becomes a substantial interest. In this paper, we propose to Connect Image and Text Embeddings (CITE) to enhance pathological image classification. CITE injects text insights gained from language models pre-trained with a broad range of biomedical texts, leading to adapt foundation models towards pathological image understanding. Through extensive experiments on the PatchGastric stomach tumor pathological image dataset, we demonstrate that CITE achieves leading performance compared with various baselines especially when training data is scarce. CITE offers insights into leveraging in-domain text knowledge to reinforce data-efficient pathological image classification. Code is available at https://github.com/Yunkun-Zhang/CITE.",
+            "new": null
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1007/978-3-031-43904-9_27"
+          }
+        }
+      },
+      {
+        "key": "UniDCP",
+        "fields": {
+          "number": {
+            "old": "",
+            "new": null
+          },
+          "pages": {
+            "old": "9736-9748",
+            "new": "9736--9748"
+          },
+          "keywords": {
+            "old": "Task analysis;Adaptation models;Visualization;Medical diagnostic imaging;Tuning;Multitasking;Plastics;Medical vision-language pre-training;dynamic cross-modal prompts;cross-modal shareable space",
+            "new": null
+          },
+          "title": {
+            "old": "UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts",
+            "new": "{UniDCP: Unifying Multiple Medical Vision-Language Tasks via Dynamic Cross-Modal Learnable Prompts}"
+          }
+        }
+      },
+      {
+        "key": "ViP",
+        "fields": {
+          "volume": {
+            "old": null,
+            "new": "15010"
+          },
+          "pages": {
+            "old": null,
+            "new": "57--67"
+          },
+          "publisher": {
+            "old": null,
+            "new": "Springer Nature Switzerland"
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1007/978-3-031-72117-5_6"
+          },
+          "title": {
+            "old": "Aligning Medical Images with General Knowledge from Large Language Models",
+            "new": "{Aligning Medical Images with General Knowledge from Large Language Models}"
+          },
+          "series": {
+            "old": null,
+            "new": "Lecture Notes in Computer Science"
+          }
+        }
+      },
+      {
+        "key": "PLIP",
+        "fields": {
+          "number": {
+            "old": "10",
+            "new": null
+          },
+          "journal": {
+            "old": "IEEE Transactions on Medical Imaging",
+            "new": null
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024"
+          },
+          "pages": {
+            "old": "3984-3996",
+            "new": "232--242"
+          },
+          "doi": {
+            "old": "10.1109/TMI.2024.3475877",
+            "new": "10.1007/978-3-031-72120-5_22"
+          },
+          "publisher": {
+            "old": null,
+            "new": "Springer Nature Switzerland"
+          },
+          "year": {
+            "old": "2025",
+            "new": "2024"
+          },
+          "title": {
+            "old": "Disease-Informed Adaptation of Vision-Language Models",
+            "new": "{Disease-Informed Adaptation of Vision-Language Models}"
+          },
+          "series": {
+            "old": null,
+            "new": "Lecture Notes in Computer Science"
+          },
+          "volume": {
+            "old": "44",
+            "new": "15011"
+          },
+          "type": {
+            "old": "article",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "FPT",
+        "fields": {
+          "author": {
+            "old": "Huang, Yijin and Liu, Yang and Zhou, Liansheng and Yuan, Chun and Bai, Xiang",
+            "new": "Huang, Yijin and Cheng, Pujin and Tam, Roger and Tang, Xiaoying"
+          },
+          "pages": {
+            "old": "124--134",
+            "new": "120--130"
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1007/978-3-031-72390-2_12"
+          },
+          "title": {
+            "old": "Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification",
+            "new": "{Fine-Grained Prompt Tuning: A Parameter and Memory Efficient Transfer Learning Method for High-Resolution Medical Image Classification}"
+          }
+        }
+      },
+      {
+        "key": "MedPrompt",
+        "fields": {
+          "keywords": {
+            "old": "Medical image classification, Weakly supervised learning, Prompt learning, Few-shot learning, Zero-shot learning",
+            "new": null
+          },
+          "title": {
+            "old": "Exploring low-resource medical image classification with weakly supervised prompt learning",
+            "new": "{Exploring low-resource medical image classification with weakly supervised prompt learning}"
+          },
+          "abstract": {
+            "old": "Most advances in medical image recognition supporting clinical auxiliary diagnosis meet challenges due to the low-resource situation in the medical field, where annotations are highly expensive and professional. This low-resource problem can be alleviated by leveraging the transferable representations of large-scale pre-trained vision-language models like CLIP. After being pre-trained using large-scale unlabeled medical images and texts (such as medical reports), the vision-language models can learn transferable representations and support flexible downstream clinical tasks such as medical image classification via relevant medical text prompts. However, existing pre-trained vision-language models require domain experts (clinicians) to carefully design the medical text prompts based on different datasets when applied to specific medical image tasks, which is extremely time-consuming and greatly increases the burden on clinicians. To address this problem, we propose a weakly supervised prompt learning method MedPrompt for automatically generating medical prompts, which includes an unsupervised pre-trained vision-language model and a weakly supervised prompt learning model. The unsupervised pre-trained vision-language model adopts large-scale medical images and texts for pre-training, utilizing the natural correlation between medical images and corresponding medical texts without manual annotations. The weakly supervised prompt learning model only utilizes the classes of images in the dataset to guide the learning of the specific class vector in the prompt, while the learning of other context vectors in the prompt does not require any manual annotations for guidance. To the best of our knowledge, this is the first model to automatically generate medical prompts. With the assistance of these prompts, the pre-trained vision-language model can be freed from the strong expert dependency of manual annotation and manual prompt design, thus achieving end-to-end, low-cost medical image classification. Experimental results show that the model using our automatically generated prompts outperforms all its hand-crafted prompts counterparts in full-shot learning on all four datasets, and achieves superior accuracy on zero-shot image classification and few-shot learning in three of the four medical benchmark datasets and comparable accuracy in the remaining one. In addition, the proposed prompt generator is lightweight and therefore has the potential to be embedded into any network architecture.",
+            "new": null
+          },
+          "doi": {
+            "old": "https://doi.org/10.1016/j.patcog.2024.110250",
+            "new": "10.1016/j.patcog.2024.110250"
+          }
+        }
+      },
+      {
+        "key": "CLIMP",
+        "fields": {
+          "pages": {
+            "old": "4945-4959",
+            "new": "4945--4959"
+          },
+          "keywords": {
+            "old": "Tuning;Diseases;Medical diagnostic imaging;Large language models;Training;Image classification;Adaptation models;Foundation models;Optimization;Visualization;Prompt tuning;vision language foundation model;representation fine-tuning;conditional intervention;medical image classification",
+            "new": null
+          },
+          "title": {
+            "old": "Medical Knowledge Intervention Prompt Tuning for Medical Image Classification",
+            "new": "{Medical Knowledge Intervention Prompt Tuning for Medical Image Classification}"
+          }
+        }
+      },
+      {
+        "key": "BiomedCoOp",
+        "fields": {
+          "author": {
+            "old": "Koleilat, Tarek and Asgariandehkordi, Hesam and Rivaz, Hassan and Xiao, Yiming",
+            "new": "Koleilat, Taha and Asgariandehkordi, Hojat and Rivaz, Hassan and Xiao, Yiming"
+          },
+          "pages": {
+            "old": null,
+            "new": "14766--14776"
+          },
+          "url": {
+            "old": null,
+            "new": "https://openaccess.thecvf.com/content/CVPR2025/html/Koleilat_BiomedCoOp_Learning_to_Prompt_for_Biomedical_Vision-Language_Models_CVPR_2025_paper.html"
+          },
+          "title": {
+            "old": "BiomedCoOp: Learning to Prompt for Biomedical Vision-Language Models",
+            "new": "{{BiomedCoOp}: Learning to Prompt for Biomedical Vision-Language Models}"
+          }
+        }
+      },
+      {
+        "key": "CLIPath",
+        "fields": {
+          "pages": {
+            "old": "2374-2380",
+            "new": "2366--2372"
+          },
+          "publisher": {
+            "old": null,
+            "new": "IEEE"
+          },
+          "doi": {
+            "old": null,
+            "new": "10.1109/iccvw60793.2023.00251"
+          },
+          "title": {
+            "old": "CLIPath: Fine-Tune CLIP with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts",
+            "new": "{{CLIPath}: Fine-Tune {CLIP} with Visual Feature Fusion for Pathology Image Analysis Towards Minimizing Data Collection Efforts}"
+          },
+          "booktitle": {
+            "old": "Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops",
+            "new": "Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)"
+          }
+        }
+      },
+      {
+        "key": "FTB",
+        "fields": {
+          "number": {
+            "old": "",
+            "new": null
+          },
+          "volume": {
+            "old": "",
+            "new": null
+          },
+          "pages": {
+            "old": "1686-1690",
+            "new": "1686--1690"
+          },
+          "keywords": {
+            "old": "Training;Representation learning;Image segmentation;Visualization;Self-supervised learning;Signal processing;Transformers;Vision-Language Pre-training;SelfSupervised Learning;Medical Visual Representation Learning",
+            "new": null
+          },
+          "title": {
+            "old": "Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training",
+            "new": "{Freeze the Backbones: a Parameter-Efficient Contrastive Approach to Robust Medical Vision-Language Pre-Training}"
+          }
+        }
+      },
+      {
+        "key": "MedUnA",
+        "fields": {
+          "doi": {
+            "old": null,
+            "new": "10.1109/isbi60581.2025.10981057"
+          },
+          "title": {
+            "old": "Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?",
+            "new": "{Can language-guided unsupervised adaptation improve medical image classification using unpaired images and texts?}"
+          }
+        }
+      },
+      {
+        "key": "TransMed",
+        "fields": {
+          "title": {
+            "old": "TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification",
+            "new": "{TransMed: Large Language Models Enhance Vision Transformer for Biomedical Image Classification}"
+          }
+        }
+      },
+      {
+        "key": "SH-PEFT",
+        "fields": {
+          "author": {
+            "old": "Mingyuan Liu and\n                  Lu Xu and\n                  Shengnan Liu and\n                  Jicong Zhang",
+            "new": "Mingyuan Liu and Lu Xu and Shengnan Liu and Jicong Zhang"
+          },
+          "url": {
+            "old": "https://doi.org\\_59",
+            "new": null
+          },
+          "title": {
+            "old": "Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis",
+            "new": "{Sparsity- and Hybridity-Inspired Visual Parameter-Efficient Fine-Tuning for Medical Diagnosis}"
+          },
+          "booktitle": {
+            "old": "{MICCAI} (5)",
+            "new": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024"
+          },
+          "doi": {
+            "old": "10.1007/978-3-031-72086-4\\_59",
+            "new": "10.1007/978-3-031-72086-4_59"
+          }
+        }
+      },
+      {
+        "key": "LCBB",
+        "fields": {
+          "title": {
+            "old": "Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models",
+            "new": "{Less Could Be Better: Parameter-efficient Fine-tuning Advances Medical Vision Foundation Models}"
+          }
+        }
+      },
+      {
+        "key": "yan_2022_clinicalbert",
+        "fields": {
+          "number": {
+            "old": null,
+            "new": "3"
+          },
+          "journal": {
+            "old": "Proceedings of the AAAI Conference on Artificial Intelligence",
+            "new": null
+          },
+          "pages": {
+            "old": "2982-2990",
+            "new": "2982--2990"
+          },
+          "title": {
+            "old": "Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation",
+            "new": "{Clinical-BERT: Vision-Language Pre-training for Radiograph Diagnosis and Reports Generation}"
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Proceedings of the AAAI Conference on Artificial Intelligence"
+          },
+          "type": {
+            "old": "article",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "XMei",
+        "fields": {
+          "pages": {
+            "old": "1224–1228",
+            "new": "1224--1228"
+          },
+          "title": {
+            "old": "Artificial intelligence–enabled rapid diagnosis of patients with COVID-19",
+            "new": "{Artificial intelligence--enabled rapid diagnosis of patients with COVID-19}"
+          }
+        }
+      },
+      {
+        "key": "li_2024_lvit",
+        "fields": {
+          "number": {
+            "old": null,
+            "new": "1"
+          },
+          "pages": {
+            "old": "96-107",
+            "new": "96--107"
+          },
+          "title": {
+            "old": "LViT: Language Meets Vision Transformer in Medical Image Segmentation",
+            "new": "{LViT: Language Meets Vision Transformer in Medical Image Segmentation}"
+          },
+          "doi": {
+            "old": "10.1109/tmi.2023.3291719",
+            "new": "10.1109/TMI.2023.3291719"
+          }
+        }
+      },
+      {
+        "key": "nikhilkumartomar_2022_tganet",
+        "fields": {
+          "author": {
+            "old": "Nikhil Kumar Tomar and Jha, Debesh and Ulas Bagci and Ali, Sharib",
+            "new": "Tomar, Nikhil Kumar and Jha, Debesh and Bagci, Ulas and Ali, Sharib"
+          },
+          "journal": {
+            "old": "Lecture notes in computer science",
+            "new": null
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Medical Image Computing and Computer Assisted Intervention -- MICCAI 2022"
+          },
+          "pages": {
+            "old": "151-160",
+            "new": "151--160"
+          },
+          "title": {
+            "old": "TGANet: Text-Guided Attention for Improved Polyp Segmentation",
+            "new": "{TGANet: Text-Guided Attention for Improved Polyp Segmentation}"
+          },
+          "publisher": {
+            "old": "Springer Science+Business Media",
+            "new": "Springer Nature Switzerland"
+          },
+          "type": {
+            "old": "article",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "IRENE",
+        "fields": {
+          "author": {
+            "old": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Jia, Ping and Shao, Jun and Lu, Guangming and Zhang, Kang and Wei Min Li",
+            "new": "Zhou, Hong-Yu and Yu, Yizhou and Wang, Chengdi and Zhang, Shu and Gao, Yuanxu and Pan, Jia and Shao, Jun and Lu, Guangming and Zhang, Kang and Li, Weimin"
+          },
+          "pages": {
+            "old": "743-755",
+            "new": "743--755"
+          },
+          "title": {
+            "old": "A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics",
+            "new": "{A transformer-based representation-learning model with unified processing of multimodal input for clinical diagnostics}"
+          }
+        }
+      },
+      {
+        "key": "moor_2023_medflamingo",
+        "fields": {
+          "author": {
+            "old": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Zakka, Cyril and Dalmia, Yash and Reis, Eduardo Pontes and Rajpurkar, Pranav and Leskovec, Jure",
+            "new": "Moor, Michael and Huang, Qian and Wu, Shirley and Yasunaga, Michihiro and Dalmia, Yash and Leskovec, Jure and Zakka, Cyril and Reis, Eduardo Pontes and Rajpurkar, Pranav"
+          },
+          "pages": {
+            "old": null,
+            "new": "353--367"
+          },
+          "url": {
+            "old": "https://arxiv.org/abs/2307.15189",
+            "new": "https://proceedings.mlr.press/v225/moor23a.html"
+          },
+          "organization": {
+            "old": "arXiv.org",
+            "new": null
+          },
+          "title": {
+            "old": "Med-Flamingo: a Multimodal Medical Few-shot Learner",
+            "new": "{Med-Flamingo: a Multimodal Medical Few-shot Learner}"
+          },
+          "publisher": {
+            "old": null,
+            "new": "PMLR"
+          },
+          "booktitle": {
+            "old": null,
+            "new": "Proceedings of the 3rd Machine Learning for Health Symposium"
+          },
+          "doi": {
+            "old": "10.48550/arXiv.2307.15189",
+            "new": null
+          },
+          "series": {
+            "old": null,
+            "new": "Proceedings of Machine Learning Research"
+          },
+          "month": {
+            "old": "07",
+            "new": null
+          },
+          "volume": {
+            "old": null,
+            "new": "225"
+          },
+          "type": {
+            "old": "misc",
+            "new": "inproceedings"
+          }
+        }
+      },
+      {
+        "key": "li_2023_llavamed",
+        "fields": {
+          "title": {
+            "old": "LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day",
+            "new": "{LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day}"
+          }
+        }
+      },
+      {
+        "key": "MED-PALM-M",
+        "fields": {
+          "author": {
+            "old": "Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Chuck and Tanno, Ryutaro and Ktena, Ira and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek",
+            "new": "Tu, Tao and Azizi, Shekoofeh and Driess, Danny and Schaekermann, Mike and Amin, Mohamed and Chang, Pi-Chuan and Carroll, Andrew and Lau, Charles and Tanno, Ryutaro and Ktena, Ira and Palepu, Anil and Mustafa, Basil and Chowdhery, Aakanksha and Liu, Yun and Kornblith, Simon and Fleet, David and Mansfield, Philip and Prakash, Sushant and Wong, Renee and Virmani, Sunny and Semturs, Christopher and Mahdavi, S. Sara and Green, Bradley and Dominowska, Ewa and Arcas, Blaise Aguera y and Barral, Joelle and Webster, Dale and Corrado, Greg S. and Matias, Yossi and Singhal, Karan and Florence, Pete and Karthikesalingam, Alan and Natarajan, Vivek"
+          },
+          "number": {
+            "old": null,
+            "new": "3"
+          },
+          "journal": {
+            "old": null,
+            "new": "NEJM AI"
+          },
+          "eid": {
+            "old": null,
+            "new": "AIoa2300138"
+          },
+          "url": {
+            "old": "https://arxiv.org/abs/2307.14334",
+            "new": null
+          },
+          "doi": {
+            "old": "10.48550/arXiv.2307.14334",
+            "new": "10.1056/AIoa2300138"
+          },
+          "organization": {
+            "old": "arXiv.org",
+            "new": null
+          },
+          "year": {
+            "old": "2023",
+            "new": "2024"
+          },
+          "title": {
+            "old": "Towards Generalist Biomedical AI",
+            "new": "{Towards Generalist Biomedical {AI}}"
+          },
+          "month": {
+            "old": "07",
+            "new": null
+          },
+          "volume": {
+            "old": null,
+            "new": "1"
+          },
+          "type": {
+            "old": "misc",
+            "new": "article"
+          }
+        }
+      },
+      {
+        "key": "SkinGPT-4",
+        "fields": {
+          "number": {
+            "old": null,
+            "new": "1"
+          },
+          "eid": {
+            "old": null,
+            "new": "5649"
+          },
+          "url": {
+            "old": "https://doi.org/10.1038/s41467-024-50043-3",
+            "new": null
+          },
+          "title": {
+            "old": "Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4",
+            "new": "{Pre-trained multimodal large language model enhances dermatological diagnosis using SkinGPT-4}"
+          }
+        }
+      },
+      {
+        "key": "TransMed21",
+        "fields": {
+          "author": {
+            "old": "Yin Dai and\n                  Yifan Gao",
+            "new": "Dai, Yin and Gao, Yifan and Liu, Fayu"
+          },
+          "number": {
+            "old": null,
+            "new": "8"
+          },
+          "journal": {
+            "old": "CoRR",
+            "new": "Diagnostics"
+          },
+          "eid": {
+            "old": null,
+            "new": "1384"
+          },
+          "url": {
+            "old": "https://arxiv.org/abs/2103.05940",
+            "new": null
+          },
+          "eprinttype": {
+            "old": "arXiv",
+            "new": null
+          },
+          "eprint": {
+            "old": "2103.05940",
+            "new": null
+          },
+          "title": {
+            "old": "TransMed: Transformers Advance Multi-modal Medical Image Classification",
+            "new": "{TransMed: Transformers Advance Multi-modal Medical Image Classification}"
+          },
+          "bibsource": {
+            "old": "dblp computer science bibliography, https://dblp.org",
+            "new": null
+          },
+          "biburl": {
+            "old": "https://dblp.org/rec/journals/corr/abs-2103-05940.bib",
+            "new": null
+          },
+          "doi": {
+            "old": null,
+            "new": "10.3390/diagnostics11081384"
+          },
+          "timestamp": {
+            "old": "Tue, 16 Mar 2021 11:26:59 +0100",
+            "new": null
+          },
+          "volume": {
+            "old": "abs/2103.05940",
+            "new": "11"
+          }
+        }
+      }
+    ]
+  }
+}

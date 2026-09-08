@@ -1,0 +1,17 @@
+{
+  "soict": {
+    "file": "C:\\Users\\lebat\\Documents\\Github\\xbone-net\\output\\pdf\\XBoneNet_SOICT_2026_Draft.pdf",
+    "bytes": 397116,
+    "sha256": "3cc10237cfbbfd0fb15a671a4ccc53092c17c2b6b99ca158ab446b77b62e5263"
+  },
+  "rivf": {
+    "file": "C:\\Users\\lebat\\Documents\\Github\\xbone-net\\output\\pdf\\XBoneNet_RIVF_2026_Draft.pdf",
+    "bytes": 287117,
+    "sha256": "a2ecdc67df279c32ad478398a05dc38d3e00b30e11da93a27c7f8a75d7136869"
+  },
+  "source_archive": {
+    "file": "C:\\Users\\lebat\\Documents\\Github\\xbone-net\\docs\\papers_2026\\XBoneNet_2026_LaTeX.zip",
+    "entries": 25,
+    "bytes": 68644
+  }
+}
