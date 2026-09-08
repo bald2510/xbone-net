@@ -36,6 +36,8 @@
 % Các gói bổ sung cho Đề cương chi tiết (decuong.tex)
 \usepackage{enumerate} \usepackage{enumitem} \usepackage{multicol} \usepackage{verbatim} \usepackage{xurl} \usepackage{fancyhdr} \usepackage{fancybox} \usepackage{framed} \usepackage{lastpage} \usepackage{tabularx} \usepackage{booktabs} \usepackage{makecell} \usepackage{blindtext} \usepackage[nottoc]{tocbibind} \usepackage[edges]{forest}
 
+% Gói để kèm file pdf
+\usepackage{pdfpages}
 
 % Khai báo command dùng trong floatrow
 \newfloatcommand{capbtabbox}{table}[][\FBwidth]
@@ -73,6 +75,8 @@
 \include{Title/title}
 \hypersetup{pageanchor=true}
 % Sau trang Title, các bạn chèn nhận xét của GVHD và GVPB. Nhận xét sẽ được giáo vụ phát sau buổi bảo vệ để các bạn đóng quyển.
+
+\includepdf[pages={11-15}]{T826_KLTN_TGMT3.pdf}
 
 % Lời cam đoan
 \pagenumbering{roman}
