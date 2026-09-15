@@ -30,7 +30,7 @@ if sys.platform == "win32":
 
 DATA_DIR = Path(__file__).resolve().parent
 DEFAULT_XLSX = DATA_DIR / "data_labeled_full_selected_cleaned (2).xlsx"
-DEFAULT_IMAGES_SRC = DATA_DIR / "images_no_implants"
+DEFAULT_IMAGES_SRC = DATA_DIR / "images"
 DEFAULT_LABELS_TXT = DATA_DIR / "labels.txt"
 
 LABEL_COL = "Label"

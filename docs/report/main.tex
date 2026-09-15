@@ -10,6 +10,7 @@
 
 % Adjustbox
 \usepackage{adjustbox}
+\usepackage{pdfpages}
 
 % Font tiếng Việt
 \usepackage[T5]{fontenc} \usepackage[utf8]{inputenc} \DeclareTextSymbolDefault{\DH}{T1}
@@ -71,8 +72,11 @@
 \hypersetup{pageanchor=false}
 \pagestyle{empty}
 \include{Title/title}
+% Hồ sơ sau bảo vệ: giữ nguyên các trang PDF, không in thêm số trang.
+\includepdf[pages=-,pagecommand={},fitpaper=true]{Appendix/submission/T826_KL_TGMT15_TMchinhsua.pdf}
+\includepdf[pages=-,pagecommand={},fitpaper=true]{Appendix/submission/nhan-xet-GVHD.pdf}
+\includepdf[pages=-,pagecommand={},fitpaper=true]{Appendix/submission/nhan-xet-GVPB.pdf}
 \hypersetup{pageanchor=true}
-% Sau trang Title, các bạn chèn nhận xét của GVHD và GVPB. Nhận xét sẽ được giáo vụ phát sau buổi bảo vệ để các bạn đóng quyển.
 
 % Lời cam đoan
 \pagenumbering{roman}
