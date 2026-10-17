@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from peft import LoraConfig, get_peft_model
 
-def resolve_target_modules(module: nn.Module, requested_targets: list | None = None) -> list:
+def resolve_target_modules(module: nn.Module, requested_targets: list | None = None, strict: bool = False) -> list:
     """Xác định target modules cho bước xử lý hiện tại.
 
     Parameters
@@ -31,6 +31,8 @@ def resolve_target_modules(module: nn.Module, requested_targets: list | None = N
         for target in requested_targets:
             if any(name.endswith(target) or f".{target}." in name or name == target for name in all_module_names):
                 matching.append(target)
+        if strict and len(matching) != len(requested_targets):
+            raise ValueError(f"Unmatched LoRA targets: {sorted(set(requested_targets)-set(matching))}")
         if matching:
             return matching
 
@@ -91,7 +93,7 @@ def inject_lora(
     nn.Module
         Kết quả được tạo bởi bước xử lý của hàm.
     """
-    target_modules = resolve_target_modules(module, target_modules)
+    target_modules = resolve_target_modules(module, target_modules, strict=bool(kwargs.get("strict_targets", False)))
 
     # Thiết lập trạng thái và thống kê các tham số mô hình.
     for param in module.parameters():
@@ -106,6 +108,7 @@ def inject_lora(
         lora_dropout=dropout,
         bias="none",
         modules_to_save=[],
+        use_dora=bool(kwargs.get("use_dora", False)),
     )
 
     peft_module = get_peft_model(module, lora_config)

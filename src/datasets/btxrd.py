@@ -10,6 +10,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from .preprocessing import prepare_image
+from .integrity import merge_manifests
 from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
@@ -99,6 +100,8 @@ class BTXRDDataset(Dataset):
         """
         del num_classes
         self.img_dir = img_dir
+        self.strict_data = bool(kwargs.get("strict_data", False))
+        self.require_text = bool(kwargs.get("require_text", True))
         self.report_dir = report_dir
         self.classes = classes or pathologies or []
         self.task_type = task_type
@@ -108,13 +111,7 @@ class BTXRDDataset(Dataset):
 
         split_frame = pd.read_csv(csv_split_path)
         label_frame = pd.read_csv(csv_labels_path)
-        merged = pd.merge(
-            split_frame,
-            label_frame,
-            on=["image_id"],
-            how="inner",
-            validate="one_to_one",
-        )
+        merged = merge_manifests(split_frame, label_frame, strict=self.strict_data)
 
         if self.task_type == "multiclass" and "class_id" not in merged.columns:
             if not self.classes:
@@ -281,9 +278,13 @@ class BTXRDDataset(Dataset):
             Kết quả được tạo bởi bước xử lý của hàm.
         """
         raw_text = ""
+        if not self.require_text:
+            return self.tokenizer([default_text]).squeeze(0) if self.tokenizer else default_text
         if path and os.path.exists(path):
             with open(path, "r", encoding="utf-8") as report_file:
                 raw_text = report_file.read()
+        if self.strict_data and not raw_text.strip():
+            raise FileNotFoundError(f"Missing or empty required report: {path}")
         text = raw_text.strip().lower() or default_text
         return self.tokenizer([text]).squeeze(0) if self.tokenizer else text
 
@@ -331,6 +332,8 @@ class BTXRDDataset(Dataset):
             try:
                 image = Image.open(image_path).convert("RGB")
             except FileNotFoundError:
+                if self.strict_data:
+                    raise
                 image = Image.new("RGB", (224, 224), color="black")
 
         report_stem = stem

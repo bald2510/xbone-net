@@ -43,6 +43,7 @@ from src.utils.metrics import (
     compute_metrics_multiclass,
     bootstrap_confidence_intervals,
 )
+from src.utils.research_evidence import save_prediction_bundle
 
 
 # ============================================================
@@ -221,6 +222,11 @@ def load_model_checkpoint(
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"Loading weights from checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
+        if checkpoint.get("format") == "xbone_research_v1":
+            from src.utils.research_evidence import load_research_checkpoint
+            load_research_checkpoint(model, checkpoint)
+            print(" -> Versioned compact checkpoint and frozen base verified.")
+            return True
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         state_dict = adapt_state_dict_keys(state_dict, list(model.state_dict().keys()))
 
@@ -775,6 +781,27 @@ def main(cfg: DictConfig) -> None:
         })
 
     save_results_json(metrics, cfg, output_dir, ci_95=ci_95)
+
+    # Immutable, row-aligned prediction evidence for the research protocol.
+    research_bundle_dir = params_cfg.get("research_bundle_dir")
+    if research_bundle_dir:
+        test_ids = [str(x) for x in test_loader.dataset.df["image_id"].tolist()]
+        save_prediction_bundle(
+            research_bundle_dir,
+            "test",
+            test_ids,
+            all_gt,
+            all_probs,
+            pathologies,
+            provenance={
+                "experiment_name": str(cfg.get("experiment_name", "")),
+                "seed": int(seed_val),
+                "checkpoint": str(p2_phase_cfg.get("checkpoint_path", "")),
+                "dataset": str(cfg.dataset.get("name", "")),
+                "split": "test",
+            },
+            logits=eval_output.get("logits"),
+        )
 
     if extra_args.save_embeddings:
         export_embeddings(

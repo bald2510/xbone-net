@@ -1,0 +1,70 @@
+{
+  "source_image": "C:\\Users\\lebat\\Documents\\Github\\xbone-net\\docs\\report\\images\\chapter4\\multimodal_ig_3563.png",
+  "case": "3563_img-27903-00001.jpg",
+  "seed": 42,
+  "prediction": 4,
+  "ground_truth": 4,
+  "confidence": 0.5004590153694153,
+  "cohort_n": 669,
+  "image_boxes_pixels": [
+    [
+      188,
+      240,
+      680,
+      933
+    ],
+    [
+      1101,
+      240,
+      1593,
+      933
+    ]
+  ],
+  "text_boxes_pixels": [
+    [
+      43,
+      1112,
+      845,
+      1161
+    ],
+    [
+      846,
+      1112,
+      1712,
+      1161
+    ],
+    [
+      44,
+      1178,
+      862,
+      1227
+    ],
+    [
+      863,
+      1178,
+      1720,
+      1227
+    ],
+    [
+      43,
+      1245,
+      858,
+      1294
+    ],
+    [
+      868,
+      1245,
+      1637,
+      1294
+    ],
+    [
+      54,
+      1312,
+      682,
+      1360
+    ]
+  ],
+  "processing": "PDF clipping of original panels and document-level English typesetting; no edited heatmap pixels",
+  "selection": "Author-supplied thesis example, not selected for representativeness",
+  "ig_regenerated": false
+}

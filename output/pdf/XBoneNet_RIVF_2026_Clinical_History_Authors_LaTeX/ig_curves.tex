@@ -1,0 +1,25 @@
+\begin{tikzpicture}
+\begin{groupplot}[
+group style={group size=2 by 1,horizontal sep=13mm},
+width=.46\textwidth,height=47mm,
+xmin=0,xmax=1,ymin=0,ymax=.65,
+xtick={0,.5,1},ytick={0,.2,.4,.6},
+xlabel={Fraction removed},
+axis lines=left,axis line style={black!60},
+ymajorgrids,grid style={black!12},
+tick label style={font=\footnotesize},
+label style={font=\footnotesize},title style={font=\small\bfseries},
+legend style={font=\scriptsize,draw=none,fill=none,at={(.98,.98)},anchor=north east},
+]
+\nextgroupplot[title={(a) Image patches},ylabel={Predicted-class probability}]
+\addplot[color=red!70!black,line width=1.1pt] table[x=fraction,y=targeted]{ig_image.dat};
+\addplot[color=blue!65!black,line width=1pt,dashed] table[x=fraction,y=random]{ig_image.dat};
+\node[anchor=south west,font=\footnotesize,align=left] at (axis cs:.035,.025) {AUC gap: 0.0409};
+\nextgroupplot[title={(b) Clinical-text units}]
+\addplot[color=red!70!black,line width=1.1pt] table[x=fraction,y=targeted]{ig_text.dat};
+\addlegendentry{IG-targeted deletion}
+\addplot[color=blue!65!black,line width=1pt,dashed] table[x=fraction,y=random]{ig_text.dat};
+\addlegendentry{Random deletion}
+\node[anchor=south west,font=\footnotesize] at (axis cs:.035,.025) {AUC gap: 0.0777};
+\end{groupplot}
+\end{tikzpicture}

@@ -444,6 +444,7 @@ def setup_phase2_modules(model, cfg: dict, device):
         model.backbone.return_tokens = fusion_type in {
             "cross_attention",
             "gated_cross_attention",
+            "matched_concat",
         }
         print(
             f"[Builder] Set backbone return_tokens = "

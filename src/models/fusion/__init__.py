@@ -9,6 +9,7 @@ from .identity import IdentityFusion
 from .cross_attention import CrossAttentionFusion
 from .gated_cross_attention import GatedCrossAttentionFusion
 from .concat import ConcatFusion
+from .matched_concat import MatchedConcatFusion
 
 # ============================================================
 # Thiết lập mô-đun dung hợp và đầu phân lớp theo cấu hình.
@@ -19,6 +20,7 @@ FUSION_REGISTRY = {
     'cross_attention': CrossAttentionFusion,
     'gated_cross_attention': GatedCrossAttentionFusion,
     'concat': ConcatFusion,
+    'matched_concat': MatchedConcatFusion,
 }
 
 
@@ -49,4 +51,3 @@ def build_fusion_module(cfg: dict):
         raise ValueError(f"Fusion '{fusion_type}' not supported. Choose from {list(FUSION_REGISTRY.keys())}")
 
     return FUSION_REGISTRY[fusion_type](**cfg.get('params', {}))
-

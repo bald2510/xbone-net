@@ -1,0 +1,15 @@
+\begin{table}[t]
+\caption{CTCH architecture ablations (\%, mean $\pm$ SD across three seeds). Best results are bold, and second-best results are underlined. The Image-only control is reported in Table~\ref{tab:classification}.}
+\label{tab:ablation}
+\centering\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Configuration & Accuracy & Balanced acc. & Macro-F1 \\
+\midrule
+\textbf{XBone-Net (ours)} & $\mathbf{61.83\pm2.03}$ & $\underline{59.35\pm1.34}$ & $\mathbf{57.27\pm1.93}$ \\
+Phase 2 only & $\underline{60.04\pm0.85}$ & $55.52\pm3.41$ & $\underline{54.97\pm1.84}$ \\
+Concatenation & $58.25\pm0.38$ & $\mathbf{59.83\pm2.68}$ & $54.77\pm1.62$ \\
+\bottomrule
+\end{tabular}
+\end{table}

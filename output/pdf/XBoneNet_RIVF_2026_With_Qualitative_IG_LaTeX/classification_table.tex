@@ -1,0 +1,23 @@
+\begin{table*}[t]
+\caption{Classification performance (\%, mean $\pm$ SD across three seeds). Best results are bold, and second-best results are underlined. The proposed configurations are separated from the six baselines and their names are bold.}
+\label{tab:classification}
+\centering\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+\toprule
+Method & \multicolumn{3}{c}{CTCH (22 classes, $n=669$)} & \multicolumn{3}{c}{BTXRD (10 classes, $n=750$)} \\
+\cmidrule(lr){2-4}\cmidrule(l){5-7}
+ & Accuracy & Balanced acc. & Macro-F1 & Accuracy & Balanced acc. & Macro-F1 \\
+\midrule
+ResNet-50 & $49.83\pm0.77$ & $41.80\pm0.46$ & $41.54\pm0.20$ & $60.67\pm1.33$ & $31.80\pm1.31$ & $32.85\pm0.96$ \\
+DenseNet-121 & $48.18\pm0.38$ & $49.20\pm4.65$ & $43.60\pm2.42$ & $63.20\pm0.13$ & $36.94\pm1.50$ & $37.18\pm1.73$ \\
+CLIP & $58.74\pm2.09$ & $\mathbf{62.17\pm3.59}$ & $\underline{56.33\pm0.90}$ & $80.36\pm2.73$ & $59.57\pm1.60$ & $57.87\pm2.52$ \\
+MedCLIP & $56.00\pm3.96$ & $57.23\pm1.77$ & $51.61\pm2.24$ & $82.09\pm1.47$ & $\mathbf{61.27\pm2.38}$ & $\underline{60.57\pm1.53}$ \\
+PubMedCLIP & $55.21\pm2.34$ & $55.89\pm6.14$ & $52.03\pm2.64$ & $78.84\pm2.85$ & $60.89\pm3.42$ & $57.23\pm5.77$ \\
+BiomedCLIP & $\underline{59.69\pm2.53}$ & $\underline{60.23\pm2.34}$ & $55.40\pm0.80$ & $\mathbf{83.11\pm0.28}$ & $60.62\pm2.54$ & $59.94\pm1.24$ \\
+\midrule
+\textbf{XBone-Net Image-only (ours)} & $44.39\pm6.89$ & $48.43\pm1.36$ & $38.13\pm5.51$ & $64.23\pm1.54$ & $32.67\pm1.69$ & $40.21\pm2.57$ \\
+\textbf{XBone-Net (ours)} & $\mathbf{61.83\pm2.03}$ & $59.35\pm1.34$ & $\mathbf{57.27\pm1.93}$ & $\underline{83.02\pm0.98}$ & $\underline{61.15\pm1.40}$ & $\mathbf{62.40\pm1.18}$ \\
+\bottomrule
+\end{tabular*}
+\end{table*}

@@ -1,5 +1,5 @@
 # @package _global_
-# Classifier ablation: empirical centroids without v3 class-specific bias.
+# Current linear-head bias ablation. Historical centroid results are not reusable.
 
 defaults:
   - /experiment/ctch/proposed/ours_xbone_net
@@ -10,7 +10,7 @@ experiment_name: ctch/ablation_study/architecture/classifier/no_class_bias
 model:
   classifier:
     params:
-      use_class_bias: false
+      bias: false
 
 params:
   run_phase1: false

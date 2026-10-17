@@ -422,7 +422,7 @@ def run_phase1(
     loss_fn_p1 = build_loss(
         loss_type_p1,
         clip_model=model.backbone.model,
-        temperature=p1_cfg.get("temperature", 0.07),
+        temperature=p1_cfg.get("temperature", None),
         target_similarity=p1_cfg.get("target_similarity", 0.95),
     )
 
@@ -477,6 +477,7 @@ def run_phase1(
         metric_for_best_model="loss",
         greater_is_better=False,
         save_total_limit=1,
+        save_only_model=bool(cfg.params.get("compact_checkpoints", False)),
         bf16=use_bf16,
         fp16=use_fp16,
         max_grad_norm=1.0,
@@ -526,7 +527,11 @@ def run_phase1(
 
     os.makedirs(os.path.dirname(cp_p1) or ".", exist_ok=True)
     best_model_p1 = trainer_p1.model
-    torch.save(best_model_p1.state_dict(), cp_p1)
+    if cfg.params.get("compact_checkpoints", False):
+        from src.utils.research_evidence import save_research_checkpoint
+        save_research_checkpoint(best_model_p1, cp_p1)
+    else:
+        torch.save(best_model_p1.state_dict(), cp_p1)
     print(f" [*] Saved best Phase 1 checkpoint: {cp_p1} (eval_loss={trainer_p1.state.best_metric})")
 
     logger_p1.close()
@@ -807,6 +812,7 @@ def run_phase2(
                 labels,
                 preds_cls,
                 average="macro",
+                labels=np.arange(int(cfg.dataset.params.num_classes)),
                 zero_division=0,
             ),
         }
@@ -830,6 +836,7 @@ def run_phase2(
         metric_for_best_model="f1_macro",
         greater_is_better=True,
         save_total_limit=1,
+        save_only_model=bool(cfg.params.get("compact_checkpoints", False)),
         bf16=use_bf16,
         fp16=use_fp16,
         max_grad_norm=1.0,
@@ -910,7 +917,11 @@ def run_phase2(
             "  [Centroids] Recomputed for the best Phase-2 encoder; "
             f"class counts={final_counts.tolist()}"
         )
-    torch.save(best_model_p2.state_dict(), cp_p2)
+    if cfg.params.get("compact_checkpoints", False):
+        from src.utils.research_evidence import save_research_checkpoint
+        save_research_checkpoint(best_model_p2, cp_p2)
+    else:
+        torch.save(best_model_p2.state_dict(), cp_p2)
     print(f" [*] Saved best Phase 2 checkpoint: {cp_p2} (eval_f1={trainer_p2.state.best_metric})")
 
     logger_p2.close()
@@ -1210,7 +1221,8 @@ def run_phase3(
         return {
             "accuracy": accuracy_score(labels, predicted_classes),
             "f1_macro": f1_score(
-                labels, predicted_classes, average="macro", zero_division=0
+                labels, predicted_classes, average="macro", zero_division=0,
+                labels=np.arange(int(cfg.dataset.params.num_classes))
             ),
         }
 
@@ -1495,6 +1507,8 @@ def main(cfg: DictConfig) -> None:
     # --- Khởi tạo mô hình ---
     print("Building model...")
     model = build_model(cfg.model).to(device)
+    if cfg.params.get("freeze_logit_scale", False) and hasattr(model.backbone.model, "logit_scale"):
+        model.backbone.model.logit_scale.requires_grad_(False)
 
     # Chọn thiết bị và độ chính xác tính toán phù hợp.
     use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
@@ -1615,10 +1629,12 @@ def main(cfg: DictConfig) -> None:
         elif init_from_phase1 and cp_p1 and os.path.exists(cp_p1):
             print(f"Loading best Phase 1 checkpoint from: {cp_p1}")
             checkpoint = torch.load(cp_p1, map_location=device)
-            state_dict = checkpoint.get("model_state_dict", checkpoint)
-            load_state_dict_checked(
-                model, state_dict, context="Phase 1"
-            )
+            if checkpoint.get("format") == "xbone_research_v1":
+                from src.utils.research_evidence import load_research_checkpoint
+                load_research_checkpoint(model, checkpoint)
+            else:
+                state_dict = checkpoint.get("model_state_dict", checkpoint)
+                load_state_dict_checked(model, state_dict, context="Phase 1")
             print(" -> Phase 1 weights loaded successfully!")
             
             # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
@@ -1663,6 +1679,8 @@ def main(cfg: DictConfig) -> None:
     # hoặc khởi tạo pha 3 từ checkpoint của mô hình đã huấn luyện.
     classifier_type = "none"
     if do_phase2 or do_phase3:
+        if cfg.params.get("phase2_init_seed") is not None:
+            seed_everything(int(cfg.params.phase2_init_seed))
         model, classifier_type, _, _ = setup_phase2_modules(model, cfg, device)
 
     # Thiết lập và thực thi pha 2 phân lớp đa phương thức.

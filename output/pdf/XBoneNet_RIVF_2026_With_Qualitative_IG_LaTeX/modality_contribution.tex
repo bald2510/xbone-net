@@ -1,0 +1,24 @@
+\subsection{Modality Contribution and Input Dependence}
+We analyze all 669 CTCH test cases at seed 42, including incorrect predictions, using 24 IG interpolation points. Interventions remove $16\times16$ image patches or text content units while fixing the other modality. Each model retains its original predicted class as the target, with 16 random deletion orders per case.
+
+Figure~\ref{fig:ig} shows lower targeted than random deletion AUC for images (0.2997 versus 0.3405) and text (0.2811 versus 0.3588). Whole-source replacement reduces predicted-class probability by 0.3187 for images and 0.2725 for text on average. These results indicate dependence on both inputs under the specified interventions. They neither establish region--word correspondence nor quantify cross-modal interaction. Different intervention units and references also preclude directly ranking the modalities by their deletion gaps.
+
+XBone-Net has higher image insertion AUC than Image-only (0.4023 versus 0.2517), but also higher deletion AUC (0.2997 versus 0.1541). Because these values depend on model confidence and target class, they do not establish superior explanation quality. Lesion annotations, controlled history perturbations, and clinician review remain necessary to assess clinical plausibility.
+
+\begin{figure*}[t]
+\centering
+\input{ig_curves}
+\caption{IG-guided deletion on all 669 CTCH test cases (seed 42). Curves average original predicted-class probabilities and compare IG order with 16 random orders per case. AUC gaps are random minus targeted deletion AUC. Each intervention fixes the other modality.}
+\label{fig:ig}
+\end{figure*}
+
+
+Figure~\ref{fig:ig_case} illustrates CTCH case 3563, correctly classified as finger fracture with probability 0.5005. The author-selected example displays image relevance and signed word contributions for the same prediction. Relevance also extends beyond bone structures, illustrating the distinction between input sensitivity and validated lesion localization.
+
+\begin{figure*}[t]
+\centering
+\input{ig_case}
+\caption{Qualitative IG for CTCH case 3563 (XBone-Net, seed 42). Warm image colors indicate greater displayed relevance. Orange and blue text respectively support and oppose the predicted-class logit. Each attribution holds the other modality fixed. This selected example does not establish lesion localization.}
+\label{fig:ig_case}
+\end{figure*}
+

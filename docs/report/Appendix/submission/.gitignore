@@ -1,0 +1,5 @@
+# Required source PDFs for the report; override the repository PDF build rule.
+!thuyet-minh-chinh-sua-v7.pdf
+!T826_KL_TGMT15_TMchinhsua.pdf
+!nhan-xet-GVHD.pdf
+!nhan-xet-GVPB.pdf

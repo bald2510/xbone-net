@@ -1,0 +1,15 @@
+{
+  "paper_pages": 6,
+  "qualitative_figure_pages": 1,
+  "embedded_font_count": 26,
+  "no_type3_fonts": true,
+  "overfull_boxes": false,
+  "undefined_references": false,
+  "all_pages_visually_inspected": true,
+  "source_figure_bytes_unchanged": true,
+  "numerical_tables_and_ig_curves_unchanged": true,
+  "figure_number": 4,
+  "case_prediction_verified": 0.5004590153694153,
+  "ig_rerun": false,
+  "paper_sha256": "3fbae77dfdfff06e388b1cde773102364cae6ffecf6bae37318698bafe073e37"
+}

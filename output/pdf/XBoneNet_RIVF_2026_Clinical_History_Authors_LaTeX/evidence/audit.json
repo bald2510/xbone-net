@@ -1,0 +1,779 @@
+{
+  "classification": [
+    {
+      "dataset": "ctch",
+      "model": "XBone-Net",
+      "mean": [
+        0.6183358246138515,
+        0.5934856259034786,
+        0.5727009678931485
+      ],
+      "sd": [
+        0.020349355113763935,
+        0.013430980343210141,
+        0.019311945572832192
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "ResNet-50",
+      "mean": [
+        0.49825610363726963,
+        0.4179593835685383,
+        0.41536844842352744
+      ],
+      "sd": [
+        0.007670555215914626,
+        0.0045843485186651736,
+        0.002024440595586003
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "DenseNet-121",
+      "mean": [
+        0.48181365221723965,
+        0.4919840832941234,
+        0.43603754886620055
+      ],
+      "sd": [
+        0.003761751088824488,
+        0.04651648131972355,
+        0.024183994915708797
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "CLIP",
+      "mean": [
+        0.5874439461883408,
+        0.6216589992573354,
+        0.5632746523154514
+      ],
+      "sd": [
+        0.020926756352765283,
+        0.03585888375394975,
+        0.009020359069084572
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "MedCLIP",
+      "mean": [
+        0.5600398604882909,
+        0.5723253064388926,
+        0.5161041223775656
+      ],
+      "sd": [
+        0.03961371043408265,
+        0.017749336663120768,
+        0.02242837534917451
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "PubMedCLIP",
+      "mean": [
+        0.5520677628300947,
+        0.5588940245068613,
+        0.5203266795630538
+      ],
+      "sd": [
+        0.02336497077766488,
+        0.0613596139499251,
+        0.026440733030089415
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "BiomedCLIP",
+      "mean": [
+        0.5969108121574488,
+        0.6022590175904182,
+        0.5540039451900572
+      ],
+      "sd": [
+        0.025293552857991158,
+        0.023384295766020923,
+        0.007994096049805981
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "Phase 2 only",
+      "mean": [
+        0.6003986048829099,
+        0.5552163552825159,
+        0.5497363175795417
+      ],
+      "sd": [
+        0.008499612411176855,
+        0.03411916397106069,
+        0.01842371013505407
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "Concatenation",
+      "mean": [
+        0.5824613851519681,
+        0.5982898061709252,
+        0.5476706613360486
+      ],
+      "sd": [
+        0.003761751088824466,
+        0.02684469660562588,
+        0.01620139406972996
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "Image-only",
+      "mean": [
+        0.4439461883408072,
+        0.48425024206981476,
+        0.3812501657043909
+      ],
+      "sd": [
+        0.06893783293034501,
+        0.013576195868648592,
+        0.05511908505491035
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "XBone-Net",
+      "mean": [
+        0.8302222222222223,
+        0.6114996957683276,
+        0.6239584987889538
+      ],
+      "sd": [
+        0.009828153061109355,
+        0.013959049899105512,
+        0.011813856529287457
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "ResNet-50",
+      "mean": [
+        0.6066666666666666,
+        0.318020814387041,
+        0.32846922849565957
+      ],
+      "sd": [
+        0.013333333333333308,
+        0.013112623113529958,
+        0.009566955125660711
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "DenseNet-121",
+      "mean": [
+        0.632,
+        0.3693948022361651,
+        0.3717819417917227
+      ],
+      "sd": [
+        0.0013333333333332975,
+        0.014966336830846007,
+        0.017296383683297476
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "CLIP",
+      "mean": [
+        0.8035555555555556,
+        0.5957416280831186,
+        0.5786595130274094
+      ],
+      "sd": [
+        0.027336043226100913,
+        0.015952485351547144,
+        0.025157774615430877
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "MedCLIP",
+      "mean": [
+        0.8208888888888889,
+        0.6126837987127198,
+        0.6057480235560851
+      ],
+      "sd": [
+        0.0146868547927629,
+        0.023782781809034276,
+        0.015347152182438085
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "PubMedCLIP",
+      "mean": [
+        0.7884444444444445,
+        0.6088789347309288,
+        0.5722694360075821
+      ],
+      "sd": [
+        0.028513804324169695,
+        0.03421209226945279,
+        0.057704047156115365
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "BiomedCLIP",
+      "mean": [
+        0.831111111111111,
+        0.6061938082516504,
+        0.599350850134058
+      ],
+      "sd": [
+        0.002775554665954876,
+        0.025381597443348003,
+        0.012411032482838188
+      ]
+    }
+  ],
+  "missing_predictions": [
+    [
+      "btxrd",
+      "Phase 2 only",
+      42
+    ],
+    [
+      "btxrd",
+      "Phase 2 only",
+      123
+    ],
+    [
+      "btxrd",
+      "Phase 2 only",
+      456
+    ],
+    [
+      "btxrd",
+      "Concatenation",
+      42
+    ],
+    [
+      "btxrd",
+      "Concatenation",
+      123
+    ],
+    [
+      "btxrd",
+      "Concatenation",
+      456
+    ],
+    [
+      "btxrd",
+      "Image-only",
+      42
+    ],
+    [
+      "btxrd",
+      "Image-only",
+      123
+    ],
+    [
+      "btxrd",
+      "Image-only",
+      456
+    ]
+  ],
+  "sources": [
+    {
+      "path": "results\\ctch\\proposed\\ours_xbone_net\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "0ea4887d4413dafba28ecde8bd601925b1021dfeb2ad5c1fae1ffa6e2eddc791"
+    },
+    {
+      "path": "results\\ctch\\proposed\\ours_xbone_net\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "b3af466330ed3912693a2433aa81e0c8d6d03b701f70876678a5bf936a5de75e"
+    },
+    {
+      "path": "results\\ctch\\proposed\\ours_xbone_net\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "3562d9a07032334f114e652d48218b1a5cd25df99e2dd707cca9cd06c92370a5"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_resnet50\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "5bc87c460c2ccf9e4e60950790b26e6db421453e0c926d1bc4bb052510870f56"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_resnet50\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "8fe48a495fa47451e9172a58bec72f1db43d81891ea507919f0d866fb15ed97f"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_resnet50\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "5ce9f8106a77a388758b9444bda99936949d371904987a3faf9760f89e54825a"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_densenet\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "02e01e50ee06479f6facf805de93d4eea4a710d0676205c268a44e7697e1fea2"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_densenet\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "26160731ba03b8be6466dfb89677825b7ddece1488b9ed3a15c0bcbb4a1ea520"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_densenet\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "281816d8feb2de88326149dbb76d22755885bb7f5cc037c03af6c577aa0e1f13"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_clip\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "c5ddb2df4e8c741c9ee2426d43d181c4bd4bcb4402043f8db2b236fcf9950af9"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_clip\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "89826836556a616cf7b162178cf509c5698e2d9e1752cd9814adc45ca97623e9"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_clip\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "ac891f8117ec1bd58fb2acea2d79f76bb13ebaf530ba8da20e56317fe74a32a1"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_medclip\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "c46f3f0d76bdd0477631dd6b5c3eec3a4b2a9535808c4647ec2458a2b7553d33"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_medclip\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "7bb2121d1b12ff6f0f208b68a3604345b352e9d7fa23935fa710793234b2f4c9"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_medclip\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "507cd3a3d8010922cf24bbd0913e1e8833eb9dae29f28e49aeae44a8e4e2386f"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_pubmedclip\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "fee792bf7922cdc662bce4e83cfbb7e011f4a0b1e21b1d0584cf2140d9b8b642"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_pubmedclip\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "d498630e2f09359f4d723c90573ad687710ff1f2022c4357376a815b38d36350"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_pubmedclip\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "9127ef181931388a700f369e971b8d102f4ea6bb99766c017ea7cf30286019cf"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "06e983b61ffe25557f96b76f790af1c0223e1d30927614228d5df6ec417dad29"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "a264346fa1188e80aa0708ad38efca0f6d703b879690b0924ef0dd0714d8e89b"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "d8e91104cbe0ba87a4a279379b61d3f70084a08687c83e9fc30513392e314747"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\phase\\phase2_only\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "4f7a8ffbde3e38dfd73b20a946822bb0824c6ce477157c44fa87e356b2cafd37"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\phase\\phase2_only\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "af3ea031f95366194dc8b09278c194911a899979dddda352036323de0dc6a849"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\phase\\phase2_only\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "c93adcbf023ee850e84d9baf267bfa5b9c956bef3a8dacf86b2a996d68eb9709"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\fusion\\concat\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "322c8761d209ff779cd839bac9f4692dbb8907a0c6ac15eb0ccd7ab111ad6bc1"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\fusion\\concat\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "c0d1d82ab7338433fa9cf693a216b3c313a9205c91cda564c3edb9bbba67c88a"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\fusion\\concat\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "a661b5fb71f0152184a36801c61150efb8b8d154b71cb40cad49208c02e43339"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\modality\\image_only\\seed_42\\analysis\\features\\ctch_test.npz",
+      "sha256": "aa48c7b269c2c277e12cd5e512276fe4be6f33119949d3daf20aec44affa39f0"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\modality\\image_only\\seed_123\\analysis\\features\\ctch_test.npz",
+      "sha256": "9aea552928dccfb666efc2b662bdf7339d2c93b7b9470263f42948475d004067"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\modality\\image_only\\seed_456\\analysis\\features\\ctch_test.npz",
+      "sha256": "af91d87ed5f21a42ec59a7c49b0707f3aabd0d066219ee90045c5cca9953fe78"
+    },
+    {
+      "path": "checkpoints\\ctch\\proposed\\ours_xbone_net\\seed_42\\training_summary.json",
+      "sha256": "08f2ee7939b200b25d40157d91ee9921255071305c1300aa36353d30deeb3858"
+    },
+    {
+      "path": "checkpoints\\ctch\\proposed\\ours_xbone_net\\seed_123\\training_summary.json",
+      "sha256": "8102214472e551e56936fafd4e490bccf9d656ceaaee742cc5e48f9a31b72da1"
+    },
+    {
+      "path": "checkpoints\\ctch\\proposed\\ours_xbone_net\\seed_456\\training_summary.json",
+      "sha256": "11daf05e11675b6b7293d21ecc23999e55b98efbf9ce395fb394053ed5d60841"
+    },
+    {
+      "path": "checkpoints\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\training_summary.json",
+      "sha256": "472229394ca02fca1eb383dd37f85daa5021fc93786d8703d1eaf1714b50cc55"
+    },
+    {
+      "path": "checkpoints\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_123\\training_summary.json",
+      "sha256": "5c1f2ddfaff6a7accb7db1475b63e7a74e7387128a75b8b705ab3d660401feb1"
+    },
+    {
+      "path": "checkpoints\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_456\\training_summary.json",
+      "sha256": "0d9f769f4a4ab3b3170c10fe49076ceb305290ffa3396ea920810784c78cda59"
+    },
+    {
+      "path": "results\\btxrd\\proposed\\ours_xbone_net\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "a2c5ba7237e589ec9b9668367e5b10f8b772fd72ab0890252fc4d0d2672da9d9"
+    },
+    {
+      "path": "results\\btxrd\\proposed\\ours_xbone_net\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "bef1cda221df42e439510261dfc48b2bf6440fc309725d8e6c2790adb67d5427"
+    },
+    {
+      "path": "results\\btxrd\\proposed\\ours_xbone_net\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "8a64e07f097ffbfc4397a155872fb9156baf93d720b4326d5145ea6c66d1165f"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_resnet50\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "82fb2a51c6f39ce3025d5ef219f41457de0a26ea089e37107c496ba37078c860"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_resnet50\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "be2001f80c98b5d460e9ada9294dc4697972deb130b495bda0c0411316af1aab"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_resnet50\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "8f8aa49f65ccae529af1115c34639fc572cbb26d983623b2bd452696ca2bf117"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_densenet\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "732cf209fd61329b05993a0ea2eeb545e8bb8e6d82ff5590ff42fdca39cc290b"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_densenet\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "7a74dfb71db8b674e5fda262cf2c9a52cc59142832319ca791d363cc230ee0bc"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_densenet\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "6e6525a04507ea88704ad881a972db47786a20f0ff88a3c80a1d2f85e1585c6e"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_clip\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "bec544e9328f88ad72a42f41bda20effae11b1bc7a1f06fc56a171616b1a1665"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_clip\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "2a975ae4571060e4de999991f38247ae24456cdf0b6324d42e98cb8b50cd7af5"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_clip\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "1fc602b0f864539030cb538a2480420cdd28011c1660e0142c65f2036637ee5c"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_medclip\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "3042ff662746a0c6866303faa1f106644932695402a6af66a81907669185b1ea"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_medclip\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "b60ded5051fdcf7aeedca0a39cbc4ca69d169263d7d436e7845fa8b9517c245a"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_medclip\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "16af93080fce906a7610385fc1c7582a2cec54ac62e02e5ea5d6dff6ab40f1c2"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_pubmedclip\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "c6870333492b50047f6d63264029a2dcf9b53151351681a8f3e67a5f51ffc41e"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_pubmedclip\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "280b6b991bb9512497d14e12d75efbe34f955ac1b03a0c43d25a09906d7179d2"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_pubmedclip\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "b9a3541fd7ba04e1dcc626f7d0ce9ec81121173f7357237f0fb3cd5327274aca"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\analysis\\features\\btxrd_test.npz",
+      "sha256": "16cad9b3bf75950cf12dda7c4e6c3414bf78df35c40a2ebb777ebf1f5e4cc542"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_123\\analysis\\features\\btxrd_test.npz",
+      "sha256": "b4033bee43905ce3447107d6c693939e481d74a8365a47dc81b313bbafe2d1f3"
+    },
+    {
+      "path": "results\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_456\\analysis\\features\\btxrd_test.npz",
+      "sha256": "d7724f2177aca4228bda80f7e528db7b5fa279b4091e553a1e10de8e727a33e7"
+    },
+    {
+      "path": "checkpoints\\btxrd\\proposed\\ours_xbone_net\\seed_42\\training_summary.json",
+      "sha256": "07bf6a4130b0bbab73363c2b97ea13b18426a5cbb9fa64bb7825243554ebc8bc"
+    },
+    {
+      "path": "checkpoints\\btxrd\\proposed\\ours_xbone_net\\seed_123\\training_summary.json",
+      "sha256": "9b8ecd9f07684d96dfc959e4ff0d00d79b6fa6bba095e3206e15ff117b90b81f"
+    },
+    {
+      "path": "checkpoints\\btxrd\\proposed\\ours_xbone_net\\seed_456\\training_summary.json",
+      "sha256": "59d98b57fc29c8ede994fdd0f49889a9ac5e970b267da19831145025b711912b"
+    },
+    {
+      "path": "checkpoints\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\training_summary.json",
+      "sha256": "53236f6d9028ae3abf923a0b620e830cc88ebde18302ac5d9722d0500d902173"
+    },
+    {
+      "path": "checkpoints\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_123\\training_summary.json",
+      "sha256": "8972cb728188eae6006386dd0069da149c6887f9c0894847f8239d08e42d5fa2"
+    },
+    {
+      "path": "checkpoints\\btxrd\\baselines\\full_finetuned\\fft_biomedclip\\seed_456\\training_summary.json",
+      "sha256": "2a6a157b44a3f1e5e6fb006d8660b9c74abcfb5ccafcee3196ae8c483ee2c9a9"
+    },
+    {
+      "path": "results\\ctch\\proposed\\ours_xbone_net\\seed_42\\analysis\\explainability_full_test\\summary.json",
+      "sha256": "97d915b9e2dfcd4ffdde2eb6f0d0ff980aed0ffbdb9ca2bd3507fe3763630a3e"
+    },
+    {
+      "path": "results\\ctch\\proposed\\ours_xbone_net\\seed_42\\analysis\\explainability_full_test\\samples.json",
+      "sha256": "4223b7af83574eda98d1f9a779d2440828e690e404411ec2c6485fa6a3426cd6"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\modality\\image_only\\seed_42\\analysis\\explainability_full_test\\summary.json",
+      "sha256": "69c5a59f4ee76ccb037266ab3bebd6168ec0aa25c43bdada17c3e65a88088d79"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\modality\\image_only\\seed_42\\analysis\\explainability_full_test\\samples.json",
+      "sha256": "17eca69c9cdaabeeb315be0931e1255c5c354603b9840604c13100fbe778f1b6"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\phase\\phase2_only\\seed_42\\analysis\\explainability_full_test\\summary.json",
+      "sha256": "fb93144b2ea5c51e94d2e77817e3965e780d02451835e9be5b40de4799cc5b61"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\phase\\phase2_only\\seed_42\\analysis\\explainability_full_test\\samples.json",
+      "sha256": "760775e9022f5395907d270debf9b94e432ece78e35820dd619c67a6c1e4302d"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\fusion\\concat\\seed_42\\analysis\\explainability_full_test\\summary.json",
+      "sha256": "defd463e78cf9d3714b55f6bf70db9ef722119de7b2b6209c1d15889dacac975"
+    },
+    {
+      "path": "results\\ctch\\ablation_study\\architecture\\fusion\\concat\\seed_42\\analysis\\explainability_full_test\\samples.json",
+      "sha256": "a59037884921665f91704e48a92d0a6a8244ea96c9e623afc9ee71aeb5b2f6ee"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\analysis\\explainability_full_test\\summary.json",
+      "sha256": "614742c440a6bbacb56e81182377c952376d7019310e4a12a7af54a13cbed62f"
+    },
+    {
+      "path": "results\\ctch\\baselines\\full_finetuned\\fft_biomedclip\\seed_42\\analysis\\explainability_full_test\\samples.json",
+      "sha256": "a0d4350fd53f032ecd932569b1d5b4dfec1927a52a6137077babe8d33ebfc44a"
+    }
+  ],
+  "training": [
+    {
+      "dataset": "ctch",
+      "model": "XBone-Net",
+      "gpu_hours_peak_MiB_mean": [
+        0.8541593056481442,
+        1454.9798177083333
+      ],
+      "sd": [
+        0.0924611198763764,
+        42.97059907668416
+      ]
+    },
+    {
+      "dataset": "ctch",
+      "model": "BiomedCLIP",
+      "gpu_hours_peak_MiB_mean": [
+        0.34108542475000125,
+        3816.84619140625
+      ],
+      "sd": [
+        0.0800341188503586,
+        0.0
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "XBone-Net",
+      "gpu_hours_peak_MiB_mean": [
+        0.9273655477499899,
+        1515.4541015625
+      ],
+      "sd": [
+        0.0518441248744761,
+        2.277348722841778
+      ]
+    },
+    {
+      "dataset": "btxrd",
+      "model": "BiomedCLIP",
+      "gpu_hours_peak_MiB_mean": [
+        0.464730903046297,
+        3816.72900390625
+      ],
+      "sd": [
+        0.1293404417312224,
+        0.0
+      ]
+    }
+  ],
+  "ig": {
+    "XBone-Net": {
+      "sample_count": 669,
+      "seed": 42,
+      "correct_count": 403,
+      "metrics": {
+        "clinical_text_input_faithfulness.deletion_auc": 0.28109285261695865,
+        "clinical_text_input_faithfulness.insertion_auc": 0.4398849822802734,
+        "clinical_text_input_faithfulness.random_deletion_auc": 0.3588031048741002,
+        "clinical_text_input_faithfulness.random_minus_targeted_deletion_auc": 0.07771025225714161,
+        "clinical_text_input_faithfulness.random_target_logit_deletion_auc": 2.689582665443023,
+        "clinical_text_input_faithfulness.target_logit_deletion_auc": 2.2525936136077895,
+        "global_image_faithfulness.deletion_auc": 0.2996834869558038,
+        "global_image_faithfulness.insertion_auc": 0.4022875981040209,
+        "global_image_faithfulness.random_deletion_auc": 0.3405493460159181,
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": 0.040865859060114265,
+        "global_image_faithfulness.random_target_logit_deletion_auc": 2.344196695337858,
+        "global_image_faithfulness.target_logit_deletion_auc": 2.0676939575076076,
+        "source_target_probability_drop.clinical_text": 0.2725046443422666,
+        "source_target_probability_drop.global_image": 0.3186747337580465
+      }
+    },
+    "Image-only": {
+      "sample_count": 669,
+      "seed": 42,
+      "correct_count": 350,
+      "metrics": {
+        "global_image_faithfulness.deletion_auc": 0.15408971501982066,
+        "global_image_faithfulness.insertion_auc": 0.2516952300199234,
+        "global_image_faithfulness.random_deletion_auc": 0.1965422182000484,
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": 0.04245250318022772,
+        "global_image_faithfulness.random_target_logit_deletion_auc": 1.1688288039256938,
+        "global_image_faithfulness.target_logit_deletion_auc": 0.8254206875506901,
+        "source_target_probability_drop.global_image": 0.3283487464787135
+      }
+    },
+    "Phase 2 only": {
+      "sample_count": 669,
+      "seed": 42,
+      "correct_count": 408,
+      "metrics": {
+        "clinical_text_input_faithfulness.deletion_auc": 0.2909309012141923,
+        "clinical_text_input_faithfulness.insertion_auc": 0.43175981898029214,
+        "clinical_text_input_faithfulness.random_deletion_auc": 0.3656528697396006,
+        "clinical_text_input_faithfulness.random_minus_targeted_deletion_auc": 0.07472196852540838,
+        "clinical_text_input_faithfulness.random_target_logit_deletion_auc": 2.524281622904112,
+        "clinical_text_input_faithfulness.target_logit_deletion_auc": 2.069036276727951,
+        "global_image_faithfulness.deletion_auc": 0.273047786567621,
+        "global_image_faithfulness.insertion_auc": 0.3880336728447287,
+        "global_image_faithfulness.random_deletion_auc": 0.30037589975144613,
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": 0.02732811318382512,
+        "global_image_faithfulness.random_target_logit_deletion_auc": 1.9341139213946366,
+        "global_image_faithfulness.target_logit_deletion_auc": 1.7405145471669548,
+        "source_target_probability_drop.clinical_text": 0.21762268223016007,
+        "source_target_probability_drop.global_image": 0.32034196935820997
+      }
+    },
+    "Concatenation": {
+      "sample_count": 669,
+      "seed": 42,
+      "correct_count": 387,
+      "metrics": {
+        "clinical_text_input_faithfulness.deletion_auc": 0.23392190876227537,
+        "clinical_text_input_faithfulness.insertion_auc": 0.35188179484997306,
+        "clinical_text_input_faithfulness.random_deletion_auc": 0.2953033911733263,
+        "clinical_text_input_faithfulness.random_minus_targeted_deletion_auc": 0.061381482411051035,
+        "clinical_text_input_faithfulness.random_target_logit_deletion_auc": 2.0488891267865377,
+        "clinical_text_input_faithfulness.target_logit_deletion_auc": 1.6944445967709059,
+        "global_image_faithfulness.deletion_auc": 0.23939642022796792,
+        "global_image_faithfulness.insertion_auc": 0.35612560014768746,
+        "global_image_faithfulness.random_deletion_auc": 0.2704040381411945,
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": 0.031007617913226662,
+        "global_image_faithfulness.random_target_logit_deletion_auc": 1.818915602844887,
+        "global_image_faithfulness.target_logit_deletion_auc": 1.637975797522813,
+        "source_target_probability_drop.clinical_text": 0.267762265363026,
+        "source_target_probability_drop.global_image": 0.316404721624481
+      }
+    },
+    "BiomedCLIP": {
+      "sample_count": 669,
+      "seed": 42,
+      "correct_count": 380,
+      "metrics": {
+        "clinical_text_input_faithfulness.deletion_auc": 0.2198800676086742,
+        "clinical_text_input_faithfulness.insertion_auc": 0.29530830734788044,
+        "clinical_text_input_faithfulness.random_deletion_auc": 0.25844157851035415,
+        "clinical_text_input_faithfulness.random_minus_targeted_deletion_auc": 0.03856151090167993,
+        "clinical_text_input_faithfulness.random_target_logit_deletion_auc": 1.9286935286329832,
+        "clinical_text_input_faithfulness.target_logit_deletion_auc": 1.7104145826979282,
+        "global_image_faithfulness.deletion_auc": 0.1586469578141171,
+        "global_image_faithfulness.insertion_auc": 0.34707649570440113,
+        "global_image_faithfulness.random_deletion_auc": 0.22823116699238347,
+        "global_image_faithfulness.random_minus_targeted_deletion_auc": 0.06958420917826637,
+        "global_image_faithfulness.random_target_logit_deletion_auc": 1.5531016633870882,
+        "global_image_faithfulness.target_logit_deletion_auc": 1.069555713372202,
+        "source_target_probability_drop.clinical_text": 0.2065063470066908,
+        "source_target_probability_drop.global_image": 0.3131535825819356
+      }
+    },
+    "image_curves": {
+      "targeted_auc": 0.2996834869558038,
+      "random_auc": 0.3405493460159181,
+      "gap": 0.04086585906011425
+    },
+    "text_curves": {
+      "targeted_auc": 0.28109285261695865,
+      "random_auc": 0.3588031048741002,
+      "gap": 0.07771025225714157
+    }
+  },
+  "ctch_test_distribution": [
+    218,
+    61,
+    42,
+    31,
+    31,
+    29,
+    29,
+    26,
+    25,
+    21,
+    21,
+    16,
+    16,
+    16,
+    15,
+    14,
+    13,
+    13,
+    11,
+    8,
+    7,
+    6
+  ],
+  "btxrd_test_distribution": [
+    366,
+    145,
+    65,
+    45,
+    40,
+    24,
+    31,
+    9,
+    13,
+    12
+  ]
+}

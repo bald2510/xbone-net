@@ -1,0 +1,15 @@
+{
+  "pages": 6,
+  "paper": "A4",
+  "pdf_version": "1.6",
+  "embedded_font_count": 24,
+  "aligned_prediction_files": 51,
+  "ig_ctch_samples": 669,
+  "ig_seed": 42,
+  "author_supplied_aggregate_rows": 1,
+  "author_supplied_row": "BTXRD Image-only",
+  "undefined_references": false,
+  "overfull_boxes": false,
+  "visual_review": "All six final rendered pages inspected",
+  "pdf_sha256": "4dd60c3076fb05ace0f0a6dc9c93e2d1b28bfb22e4be6ee9acaecf64a9f8502f"
+}

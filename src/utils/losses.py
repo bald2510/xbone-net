@@ -194,7 +194,8 @@ def build_loss(loss_type: str, clip_model=None, **kwargs):
         raise ValueError(f"Loss type '{loss_type}' not supported. Choose from {list(LOSS_REGISTRY.keys())}")
     if clip_model is None:
         raise ValueError("build_loss requires `clip_model`.")
-    kwargs.pop("temperature", None)
+    if kwargs.pop("temperature", None) is not None:
+        raise ValueError("temperature is unsupported: semantic matching uses the backbone logit_scale.")
     return LOSS_REGISTRY[loss_type](clip_model=clip_model, **kwargs)
 
 

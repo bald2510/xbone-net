@@ -108,9 +108,11 @@ def multiclass_calibration_metrics(
         raise ValueError("Calibration inputs must have shapes [N,C] and [N].")
     if len(labels) == 0 or n_bins < 1:
         raise ValueError("Calibration metrics require samples and positive n_bins.")
+    if not np.isfinite(probabilities).all() or np.any(probabilities < 0) or np.any(probabilities > 1):
+        raise ValueError("Probabilities must be finite and in [0,1].")
     row_sums = probabilities.sum(axis=1, keepdims=True)
-    if np.any(row_sums <= 0):
-        raise ValueError("Every probability row must have a positive sum.")
+    if not np.allclose(row_sums, 1.0, atol=1e-5, rtol=0):
+        raise ValueError("Every probability row must sum to one.")
     probabilities = probabilities / row_sums
     if np.any(labels < 0) or np.any(labels >= probabilities.shape[1]):
         raise ValueError("Calibration labels are outside the probability columns.")

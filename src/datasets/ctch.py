@@ -7,6 +7,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from .preprocessing import prepare_image
+from .integrity import merge_manifests
 from .sampling import cross_class_donor_indices, deranged_donor_indices
 
 
@@ -90,6 +91,8 @@ class CTCHDataset(Dataset):
             Khi dữ liệu hoặc trạng thái đầu vào không hợp lệ.
         """
         self.img_dir = img_dir
+        self.strict_data = bool(kwargs.get("strict_data", False))
+        self.required_reports = set(kwargs.get("required_reports", ["clinical"]))
         self.classes = classes or pathologies or []
         self.task_type = task_type
         self.transform = transform
@@ -119,7 +122,7 @@ class CTCHDataset(Dataset):
         # --- Tải và kết hợp siêu dữ liệu ---
         df_split = pd.read_csv(csv_split_path)
         df_labels = pd.read_csv(csv_labels_path)
-        df_merged = pd.merge(df_split, df_labels, on=["image_id"], how="inner")
+        df_merged = merge_manifests(df_split, df_labels, strict=self.strict_data)
 
         # Kiểm tra điều kiện trước khi thực hiện nhánh xử lý tương ứng.
         if task_type == "multiclass" and "class_id" not in df_merged.columns and self.classes:
@@ -248,7 +251,7 @@ class CTCHDataset(Dataset):
         """
         return len(self.df)
 
-    def _load_report(self, report_dir: str, image_id: str) -> str:
+    def _load_report(self, report_dir: str, image_id: str, required: bool = False) -> str:
         """Tải báo cáo cho bước xử lý hiện tại.
 
         Parameters
@@ -264,12 +267,19 @@ class CTCHDataset(Dataset):
             Kết quả được tạo bởi bước xử lý của hàm.
         """
         if report_dir is None:
+            if self.strict_data and required:
+                raise FileNotFoundError("Required report directory is not configured.")
             return ""
         file_name = os.path.splitext(image_id)[0]
         report_path = os.path.join(report_dir, f"{file_name}.txt")
         if os.path.exists(report_path):
             with open(report_path, "r", encoding="utf-8") as f:
-                return f.read().strip().lower()
+                text = f.read().strip().lower()
+                if self.strict_data and required and not text:
+                    raise ValueError(f"Empty required report: {report_path}")
+                return text
+        if self.strict_data and required:
+            raise FileNotFoundError(f"Missing required report: {report_path}")
         return ""
 
     def _tokenize(self, text: str):
@@ -315,6 +325,8 @@ class CTCHDataset(Dataset):
             try:
                 image = Image.open(img_path).convert("RGB")
             except FileNotFoundError:
+                if self.strict_data:
+                    raise
                 image = Image.new("RGB", (224, 224), color="black")
 
         image = prepare_image(image, self.transform, self.preprocess_cfg)
@@ -326,9 +338,9 @@ class CTCHDataset(Dataset):
                 self.df.iloc[self.shuffled_report_indices[idx]]["image_id"]
             )
 
-        xray_text = self._load_report(self.xray_report_dir, report_image_id)
+        xray_text = self._load_report(self.xray_report_dir, report_image_id, "xray" in self.required_reports)
         clinical_text = self._load_report(
-            self.clinical_report_dir, report_image_id
+            self.clinical_report_dir, report_image_id, "clinical" in self.required_reports
         )
 
         xray_ids = self._tokenize(xray_text)

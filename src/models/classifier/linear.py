@@ -6,7 +6,7 @@ import torch.nn as nn
 class LinearHead(nn.Module):
     """Ánh xạ embedding dung hợp sang logits của các lớp đích."""
 
-    def __init__(self, feature_dim: int = 512, num_classes: int = 10):
+    def __init__(self, feature_dim: int = 512, num_classes: int = 10, bias: bool = True):
         """Khởi tạo phép chiếu ``feature_dim -> num_classes``.
 
         Parameters
@@ -18,7 +18,7 @@ class LinearHead(nn.Module):
         """
         super().__init__()
         # Thiết lập giá trị trung gian cho bước xử lý tiếp theo.
-        self.classifier = nn.Linear(feature_dim, num_classes)
+        self.classifier = nn.Linear(feature_dim, num_classes, bias=bias)
 
     def forward(self, x):
         """Tính logits chưa chuẩn hóa cho một batch embedding.
